@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AnimateIn from "@/components/AnimateIn";
 
 interface TeamMember {
   number: string;
@@ -105,6 +106,7 @@ export default function TeamSection() {
     >
       <div className="mx-auto max-w-[1200px] px-6 lg:px-12">
         {/* Intro paragraph */}
+        <AnimateIn variant="fade-up">
         <p
           style={{
             fontSize: 18,
@@ -121,6 +123,7 @@ export default function TeamSection() {
           expertise unique pour offrir des solutions innovantes et de haute
           qualite.
         </p>
+        </AnimateIn>
 
         {/* Team list */}
         <div>

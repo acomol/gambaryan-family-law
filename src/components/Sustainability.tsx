@@ -1,3 +1,5 @@
+import AnimateIn from "@/components/AnimateIn";
+
 export default function Sustainability() {
   return (
     <section
@@ -7,7 +9,7 @@ export default function Sustainability() {
       <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           {/* Left column — large intro text */}
-          <div>
+          <AnimateIn variant="fade-up">
             <p
               style={{
                 fontSize: 26,
@@ -23,10 +25,10 @@ export default function Sustainability() {
               d&eacute;chets, cr&eacute;ant des b&acirc;timents
               &eacute;cologiques pour les g&eacute;n&eacute;rations futures.
             </p>
-          </div>
+          </AnimateIn>
 
           {/* Right column — body text */}
-          <div>
+          <AnimateIn variant="fade-up" delay={0.2}>
             <p
               style={{
                 fontSize: 16,
@@ -43,7 +45,7 @@ export default function Sustainability() {
               identifier des opportunit&eacute;s pour r&eacute;duire
               l&rsquo;empreinte &eacute;cologique globale du projet.
             </p>
-          </div>
+          </AnimateIn>
         </div>
       </div>
     </section>

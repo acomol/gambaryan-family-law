@@ -1,3 +1,5 @@
+import AnimateIn from "@/components/AnimateIn";
+
 interface Award {
   year: string;
   project: string;
@@ -53,7 +55,7 @@ export default function AwardsSection() {
       <div className="mx-auto max-w-[1200px] px-6 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
           {/* Left column — text + CTA */}
-          <div className="lg:col-span-5 flex flex-col gap-10">
+          <AnimateIn variant="fade-up" className="lg:col-span-5 flex flex-col gap-10">
             <p
               className="text-white"
               style={{
@@ -80,10 +82,10 @@ export default function AwardsSection() {
             >
               DEBUTER VOTRE PROJET
             </a>
-          </div>
+          </AnimateIn>
 
           {/* Right column — awards table */}
-          <div className="lg:col-span-7">
+          <AnimateIn variant="fade-up" delay={0.2} className="lg:col-span-7">
             {AWARDS.map((award, idx) => (
               <div
                 key={`${award.year}-${award.project}-${idx}`}
@@ -173,7 +175,7 @@ export default function AwardsSection() {
                 </div>
               </div>
             ))}
-          </div>
+          </AnimateIn>
         </div>
       </div>
     </section>

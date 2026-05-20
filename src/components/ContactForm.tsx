@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AnimateIn from "@/components/AnimateIn";
 
 const PROJECT_TYPES = [
   { value: "", label: "Sélectionnez..." },
@@ -63,7 +64,7 @@ export default function ContactForm() {
       <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20">
           {/* ---- Left column ---- */}
-          <div className="lg:col-span-5">
+          <AnimateIn variant="fade-up" className="lg:col-span-5">
             <h2
               className="text-white"
               style={{
@@ -115,10 +116,10 @@ export default function ContactForm() {
             >
               Planifier une rencontre
             </a>
-          </div>
+          </AnimateIn>
 
           {/* ---- Right column — form ---- */}
-          <div className="lg:col-span-7">
+          <AnimateIn variant="fade-up" delay={0.2} className="lg:col-span-7">
             <form onSubmit={handleSubmit} className="flex flex-col gap-8">
               {/* Name */}
               <div>
@@ -247,7 +248,7 @@ export default function ContactForm() {
                 </button>
               </div>
             </form>
-          </div>
+          </AnimateIn>
         </div>
       </div>
     </section>

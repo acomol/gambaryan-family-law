@@ -31,6 +31,8 @@ const phases = [
   },
 ];
 
+import AnimateIn from "@/components/AnimateIn";
+
 export default function ProjectPhases() {
   return (
     <section
@@ -40,7 +42,7 @@ export default function ProjectPhases() {
     >
       <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
         {/* Header: title + CTA button */}
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between"
+        <AnimateIn variant="fade-up" className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between"
           style={{ marginBottom: 64 }}
         >
           <h2
@@ -65,12 +67,12 @@ export default function ProjectPhases() {
           >
             D&eacute;buter votre projet
           </a>
-        </div>
+        </AnimateIn>
 
         {/* Phase rows */}
         <div>
           {phases.map((phase, i) => (
-            <div key={phase.num}>
+            <AnimateIn key={phase.num} variant="fade-up" delay={i * 0.1}>
               {/* Top border line */}
               <div className="line-light" />
 
@@ -110,7 +112,7 @@ export default function ProjectPhases() {
 
               {/* Bottom border on last row */}
               {i === phases.length - 1 && <div className="line-light" />}
-            </div>
+            </AnimateIn>
           ))}
         </div>
       </div>

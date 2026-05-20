@@ -1,3 +1,5 @@
+import AnimateIn from "@/components/AnimateIn";
+
 export default function FirmIntro() {
   return (
     <section
@@ -8,7 +10,7 @@ export default function FirmIntro() {
       <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
           {/* Left column — firm description */}
-          <div className="lg:col-span-7">
+          <AnimateIn variant="fade-up" className="lg:col-span-7">
             <p
               className="text-white"
               style={{
@@ -28,10 +30,10 @@ export default function FirmIntro() {
               connaissances et le mouvement d&rsquo;id&eacute;es dans une
               direction commune.
             </p>
-          </div>
+          </AnimateIn>
 
           {/* Right column — origin story + founder photo */}
-          <div className="lg:col-span-5 flex flex-col gap-8">
+          <AnimateIn variant="fade-up" delay={0.2} className="lg:col-span-5 flex flex-col gap-8">
             <p
               style={{
                 fontSize: 16,
@@ -80,7 +82,7 @@ export default function FirmIntro() {
                 </p>
               </div>
             </div>
-          </div>
+          </AnimateIn>
         </div>
       </div>
     </section>

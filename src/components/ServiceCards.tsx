@@ -1,5 +1,7 @@
 "use client";
 
+import AnimateIn from "@/components/AnimateIn";
+
 const SERVICES = [
   {
     title: "Services en Architecture",
@@ -62,7 +64,7 @@ export default function ServiceCards() {
         {/* ---------- Staggered cards grid ---------- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
           {SERVICES.map((service, idx) => (
-            <div key={service.title} className="flex">
+            <AnimateIn key={service.title} variant="fade-up" delay={idx * 0.15} className="flex">
               <div className="w-full flex flex-col">
                 {/* Stagger spacer — visible only md+ */}
                 <div
@@ -160,7 +162,7 @@ export default function ServiceCards() {
                   )}
                 </div>
               </div>
-            </div>
+            </AnimateIn>
           ))}
         </div>
 

@@ -1,5 +1,7 @@
 "use client";
 
+import AnimateIn from "@/components/AnimateIn";
+
 const ANCHOR_NAV = [
   { label: "Firme", href: "#firme" },
   { label: "Services", href: "#services" },
@@ -15,7 +17,7 @@ export default function HeroSection() {
       style={{ height: "100vh", minHeight: 600 }}
     >
       {/* ---- split brand text anchored to bottom ---- */}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-6 lg:px-12 pb-10 lg:pb-14 pointer-events-none select-none">
+      <AnimateIn variant="fade" duration={1.2} delay={0.3} className="absolute inset-x-0 bottom-0 flex items-end justify-between px-6 lg:px-12 pb-10 lg:pb-14 pointer-events-none select-none">
         <span
           className="text-white leading-none"
           style={{
@@ -39,7 +41,7 @@ export default function HeroSection() {
         >
           ARCHITECTURE
         </span>
-      </div>
+      </AnimateIn>
 
       {/* ---- right-side vertical anchor nav ---- */}
       <nav
