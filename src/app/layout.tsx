@@ -1,15 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-/* Swiss 721 BT → Inter (closest Google Fonts neo-grotesque match)
-   Original: swiss 400/500/700/800 */
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "800"],
-  style: ["normal", "italic"],
-});
+/* Swiss 721 BT — self-hosted from /fonts/swiss/
+   Loaded via @font-face in globals.css */
 
 export const metadata: Metadata = {
   title: "CARGOarchitecture | À PROPOS",
@@ -32,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={`${inter.variable} h-full antialiased`}>
+    <html lang="fr" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-cargo-dark text-white font-body">
         {children}
       </body>

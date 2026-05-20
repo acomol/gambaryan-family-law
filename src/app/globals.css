@@ -1,12 +1,51 @@
 @import "tailwindcss";
 
+/* ==========================================
+   Swiss 721 BT — original brand typeface
+   ========================================== */
+@font-face {
+  font-family: "swiss";
+  src: url("/fonts/swiss/Swiss721BT-Roman.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "swiss";
+  src: url("/fonts/swiss/Swiss721BT-Roman.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "swiss";
+  src: url("/fonts/swiss/Swiss721BT-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "swiss";
+  src: url("/fonts/swiss/Swiss721BT-Bold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "swissItalic";
+  src: url("/fonts/swiss/Swiss721BT-Italic.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
   /* ==========================================
      cargoarchitecture.ca design tokens
      ========================================== */
 
-  /* Font families — Swiss 721 BT → Inter */
-  --font-body: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Font families — Swiss 721 BT (original) */
+  --font-body: "swiss", Helvetica, Arial, sans-serif;
   --font-sans: var(--font-body);
   --font-heading: var(--font-body);
 
