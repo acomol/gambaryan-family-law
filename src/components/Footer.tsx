@@ -1,142 +1,196 @@
+"use client";
+
+const PRACTICE_AREAS = [
+  "Car Accidents",
+  "Truck Accidents",
+  "Motorcycle Accidents",
+  "Rideshare & Delivery",
+  "Catastrophic Injury",
+  "Pedestrian Accidents",
+  "Premises Liability",
+  "Product Liability",
+  "Other Vehicle Accidents",
+  "Workplace Accidents",
+];
+
+const QUICK_LINKS = [
+  "Personal Injury",
+  "Water Contamination",
+  "Wills for Warriors",
+  "The Firm",
+  "Videos",
+  "Insights",
+  "Contact Us",
+  "Offices",
+  "Testimonials",
+];
+
+const SOCIAL = [
+  { name: "Instagram", icon: "○" },
+  { name: "YouTube", icon: "□" },
+  { name: "Facebook", icon: "f" },
+  { name: "X", icon: "X" },
+];
+
+const OFFICES = [
+  {
+    city: "Huntsville",
+    address: "200 West Side Square, Suite 1000",
+    state: "Huntsville, AL 35801",
+    phone: "(256) 448-8523",
+  },
+  {
+    city: "Florence",
+    address: "116 N. Court Street",
+    state: "Florence, AL 35630",
+    phone: "(256) 333-5000",
+  },
+  {
+    city: "Athens",
+    address: "321 S. Marion Street",
+    state: "Athens, AL 35611",
+    phone: "(256) 616-6616",
+  },
+];
+
 export default function Footer() {
   return (
-    <footer
-      className="bg-cargo-dark"
-      style={{
-        borderTop: "1px solid rgba(255,255,255,0.1)",
-        padding: "30px 0",
-      }}
-    >
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
-        {/* ---- Desktop: three-column layout ---- */}
-        <div className="hidden lg:flex items-center justify-between">
-          {/* Left — CARGO */}
-          <span
-            className="text-white"
-            style={{
-              fontSize: 32,
-              fontWeight: 800,
-              textTransform: "uppercase",
-              letterSpacing: "-0.01em",
-              lineHeight: 1,
-            }}
-          >
-            CARGO
-          </span>
+    <footer className="bg-[var(--color-mh-dark)]">
+      {/* Main footer */}
+      <div className="py-12 lg:py-16">
+        <div className="mx-auto max-w-[1400px] px-4 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {/* Column 1 — Practice Areas */}
+            <div>
+              <h4 className="text-white font-bold text-xs uppercase tracking-[0.2em] mb-5">
+                AREAS OF PRACTICE
+              </h4>
+              <ul className="space-y-2">
+                {PRACTICE_AREAS.map((link) => (
+                  <li key={link}>
+                    <a
+                      href="#"
+                      className="text-white/60 text-sm hover:text-[var(--color-mh-gold)] transition-colors"
+                    >
+                      {link}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Center — credits */}
-          <div className="flex flex-col items-center gap-1">
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 400,
-                color: "#B4B4B4",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-              }}
-            >
-              &copy;CARGOARCHITECTURE INC. 2026, TOUS DROITS
-              R&Eacute;SERV&Eacute;S.
+            {/* Column 2 — Quick Links */}
+            <div>
+              <h4 className="text-white font-bold text-xs uppercase tracking-[0.2em] mb-5">
+                QUICK LINKS
+              </h4>
+              <ul className="space-y-2">
+                {QUICK_LINKS.map((link) => (
+                  <li key={link}>
+                    <a
+                      href="#"
+                      className="text-white/60 text-sm hover:text-[var(--color-mh-gold)] transition-colors"
+                    >
+                      {link}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Column 3 — Follow Us */}
+            <div>
+              <h4 className="text-white font-bold text-xs uppercase tracking-[0.2em] mb-5">
+                FOLLOW US
+              </h4>
+              <ul className="space-y-3">
+                {SOCIAL.map((s) => (
+                  <li key={s.name}>
+                    <a
+                      href="#"
+                      className="flex items-center gap-3 text-white/60 text-sm hover:text-[var(--color-mh-gold)] transition-colors"
+                    >
+                      <span className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-xs">
+                        {s.icon}
+                      </span>
+                      {s.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Gold V-shape separator */}
+      <div className="relative h-8">
+        <svg
+          viewBox="0 0 1440 32"
+          className="absolute inset-0 w-full h-full"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M0,0 L720,32 L1440,0"
+            fill="none"
+            stroke="var(--color-mh-gold)"
+            strokeWidth="2"
+          />
+        </svg>
+      </div>
+
+      {/* Bottom footer — offices */}
+      <div className="py-12 lg:py-16 border-t border-white/5">
+        <div className="mx-auto max-w-[1400px] px-4 lg:px-8">
+          {/* MH branding */}
+          <div className="text-center mb-10">
+            <span className="font-heading text-white text-xl uppercase tracking-[0.15em]">
+              McCutcheon &amp; Hamner
             </span>
-            <a
-              href="#"
-              className="hover:text-white transition-colors duration-200"
-              style={{
-                fontSize: 12,
-                fontWeight: 400,
-                color: "#B4B4B4",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-              }}
-            >
-              POLITIQUE DE CONFIDENTIALIT&Eacute;
-            </a>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 400,
-                color: "#B4B4B4",
-                letterSpacing: "0.03em",
-                textTransform: "uppercase",
-                marginTop: 2,
-              }}
-            >
-              EXP&Eacute;RIENCE NUM&Eacute;RIQUE R&Eacute;ALIS&Eacute;E PAR
-              INSTYNCT
-            </span>
+            <p className="text-[var(--color-mh-gold)] text-xs uppercase tracking-wider mt-1">
+              Personal Injury Attorneys
+            </p>
           </div>
 
-          {/* Right — ARCHITECTURE */}
-          <span
-            className="text-white"
-            style={{
-              fontSize: 32,
-              fontWeight: 800,
-              textTransform: "uppercase",
-              letterSpacing: "-0.01em",
-              lineHeight: 1,
-            }}
-          >
-            ARCHITECTURE
-          </span>
+          {/* Offices grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            {OFFICES.map((office) => (
+              <div key={office.city}>
+                <h5 className="text-white font-bold text-sm uppercase tracking-wide mb-2">
+                  {office.city}
+                </h5>
+                <p className="text-white/50 text-xs mb-1">{office.address}</p>
+                <p className="text-white/50 text-xs mb-2">{office.state}</p>
+                <a
+                  href={`tel:${office.phone.replace(/[^0-9]/g, "")}`}
+                  className="text-[var(--color-mh-gold)] text-sm font-semibold hover:text-[var(--color-mh-gold-light)] transition-colors"
+                >
+                  {office.phone}
+                </a>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* ---- Mobile: stacked layout ---- */}
-        <div className="flex flex-col items-center gap-4 lg:hidden">
-          {/* Combined brand name on mobile */}
-          <span
-            className="text-white"
-            style={{
-              fontSize: 20,
-              fontWeight: 800,
-              textTransform: "uppercase",
-              letterSpacing: "-0.01em",
-              lineHeight: 1,
-            }}
-          >
-            CARGO ARCHITECTURE
-          </span>
-
-          {/* Credits */}
-          <div className="flex flex-col items-center gap-1 text-center">
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 400,
-                color: "#B4B4B4",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-              }}
-            >
-              &copy;CARGOARCHITECTURE INC. 2026, TOUS DROITS
-              R&Eacute;SERV&Eacute;S.
-            </span>
-            <a
-              href="#"
-              className="hover:text-white transition-colors duration-200"
-              style={{
-                fontSize: 10,
-                fontWeight: 400,
-                color: "#B4B4B4",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-              }}
-            >
-              POLITIQUE DE CONFIDENTIALIT&Eacute;
-            </a>
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 400,
-                color: "#B4B4B4",
-                letterSpacing: "0.03em",
-                textTransform: "uppercase",
-                marginTop: 2,
-              }}
-            >
-              EXP&Eacute;RIENCE NUM&Eacute;RIQUE R&Eacute;ALIS&Eacute;E PAR
-              INSTYNCT
-            </span>
+      {/* Copyright bar */}
+      <div className="py-5 border-t border-white/10">
+        <div className="mx-auto max-w-[1400px] px-4 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-white/40 text-xs">
+            Copyright &copy; 2026 McCutcheon &amp; Hamner. All Rights Reserved.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 text-xs">
+            {["SITE MAP", "PRIVACY", "TERMS", "AI POLICY", "ACCESSIBILITY"].map(
+              (link) => (
+                <a
+                  key={link}
+                  href="#"
+                  className="text-white/40 hover:text-white/70 uppercase tracking-wider transition-colors"
+                >
+                  {link}
+                </a>
+              ),
+            )}
           </div>
         </div>
       </div>

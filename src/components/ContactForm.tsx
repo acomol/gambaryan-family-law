@@ -1,254 +1,215 @@
 "use client";
 
 import { useState } from "react";
-import AnimateIn from "@/components/AnimateIn";
-
-const PROJECT_TYPES = [
-  { value: "", label: "Sélectionnez..." },
-  { value: "residentiel", label: "Résidentiel" },
-  { value: "commercial", label: "Commercial" },
-  { value: "institutionnel", label: "Institutionnel" },
-  { value: "autre", label: "Autre" },
-] as const;
 
 export default function ContactForm() {
   const [form, setForm] = useState({
-    name: "",
-    email: "",
+    firstName: "",
+    lastName: "",
     phone: "",
-    projectType: "",
+    email: "",
+    where: "",
+    when: "",
     message: "",
   });
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Visual only — no real submission
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 12,
-    fontWeight: 500,
-    textTransform: "uppercase",
-    letterSpacing: "0.1em",
-    color: "#B4B4B4",
-    marginBottom: 8,
-    display: "block",
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    background: "transparent",
-    border: "none",
-    borderBottom: "1px solid rgba(255,255,255,0.2)",
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: 400,
-    padding: "12px 0",
-    outline: "none",
-    fontFamily: "inherit",
-    lineHeight: 1.5,
   };
 
   return (
-    <section
-      id="contact"
-      className="bg-cargo-dark"
-      style={{ padding: "100px 0" }}
-    >
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20">
-          {/* ---- Left column ---- */}
-          <AnimateIn variant="fade-up" className="lg:col-span-5">
+    <section id="contact" className="bg-[var(--color-mh-dark)] py-16 lg:py-24">
+      <div className="mx-auto max-w-[1400px] px-4 lg:px-8">
+        <div className="flex flex-col lg:flex-row overflow-hidden rounded-lg shadow-2xl">
+          {/* Left side — image placeholder */}
+          <div
+            className="hidden lg:block lg:w-[30%] relative"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(20,25,31,0.95) 0%, rgba(240,174,31,0.15) 100%)",
+            }}
+          >
+            <div className="absolute inset-0 flex items-end justify-center p-8">
+              <div
+                className="w-full h-[80%] rounded-t-full"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(240,174,31,0.08) 0%, rgba(20,25,31,0.6) 100%)",
+                  border: "1px solid rgba(240,174,31,0.1)",
+                }}
+              />
+            </div>
+            {/* Overlay text */}
+            <div className="absolute bottom-8 left-8 right-8">
+              <p className="text-white/60 text-sm font-[var(--font-body)]">
+                Fighting for Alabama families since 1987
+              </p>
+            </div>
+          </div>
+
+          {/* Right side — form */}
+          <div className="flex-1 bg-white p-8 lg:p-12">
+            {/* Heading */}
             <h2
-              className="text-white"
-              style={{
-                fontSize: 32,
-                fontWeight: 700,
-                lineHeight: 1.2,
-                letterSpacing: "-0.01em",
-              }}
+              className="font-serif italic text-[var(--color-mh-dark)] mb-2"
+              style={{ fontSize: "clamp(32px, 4vw, 48px)", lineHeight: 1.1 }}
             >
-              D&eacute;butez un projet
+              Get Help Today
             </h2>
-
-            {/* decorative line */}
-            <div
-              style={{
-                width: 60,
-                height: 1,
-                backgroundColor: "#FFFFFF",
-                marginTop: 24,
-                marginBottom: 24,
-              }}
-            />
-
-            <p
-              style={{
-                fontSize: 14,
-                fontWeight: 400,
-                lineHeight: 1.7,
-                color: "#B4B4B4",
-                maxWidth: 360,
-              }}
-            >
-              La cueillette de ces informations &eacute;tant la premi&egrave;re
-              &eacute;tape d&rsquo;un projet d&rsquo;architecture, nous vous
-              invitons &agrave; remplir le formulaire ou &agrave; prendre
-              rendez-vous avec nous.
+            <p className="text-[var(--color-mh-dark)] text-lg font-semibold mb-6">
+              Consultations Are Always Free!
             </p>
 
-            <a
-              href="mailto:contact@cargoarchitecture.ca"
-              className="inline-block text-white hover:opacity-70 transition-opacity"
-              style={{
-                fontSize: 14,
-                fontWeight: 400,
-                textDecoration: "underline",
-                textUnderlineOffset: 4,
-                marginTop: 20,
-              }}
-            >
-              Planifier une rencontre
-            </a>
-          </AnimateIn>
-
-          {/* ---- Right column — form ---- */}
-          <AnimateIn variant="fade-up" delay={0.2} className="lg:col-span-7">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-              {/* Name */}
-              <div>
-                <label htmlFor="cf-name" style={labelStyle}>
-                  Quel est votre nom?
-                </label>
-                <input
-                  id="cf-name"
-                  name="name"
-                  type="text"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="Votre nom complet"
-                  autoComplete="name"
-                  style={inputStyle}
-                  className="placeholder:text-cargo-muted focus:border-b-white"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label htmlFor="cf-email" style={labelStyle}>
-                  Votre courriel
-                </label>
-                <input
-                  id="cf-email"
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="nom@exemple.ca"
-                  autoComplete="email"
-                  style={inputStyle}
-                  className="placeholder:text-cargo-muted focus:border-b-white"
-                />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label htmlFor="cf-phone" style={labelStyle}>
-                  Votre t&eacute;l&eacute;phone
-                </label>
-                <input
-                  id="cf-phone"
-                  name="phone"
-                  type="tel"
-                  value={form.phone}
-                  onChange={handleChange}
-                  placeholder="(418) 000-0000"
-                  autoComplete="tel"
-                  style={inputStyle}
-                  className="placeholder:text-cargo-muted focus:border-b-white"
-                />
-              </div>
-
-              {/* Project type */}
-              <div>
-                <label htmlFor="cf-project" style={labelStyle}>
-                  Type de projet
-                </label>
-                <select
-                  id="cf-project"
-                  name="projectType"
-                  value={form.projectType}
-                  onChange={handleChange}
-                  style={{
-                    ...inputStyle,
-                    appearance: "none",
-                    backgroundImage:
-                      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23B4B4B4' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "right 4px center",
-                    paddingRight: 24,
-                    cursor: "pointer",
-                  }}
+            {/* Office numbers */}
+            <div className="mb-8 pb-6 border-b border-gray-200">
+              <p className="text-[var(--color-mh-gray)] text-sm mb-3">
+                For faster assistance, call one of our offices directly.
+              </p>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <a
+                  href="tel:2564488523"
+                  className="text-[var(--color-mh-dark)] font-semibold hover:text-[var(--color-mh-gold)] transition-colors"
                 >
-                  {PROJECT_TYPES.map((t) => (
-                    <option
-                      key={t.value}
-                      value={t.value}
-                      style={{ backgroundColor: "#1D1D1D", color: "#FFFFFF" }}
-                    >
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+                  Huntsville{" "}
+                  <span className="font-normal">(256) 448-8523</span>
+                </a>
+                <a
+                  href="tel:2563335000"
+                  className="text-[var(--color-mh-dark)] font-semibold hover:text-[var(--color-mh-gold)] transition-colors"
+                >
+                  Florence{" "}
+                  <span className="font-normal">(256) 333-5000</span>
+                </a>
+                <a
+                  href="tel:2566166616"
+                  className="text-[var(--color-mh-dark)] font-semibold hover:text-[var(--color-mh-gold)] transition-colors"
+                >
+                  Athens{" "}
+                  <span className="font-normal">(256) 616-6616</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Row 1 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-mh-gray)] uppercase tracking-wide mb-1">
+                    First Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={form.firstName}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-[var(--color-mh-dark)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-mh-gold)] focus:border-transparent transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-mh-gray)] uppercase tracking-wide mb-1">
+                    Last Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={form.lastName}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-[var(--color-mh-dark)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-mh-gold)] focus:border-transparent transition"
+                  />
+                </div>
               </div>
 
-              {/* Message */}
+              {/* Row 2 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-mh-gray)] uppercase tracking-wide mb-1">
+                    Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-[var(--color-mh-dark)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-mh-gold)] focus:border-transparent transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-mh-gray)] uppercase tracking-wide mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-[var(--color-mh-dark)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-mh-gold)] focus:border-transparent transition"
+                  />
+                </div>
+              </div>
+
+              {/* Row 3 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-mh-gray)] uppercase tracking-wide mb-1">
+                    Where did the injury happen?
+                  </label>
+                  <input
+                    type="text"
+                    name="where"
+                    value={form.where}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-[var(--color-mh-dark)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-mh-gold)] focus:border-transparent transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-mh-gray)] uppercase tracking-wide mb-1">
+                    When did the injury happen?
+                  </label>
+                  <input
+                    type="text"
+                    name="when"
+                    value={form.when}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-[var(--color-mh-dark)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-mh-gold)] focus:border-transparent transition"
+                  />
+                </div>
+              </div>
+
+              {/* Textarea */}
               <div>
-                <label htmlFor="cf-message" style={labelStyle}>
-                  Message
+                <label className="block text-xs font-semibold text-[var(--color-mh-gray)] uppercase tracking-wide mb-1">
+                  Tell us briefly how you were injured{" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  id="cf-message"
                   name="message"
                   value={form.message}
                   onChange={handleChange}
+                  required
                   rows={4}
-                  placeholder="D&eacute;crivez votre projet..."
-                  style={{
-                    ...inputStyle,
-                    resize: "vertical",
-                    minHeight: 80,
-                  }}
-                  className="placeholder:text-cargo-muted focus:border-b-white"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-[var(--color-mh-dark)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-mh-gold)] focus:border-transparent transition resize-y"
                 />
               </div>
 
               {/* Submit */}
-              <div style={{ marginTop: 8 }}>
-                <button
-                  type="submit"
-                  className="border border-white text-white hover:bg-white hover:text-cargo-dark transition-colors duration-300 cursor-pointer"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    padding: "14px 40px",
-                    background: "transparent",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  Envoyer
-                </button>
-              </div>
+              <button
+                type="submit"
+                className="w-full py-4 bg-[var(--color-mh-gold)] hover:bg-[var(--color-mh-gold-light)] text-[var(--color-mh-dark)] font-bold text-lg uppercase tracking-wider rounded-md transition-colors duration-200 cursor-pointer"
+              >
+                GET HELP NOW
+              </button>
             </form>
-          </AnimateIn>
+          </div>
         </div>
       </div>
     </section>

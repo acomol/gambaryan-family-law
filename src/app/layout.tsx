@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-/* Swiss 721 BT — self-hosted from /fonts/swiss/
-   Loaded via @font-face in globals.css */
+/* Archivo + Archivo Black — Google Fonts
+   meno-display — Adobe Typekit (kit af) */
 
 export const metadata: Metadata = {
-  title: "CARGOarchitecture | À PROPOS",
+  title: "McCutcheon & Hamner | Alabama Injury Lawyers",
   description:
-    "CARGOarchitecture rassemble une équipe de professionnels talentueux en architecture, design d'intérieur et planification. Québec, Canada.",
+    "McCutcheon & Hamner, P.C. — Alabama's top personal injury lawyers. Over $500 million recovered. Free consultation. Serving Huntsville, Florence, and Athens.",
   openGraph: {
-    title: "CARGOarchitecture | À PROPOS",
+    title: "McCutcheon & Hamner | Alabama Injury Lawyers Fighting for Accident Victims",
     description:
-      "Architectes expérimentés, techniciens spécialisés et designers d'intérieur. Approche proactive et collaborative.",
-    images: ["/images/team-photo.webp"],
+      "Over $500 million recovered for accident victims across North Alabama. Free consultation — no fees until we win.",
+    images: ["/images/og-hero.jpg"],
   },
   icons: {
-    icon: "/images/logo-dark.svg",
+    icon: "/images/mh-logo-gold.svg",
   },
 };
 
@@ -25,8 +25,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-cargo-dark text-white font-body">
+    <html lang="en" className="h-full antialiased">
+      <head>
+        {/* Google Fonts: Archivo family */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Archivo+Black&family=Archivo+Narrow:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        {/* Adobe Typekit: meno-display serif */}
+        <link rel="stylesheet" href="https://use.typekit.net/af.css" />
+      </head>
+      <body className="min-h-full flex flex-col bg-mh-black text-white font-body">
         {children}
       </body>
     </html>

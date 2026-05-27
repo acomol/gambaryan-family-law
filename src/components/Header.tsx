@@ -1,173 +1,192 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 const NAV_LINKS = [
-  { label: "ACCUEIL", href: "#" },
-  { label: "PROJETS", href: "#projets" },
-  { label: "À PROPOS", href: "#apropos" },
-  { label: "CULTURE", href: "#culture" },
-  { label: "CONTACT", href: "#contact" },
+  { label: "Personal Injury", href: "#", hasDropdown: true },
+  { label: "The Firm", href: "#", hasDropdown: true },
+  { label: "Insights", href: "#", hasDropdown: true },
+  { label: "Offices", href: "#", hasDropdown: true },
+  { label: "Contact", href: "#contact", hasDropdown: false },
+  { label: "Testimonials", href: "#testimonials", hasDropdown: false },
+] as const;
+
+const TOP_LINKS = [
+  { label: "Wills For Warriors", href: "#" },
+  { label: "Water Contamination", href: "#" },
+  { label: "Chat", href: "#" },
+  { label: "Search", href: "#" },
 ] as const;
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => setScrolled(window.scrollY > 20);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* lock body scroll when mobile menu is open */
-  useEffect(() => {
-    document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [mobileOpen]);
-
-  const closeMobile = useCallback(() => setMobileOpen(false), []);
-
   return (
     <header
-      className="fixed inset-x-0 top-0 z-50 transition-colors duration-300"
+      className="fixed inset-x-0 top-0 z-50 transition-shadow duration-300"
       style={{
-        height: 80,
-        backgroundColor: scrolled ? "#1D1D1D" : "transparent",
+        backgroundColor: "var(--color-mh-dark)",
+        boxShadow: scrolled ? "0 2px 20px rgba(0,0,0,0.5)" : "none",
       }}
     >
-      {/* ---------- desktop bar ---------- */}
-      <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-6 lg:px-12">
-        {/* logo */}
-        <a href="#" className="shrink-0">
-          <img
-            src="/images/logo-secondary.svg"
-            alt="CARGO Architecture"
-            className="h-7 w-auto"
-          />
+      {/* Top utility bar */}
+      <div
+        className="hidden lg:flex items-center justify-end gap-6 px-8"
+        style={{
+          height: 32,
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        {TOP_LINKS.map((link) => (
+          <a
+            key={link.label}
+            href={link.href}
+            style={{
+              fontSize: 11,
+              letterSpacing: "0.04em",
+              color: "rgba(255,255,255,0.7)",
+              fontFamily: "var(--font-body)",
+              textTransform: "uppercase",
+            }}
+            className="hover:text-white transition-colors"
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
+
+      {/* Main header bar */}
+      <div
+        className="flex items-center justify-between px-6 lg:px-8"
+        style={{ height: 80 }}
+      >
+        {/* Left: Logo + Firm Name */}
+        <a href="#" className="flex items-center gap-4 shrink-0">
+          {/* MH Monogram */}
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              border: "2px solid var(--color-mh-gold)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: 20,
+                color: "var(--color-mh-gold)",
+                letterSpacing: "0.02em",
+                lineHeight: 1,
+              }}
+            >
+              MH
+            </span>
+          </div>
+
+          {/* Firm name */}
+          <div className="hidden md:flex flex-col">
+            <span
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: 15,
+                color: "var(--color-mh-white)",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                lineHeight: 1.2,
+              }}
+            >
+              McCUTCHEON &amp; HAMNER
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-narrow)",
+                fontSize: 11,
+                color: "rgba(255,255,255,0.6)",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                lineHeight: 1.4,
+              }}
+            >
+              ATTORNEYS AT LAW
+            </span>
+          </div>
         </a>
 
-        {/* center nav — desktop only */}
-        <nav className="hidden lg:flex items-center gap-8">
+        {/* Center: Navigation */}
+        <nav className="hidden xl:flex items-center gap-7">
           {NAV_LINKS.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="text-white hover:opacity-70 transition-opacity"
+              className="hover:opacity-80 transition-opacity"
               style={{
+                fontFamily: "var(--font-body)",
                 fontSize: 13,
                 fontWeight: 500,
-                letterSpacing: "0.1em",
+                letterSpacing: "0.05em",
                 textTransform: "uppercase",
+                color: "var(--color-mh-gold)",
+                whiteSpace: "nowrap",
               }}
             >
               {link.label}
+              {link.hasDropdown && (
+                <span style={{ marginLeft: 4, fontSize: 10 }}>&#9662;</span>
+              )}
             </a>
           ))}
         </nav>
 
-        {/* right side — desktop */}
-        <div className="hidden lg:flex items-center gap-6">
+        {/* Right: Phone + CTA */}
+        <div className="hidden lg:flex flex-col items-end shrink-0">
           <a
-            href="#"
-            className="text-white hover:opacity-70 transition-opacity"
+            href="tel:2563877947"
             style={{
-              fontSize: 12,
-              fontWeight: 500,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
+              fontFamily: "var(--font-heading)",
+              fontSize: 22,
+              color: "var(--color-mh-gold)",
+              letterSpacing: "0.02em",
+              lineHeight: 1.2,
+            }}
+            className="hover:opacity-80 transition-opacity"
+          >
+            (256) 387-7947
+          </a>
+          <span
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: 11,
+              color: "var(--color-mh-gold)",
+              letterSpacing: "0.03em",
+              opacity: 0.85,
+              marginTop: 2,
             }}
           >
-            EN
-          </a>
-
-          <a
-            href="#contact"
-            className="inline-flex items-center border border-white text-white hover:bg-white hover:text-cargo-dark transition-colors duration-300"
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              padding: "10px 22px",
-            }}
-          >
-            VOTRE PROJET COMMENCE ICI
-          </a>
+            Free Consultation | No Fees Until We Win
+          </span>
         </div>
 
-        {/* hamburger — mobile only */}
+        {/* Mobile hamburger */}
         <button
           type="button"
-          aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
-          className="lg:hidden flex flex-col justify-center gap-[5px] p-2"
-          onClick={() => setMobileOpen((v) => !v)}
+          aria-label="Open menu"
+          className="xl:hidden flex flex-col justify-center gap-[5px] p-2"
         >
-          <span
-            className="block h-[1.5px] w-6 bg-white transition-transform duration-300 origin-center"
-            style={mobileOpen ? { transform: "translateY(3.25px) rotate(45deg)" } : undefined}
-          />
-          <span
-            className="block h-[1.5px] w-6 bg-white transition-opacity duration-300"
-            style={{ opacity: mobileOpen ? 0 : 1 }}
-          />
-          <span
-            className="block h-[1.5px] w-6 bg-white transition-transform duration-300 origin-center"
-            style={mobileOpen ? { transform: "translateY(-3.25px) rotate(-45deg)" } : undefined}
-          />
+          <span className="block h-[2px] w-6" style={{ backgroundColor: "var(--color-mh-gold)" }} />
+          <span className="block h-[2px] w-6" style={{ backgroundColor: "var(--color-mh-gold)" }} />
+          <span className="block h-[2px] w-6" style={{ backgroundColor: "var(--color-mh-gold)" }} />
         </button>
       </div>
-
-      {/* ---------- mobile overlay ---------- */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-cargo-dark flex flex-col items-center justify-center gap-8 lg:hidden"
-          style={{ top: 80, zIndex: 40 }}
-        >
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              onClick={closeMobile}
-              className="text-white hover:opacity-70 transition-opacity"
-              style={{
-                fontSize: 16,
-                fontWeight: 500,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-              }}
-            >
-              {link.label}
-            </a>
-          ))}
-
-          <div className="flex flex-col items-center gap-6 mt-4">
-            <a
-              href="#"
-              onClick={closeMobile}
-              className="text-white hover:opacity-70"
-              style={{ fontSize: 14, fontWeight: 500, letterSpacing: "0.1em" }}
-            >
-              EN
-            </a>
-            <a
-              href="#contact"
-              onClick={closeMobile}
-              className="inline-flex items-center border border-white text-white hover:bg-white hover:text-cargo-dark transition-colors duration-300"
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                padding: "12px 26px",
-              }}
-            >
-              VOTRE PROJET COMMENCE ICI
-            </a>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
