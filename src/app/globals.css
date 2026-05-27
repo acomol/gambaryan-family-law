@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /* ==========================================
-   Archivo — Google Fonts (mhatty.com body)
-   meno-display — Adobe Typekit (serif headings)
+   Archivo — Google Fonts (body)
+   Playfair Display — Google Fonts (serif headings)
    ========================================== */
 
 @theme inline {
@@ -10,7 +10,7 @@
   --font-body: "Archivo", Helvetica, Arial, sans-serif;
   --font-sans: var(--font-body);
   --font-heading: "Archivo Black", "Archivo", sans-serif;
-  --font-serif: "meno-display", Georgia, "Times New Roman", serif;
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
   --font-narrow: "Archivo Narrow", "Archivo", sans-serif;
 
   /* Color palette — mhatty.com computed */
