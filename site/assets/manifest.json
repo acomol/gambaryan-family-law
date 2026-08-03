@@ -1,0 +1,172 @@
+{
+  "hero-duo": {
+    "alt": "Александр Гамбарян и партнёр",
+    "natural": [
+      2623,
+      1605
+    ],
+    "fallbackExt": "jpg",
+    "variants": [
+      {
+        "width": 640,
+        "height": 392,
+        "webp": "hero-duo-640w.6edbb7fc.webp",
+        "fallback": "hero-duo-640w.e903be8b.jpg",
+        "webpBytes": 9054,
+        "fallbackBytes": 12618
+      },
+      {
+        "width": 1024,
+        "height": 627,
+        "webp": "hero-duo-1024w.4bdc8831.webp",
+        "fallback": "hero-duo-1024w.193d6799.jpg",
+        "webpBytes": 18174,
+        "fallbackBytes": 25013
+      },
+      {
+        "width": 1440,
+        "height": 881,
+        "webp": "hero-duo-1440w.8bea2de0.webp",
+        "fallback": "hero-duo-1440w.c727bfd0.jpg",
+        "webpBytes": 30116,
+        "fallbackBytes": 41513
+      },
+      {
+        "width": 2048,
+        "height": 1253,
+        "webp": "hero-duo-2048w.b1403914.webp",
+        "fallback": "hero-duo-2048w.4d7a3ea5.jpg",
+        "webpBytes": 51150,
+        "fallbackBytes": 70729
+      },
+      {
+        "width": 2623,
+        "height": 1605,
+        "webp": "hero-duo-2623w.89cc7cd4.webp",
+        "fallback": "hero-duo-2623w.020f19ef.jpg",
+        "webpBytes": 72518,
+        "fallbackBytes": 104336
+      }
+    ]
+  },
+  "precedent-alexander": {
+    "alt": "Александр Гамбарян",
+    "natural": [
+      2002,
+      1287
+    ],
+    "fallbackExt": "png",
+    "variants": [
+      {
+        "width": 720,
+        "height": 463,
+        "webp": "precedent-alexander-720w.010e2a6d.webp",
+        "fallback": "precedent-alexander-720w.ec64f2f8.png",
+        "webpBytes": 35246,
+        "fallbackBytes": 191459
+      },
+      {
+        "width": 1040,
+        "height": 669,
+        "webp": "precedent-alexander-1040w.e1f80cfe.webp",
+        "fallback": "precedent-alexander-1040w.c8124a8d.png",
+        "webpBytes": 66658,
+        "fallbackBytes": 381203
+      },
+      {
+        "width": 1600,
+        "height": 1029,
+        "webp": "precedent-alexander-1600w.a1395450.webp",
+        "webpBytes": 151642,
+        "webpOnly": true,
+        "note": "PNG-фолбэк не поставляется: слот скрыт до 1200px, а 846 КБ прозрачного PNG уходили бы только браузерам без WebP; для них остаются 720w/1040w"
+      }
+    ]
+  },
+  "alexander-card": {
+    "alt": "Адвокат Александр Гамбарян",
+    "natural": [
+      2100,
+      2200
+    ],
+    "fallbackExt": "jpg",
+    "variants": [
+      {
+        "width": 480,
+        "height": 503,
+        "webp": "alexander-card-480w.6fabf327.webp",
+        "fallback": "alexander-card-480w.b3b29528.jpg",
+        "webpBytes": 11006,
+        "fallbackBytes": 16647
+      },
+      {
+        "width": 760,
+        "height": 796,
+        "webp": "alexander-card-760w.80f92900.webp",
+        "fallback": "alexander-card-760w.87032526.jpg",
+        "webpBytes": 21666,
+        "fallbackBytes": 33590
+      },
+      {
+        "width": 1100,
+        "height": 1152,
+        "webp": "alexander-card-1100w.a848de45.webp",
+        "fallback": "alexander-card-1100w.435088c9.jpg",
+        "webpBytes": 37300,
+        "fallbackBytes": 60349
+      }
+    ]
+  },
+  "alexander-avatar": {
+    "alt": "Адвокат Александр Гамбарян",
+    "natural": [
+      2100,
+      2200
+    ],
+    "fallbackExt": "jpg",
+    "variants": [
+      {
+        "width": 128,
+        "height": 134,
+        "webp": "alexander-avatar-128w.de2d4e53.webp",
+        "fallback": "alexander-avatar-128w.71d1278f.jpg",
+        "webpBytes": 1972,
+        "fallbackBytes": 2645
+      }
+    ]
+  },
+  "yulia-card": {
+    "alt": "Адвокат Юлия Саакян",
+    "natural": [
+      1122,
+      1402
+    ],
+    "fallbackExt": "jpg",
+    "variants": [
+      {
+        "width": 480,
+        "height": 600,
+        "webp": "yulia-card-480w.a736c3ca.webp",
+        "fallback": "yulia-card-480w.46c5af85.jpg",
+        "webpBytes": 12564,
+        "fallbackBytes": 18192
+      },
+      {
+        "width": 760,
+        "height": 950,
+        "webp": "yulia-card-760w.cb17a9cc.webp",
+        "fallback": "yulia-card-760w.df9bd223.jpg",
+        "webpBytes": 23764,
+        "fallbackBytes": 35913
+      },
+      {
+        "width": 1100,
+        "height": 1375,
+        "webp": "yulia-card-1100w.6f3eba82.webp",
+        "fallback": "yulia-card-1100w.af90eefa.jpg",
+        "webpBytes": 38994,
+        "fallbackBytes": 62946
+      }
+    ]
+  }
+}
