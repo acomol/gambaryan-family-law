@@ -284,7 +284,7 @@ picture { display: block; }
   overflow: hidden;
   min-height: clamp(560px, 84vh, 880px);
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   background: var(--bg-hero);
 }
 
@@ -307,64 +307,57 @@ picture { display: block; }
   );
 }
 
-/* Двое адвокатов стоят рядом и видны одновременно — без ротации */
-.hero-figures {
+/* Общий кадр студийной съёмки во всю ширину hero: фигуры остаются в своей
+   среде — золотой блик слева и глубокий чёрный фон часть композиции.
+   Блок лежит внутри .hero-inner ради порядка в мобильной вёрстке, но на
+   десктопе раскрывается до краёв вьюпорта. */
+.hero-media {
   position: absolute;
   top: 0;
-  right: min(0px, calc((var(--container-hero) - 100vw) / 2));
   bottom: 0;
-  left: 46%;
-  display: flex;
+  left: min(0px, calc((var(--container-hero) - 100vw) / 2));
+  right: min(0px, calc((var(--container-hero) - 100vw) / 2));
   pointer-events: none;
   z-index: 0;
-  /* Тёплая подложка за фигурами: без неё чёрные пиджаки сливаются
-     с чёрным фоном и руки пропадают */
-  background: radial-gradient(
-    ellipse 78% 72% at 50% 42%,
-    rgba(158, 132, 84, 0.30) 0%,
-    rgba(92, 76, 50, 0.17) 44%,
-    rgba(28, 24, 20, 0.08) 64%,
-    transparent 80%
-  );
 }
 
-/* Текст держится над фигурами на широких экранах, где они уходят в фон */
-.hero-inner > *:not(.hero-figures) {
+.hero-media picture { display: contents; }
+
+.hero-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Кадрируем так, чтобы обе фигуры оставались в правой трети, а слева
+     оставалось место под текст */
+  object-position: 68% 20%;
+}
+
+/* Текст держится над кадром на широких экранах */
+.hero-inner > *:not(.hero-media) {
   position: relative;
   z-index: 2;
 }
 
-.hero-figure {
-  position: relative;
-  flex: 1 1 50%;
-  min-width: 0;
-  height: 100%;
-}
-
-.hero-photo-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% top;
-}
-
-/* Кадрирование под каждую фигуру: лицо по центру своей половины */
-.hero-figure:first-child .hero-photo-bg { object-position: 32% top; }
-.hero-figure:last-child .hero-photo-bg { object-position: 54% top; }
-
+/* Затемнение только слева, где лежит текст. К правой трети сходит на нет,
+   чтобы не гасить лица и не превращать снимок в серую плашку. */
 .hero-scrim {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(
-    90deg,
-    rgba(10, 11, 13, 0.93) 0%,
-    rgba(10, 11, 13, 0.72) 34%,
-    rgba(10, 11, 13, 0.25) 58%,
-    transparent 78%
-  );
+  background:
+    linear-gradient(
+      90deg,
+      rgba(10, 11, 13, 0.94) 0%,
+      rgba(10, 11, 13, 0.86) 30%,
+      rgba(10, 11, 13, 0.52) 48%,
+      rgba(10, 11, 13, 0.12) 62%,
+      transparent 74%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 62%,
+      rgba(10, 11, 13, 0.55) 100%
+    );
 }
 
 .hero__body {
@@ -396,6 +389,15 @@ picture { display: block; }
   letter-spacing: -0.01em;
   color: #fff;
   text-wrap: balance;
+}
+
+/* Подзаголовок принял на себя факты, которые раньше были бейджами */
+.hero__lede {
+  margin: 0 0 28px;
+  max-width: 30ch;
+  font-size: clamp(16px, 1.35vw, 19px);
+  line-height: 1.55;
+  color: rgba(240, 232, 218, 0.82);
 }
 
 .hero__actions {
@@ -1169,15 +1171,20 @@ picture { display: block; }
 /* Hero: текст не должен налезать на лица */
 @media (max-width: 1200px) and (min-width: 861px) {
   .hero-scrim {
-    background: linear-gradient(
-      90deg,
-      rgba(10, 11, 13, 0.96) 0%,
-      rgba(10, 11, 13, 0.9) 46%,
-      rgba(10, 11, 13, 0.6) 72%,
-      rgba(10, 11, 13, 0.2) 100%
-    );
+    background:
+      linear-gradient(
+        90deg,
+        rgba(10, 11, 13, 0.96) 0%,
+        rgba(10, 11, 13, 0.9) 40%,
+        rgba(10, 11, 13, 0.62) 56%,
+        rgba(10, 11, 13, 0.18) 74%,
+        transparent 88%
+      ),
+      linear-gradient(180deg, transparent 62%, rgba(10, 11, 13, 0.55) 100%);
   }
   .hero-inner { max-width: 440px; }
+  /* Кадр обрезается сильнее — доводим фигуры к правому краю */
+  .hero-photo { object-position: 74% 18%; }
 }
 
 /* Портрет в баннере прецедента показывается только там, где для него есть место */
@@ -1187,9 +1194,9 @@ picture { display: block; }
 
 /* Мобильная компоновка */
 @media (max-width: 860px) {
-  /* Композиция полосами, а не слоями: заголовок → фигуры → кнопки → контакты.
-     Фигуры стоят в потоке документа, поэтому наложение текста на лица
-     невозможно по построению, а не за счёт подобранных отступов. */
+  /* Композиция полосами, а не слоями: надстрочник → заголовок → снимок →
+     кнопки → контакты. Кадр стоит в потоке документа, поэтому наложение
+     текста на лица невозможно по построению, а не за счёт отступов. */
   .hero {
     align-items: stretch;
     min-height: 0;
@@ -1207,64 +1214,37 @@ picture { display: block; }
     align-items: center;
   }
 
-  /* Надстрочник убран по решению владельца — место отдано фигурам */
-  .hero-inner .hero-row { display: none; }
   .hero-inner p { margin-left: auto; margin-right: auto; }
+  .hero-row { margin-bottom: 16px; }
 
   /* Заголовок в рамке из волосяных линий — приём референса */
   .hero__title {
     width: 100%;
-    margin: 0 0 22px;
+    margin: 0 0 18px;
     padding: 20px 0 22px;
     border-top: 1px solid rgba(240, 174, 31, 0.34);
     border-bottom: 1px solid rgba(240, 174, 31, 0.34);
   }
 
-  /* Полоса с фигурами */
-  .hero-figures {
+  .hero__lede {
+    max-width: 34ch;
+    margin-bottom: 20px;
+  }
+
+  /* Снимок полосой во всю ширину экрана */
+  .hero-media {
     position: relative;
-    left: auto;
+    left: calc(var(--pad-x) * -1);
     right: auto;
-    width: 100%;
-    margin-bottom: 22px;
-    gap: 8px;
+    width: calc(100% + var(--pad-x) * 2);
+    margin-bottom: 24px;
   }
 
-  .hero-figure {
+  .hero-photo {
     height: auto;
-    aspect-ratio: 5 / 7;
-  }
-
-  /* Фон снимков вырезан и заменён на точный чёрный страницы (#0a0b0d),
-     поэтому боковая растушёвка не нужна — фигуры и так сливаются с фоном.
-     Растворяется только нижняя кромка: исходные снимки обрезают фигуры
-     по грудь, и без этого виден жёсткий горизонтальный срез. */
-  /* Тёплый градиент за фигурами (вариант 2 макета). Без него чёрные пиджаки
-     сливаются с чёрным фоном и руки пропадают — это и была проблема. */
-  .hero-figures {
-    background: radial-gradient(
-      ellipse 80% 70% at 50% 40%,
-      rgba(158, 132, 84, 0.34) 0%,
-      rgba(92, 76, 50, 0.20) 42%,
-      rgba(28, 24, 20, 0.10) 62%,
-      transparent 78%
-    );
-  }
-
-  /* Маска только на изображение — иначе она съедает и подпись под фото */
-  .hero-figure .hero-photo-bg {
-    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 82%, transparent 100%);
-    mask-image: linear-gradient(180deg, #000 0%, #000 82%, transparent 100%);
-  }
-
-  /* Тонкий тёплый контур отделяет фигуру от подложки */
-  .hero-photo-bg { filter: drop-shadow(0 0 1.5px rgba(255, 232, 190, 0.30)); }
-
-  /* Юлия снята дальше и мельче — подтягиваю её к крупности Александра,
-     чтобы обе фигуры читались на одном плане */
-  .hero-figure:last-child .hero-photo-bg {
-    transform: scale(1.34);
-    transform-origin: 50% 26%;
+    aspect-ratio: 5 / 4;
+    /* Обе фигуры сдвинуты в правую треть кадра — показываем именно её */
+    object-position: 76% 16%;
   }
 
   .hero__actions { margin-bottom: 16px; }
@@ -1277,54 +1257,6 @@ picture { display: block; }
   a, button { transition: none; }
 }
 
-/* --- Бейджи и подписи (вариант 2 макета) --- */
-.hero-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 24px 0 8px;
-  padding: 0;
-  list-style: none;
-}
-
-.hero-badges li {
-  padding: 7px 15px;
-  border: 1px solid rgba(212, 175, 95, 0.42);
-  border-radius: 999px;
-  font-size: 0.82rem;
-  letter-spacing: 0.04em;
-  color: rgba(240, 232, 218, 0.9);
-  background: rgba(212, 175, 95, 0.07);
-  white-space: nowrap;
-}
-
-.hero-figure { position: relative; margin: 0; }
-
-.hero-figure__name {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 6px;
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 600;
-  line-height: 1.35;
-  color: #f3ece0;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
-}
-
-.hero-figure__name span {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 400;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gold, #d4af5f);
-}
-
 @media (max-width: 720px) {
-  .hero-badges { justify-content: center; gap: 7px; margin-top: 18px; }
-  .hero-badges li { font-size: 0.72rem; padding: 6px 11px; letter-spacing: 0.02em; }
-  .hero-figure__name { font-size: 0.82rem; bottom: 2px; }
-  .hero-figure__name span { font-size: 0.66rem; }
+  .hero__lede { font-size: 15px; }
 }
