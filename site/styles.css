@@ -321,15 +321,15 @@ picture { display: block; }
   z-index: 0;
 }
 
-.hero-media picture { display: contents; }
+.hero-media picture { display: block; width: 100%; height: 100%; }
 
 .hero-photo {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Кадрируем так, чтобы обе фигуры оставались в правой трети, а слева
-     оставалось место под текст */
-  object-position: 68% 20%;
+  /* Кадр выше, чем нужно hero: срезаем запас над головами сверху,
+     фигуры опираются на нижнюю кромку, слева остаётся золотой свет */
+  object-position: 50% 88%;
 }
 
 /* Текст держится над кадром на широких экранах */
@@ -348,10 +348,10 @@ picture { display: block; }
     linear-gradient(
       90deg,
       rgba(10, 11, 13, 0.94) 0%,
-      rgba(10, 11, 13, 0.86) 30%,
-      rgba(10, 11, 13, 0.52) 48%,
-      rgba(10, 11, 13, 0.12) 62%,
-      transparent 74%
+      rgba(10, 11, 13, 0.87) 28%,
+      rgba(10, 11, 13, 0.55) 44%,
+      rgba(10, 11, 13, 0.14) 58%,
+      transparent 70%
     ),
     linear-gradient(
       180deg,
@@ -1175,16 +1175,16 @@ picture { display: block; }
       linear-gradient(
         90deg,
         rgba(10, 11, 13, 0.96) 0%,
-        rgba(10, 11, 13, 0.9) 40%,
-        rgba(10, 11, 13, 0.62) 56%,
-        rgba(10, 11, 13, 0.18) 74%,
-        transparent 88%
+        rgba(10, 11, 13, 0.91) 38%,
+        rgba(10, 11, 13, 0.64) 52%,
+        rgba(10, 11, 13, 0.2) 68%,
+        transparent 82%
       ),
       linear-gradient(180deg, transparent 62%, rgba(10, 11, 13, 0.55) 100%);
   }
   .hero-inner { max-width: 440px; }
-  /* Кадр обрезается сильнее — доводим фигуры к правому краю */
-  .hero-photo { object-position: 74% 18%; }
+  /* Кадр обрезается сильнее — оставляем фигурам опору на нижнюю кромку */
+  .hero-photo { object-position: 50% 92%; }
 }
 
 /* Портрет в баннере прецедента показывается только там, где для него есть место */
@@ -1240,11 +1240,14 @@ picture { display: block; }
     margin-bottom: 24px;
   }
 
+  .hero-media picture { height: auto; }
+
   .hero-photo {
     height: auto;
-    aspect-ratio: 5 / 4;
-    /* Обе фигуры сдвинуты в правую треть кадра — показываем именно её */
-    object-position: 76% 16%;
+    /* Пропорция мобильного кропа (1872x1592) — окно совпадает с кадром,
+       поэтому cover ничего не срезает */
+    aspect-ratio: 6 / 5;
+    object-position: 50% 50%;
   }
 
   .hero__actions { margin-bottom: 16px; }
