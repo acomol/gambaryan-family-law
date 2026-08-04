@@ -1,11 +1,19 @@
-"""Сборка site/ в одну самодостаточную страницу для превью.
+"""Сборка site/ в одну самодостаточную страницу.
 
 Все картинки, шрифты, стили и скрипт вшиваются в документ как data-URI,
 внешних запросов не остаётся. Нужно для публикации превью там, где нет
 деплоя ветки, и для проверки страницы одним файлом.
 
+Два режима вывода:
+
+* по умолчанию — **фрагмент** (title + style + разметка + script) без
+  doctype/html/head/body. Такой файл ждёт смотрелка artifact: она сама
+  оборачивает содержимое в скелет документа;
+* `--standalone` — **полный документ** с doctype, head и мета-тегами.
+  Открывается двойным кликом и отдаётся веб-сервером как обычная страница.
+
 Запуск из корня репозитория:
-    python scripts/build-preview.py [выходной-файл]
+    python scripts/build-preview.py [выходной-файл] [--standalone]
 """
 import base64
 import mimetypes
@@ -14,7 +22,9 @@ import re
 import sys
 
 SITE = "site"
-OUT = sys.argv[1] if len(sys.argv) > 1 else "preview.html"
+argv = [a for a in sys.argv[1:] if not a.startswith("--")]
+STANDALONE = "--standalone" in sys.argv
+OUT = argv[0] if argv else "preview.html"
 
 mimetypes.add_type("font/woff2", ".woff2")
 
@@ -58,7 +68,18 @@ theme = (
     " { margin: 0; background: #101214; color: #f2efe9; }"
 )
 
-page = f"<title>{title}</title>\n<style>\n{theme}\n{fontcss}\n{css}\n</style>\n{body}\n<script>\n{js}\n</script>\n"
+style, script = f"<style>\n{theme}\n{fontcss}\n{css}\n</style>", f"<script>\n{js}\n</script>"
+
+if STANDALONE:
+    head = re.search(r"<head>(.*?)</head>", html, re.S).group(1).strip()
+    # og:image после вшивания превратился бы в мегабайтный data-URI внутри
+    # мета-тега: соцсети такое не читают, а вес страницы растёт вдвое.
+    head = re.sub(r'\s*<meta property="og:image"[^>]*>', "", head)
+    page = ('<!DOCTYPE html>\n<html lang="ru">\n<head>\n'
+            f"{head}\n{style}\n</head>\n<body>\n{body}\n{script}\n</body>\n</html>\n")
+else:
+    page = f"<title>{title}</title>\n{style}\n{body}\n{script}\n"
+
 open(OUT, "w", encoding="utf-8").write(page)
 
 external = re.findall(r'(?:src|href)="(?!data:|#|tel:|https://wa\.me)([^"]*)"', page)

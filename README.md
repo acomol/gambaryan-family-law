@@ -1,3 +1,25 @@
+> ## Лендинг «Гамбарян и Партнёры»
+>
+> Рабочий сайт живёт в папке [`site/`](site/). Шаблон-клонировщик, описанный
+> ниже, — исходная заготовка репозитория; к самому лендингу он отношения не
+> имеет.
+>
+> | Что | Где |
+> |---|---|
+> | **Живое превью** — открывается с телефона | https://claude.ai/code/artifact/f6f44336-a84c-4122-a74b-65c47e53b0c0 |
+> | **Боевой адрес** — пока отдаёт версию до правок | https://gambarian-landing.pages.dev/ |
+> | Исходники страницы | [`site/`](site/) — `index.html`, `styles.css`, `fonts.css`, `app.js`, `assets/`, `fonts/` |
+> | Вся страница одним файлом (3.87 МБ, внешних запросов 0) | [`site/gambarian-standalone.html`](site/gambarian-standalone.html) |
+> | Куда и как публикуется | [`docs/DEPLOY.md`](docs/DEPLOY.md) |
+> | Композиция экранов и критерии приёмки | [`docs/SCREEN-COMPOSITION.md`](docs/SCREEN-COMPOSITION.md) |
+> | Журнал ошибок и разборов | [`docs/ERRORS.md`](docs/ERRORS.md) |
+>
+> Пересобрать файл-одностраничник:
+>
+> ```bash
+> python scripts/build-preview.py site/gambarian-standalone.html --standalone
+> ```
+
 # AI Website Cloner Template
 
 <a href="https://github.com/JCodesMore/ai-website-cloner-template/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a> <a href="https://github.com/JCodesMore/ai-website-cloner-template/stargazers"><img src="https://img.shields.io/github/stars/JCodesMore/ai-website-cloner-template?style=flat" alt="Stars" /></a> <a href="https://discord.gg/hrTSX5yTpB"><img src="https://img.shields.io/discord/1400896964597383279?label=discord" alt="Discord" /></a>
