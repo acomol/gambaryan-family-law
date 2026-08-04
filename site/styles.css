@@ -857,11 +857,13 @@ picture { display: block; }
   width: 100%;
   height: clamp(320px, 34vw, 440px);
   object-fit: cover;
-  object-position: center top;
+  /* Оба портрета приведены к одной геометрии (1122x1402, верх головы на
+     11,3% кадра), поэтому кадрирование общее — отдельного правила под
+     Юлию больше не нужно. */
+  object-position: center 16%;
   border-radius: 6px;
   margin-bottom: 24px;
 }
-.attorney-photo--yulia { object-position: center 16%; }
 
 .attorney-card__body {
   padding: 0 12px;
