@@ -33,7 +33,15 @@ if ! npx --yes wrangler@latest whoami >/dev/null 2>&1; then
   npx --yes wrangler@latest login
 fi
 
-npx --yes wrangler@latest pages deploy "$DIR" --project-name="$PROJECT"
+# --branch обязателен: без него wrangler возьмёт имя текущей git-ветки и
+# сделает ПРЕВЬЮ-деплой, а боевой адрес останется со старой сборкой.
+# Значение по умолчанию можно переопределить: CF_PROD_BRANCH=... bash ...
+PROD_BRANCH="${CF_PROD_BRANCH:-main}"
+npx --yes wrangler@latest pages deploy "$DIR" --project-name="$PROJECT" \
+  --branch="$PROD_BRANCH" --commit-dirty=true || {
+  echo "wrangler завершился с ошибкой — публикация не выполнена." >&2
+  exit 1
+}
 
 echo
 echo "Опубликовано. Проверяю, что уехала свежая версия..."

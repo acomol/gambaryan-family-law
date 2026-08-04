@@ -72,10 +72,22 @@ if (-not $accountId) {
 }
 Write-Host "   найден в аккаунте $accountId" -ForegroundColor Green
 
-Write-Host "3. Публикую $Dir ..." -ForegroundColor Cyan
+# Продакшн-ветку спрашиваем у API, а не угадываем. Без явного --branch
+# wrangler берёт имя текущей git-ветки: с рабочей ветки это создало бы
+# ПРЕВЬЮ-деплой, а боевой адрес остался бы со старой сборкой — тихо и
+# без единой ошибки.
+$proj = Invoke-RestMethod "https://api.cloudflare.com/client/v4/accounts/$accountId/pages/projects/$Project" -Headers $headers
+$prodBranch = $proj.result.production_branch
+Write-Host "   продакшн-ветка проекта: $prodBranch"
+
+Write-Host "3. Публикую $Dir в продакшн ..." -ForegroundColor Cyan
 $env:CLOUDFLARE_API_TOKEN  = $token
 $env:CLOUDFLARE_ACCOUNT_ID = $accountId
-npx --yes wrangler@latest pages deploy $Dir --project-name=$Project --commit-dirty=true
+npx --yes wrangler@latest pages deploy $Dir --project-name=$Project --branch=$prodBranch --commit-dirty=true
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "wrangler завершился с кодом $LASTEXITCODE — публикация не выполнена." -ForegroundColor Red
+  exit 1
+}
 
 Write-Host ""
 Write-Host "4. Проверяю живой адрес (два запроса подряд — эдж мог отдать старое)..." -ForegroundColor Cyan
