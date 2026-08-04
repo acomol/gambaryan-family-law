@@ -1285,4 +1285,37 @@ picture { display: block; }
 
 @media (max-width: 720px) {
   .hero__lede { font-size: 15px; }
+
+  /* Карточки фактов: на мобильном вертикальная анатомия (цифра над
+     текстом) давала секцию в 1466px — два экрана на три цифры.
+     Цифра уходит в левую колонку, текст в правую: та же информация,
+     карточка ниже примерно на треть. Контент не сокращён. */
+  .facts .rule { margin-bottom: 24px; }
+  .facts-grid { gap: 12px; }
+
+  .fact-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 18px;
+    padding: 18px 18px 16px;
+  }
+  .fact-card__head {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    margin-bottom: 0;
+    min-width: 64px;
+  }
+  .fact-card__num { font-size: 34px; }
+  .fact-card__sub,
+  .fact-card .notch { grid-column: 2; }
+  .fact-card__sub { margin-bottom: 8px; align-self: center; }
+  .fact-card .notch { margin-bottom: 0; }
+  /* Длинным абзацам («900+ публикаций») узкая колонка противопоказана —
+     они уходят вниз на всю ширину карточки */
+  .fact-card p { grid-column: 1 / -1; margin-top: 12px; line-height: 1.55; }
+
+  .facts-bar { margin-top: 14px; padding: 16px 18px; }
 }
