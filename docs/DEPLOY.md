@@ -21,15 +21,26 @@ noindex только при переезде на настоящий домен.
 
 Площадка **не** подключена к этому репозиторию: папки `site/` в ветке
 `main` нет, значит Cloudflare не собирает её из git — публикация идёт
-прямой загрузкой. Обновление:
+прямой загрузкой. Merge pull request сайт **не** обновляет.
+
+Обновление — одной командой на своей машине, из корня репозитория:
 
 ```bash
-# нужен токен Cloudflare API с правом «Cloudflare Pages: Edit»
-export CLOUDFLARE_API_TOKEN=...
-export CLOUDFLARE_ACCOUNT_ID=...
+bash scripts/deploy-pages.sh
+```
 
+Скрипт при первом запуске откроет браузер для входа в Cloudflare (токен
+создавать не нужно), опубликует `site/` и сам проверит живой адрес.
+
+Если удобнее вручную:
+
+```bash
+npx wrangler login                                    # один раз
 npx wrangler pages deploy site --project-name=gambarian-landing
 ```
+
+В автоматической среде вместо входа через браузер — токен с правом
+«Cloudflare Pages: Edit» в `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`.
 
 Мастер-снимок `site/assets/hero-duo-2623w.*.jpg` — вход для скриптов
 обработки фото, в браузере он не нужен. При желании его можно исключить
@@ -37,10 +48,10 @@ npx wrangler pages deploy site --project-name=gambarian-landing
 
 ## Проверка после публикации («сделано» = доказано)
 
-```bash
-python scripts/verify-live-surface.py --url https://gambarian-landing.pages.dev/ \
-    --expect "Более 30 лет практики" --forbid "Более 24 лет"
-```
+`scripts/deploy-pages.sh` проверяет живой адрес сам: читает страницу и
+сверяет шесть признаков свежей версии (цифра опыта, шрифт Onest,
+мобильный кроп hero, новый портрет, отсутствие старой цифры и сломанных
+тегов).
 
 Плюс глазами на реальном телефоне: первый экран (обе кнопки видны),
 карточки фактов раскрываются по тапу, шрифт один и тот же во всей
