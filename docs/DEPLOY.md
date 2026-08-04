@@ -42,6 +42,34 @@ npx wrangler pages deploy site --project-name=gambarian-landing
 В автоматической среде вместо входа через браузер — токен с правом
 «Cloudflare Pages: Edit» в `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`.
 
+### Аккаунтов два — не перепутать
+
+Из runbook соседнего проекта (`clients/luxemed/New Lending/docs/
+RUNBOOK-CLOUDFLARE-DEPLOY.md` в ADFIX OS, коммит `38ff6919`; ловушка
+срабатывала дважды — 2026-05-13 и 2026-07-27):
+
+| Назначение | Account ID | Логин | Файл с токеном (машина владельца) |
+|---|---|---|---|
+| Клиентские лендинги | `4799e9f76c607e036c430a148d06a80b` | `alex@adfix.co.il` | `C:\Users\alext\credentials\cf-adfix-token.txt` |
+| Отчёты клиентам | `b2ca16eaaad2ec903cb8da6798a165bc` | `alex@digitalhook.co.il` | `C:\Users\alext\credentials\cf-digitalhook-reports-token.txt` |
+
+🔴 Переменная окружения `CLOUDFLARE_API_TOKEN` на машине владельца
+указывает на аккаунт **отчётов**, не на лендинги. Взять её «по
+умолчанию» — значит диагностировать не тот токен: 401/403 от чужого
+аккаунта выглядят точно так же, как «токен протух».
+
+`gambarian-landing` по логике раскладки относится к первой строке
+(клиентские лендинги, `4799e9f7…`), но **живым API это не проверено** —
+проверить первым же запросом, когда появится рабочий токен:
+
+```bash
+curl -sS "https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/pages/projects" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | grep -o '"name":"[^"]*"'
+```
+
+Не создавать проект вслепую: при неверном аккаунте wrangler молча
+заводит дубликат, не привязанный к домену (инцидент 2026-05-13).
+
 ### Почему агент может задеплоить не из всякой сессии
 
 Раньше публикация выполнялась агентом напрямую: сессии шли **на машине
