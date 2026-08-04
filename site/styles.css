@@ -1209,7 +1209,7 @@ picture { display: block; }
   /* Затемнение больше не нужно — текст и фото не пересекаются */
   .hero-scrim { display: none; }
 
-  .hero__body { padding: 22px var(--pad-x) 28px; }
+  .hero__body { padding: 14px var(--pad-x) 26px; }
 
   .hero-inner {
     width: 100%;
@@ -1219,20 +1219,28 @@ picture { display: block; }
   }
 
   .hero-inner p { margin-left: auto; margin-right: auto; }
-  .hero-row { margin-bottom: 16px; }
 
-  /* Заголовок в рамке из волосяных линий — приём референса */
+  /* Надстрочник на мобильном скрыт (решение владельца, подтверждено
+     2026-08-04 повторно): он съедает ~40px первого экрана и дублирует
+     подпись «Адвокаты» в шапке. На десктопе остаётся — там места
+     достаточно и гео-сигнал «Тель-Авив» работает. */
+  .hero-inner .hero-row { display: none; }
+
+  /* Заголовок в рамке из волосяных линий — приём референса.
+     Отступы полос ужаты (2026-08-04): основной CTA должен входить в
+     первый экран 390x740 — до ужатия он начинался на 715px и был виден
+     на 25px из 52. Фото при этом не мельче 6:5. */
   .hero__title {
     width: 100%;
-    margin: 0 0 18px;
-    padding: 20px 0 22px;
+    margin: 0 0 14px;
+    padding: 14px 0 16px;
     border-top: 1px solid rgba(240, 174, 31, 0.34);
     border-bottom: 1px solid rgba(240, 174, 31, 0.34);
   }
 
   .hero__lede {
     max-width: 34ch;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
   }
 
   /* Снимок полосой во всю ширину экрана */
@@ -1241,7 +1249,7 @@ picture { display: block; }
     left: calc(var(--pad-x) * -1);
     right: auto;
     width: calc(100% + var(--pad-x) * 2);
-    margin-bottom: 24px;
+    margin-bottom: 18px;
   }
 
   .hero-media picture { height: auto; }
