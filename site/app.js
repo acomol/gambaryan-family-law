@@ -281,49 +281,82 @@
   }
 
   /* --- Раскрывающиеся карточки фактов (только мобильный) ----------------- */
-  // На <=720px абзац карточки обрезан двумя строками (CSS line-clamp),
-  // тап по карточке раскрывает её и сдвигает соседей. На десктопе карточки
-  // статичны: роль кнопки и tabindex снимаются, текст виден целиком.
-  // Без JS карточки не получают роли кнопки, а clamp остаётся — часть
-  // текста видна, потери функционала нет.
+  // Прогрессивное раскрытие (progressive disclosure): на <=720px абзац
+  // карточки обрезан двумя строками с многоточием, остальное — по тапу.
+  //
+  // Управляющий элемент — настоящая <button> с aria-expanded и
+  // aria-controls на абзац. Роль кнопки на всей карточке (как было раньше)
+  // ошибочна: скринридер зачитывал бы весь текст карточки как имя кнопки,
+  // а вложенный интерактив внутри такой «кнопки» недоступен. Кнопка
+  // создаётся скриптом — без JS раскрывать нечем, и рисовать её незачем.
+  //
+  // Имя кнопки собирается из подзаголовка самой карточки: новых текстов
+  // на страницу не добавляется.
 
   var factCards = document.querySelectorAll(".fact-card");
   var factsMq = window.matchMedia("(max-width: 720px)");
 
-  function setFactCardMode() {
-    factCards.forEach(function (card) {
-      if (factsMq.matches) {
-        card.setAttribute("role", "button");
-        card.setAttribute("tabindex", "0");
-        card.setAttribute("aria-expanded", card.classList.contains("is-open") ? "true" : "false");
-      } else {
-        card.removeAttribute("role");
-        card.removeAttribute("tabindex");
-        card.removeAttribute("aria-expanded");
-      }
-    });
+  function buildToggle(card, index) {
+    var text = card.querySelector("p");
+    if (!text) return null;
+
+    if (!text.id) text.id = "fact-text-" + (index + 1);
+
+    var label = card.querySelector(".fact-card__sub");
+    var toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "fact-card__toggle";
+    toggle.setAttribute("aria-controls", text.id);
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute(
+      "aria-label",
+      "Показать полностью" + (label ? ": " + label.textContent.trim() : "")
+    );
+    toggle.innerHTML = '<span class="fact-card__chevron" aria-hidden="true"></span>';
+    card.appendChild(toggle);
+    return toggle;
   }
 
-  function toggleFactCard(card) {
-    if (!factsMq.matches) return;
-    var open = card.classList.toggle("is-open");
-    card.setAttribute("aria-expanded", open ? "true" : "false");
+  function setExpanded(card, open) {
+    var toggle = card.querySelector(".fact-card__toggle");
+    card.classList.toggle("is-open", open);
+    if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
   }
 
   if (factCards.length) {
-    setFactCardMode();
-    factsMq.addEventListener("change", setFactCardMode);
+    factCards.forEach(function (card, index) {
+      var toggle = buildToggle(card, index);
+      if (!toggle) return;
 
-    factCards.forEach(function (card) {
-      card.addEventListener("click", function () {
-        toggleFactCard(card);
+      // Карточка целиком остаётся тап-целью: на мобильном это удобнее,
+      // чем целиться в шеврон. Клик по самой кнопке не должен сработать
+      // дважды, поэтому всплытие останавливается.
+      toggle.addEventListener("click", function (event) {
+        event.stopPropagation();
+        setExpanded(card, !card.classList.contains("is-open"));
       });
-      card.addEventListener("keydown", function (event) {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          toggleFactCard(card);
-        }
+
+      card.addEventListener("click", function () {
+        if (!factsMq.matches) return;
+        setExpanded(card, !card.classList.contains("is-open"));
       });
     });
+
+    // На десктоп текст виден целиком — раскрывать нечего, кнопка убирается
+    // из потока фокуса, чтобы не быть пустой остановкой при табуляции.
+    function syncMode() {
+      factCards.forEach(function (card) {
+        var toggle = card.querySelector(".fact-card__toggle");
+        if (!toggle) return;
+        if (factsMq.matches) {
+          toggle.removeAttribute("hidden");
+        } else {
+          toggle.setAttribute("hidden", "");
+          setExpanded(card, false);
+        }
+      });
+    }
+    syncMode();
+    factsMq.addEventListener("change", syncMode);
   }
 })();

@@ -1292,9 +1292,22 @@ picture { display: block; }
   .facts-bar { flex-direction: column; align-items: flex-start; gap: 14px; }
 }
 
+/* Плавное раскрытие карточек. interpolate-size позволяет анимировать
+   переход к height: auto, но поддержан только в Chromium (Chrome/Edge
+   129+). Поэтому — строго прогрессивное улучшение: где не поддержан,
+   карточка раскрывается мгновенно, функционал тот же.
+   Проверено на 2026-08: Firefox и Safari свойство не поддерживают. */
+@supports (interpolate-size: allow-keywords) {
+  @media (max-width: 720px) and (prefers-reduced-motion: no-preference) {
+    :root { interpolate-size: allow-keywords; }
+    .fact-card { transition: height 0.26s ease; }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   a, button { transition: none; }
+  .fact-card, .fact-card__chevron { transition: none; }
 }
 
 @media (max-width: 720px) {
@@ -1331,11 +1344,11 @@ picture { display: block; }
      они уходят вниз на всю ширину карточки */
   .fact-card p { grid-column: 1 / -1; margin-top: 12px; line-height: 1.55; }
 
-  /* Карточка-аккордеон: абзац обрезан двумя строками, тап раскрывает
-     (см. app.js). Текст в разметке полный — clamp только видимость.
-     Шеврон ::after сигналит, что карточка открывается; ::before занят
-     золотой полосой сверху. */
+  /* Карточка-аккордеон: абзац обрезан двумя строками с многоточием,
+     остальное — по тапу (см. app.js). Текст в разметке полный, clamp
+     влияет только на видимость: скринридер читает абзац целиком. */
   .fact-card { cursor: pointer; }
+
   .fact-card p {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -1345,20 +1358,60 @@ picture { display: block; }
   .fact-card.is-open p {
     display: block;
     overflow: visible;
+    /* Снимать явно: при display:block свойство не действует, но остаётся
+       в вычисленных стилях и путает и проверки, и отладку. */
+    -webkit-line-clamp: unset;
   }
-  .fact-card::after {
-    content: "";
+
+  /* Кнопка раскрытия: сама тонкая, но тап-цель добита до 44px невидимым
+     ::before — требование WCAG 2.5.8 к размеру цели. */
+  .fact-card__toggle {
     grid-column: 1 / -1;
     justify-self: center;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 28px;
+    margin-top: 4px;
+    margin-bottom: -8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+  .fact-card__toggle::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  .fact-card__toggle[hidden] { display: none; }
+
+  .fact-card__chevron {
     width: 9px;
     height: 9px;
-    margin-top: 8px;
     border-right: 2px solid var(--gold);
     border-bottom: 2px solid var(--gold);
-    transform: rotate(45deg);
-    transition: transform 0.2s ease;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.22s ease;
   }
-  .fact-card.is-open::after { transform: rotate(-135deg); }
+  .fact-card.is-open .fact-card__chevron {
+    transform: translateY(2px) rotate(-135deg);
+  }
+
+  /* Фокус виден на белой карточке: золото на белом даёт 1.7:1, поэтому
+     к нему добавлено тёмное кольцо. */
+  .fact-card__toggle:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 0;
+    border-radius: 6px;
+    box-shadow: 0 0 0 4px var(--ink);
+  }
 
   .facts-bar { margin-top: 14px; padding: 16px 18px; }
 }
