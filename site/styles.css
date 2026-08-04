@@ -1217,6 +1217,12 @@ picture { display: block; }
   /* Затемнение больше не нужно — текст и фото не пересекаются */
   .hero-scrim { display: none; }
 
+  /* Дубль WhatsApp в телефонной строке прячется ТОЛЬКО на мобильном
+     (замечание владельца: кнопка WhatsApp стоит прямо над строкой).
+     Текст из разметки не удалять — он утверждённый; на десктопе
+     строка показывается целиком. */
+  .hero__phone-wa { display: none; }
+
   .hero__body { padding: 14px var(--pad-x) 26px; }
 
   .hero-inner {
@@ -1316,6 +1322,35 @@ picture { display: block; }
   /* Длинным абзацам («900+ публикаций») узкая колонка противопоказана —
      они уходят вниз на всю ширину карточки */
   .fact-card p { grid-column: 1 / -1; margin-top: 12px; line-height: 1.55; }
+
+  /* Карточка-аккордеон: абзац обрезан двумя строками, тап раскрывает
+     (см. app.js). Текст в разметке полный — clamp только видимость.
+     Шеврон ::after сигналит, что карточка открывается; ::before занят
+     золотой полосой сверху. */
+  .fact-card { cursor: pointer; }
+  .fact-card p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .fact-card.is-open p {
+    display: block;
+    overflow: visible;
+  }
+  .fact-card::after {
+    content: "";
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 9px;
+    height: 9px;
+    margin-top: 8px;
+    border-right: 2px solid var(--gold);
+    border-bottom: 2px solid var(--gold);
+    transform: rotate(45deg);
+    transition: transform 0.2s ease;
+  }
+  .fact-card.is-open::after { transform: rotate(-135deg); }
 
   .facts-bar { margin-top: 14px; padding: 16px 18px; }
 }

@@ -279,4 +279,51 @@
       if (first) first.focus();
     });
   }
+
+  /* --- Раскрывающиеся карточки фактов (только мобильный) ----------------- */
+  // На <=720px абзац карточки обрезан двумя строками (CSS line-clamp),
+  // тап по карточке раскрывает её и сдвигает соседей. На десктопе карточки
+  // статичны: роль кнопки и tabindex снимаются, текст виден целиком.
+  // Без JS карточки не получают роли кнопки, а clamp остаётся — часть
+  // текста видна, потери функционала нет.
+
+  var factCards = document.querySelectorAll(".fact-card");
+  var factsMq = window.matchMedia("(max-width: 720px)");
+
+  function setFactCardMode() {
+    factCards.forEach(function (card) {
+      if (factsMq.matches) {
+        card.setAttribute("role", "button");
+        card.setAttribute("tabindex", "0");
+        card.setAttribute("aria-expanded", card.classList.contains("is-open") ? "true" : "false");
+      } else {
+        card.removeAttribute("role");
+        card.removeAttribute("tabindex");
+        card.removeAttribute("aria-expanded");
+      }
+    });
+  }
+
+  function toggleFactCard(card) {
+    if (!factsMq.matches) return;
+    var open = card.classList.toggle("is-open");
+    card.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  if (factCards.length) {
+    setFactCardMode();
+    factsMq.addEventListener("change", setFactCardMode);
+
+    factCards.forEach(function (card) {
+      card.addEventListener("click", function () {
+        toggleFactCard(card);
+      });
+      card.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggleFactCard(card);
+        }
+      });
+    });
+  }
 })();
