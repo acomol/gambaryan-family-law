@@ -10,8 +10,11 @@
 
 :root {
   --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
-  --font-body: "Archivo", Helvetica, Arial, sans-serif;
-  --font-narrow: "Archivo Narrow", "Archivo", sans-serif;
+  --font-body: "Onest", Helvetica, Arial, sans-serif;
+  /* Отдельного узкого семейства больше нет: у Archivo Narrow не было
+     кириллицы, поэтому в русском тексте узкое начертание всё равно не
+     отрисовывалось. Надстрочники держатся на весе и трекинге. */
+  --font-narrow: var(--font-body);
 
   --bg: #101214;
   --bg-hero: #0a0b0d;
