@@ -1022,8 +1022,7 @@ picture { display: block; }
   margin-bottom: 6px;
 }
 
-.lead-form input,
-.lead-form select {
+.lead-form input {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--input-line);
@@ -1035,9 +1034,7 @@ picture { display: block; }
   background: #fff;
   outline: none;
 }
-.lead-form select { cursor: pointer; }
-.lead-form input:focus,
-.lead-form select:focus {
+.lead-form input:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 2px rgba(240, 174, 31, 0.25);
 }
