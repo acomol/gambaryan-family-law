@@ -48,8 +48,15 @@ title = re.search(r"<title>(.*?)</title>", html, re.S).group(1)
 body = re.search(r"<body>(.*)</body>", html, re.S).group(1)
 
 # Страница намеренно одна тёмная тема — фиксируем фон в обеих темах смотрелки.
-theme = ':root, :root[data-theme="light"], :root[data-theme="dark"]' \
-        " { color-scheme: dark; background: #101214; }"
+# Фон задаётся и на body: обёртка смотрелки artifact выставляет светлый
+# background именно на body, и правило только для :root им перекрывается —
+# страница выходила «светлое на светлом». См. docs/ERRORS.md.
+theme = (
+    ':root, :root[data-theme="light"], :root[data-theme="dark"]'
+    " { color-scheme: dark; background: #101214; }\n"
+    'body, :root[data-theme="light"] body, :root[data-theme="dark"] body'
+    " { margin: 0; background: #101214; color: #f2efe9; }"
+)
 
 page = f"<title>{title}</title>\n<style>\n{theme}\n{fontcss}\n{css}\n</style>\n{body}\n<script>\n{js}\n</script>\n"
 open(OUT, "w", encoding="utf-8").write(page)
