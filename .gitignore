@@ -38,6 +38,9 @@ next-env.d.ts
 # Vercel
 .vercel
 
+# Cloudflare: локальный кэш wrangler (id аккаунта и проекта), у каждого свой
+.wrangler/
+
 # Local settings (not project config)
 .claude/settings.local.json
 
