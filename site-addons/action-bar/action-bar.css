@@ -1,0 +1,96 @@
+/* ==========================================================================
+   Мобильная панель действий — закреплённая внизу полоса с ключевыми
+   контактами. Подключается только в отдельной сборке варианта, в site/ её нет.
+
+   Адаптация паттерна из docs/tasks — под токены и слои этого лендинга:
+     фон       var(--bg-footer), как у футера
+     кромка    2px var(--gold) сверху — та же подпись, что у шапки
+     главное   var(--wine) — основной CTA сайта
+     типографика — как у надстрочников: --font-narrow, uppercase, трекинг
+
+   ВАЖНО: глобального box-sizing: border-box в проекте нет (намеренно, см.
+   шапку styles.css). Поэтому высота панели НЕ задаётся числом, а собирается
+   из padding и содержимого; компенсация у body взята из фактического замера
+   в браузере, а не из расчёта.
+   ========================================================================== */
+
+.mobile-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Шкала слоёв лендинга: контент 0–3, залипающая шапка 50. Панель должна
+     быть выше контента, но ниже шапки — раскрытое меню-шторка живёт внутри
+     шапки и не должно перекрываться. */
+  z-index: 40;
+  display: none;
+  grid-template-columns: 1fr 1fr 1fr;
+  background: var(--bg-footer);
+  border-top: 2px solid var(--gold);
+  /* Жестовая полоса айфона: без этого нижние 34px уходят под системный
+     индикатор и нижняя кромка кнопок становится непопадаемой. */
+  padding-bottom: env(safe-area-inset-bottom);
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.mobile-bar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 11px 4px 12px;
+  color: rgba(255, 255, 255, 0.88);
+  text-decoration: none;
+  font-family: var(--font-narrow);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+  text-align: center;
+}
+
+.mobile-bar__item + .mobile-bar__item {
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+/* Иконка красится цветом текста родителя — на тёмной ячейке золотая,
+   на винной кнопке белая, без отдельных правил под каждый случай. */
+.mobile-bar__item svg {
+  color: var(--gold);
+  display: block;
+}
+
+.mobile-bar__item--cta {
+  background: var(--wine);
+  color: #fff;
+}
+.mobile-bar__item--cta svg { color: #fff; }
+
+.mobile-bar__item:active { background: rgba(255, 255, 255, 0.06); }
+.mobile-bar__item--cta:active { background: var(--wine-hover, #6f1919); }
+
+/* Панель уезжает вниз, когда виден блок с формой: там те же действия своими
+   кнопками, и закреплённая полоса поверх формы только мешает. */
+.mobile-bar.is-hidden {
+  transform: translateY(110%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Брейкпойнт совпадает с тем, где прячется десктопная навигация и
+   появляется бургер (styles.css, @media max-width: 960px). Иначе на
+   планшете были бы видны сразу и меню, и панель. */
+@media (max-width: 960px) {
+  .mobile-bar { display: grid; }
+
+  /* Панель вынута из потока и накрывает содержимое. Без компенсации футер
+     с контактами и юридической информацией навсегда остаётся под ней.
+     Число — фактическая высота панели, замеренная в браузере. */
+  body { padding-bottom: calc(var(--mobile-bar-h) + env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bar { transition: none; }
+}
