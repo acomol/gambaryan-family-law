@@ -418,14 +418,47 @@ picture { display: block; }
   font-size: 14px;
   color: rgba(255, 255, 255, 0.55);
 }
-.hero__phone a {
-  color: var(--gold);
-  font-weight: 600;
+/* Звонок — вторая цель первого экрана, но НЕ вторая кнопка. Исследование
+   практики (docs/HERO-CTA-RESEARCH.md): две равновесные кнопки не встречаются
+   ни на одном проверенном сайте услуг, а контурная кнопка рядом с залитой
+   ухудшает считываемость (NN/g про ghost buttons). Поэтому звонок сделан
+   элементом другого типа — строкой с иконкой: заметной, но не спорящей с
+   основной кнопкой за роль доминанты.
+   Номер показан текстом намеренно: его читают, диктуют и набирают с другого
+   устройства, поэтому прятать его за слово «Позвонить» нельзя. */
+.hero__call {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   /* Полноценная тап-цель для аудитории 45+: звонок — основной канал.
      Отрицательный margin гасит рост строки от паддинга. */
-  display: inline-block;
   padding: 10px 6px;
   margin: -10px -6px;
+  color: var(--gold);
+  text-decoration: none;
+}
+.hero__call svg { color: var(--gold); flex: none; }
+.hero__call-label {
+  font-family: var(--font-narrow);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.hero__call-num {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--gold);
+}
+.hero__call:hover .hero__call-num { color: var(--gold-light); }
+
+@media (max-width: 860px) {
+  /* На узком экране подпись съедает строку, а номер — то, ради чего строка
+     существует. Подпись убирается, доступное имя остаётся в aria-label. */
+  .hero__call-label { display: none; }
+  .hero__call-num { font-size: 22px; }
 }
 
 .hero__note {
@@ -1232,11 +1265,10 @@ picture { display: block; }
   /* Затемнение больше не нужно — текст и фото не пересекаются */
   .hero-scrim { display: none; }
 
-  /* Дубль WhatsApp в телефонной строке прячется ТОЛЬКО на мобильном
-     (замечание владельца: кнопка WhatsApp стоит прямо над строкой).
-     Текст из разметки не удалять — он утверждённый; на десктопе
-     строка показывается целиком. */
-  .hero__phone-wa { display: none; }
+  /* Правило про .hero__phone-wa убрано вместе с самим дублем WhatsApp:
+     он прятался только на мобильном, а на десктопе оставался вторым
+     упоминанием WhatsApp подряд. Теперь WhatsApp в hero нет вовсе —
+     обоснование в docs/HERO-CTA-RESEARCH.md. */
 
   .hero__body { padding: 14px var(--pad-x) 26px; }
 
