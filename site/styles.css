@@ -228,16 +228,38 @@ picture { display: block; }
   color: rgba(255, 255, 255, 0.75);
 }
 
-.nav-cta {
+/* Место винной кнопки в шапке занял телефон.
+   Причина: кнопка «Получить консультацию» вела туда же, куда кнопка hero
+   «Записаться на консультацию» — два винных прямоугольника на одном экране
+   к одной цели. Это дублирование внутри экрана, ровно то, что портит
+   иерархию (см. docs/HERO-CTA-RESEARCH.md).
+   Теперь роли разведены: шапка держит звонок и остаётся при прокрутке,
+   hero держит форму. Обе цели на экране, винная кнопка одна.
+   Заодно ушла подпись «Получить консультацию» — она не проходила
+   согласование и расходилась с утверждённым «Записаться на консультацию». */
+.nav-call {
   flex: none;
-  background: var(--wine);
-  color: #fff;
-  font-weight: 600;
-  font-size: 13px;
-  padding: 10px 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid rgba(240, 174, 31, 0.35);
   border-radius: 8px;
+  color: var(--gold);
+  text-decoration: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
-.nav-cta:hover { background: var(--wine-hover); opacity: 1; }
+.nav-call svg { flex: none; }
+.nav-call__num {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.nav-call:hover {
+  opacity: 1;
+  border-color: var(--gold);
+  background: rgba(240, 174, 31, 0.08);
+}
 
 .nav-burger {
   display: none;
@@ -267,18 +289,27 @@ picture { display: block; }
   color: rgba(255, 255, 255, 0.8);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
-.nav-drawer .nav-drawer__cta {
+/* В шторке — то же разведение ролей, что и в шапке: звонок, не форма.
+   Форма достижима пунктом «Контакты» строкой выше. */
+.nav-drawer .nav-drawer__call {
   margin-top: 14px;
-  text-align: center;
-  background: var(--wine);
-  color: #fff;
-  font-weight: 600;
-  font-size: 14.5px;
-  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid rgba(240, 174, 31, 0.35);
   border-radius: 8px;
-  border-bottom: 0;
+  color: var(--gold);
+  font-size: 15.5px;
+  font-weight: 700;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(240, 174, 31, 0.35);
 }
-.nav-drawer .nav-drawer__cta:hover { background: var(--wine-hover); opacity: 1; }
+.nav-drawer .nav-drawer__call:hover {
+  opacity: 1;
+  border-color: var(--gold);
+  background: rgba(240, 174, 31, 0.08);
+}
 
 /* --- 2. Hero ------------------------------------------------------------- */
 
@@ -1211,7 +1242,7 @@ picture { display: block; }
 /* Навигация: ссылки и CTA уходят в бургер */
 @media (max-width: 960px) {
   .nav-links { display: none; }
-  .nav-cta { display: none; }
+  .nav-call { display: none; }
   .nav-burger { display: inline-flex; }
 }
 
