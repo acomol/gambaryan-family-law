@@ -9,7 +9,7 @@
 секции, контакты — идентично, чтобы сравнение было честным.
 
     python scripts/build-hero-variants.py          # все
-    python scripts/build-hero-variants.py a c      # выборочно
+    python scripts/build-hero-variants.py a b      # выборочно
 """
 
 from __future__ import annotations
@@ -143,100 +143,9 @@ def variant_b(html: str) -> tuple[str, str]:
     return html, css
 
 
-# --- Вариант C: мини-форма в первом экране ----------------------------------
-
-def variant_c(html: str) -> tuple[str, str]:
-    b = parts(html)
-    b["actions"] = (
-        '\n      <form class="hero-form" novalidate>\n'
-        '        <label class="hero-form__field">\n'
-        '          <span class="hero-form__label">Имя</span>\n'
-        '          <input name="name" type="text" autocomplete="name" required>\n'
-        '        </label>\n'
-        '        <label class="hero-form__field">\n'
-        '          <span class="hero-form__label">Телефон</span>\n'
-        '          <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required>\n'
-        '        </label>\n'
-        '        <button class="btn btn--wine hero-form__submit" type="submit" '
-        'data-action="hero_form_submit">Записаться на консультацию</button>\n'
-        '      </form>\n'
-    )
-    html = assemble(b["_html"], ["actions", "phone", "note", "media"], b)
-    # Мини-форма не отправляет сама: основная форма в блоке контактов — заглушка
-    # (submitLead в app.js ничего не шлёт). Поэтому здесь честный перенос
-    # введённого вниз, чтобы человек не заполнял поля дважды.
-    html = html.replace("</body>", """<script>
-(function () {
-  var mini = document.querySelector('.hero-form');
-  var main = document.querySelector('.lead-form');
-  if (!mini || !main) return;
-  mini.addEventListener('submit', function (e) {
-    e.preventDefault();
-    ['name', 'phone'].forEach(function (n) {
-      var from = mini.querySelector('[name="' + n + '"]');
-      var to = main.querySelector('[name="' + n + '"]');
-      if (from && to) to.value = from.value;
-    });
-    document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
-    var focus = main.querySelector('[name="name"]');
-    if (focus && !focus.value) setTimeout(function () { focus.focus(); }, 500);
-  });
-})();
-</script>
-</body>""", 1)
-    css = """
-/* === Вариант C: мини-форма в первом экране ================================
-   Приём Morgan & Morgan и galitzur.com: в hero стоит не кнопка, а короткая
-   форма. Она не конкурирует со звонком за роль доминанты, потому что это
-   элемент другого типа — поля, а не кнопка. Два поля вместо девяти: порог
-   входа ниже, остальное уточняется в разговоре.
-   Введённое переносится в основную форму внизу — человек не заполняет
-   одно и то же дважды. */
-.hero-form {
-  display: grid;
-  gap: 10px;
-  max-width: 420px;
-  margin-bottom: 18px;
-}
-.hero-form__field { display: block; }
-.hero-form__label {
-  display: block;
-  font-family: var(--font-narrow);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-  margin-bottom: 5px;
-}
-.hero-form input {
-  width: 100%;
-  padding: 13px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-  font: inherit;
-  font-size: 16px; /* меньше 16px — iOS зумит страницу при фокусе */
-}
-.hero-form input:focus {
-  outline: 2px solid var(--gold);
-  outline-offset: 1px;
-  background: rgba(255, 255, 255, 0.08);
-}
-.hero-form__submit { width: 100%; margin-top: 2px; }
-@media (min-width: 861px) {
-  .hero-form { grid-template-columns: 1fr 1fr auto; align-items: end; }
-  .hero-form__submit { width: auto; }
-}
-"""
-    return html, css
-
-
 VARIANTS = {
     "a": ("hero-a-actions-first", "Действия перед фотографией", variant_a),
     "b": ("hero-b-call-first", "Звонок — главное действие", variant_b),
-    "c": ("hero-c-miniform", "Мини-форма в первом экране", variant_c),
 }
 
 
@@ -272,7 +181,7 @@ def verify(dest: Path, key: str) -> list[str]:
         problems.append("фотография пропала из hero")
     if "wa.me" in hero:
         problems.append("WhatsApp вернулся в hero — он должен быть выведен")
-    if 'href="#contact"' not in hero and key != "c":
+    if 'href="#contact"' not in hero:
         problems.append("из hero нет пути к форме")
     if "tel:+972545490623" not in hero:
         problems.append("из hero нет звонка")
