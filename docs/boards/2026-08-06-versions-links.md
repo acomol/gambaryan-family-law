@@ -1,6 +1,6 @@
-# Девять Cloudflare Preview-версий для заказчика
+# Десять Cloudflare Preview-версий для заказчика
 
-**Версия карты:** `2.1.0`
+**Версия карты:** `2.2.0`
 
 **Обновлено:** `2026-08-10`
 
@@ -10,7 +10,7 @@
 сборке содержимое обновляется, ссылка остаётся прежней. Production
 `gambarian-landing.pages.dev` в клиентскую выборку не входит.
 
-Во всех девяти Preview используется **одна и та же Action Bar v2.1.0** из
+Во всех десяти Preview используется **одна и та же Action Bar v2.1.0** из
 единственного источника `site-addons/action-bar/`. Версии различаются только
 заявленным вариантом — шрифтами, Hero или подписанными номерами. Production
 при такой пересборке не изменяется.
@@ -20,6 +20,7 @@
 | Версия | Назначение | URL |
 |---|---|---|
 | `final-dev` | Итоговая базовая версия + Action Bar | https://final-dev.gambarian-landing.pages.dev/ |
+| `final-dev1` | Новый desktop Hero: расширенный звонок, три преимущества и пояснение ниже + Action Bar | https://final-dev1.gambarian-landing.pages.dev/ |
 | `v1-playfair-onest` | Playfair Display + Onest + Action Bar | https://v1-playfair-onest.gambarian-landing.pages.dev/ |
 | `v2-lora-inter` | Lora + Inter + Action Bar | https://v2-lora-inter.gambarian-landing.pages.dev/ |
 | `v3-literata-manrope` | Literata + Manrope + Action Bar | https://v3-literata-manrope.gambarian-landing.pages.dev/ |
@@ -36,15 +37,16 @@
 | Карточка ссылки и логотип 1200×630 | `1.0.2` | 2026-08-10 |
 | Мобильная Hero-полоса | `1.0.1` | 2026-08-10 |
 | Нижняя панель | `2.1.0` | 2026-08-10 |
+| Desktop Hero `final-dev1` | `1.0.0` | 2026-08-10 |
 | Lead hook / форма | `1.1.0` | 2026-08-10 |
-| Карта клиентских preview | `2.1.0` | 2026-08-10 |
+| Карта клиентских preview | `2.2.0` | 2026-08-10 |
 
 ## Как работает конверсионный путь
 
 - Hero сразу объясняет специализацию и ведёт к форме либо звонку. На мобильном
   фото занимает полную ширину экрана без бокового смещения; CTA остаются
   крупными и доступны без точного попадания.
-- Action Bar одинаково работает во всех девяти Preview: скрыта на Hero, видна
+- Action Bar одинаково работает во всех десяти Preview: скрыта на Hero, видна
   при чтении, снова скрывается у формы, при открытом меню и при фокусе в поле.
   Действия: звонок, запись, WhatsApp с готовым текстом.
 - Поля формы имеют `autocomplete=name|tel|email`, корректные типы и ограничения.
@@ -63,20 +65,22 @@
 
 | Группа | Источник | Производные |
 |---|---|---|
-| База | `site/` | исходник для девяти производных; production не изменяется |
-| Нижняя панель — single source | `site-addons/action-bar/` | центральный этап сборки добавляет Action Bar во все девять Preview |
+| База | `site/` | исходник для десяти производных; production не изменяется |
+| Нижняя панель — single source | `site-addons/action-bar/` | центральный этап сборки добавляет Action Bar во все десять Preview |
 | Итоговая Dev | `scripts/build-action-bar.py` | `final-dev` использует тот же канонический `build/variants/action-bar`, что и эталон панели |
+| Итоговая Dev 1 | `scripts/build-hero-variants.py dev1` | отдельный `build/variants/final-dev1`; desktop Hero не меняет `site/` и `final-dev` |
 | Шрифты | `scripts/build-font-variants.py` + центральный этап Action Bar | четыре `build/font-variants/*` |
 | Hero | `scripts/build-hero-variants.py` + центральный этап Action Bar | два `build/variants/hero-*` |
 | Эталон панели | `scripts/build-action-bar.py` | `build/variants/action-bar` |
 | Номера текста | `scripts/build-review-numbered.py` + центральный этап Action Bar | `build/variants/review-numbered` |
 
 Копии CSS, HTML или JS панели внутри отдельных генераторов не допускаются:
-изменение `site-addons/action-bar/` должно попадать во все девять Preview при
+изменение `site-addons/action-bar/` должно попадать во все десять Preview при
 одной пересборке.
 
 Исполняемая карта `branch → build directory`, версия Wrangler и дата хранятся в
-`scripts/client-preview-map.json`. `final-dev` и `action-bar` намеренно
+`scripts/client-preview-map.json`. Версия карты и версия Action Bar хранятся
+раздельно: добавление Preview не меняет контракт панели. `final-dev` и `action-bar` намеренно
 публикуются из одного канонического артефакта, поэтому их панель не может
 разойтись.
 

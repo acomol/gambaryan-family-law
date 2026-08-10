@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.0.0`
+**Версия:** `1.1.0`
 
 **Обновлено:** `2026-08-10`
 
@@ -33,7 +33,8 @@
 
 | Контур | Статус на `2026-08-10` |
 |---|---|
-| Девять клиентских Preview | **PASS по UI/Function markers:** общий Action Bar и варианты проверены; **OPEN/MAJOR:** social image живёт на другом host |
+| Девять baseline Preview | **PASS по UI/Function markers:** общий Action Bar и варианты проверены; **OPEN/MAJOR:** social image живёт на другом host |
+| `final-dev1` | **LOCAL PASS / DEPLOY PENDING:** отдельный desktop Hero по референсу владельца; исходные девять Preview не перезаписываются |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -55,9 +56,10 @@
 | Фото адвокатов | На mobile обе рамки `16/15`; для Александра разрешён `object-position: center 16%`, чтобы макушки были на одном уровне | Первоначальное «object-position не менять» в задаче на фото; последующее прямое требование владельца о симметрии имеет приоритет |
 | Desktop-фото | Сохраняется `4/5`; desktop не меняется | Полная desktop-симметрия потребовала бы новых перекадрированных исходников и вышла бы за приёмку |
 | Hero | Два разных действия: запись и звонок; WhatsApp вынесен из Hero | Раннюю композиционную запись о паре «форма + мессенджер» |
-| Action Bar | Зонная модель, не направление скролла; одна версия `2.1.0` во всех девяти клиентских Preview | Первую реализацию с порогом/направлением и прежнее ограничение только отдельным вариантом `action-bar` |
+| Action Bar | Зонная модель, не направление скролла; одна версия `2.1.0` во всех клиентских Preview | Первую реализацию с порогом/направлением и прежнее ограничение только отдельным вариантом `action-bar` |
 | Production | Action Bar не внедряется в `site/index.html`; production не изменяется при сборке Preview | Желание показать панель клиенту реализуется через производные Preview, а не через боевой источник |
 | `final-dev` | Использует тот же канонический артефакт, что `action-bar`, но публикуется отдельным alias | Создание второго идентичного build-каталога |
+| `final-dev1` | Отдельный desktop Hero: расширенный звонок, три преимущества, затем существующее длинное пояснение; до 960 px базовый Hero сохраняется | Перезапись `final-dev`, production или общего action-bar artifact |
 | Social preview | Готовый versioned PNG `1200×630` и обычные OG/Twitter meta; отдельный Chromium-рендерер не нужен | Более сложный воспроизводимый генератор, удалённый после решения владельца «просто сделать подходящее изображение» |
 | Lead hook | Код и контракт готовы, но доставка не считается live до secret, Catch, dedup и readback | Любое утверждение «форма уже отправляет в Albato» только по наличию endpoint |
 | Версии | Любое изменение требований меняет SemVer и дату во всех источниках соответствующего контракта | Неверсионированные устные изменения |
@@ -96,9 +98,10 @@
 | Social preview | `1.0.2` | `2026-08-10` | `docs/SOCIAL-PREVIEW.md`, meta-комментарий и versioned PNG |
 | Mobile Hero | `1.0.1` | `2026-08-10` | карта Preview и marker `HERO-MOBILE` в source/derived CSS |
 | Action Bar | `2.1.0` | `2026-08-10` | HTML/CSS/JS addon, task, manifest, verifier |
+| Desktop Hero `final-dev1` | `1.0.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
-| Карта Preview | `2.1.0` | `2026-08-10` | board и `scripts/client-preview-map.json` |
-| Этот чек-лист | `1.0.0` | `2026-08-10` | текущий файл |
+| Карта Preview | `2.2.0` | `2026-08-10` | board и `scripts/client-preview-map.json` |
+| Этот чек-лист | `1.1.0` | `2026-08-10` | текущий файл |
 
 - [x] Все marker Action Bar синхронизированы на `2.1.0`.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
@@ -132,6 +135,10 @@
   где абсолютный портрет скрыт.
 - [x] Hero A сохраняет порядок «действия перед фотографией».
 - [x] Hero B сохраняет звонок как главное действие.
+- [x] `final-dev1`: на desktop после CTA идут разделитель, расширенный звонок,
+  три преимущества и только затем длинное пояснение.
+- [x] `final-dev1`: на ширине до 960 px новый ряд скрыт, а базовый мобильный
+  Hero и Action Bar не регрессировали.
 - [ ] MANUAL После новых изменений повторить скриншоты 360/390/768/1024/1280/
   1600 и проверить `scrollWidth === innerWidth`.
 - [ ] OPEN Mobile preload без `media` скачивает desktop Hero crop примерно
@@ -366,12 +373,12 @@ git diff --check
 
 - [x] Каждый builder копирует `site/`, выполняет собственную замену, затем
   устанавливает общий Action Bar.
-- [x] `verify-client-previews.py` проверяет девять записей локального manifest,
-  уникальность branch, наличие build directories, version/date, единственный
-  bar, byte-identical CSS/JS и viewport metadata.
-- [ ] OPEN Локальный verifier не проверяет точный ожидаемый набор slug,
-  variant-marker каждого output или живые Cloudflare aliases; это отдельный
-  API/HTTP/browser readback.
+- [x] `verify-client-previews.py` проверяет точную карту десяти
+  `branch → directory`, наличие build directories, version/date, единственный
+  bar, byte-identical CSS/JS, viewport metadata и versioned reference
+  `final-dev1`.
+- [ ] OPEN Локальный verifier не проверяет variant-marker каждого старого
+  output или живые Cloudflare aliases; это отдельный API/HTTP/browser readback.
 - [x] Windows stdout verifier принудительно UTF-8 и проходит даже при cp1252.
 - [x] `final-dev` и `action-bar` намеренно используют один build directory.
 - [ ] После любой правки `site/`, addon, metadata или standalone повторить все
@@ -416,11 +423,12 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
   --commit-dirty=true
 ```
 
-### Девять клиентских URL
+### Девять baseline URL и новый `final-dev1`
 
 | Preview | URL | Baseline status |
 |---|---|---|
 | Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `[x]` |
+| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[ ]` новый отдельный deployment |
 | Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `[x]` |
 | Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `[x]` |
 | Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `[x]` |
@@ -444,7 +452,7 @@ preload на mobile.
   `2026-08-10 09:14:19`; без Action Bar, lead Function и social PNG `v1.0.2`.
 - [ ] OPEN `docs/DEPLOY.md` содержит историческую фразу, что аккаунт Pages не
   проверен живым API; в этой сессии аккаунт и проект уже подтверждены.
-- [ ] MANUAL Перед отправкой заказчику открыть все девять ссылок в обычном
+- [ ] MANUAL Перед отправкой заказчику открыть все десять ссылок в обычном
   мобильном браузере, исключив кеш/авторизацию/anti-bot экран.
 
 ## 14. GitHub и CI
@@ -581,7 +589,8 @@ auth/IP-состояния, `TRACKING-REQUIREMENTS.md` — частично ст
 ## Related
 
 - [Журнал ошибок](ERRORS.md)
-- [Карта девяти Preview и URL](boards/2026-08-06-versions-links.md)
+- [Карта десяти Preview и URL](boards/2026-08-06-versions-links.md)
+- [Задание Final Dev 1](tasks/2026-08-10-final-dev1-desktop-hero.md)
 - [Задание на фото](tasks/2026-08-10-attorney-photos-mobile.md)
 - [Задание Action Bar](tasks/2026-08-10-action-bar-v2.md)
 - [Разбор Action Bar](ACTION-BAR-REVIEW.md)
