@@ -13,7 +13,6 @@ import PracticeAreas from "@/components/PracticeAreas";
 import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import Footer from "@/components/Footer";
-import StickyBar from "@/components/StickyBar";
 
 export default function Home() {
   return (
@@ -35,7 +34,6 @@ export default function Home() {
         <FAQ />
       </main>
       <Footer />
-      <StickyBar />
     </>
   );
 }
