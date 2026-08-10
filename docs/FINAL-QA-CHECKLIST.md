@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.1.6`
+**Версия:** `1.1.7`
 
 **Обновлено:** `2026-08-10`
 
@@ -35,7 +35,7 @@
 
 | Контур | Статус на `2026-08-10` |
 |---|---|
-| Десять Preview | **LIVE PASS:** Action Bar `2.3.0`, часы Израиля, demo-switch, assets и Function readback опубликованы на всех alias |
+| Десять Preview | **PARTIAL:** Action Bar `2.3.0`, часы Израиля, demo-switch, assets и Function readback LIVE PASS на всех alias; полная visual/responsive-приёмка закрыта только для `final-dev1` |
 | `final-dev1` | **LIVE PASS:** Hero `1.3.0`, плотный mobile-кадр пары, обе CTA от `360×600`, читаемый desktop proof-блок и Action Bar `2.3.0` опубликованы и проверены |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
@@ -104,7 +104,8 @@
 | Desktop Hero `final-dev1` | `1.3.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.2.0` | `2026-08-10` | board и `scripts/client-preview-map.json` |
-| Этот чек-лист | `1.1.6` | `2026-08-10` | текущий файл |
+| Browser QA клиентских Preview | `1.0.0` | `2026-08-10` | задача, композиционная спецификация и этот чек-лист |
+| Этот чек-лист | `1.1.7` | `2026-08-10` | текущий файл |
 
 - [x] Все marker Action Bar синхронизированы на `2.3.0`.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
@@ -490,8 +491,9 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 Для каждого URL на baseline подтверждено: HTTP 200, Action Bar `2.3.0`, одна
 панель, `viewport-fit=cover`, CSS height 60, два IntersectionObserver, отсутствие
 scroll-listener, расписание `Asia/Jerusalem`, demo-switch, lead contract `1.1.0`
-и Function GET=405/Allow POST. Локальная browser-матрица прошла 10×360/390/768;
-живой `final-dev1` v1.3.0 дополнительно проверен на 360×600, 390×724,
+и Function GET=405/Allow POST. Локальный Action Bar smoke прошёл 10×360/390/768;
+это не означает полную visual/responsive-приёмку каждого варианта. Живой
+`final-dev1` v1.3.0 дополнительно проверен на 360×600, 390×724,
 390×844, 860×760, 861×760, 1024×768, 1280×720 и 1440×900: обе Hero CTA
 целиком на целевом portrait/mobile диапазоне, новый кадр активен только до
 860 px, desktop proof/note увеличены, `.nav-call` отсутствует, horizontal
@@ -508,6 +510,40 @@ overflow и console errors — 0; Action Bar прошла Hero → чтение 
   проверен живым API; в этой сессии аккаунт и проект уже подтверждены.
 - [ ] MANUAL Перед отправкой заказчику открыть все десять ссылок в обычном
   мобильном браузере, исключив кеш/авторизацию/anti-bot экран.
+
+### Полная browser/responsive-приёмка всех Preview
+
+Контракт: `PREVIEW-BROWSER-QA v1.0.0 | 2026-08-10`.
+
+| Preview | Статус полного прогона |
+|---|---|
+| `final-dev1` | `[x] PASS` по `FINAL-DEV1-HERO v1.3.0`; вне scope нового прогона девяти URL |
+| `final-dev` | `[ ] REQUIRED` |
+| `v1-playfair-onest` | `[ ] REQUIRED` |
+| `v2-lora-inter` | `[ ] REQUIRED`; известен overflow `+3px` на 360px |
+| `v3-literata-manrope` | `[ ] REQUIRED` |
+| `v4-ptserif-golos` | `[ ] REQUIRED`; OPEN по отсутствующему PT Serif 500 |
+| `hero-a-actions-first` | `[ ] REQUIRED` |
+| `hero-b-call-first` | `[ ] REQUIRED` |
+| `action-bar` | `[ ] REQUIRED` |
+| `review-numbered` | `[ ] REQUIRED`; известен overflow `+48px` на 360px и `+18px` на 390px |
+
+- [ ] BLOCKER для заявления «все десять Preview полностью приняты»: прогнать
+  остальные девять URL по матрице `360×600`, `360×668`, `390×724`, `390×844`,
+  `720×760`, `860×760`, `861×760`, `1024×768`, `1280×720`, `1440×900`.
+- [ ] Для каждой ячейки сохранить screenshot, `innerWidth/scrollWidth`,
+  bounding boxes Hero-фото/CTA, computed fonts, DOM snapshot и console output.
+- [ ] Проверить общий контракт: нет overflow/clipping/intersections; лица и
+  фото сбалансированы; на трёх коротких mobile viewport все Hero CTA варианта
+  входят целиком с нижним запасом ≥8px; Action Bar проходит Hero → чтение →
+  форма и demo `3 ↔ 2`; console errors/warnings `0`.
+- [ ] Проверить назначение варианта: реальные семейства в четырёх font Preview,
+  порядок Hero A/B и 102 уникальных номера в `review-numbered`.
+- [ ] На обоих byte-identical alias `final-dev`/`action-bar` выполнить полную
+  матрицу и отдельный live-readback; общий каталог не отменяет проверку URL.
+- [ ] Статический verifier, HTTP 200 и Action Bar smoke не закрывают этот gate.
+  Проверяются все CTA конкретного варианта; нельзя молча копировать количество,
+  порядок или стили CTA из `final-dev1` в другую утверждённую Hero-композицию.
 
 ## 14. GitHub и CI
 
@@ -650,6 +686,7 @@ auth/IP-состояния, `TRACKING-REQUIREMENTS.md` — частично ст
 - [Журнал ошибок](ERRORS.md)
 - [Карта десяти Preview и URL](boards/2026-08-06-versions-links.md)
 - [Задание Final Dev 1](tasks/2026-08-10-final-dev1-desktop-hero.md)
+- [Полная browser/responsive-приёмка Preview](tasks/2026-08-10-all-previews-browser-qa.md)
 - [Задание на фото](tasks/2026-08-10-attorney-photos-mobile.md)
 - [Задание Action Bar](tasks/2026-08-10-action-bar-v2.md)
 - [Разбор Action Bar](ACTION-BAR-REVIEW.md)

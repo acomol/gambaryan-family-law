@@ -30,6 +30,17 @@
 | `action-bar` | Эталонная версия мобильной Action Bar | https://action-bar.gambarian-landing.pages.dev/ |
 | `review-numbered` | Копия текста со 102 подписанными номерами + Action Bar | https://review-numbered.gambarian-landing.pages.dev/ |
 
+## Статус полной browser-приёмки
+
+| Preview | Полная visual/responsive-приёмка |
+|---|---|
+| `final-dev1` | `PASS` по `FINAL-DEV1-HERO v1.3.0`; эталон процесса, вне scope нового прогона девяти URL |
+| Остальные девять Preview | `PENDING` — обязателен отдельный прогон по `PREVIEW-BROWSER-QA v1.0.0` |
+
+Action Bar smoke уже выполнен на всех десяти URL, но он не заменяет полный
+rendered-прогон каждого варианта. `final-dev` и `action-bar` используют общий
+артефакт, но матрица и live-readback выполняются на каждом из двух URL.
+
 ## Версии контрактов
 
 | Функционал | Версия | Дата |
@@ -40,6 +51,7 @@
 | Desktop Hero `final-dev1` | `1.3.0` | 2026-08-10 |
 | Lead hook / форма | `1.1.0` | 2026-08-10 |
 | Карта клиентских preview | `2.2.0` | 2026-08-10 |
+| Browser QA клиентских Preview | `1.0.0` | 2026-08-10 |
 
 ## Как работает конверсионный путь
 
@@ -104,3 +116,4 @@
 - [Контракт lead hook](../LEAD-WEBHOOK-CONTRACT.md)
 - [Карточка ссылки](../SOCIAL-PREVIEW.md)
 - [Требования аналитики](../TRACKING-REQUIREMENTS.md)
+- [Полная browser/responsive-приёмка Preview](../tasks/2026-08-10-all-previews-browser-qa.md)
