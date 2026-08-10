@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Собирает вариант лендинга с мобильной панелью действий.
+"""Собирает канонический клиентский вариант с мобильной панелью действий.
 
 Панель — это надстройка: в site/ её нет и боевая версия остаётся нетронутой.
 Сборка копирует site/, подкладывает три файла из site-addons/action-bar/ и
-подключает их в index.html.
+подключает их в index.html. Один полученный артефакт публикуется на Preview
+ветки final-dev и action-bar; остальные генераторы используют тот же addon.
 
 Фактическая высота панели замеряется в браузере и подставляется в CSS-токен
 --mobile-bar-h: считать её из padding и кегля нельзя, потому что глобального
@@ -20,11 +21,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+from action_bar_addon import (
+    ADDON,
+    SPEC_MARKER_RE,
+    install_action_bar,
+    verify_action_bar_install,
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
-ADDON = ROOT / "site-addons" / "action-bar"
 DEST = ROOT / "build" / "variants" / "action-bar"
-SPEC_MARKER_RE = re.compile(r"ACTION-BAR-SPEC\s+(v\d+\.\d+\.\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})")
 
 
 def build() -> Path:
@@ -32,27 +38,9 @@ def build() -> Path:
         shutil.rmtree(DEST)
     DEST.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(SITE, DEST)
+    install_action_bar(DEST)
 
-    for name in ("action-bar.css", "action-bar.js"):
-        shutil.copy(ADDON / name, DEST / name)
-
-    markup = (ADDON / "action-bar.html").read_text(encoding="utf-8").strip()
     html = (DEST / "index.html").read_text(encoding="utf-8")
-
-    if "mobile-bar" in html:
-        raise SystemExit("панель уже есть в index.html — сборка не нужна")
-
-    html = html.replace(
-        '<link rel="stylesheet" href="styles.css">',
-        '<link rel="stylesheet" href="styles.css">\n<link rel="stylesheet" href="action-bar.css">',
-        1,
-    )
-    html = html.replace(
-        'content="width=device-width, initial-scale=1"',
-        'content="width=device-width, initial-scale=1, viewport-fit=cover"',
-        1,
-    )
-    html = html.replace("</body>", markup + '\n<script src="action-bar.js" defer></script>\n</body>', 1)
     html = html.replace("<title>", "<!-- вариант: мобильная панель действий -->\n<title>", 1)
     (DEST / "index.html").write_text(html, encoding="utf-8")
     return DEST
@@ -96,13 +84,14 @@ def measure_and_pin(dest: Path) -> int:
             srv.kill()
 
     css = (dest / "action-bar.css").read_text(encoding="utf-8")
-    css = re.sub(r"--mobile-bar-h:\s*\d+px;", f"--mobile-bar-h: {height}px;", css)
-    (dest / "action-bar.css").write_text(css, encoding="utf-8")
+    pinned_css = re.sub(r"--mobile-bar-h:\s*\d+px;", f"--mobile-bar-h: {height}px;", css)
+    if pinned_css != css:
+        (dest / "action-bar.css").write_text(pinned_css, encoding="utf-8")
     return height
 
 
 def verify(dest: Path, height: int) -> list[str]:
-    problems = []
+    problems = verify_action_bar_install(dest)
     html = (dest / "index.html").read_text(encoding="utf-8")
     css = (dest / "action-bar.css").read_text(encoding="utf-8")
     js = (dest / "action-bar.js").read_text(encoding="utf-8")
@@ -175,6 +164,8 @@ def verify(dest: Path, height: int) -> list[str]:
         problems.append("спрятанная панель обязана не принимать клики")
     if re.search(r"addEventListener\s*\(\s*['\"]scroll['\"]", js):
         problems.append("в JS не должно быть scroll-listener")
+    if "scrollend" not in js or "hashchange" not in js:
+        problems.append("нет ресинхронизации после мгновенного якорного перехода")
     if js.count("new IntersectionObserver") != 2:
         problems.append("в JS должно быть ровно два IntersectionObserver")
     if "inert" not in js:

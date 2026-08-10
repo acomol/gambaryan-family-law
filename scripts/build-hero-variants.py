@@ -19,6 +19,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from action_bar_addon import install_action_bar, verify_action_bar_install
+
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 OUT = ROOT / "build" / "variants"
@@ -164,6 +166,7 @@ def build(key: str) -> Path:
 
     styles = (dest / "styles.css").read_text(encoding="utf-8")
     (dest / "styles.css").write_text(styles + "\n" + css, encoding="utf-8")
+    install_action_bar(dest)
     return dest
 
 
@@ -191,6 +194,7 @@ def verify(dest: Path, key: str) -> list[str]:
     for must in ("Адвокат по семейному праву в Израиле", "054-549-0623"):
         if must not in hero:
             problems.append(f"пропал текст «{must}»")
+    problems.extend(verify_action_bar_install(dest))
     return problems
 
 

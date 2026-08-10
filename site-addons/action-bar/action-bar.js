@@ -1,4 +1,4 @@
-/* ACTION-BAR-SPEC v2.0.0 | 2026-08-10
+/* ACTION-BAR-SPEC v2.1.0 | 2026-08-10
    ========================================================================
    Мобильная панель действий: зонная модель.
 
@@ -9,7 +9,8 @@
    D. меню открыто или поле в фокусе             -> hidden
 
    Ширина и landscape-режим управляются только CSS media queries. Направление
-   прокрутки на поведение не влияет.
+   прокрутки на поведение не влияет. scrollend/hashchange только сверяют
+   геометрию после мгновенных якорных переходов без промежуточного пересечения.
    ======================================================================== */
 
 (function () {
@@ -35,6 +36,24 @@
   };
   var hidden = null;
   var pointerTimer = null;
+
+  function isPastHero(rect, isIntersecting) {
+    return !isIntersecting && rect.top < 0;
+  }
+
+  function syncHeroGeometry() {
+    if (!hasIntersectionObserver || !heroPhone) return;
+    var rect = heroPhone.getBoundingClientRect();
+    var isIntersecting = rect.bottom > 0 && rect.top < window.innerHeight;
+    state.pastHero = isPastHero(rect, isIntersecting);
+    updateVisibility();
+  }
+
+  function scheduleHeroGeometrySync() {
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(syncHeroGeometry);
+    });
+  }
 
   function isInput(target) {
     return Boolean(target && target.matches && target.matches(INPUT_SELECTOR));
@@ -104,11 +123,15 @@
     updateVisibility();
   });
 
+  document.addEventListener('scrollend', syncHeroGeometry, { passive: true });
+  window.addEventListener('hashchange', scheduleHeroGeometrySync);
+  window.addEventListener('pageshow', scheduleHeroGeometrySync);
+
   if (hasIntersectionObserver) {
     if (heroPhone) {
       new IntersectionObserver(function (entries) {
         var entry = entries[0];
-        state.pastHero = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+        state.pastHero = isPastHero(entry.boundingClientRect, entry.isIntersecting);
         updateVisibility();
       }).observe(heroPhone);
     }

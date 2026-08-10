@@ -19,6 +19,8 @@ import re
 import shutil
 from pathlib import Path
 
+from action_bar_addon import install_action_bar, verify_action_bar_install
+
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 DEST = ROOT / "build" / "variants" / "review-numbered"
@@ -427,6 +429,7 @@ def build() -> Path:
 
     styles = (DEST / "styles.css").read_text(encoding="utf-8")
     (DEST / "styles.css").write_text(styles + "\n" + BADGE_CSS, encoding="utf-8")
+    install_action_bar(DEST)
     return DEST
 
 
@@ -452,6 +455,8 @@ def verify(dest: Path) -> list[str]:
                  "Записаться на консультацию", "Юлия Саакян"):
         if must not in html:
             problems.append(f"пропал текст «{must}»")
+
+    problems.extend(verify_action_bar_install(dest))
 
     return problems
 

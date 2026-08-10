@@ -23,6 +23,8 @@ from pathlib import Path
 
 from fontTools.ttLib import TTFont
 
+from action_bar_addon import install_action_bar, verify_action_bar_install
+
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 OUT = ROOT / "build" / "font-variants"
@@ -211,6 +213,8 @@ def build(n: int) -> dict:
     html = html.replace("<title>", f"<!-- вариант {n}: {spec['name']} -->\n<title>", 1)
     (dest / "index.html").write_text(html, encoding="utf-8")
 
+    install_action_bar(dest)
+
     return report
 
 
@@ -258,6 +262,8 @@ def verify(report: dict) -> list[str]:
     for m in re.finditer(r'rel="preload" href="(fonts/[^"]+)"', html):
         if not (dest / m.group(1)).exists():
             problems.append(f"preload ведёт на несуществующий {m.group(1)}")
+
+    problems.extend(verify_action_bar_install(dest))
 
     return problems
 
