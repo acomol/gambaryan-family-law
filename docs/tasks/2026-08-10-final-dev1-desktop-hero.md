@@ -73,11 +73,21 @@ production, существующий `final-dev` и остальные Preview �
 
 ### Cloudflare Preview
 
-- [ ] `final-dev1.gambarian-landing.pages.dev` возвращает `200` и содержит
+- [x] `final-dev1.gambarian-landing.pages.dev` возвращает `200` и содержит
   `FINAL-DEV1-HERO v1.0.0 | 2026-08-10`.
-- [ ] `/lead-contract.js` возвращает JavaScript со схемой `1.1.0`.
-- [ ] `GET /api/lead` возвращает `405` и `Allow: POST`.
-- [ ] Production и существующий `final-dev` не содержат маркер `final-dev1`.
+- [x] `/lead-contract.js` возвращает JavaScript со схемой `1.1.0`.
+- [x] `GET /api/lead` возвращает `405` и `Allow: POST`.
+- [x] Production и существующий `final-dev` не содержат маркер `final-dev1`.
+
+## Результат
+
+- Feature commit: `dd6af2d609d4fa74804090fb59bf1066e7ea0fb2`.
+- Cloudflare deployment: `eecb9e75-e330-4f19-a768-540de501ac9a`, status
+  `success`, branch `final-dev1`.
+- GitHub Actions: [run 31394432909](https://github.com/acomol/gambaryan-family-law/actions/runs/31394432909),
+  conclusion `success`.
+- Live Browser QA: `1280×720` и `390×844`, console errors/warnings `0`;
+  mobile Action Bar прошла состояния Hero → чтение → форма.
 
 ## Related
 

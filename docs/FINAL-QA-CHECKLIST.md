@@ -1,12 +1,14 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.1.0`
+**Версия:** `1.1.1`
 
 **Обновлено:** `2026-08-10`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
 **Функциональный baseline:** `594ad8b2a60f424e5b174b12765dab3980012187`
+
+**Функциональный baseline `final-dev1`:** `dd6af2d609d4fa74804090fb59bf1066e7ea0fb2`
 
 **Независимая приёмка baseline:** `e591d3e18541c1be134425cc8f3a7c65b9b7dbe8`
 
@@ -34,7 +36,7 @@
 | Контур | Статус на `2026-08-10` |
 |---|---|
 | Девять baseline Preview | **PASS по UI/Function markers:** общий Action Bar и варианты проверены; **OPEN/MAJOR:** social image живёт на другом host |
-| `final-dev1` | **LOCAL PASS / DEPLOY PENDING:** отдельный desktop Hero по референсу владельца; исходные девять Preview не перезаписываются |
+| `final-dev1` | **LIVE PASS:** отдельный desktop Hero опубликован и проверен; исходные девять Preview не перезаписаны |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -101,7 +103,7 @@
 | Desktop Hero `final-dev1` | `1.0.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.2.0` | `2026-08-10` | board и `scripts/client-preview-map.json` |
-| Этот чек-лист | `1.1.0` | `2026-08-10` | текущий файл |
+| Этот чек-лист | `1.1.1` | `2026-08-10` | текущий файл |
 
 - [x] Все marker Action Bar синхронизированы на `2.1.0`.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
@@ -428,7 +430,7 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 | Preview | URL | Baseline status |
 |---|---|---|
 | Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `[x]` |
-| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[ ]` новый отдельный deployment |
+| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` commit `dd6af2d`, deployment `eecb9e75` |
 | Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `[x]` |
 | Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `[x]` |
 | Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `[x]` |
@@ -447,6 +449,9 @@ browser-state matrix выполнен на каноническом `action-bar`
 preload на mobile.
 
 - [x] Все девять последних deployments имели commit `594ad8b` и status success.
+- [x] Отдельный `final-dev1` deployment `eecb9e75` имеет commit `dd6af2d`,
+  status `success`; live desktop/mobile, Action Bar, lead contract и Function
+  readback прошли.
 - [x] Production `https://gambarian-landing.pages.dev/` не обновлялся вместе с
   этими Preview. Его отдельный baseline: commit `cb9135c`, deployment от
   `2026-08-10 09:14:19`; без Action Bar, lead Function и social PNG `v1.0.2`.
@@ -457,6 +462,7 @@ preload на mobile.
 
 ## 14. GitHub и CI
 
+- [x] GitHub Actions run `31394432909` для `dd6af2d` завершён `success`.
 - [x] GitHub Actions run `31389047603` завершён `success`; lint, typecheck и
   Next build прошли.
 - [x] В PR нет review submissions и unresolved review threads.
