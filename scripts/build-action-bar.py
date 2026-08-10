@@ -46,8 +46,8 @@ def build() -> Path:
     return DEST
 
 
-def measure_and_pin(dest: Path) -> int:
-    """Замеряет высоту панели в браузере и фиксирует её в CSS."""
+def measure_and_pin(dest: Path) -> tuple[int, dict[str, int], dict[str, object]]:
+    """Замеряет оба временных состояния панели и фиксирует максимальную высоту."""
     css = (dest / "action-bar.css").read_text(encoding="utf-8")
     if "--mobile-bar-h" not in css.split("@media", 1)[0]:
         raise SystemExit("--mobile-bar-h должен быть объявлен в исходном action-bar.css")
@@ -71,9 +71,68 @@ def measure_and_pin(dest: Path) -> int:
             try:
                 page = browser.new_page(viewport={"width": 390, "height": 844})
                 page.goto("http://127.0.0.1:8097/", wait_until="networkidle", timeout=180_000)
-                height = page.locator(".mobile-bar").evaluate(
-                    "el => Math.round(el.getBoundingClientRect().height)"
+                state_heights = page.locator(".mobile-bar").evaluate(
+                    """el => {
+                      const phone = el.querySelector('[data-business-action="phone"]');
+                      const whatsapp = el.querySelector('[data-business-label="whatsapp"]');
+                      const measure = (state, phoneVisible, label) => {
+                        el.setAttribute('data-business-state', state);
+                        phone.hidden = !phoneVisible;
+                        whatsapp.textContent = label;
+                        return Math.round(el.getBoundingClientRect().height);
+                      };
+                      return {
+                        open: measure('open', true, 'WhatsApp'),
+                        closed: measure('closed', false, 'Написать в WhatsApp')
+                      };
+                    }"""
                 )
+
+                page.goto(
+                    "http://127.0.0.1:8097/?qa=demo-switch#services",
+                    wait_until="networkidle",
+                    timeout=180_000,
+                )
+                demo = page.locator("[data-business-demo]")
+                demo.wait_for(state="visible", timeout=5_000)
+
+                def read_demo() -> dict[str, object]:
+                    return page.evaluate(
+                        """() => {
+                          const bar = document.querySelector('.mobile-bar');
+                          const control = document.querySelector('[data-business-demo]');
+                          return {
+                            state: bar.dataset.businessState,
+                            mode: control.dataset.demoMode,
+                            checked: control.getAttribute('aria-checked'),
+                            url: location.href,
+                            dataLayerLength: (window.dataLayer || []).length,
+                            targetHeight: Math.round(control.getBoundingClientRect().height)
+                          };
+                        }"""
+                    )
+
+                demo_initial = read_demo()
+                demo.click()
+                demo_first = read_demo()
+                page.evaluate(
+                    """() => {
+                      window.dispatchEvent(new Event('focus'));
+                      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+                    }"""
+                )
+                demo_after_lifecycle = read_demo()
+                demo.click()
+                demo_second = read_demo()
+                page.reload(wait_until="networkidle", timeout=180_000)
+                demo_after_reload = read_demo()
+                demo_results = {
+                    "initial": demo_initial,
+                    "first": demo_first,
+                    "after_lifecycle": demo_after_lifecycle,
+                    "second": demo_second,
+                    "after_reload": demo_after_reload,
+                }
             finally:
                 browser.close()
     finally:
@@ -83,14 +142,20 @@ def measure_and_pin(dest: Path) -> int:
         except subprocess.TimeoutExpired:
             srv.kill()
 
+    height = max(state_heights.values())
     css = (dest / "action-bar.css").read_text(encoding="utf-8")
     pinned_css = re.sub(r"--mobile-bar-h:\s*\d+px;", f"--mobile-bar-h: {height}px;", css)
     if pinned_css != css:
         (dest / "action-bar.css").write_text(pinned_css, encoding="utf-8")
-    return height
+    return height, state_heights, demo_results
 
 
-def verify(dest: Path, height: int) -> list[str]:
+def verify(
+    dest: Path,
+    height: int,
+    state_heights: dict[str, int],
+    demo_results: dict[str, object],
+) -> list[str]:
     problems = verify_action_bar_install(dest)
     html = (dest / "index.html").read_text(encoding="utf-8")
     css = (dest / "action-bar.css").read_text(encoding="utf-8")
@@ -144,6 +209,55 @@ def verify(dest: Path, height: int) -> list[str]:
     cta_position = html.find("mobile-bar__item--cta")
     if len(item_starts) != 3 or not item_starts[1] <= cta_position < item_starts[2]:
         problems.append("центральная ячейка панели должна быть CTA «Записаться»")
+    if html.count('data-business-action="phone"') != 1:
+        problems.append("телефон должен скрываться вне рабочего времени")
+    if html.count('data-business-label="whatsapp"') != 1:
+        problems.append("не найден label WhatsApp для нерабочего состояния")
+    if len(re.findall(r'<button\b(?=[^>]*\bdata-business-demo(?:\s|=))(?=[^>]*\bhidden\b)[^>]*>', html)) != 1:
+        problems.append("не найден preview demo-switch")
+    if html.count('aria-label="Рабочее время"') != 1 or html.count("data-business-demo-status") != 1:
+        problems.append("demo-switch должен иметь стабильное имя и статус Авто/Демо")
+    if "demoBusinessState" not in js or "aria-checked" not in js:
+        problems.append("demo-switch не переключает рабочее/нерабочее состояние")
+    if ".mobile-bar-demo:not([hidden])" not in css:
+        problems.append("demo-switch не ограничен мобильным Preview")
+    if not re.search(r"@media\s*\(max-width:\s*960px\)\s*and\s*\(max-height:\s*400px\)[\s\S]*?\.mobile-bar-demo:not\(\[hidden\]\)[\s\S]*?position:\s*static", css):
+        problems.append("demo-switch должен оставаться доступным в landscape")
+    if 'data-business-state="closed"' not in css:
+        problems.append("в CSS нет двухколоночного нерабочего состояния")
+    if state_heights != {"open": 60, "closed": 60}:
+        problems.append(
+            "оба временных состояния должны иметь высоту 60px, получено "
+            f"open={state_heights.get('open')}px, closed={state_heights.get('closed')}px"
+        )
+    demo_initial = demo_results["initial"]
+    demo_first = demo_results["first"]
+    demo_after_lifecycle = demo_results["after_lifecycle"]
+    demo_second = demo_results["second"]
+    demo_after_reload = demo_results["after_reload"]
+    if demo_initial["mode"] != "auto" or demo_after_reload["mode"] != "auto":
+        problems.append("demo-switch должен начинать с auto после загрузки/reload")
+    if demo_first["mode"] != "manual" or demo_first["state"] == demo_initial["state"]:
+        problems.append("первый клик demo-switch не включил противоположное ручное состояние")
+    if demo_after_lifecycle["state"] != demo_first["state"] or demo_after_lifecycle["mode"] != "manual":
+        problems.append("focus/pageshow не должны сбрасывать ручное demo-состояние")
+    if demo_second["state"] != demo_initial["state"] or demo_second["mode"] != "manual":
+        problems.append("повторный клик demo-switch не вернул второе состояние")
+    for snapshot in (demo_initial, demo_first, demo_after_lifecycle, demo_second):
+        expected_checked = str(snapshot["state"] == "open").lower()
+        if snapshot["checked"] != expected_checked:
+            problems.append(
+                "aria-checked demo-switch не соответствует рабочему состоянию: "
+                f"state={snapshot['state']}, checked={snapshot['checked']}, "
+                f"ожидалось {expected_checked}"
+            )
+            break
+    if len({snapshot["url"] for snapshot in (demo_initial, demo_first, demo_after_lifecycle, demo_second)}) != 1:
+        problems.append("demo-switch не должен менять URL")
+    if len({snapshot["dataLayerLength"] for snapshot in (demo_initial, demo_first, demo_after_lifecycle, demo_second)}) != 1:
+        problems.append("demo-switch не должен отправлять аналитику")
+    if demo_initial["targetHeight"] < 44:
+        problems.append("touch target demo-switch должен быть не ниже 44px")
     if f"--mobile-bar-h: {height}px" not in css:
         problems.append("замеренная высота не подставлена в CSS")
     if not re.search(r":root\s*\{[^}]*--mobile-bar-h:\s*60px;", source_css, re.S):
@@ -174,11 +288,20 @@ def verify(dest: Path, height: int) -> list[str]:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+
     dest = build()
-    height = measure_and_pin(dest)
+    height, state_heights, demo_results = measure_and_pin(dest)
     print(f"Панель собрана: {dest.relative_to(ROOT)}")
-    print(f"Замеренная высота панели: {height}px (компенсация у body — столько же + safe-area)")
-    problems = verify(dest, height)
+    print(
+        "Замеренная высота панели: "
+        f"open={state_heights['open']}px, closed={state_heights['closed']}px "
+        f"(компенсация у body — {height}px + safe-area)"
+    )
+    problems = verify(dest, height, state_heights, demo_results)
     if problems:
         print("ПРОВЕРКА НЕ ПРОЙДЕНА:")
         for p in problems:

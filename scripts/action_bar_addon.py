@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ADDON = ROOT / "site-addons" / "action-bar"
-SPEC_VERSION = "2.1.0"
+SPEC_VERSION = "2.3.0"
 SPEC_DATE = "2026-08-10"
 SPEC_MARKER_RE = re.compile(
     r"ACTION-BAR-SPEC\s+(v\d+\.\d+\.\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})"
@@ -97,5 +97,52 @@ def verify_action_bar_install(dest: Path) -> list[str]:
     js = sources.get("action-bar.js", "")
     if "scrollend" not in js or "hashchange" not in js:
         problems.append("нет ресинхронизации после мгновенного якорного перехода")
+
+    schedule_tokens = (
+        "timeZone: 'Asia/Jerusalem'",
+        "openWeekdays: { Sun: true, Mon: true, Tue: true, Wed: true, Thu: true }",
+        "openMinute: 9 * 60",
+        "closeMinute: 18 * 60",
+        "current.minute >= BUSINESS_HOURS.openMinute",
+        "current.minute < BUSINESS_HOURS.closeMinute",
+    )
+    if any(token not in js for token in schedule_tokens):
+        problems.append("карта рабочего времени вс–чт 09:00–18:00 неполна")
+    if html.count('data-business-state="pending"') != 1:
+        problems.append("Action Bar должен начинать с одного pending business-state")
+    if html.count('data-business-action="phone"') != 1:
+        problems.append("телефон должен быть единственным business-only действием")
+    if html.count('data-business-action="booking"') != 1:
+        problems.append("не найдено действие «Записаться»")
+    if html.count('data-business-label="whatsapp"') != 1:
+        problems.append("не найден переключаемый label WhatsApp")
+    if len(re.findall(r'<button\b(?=[^>]*\bdata-business-demo(?:\s|=))(?=[^>]*\bhidden\b)[^>]*>', html)) != 1:
+        problems.append("нужен один скрытый до инициализации demo-switch")
+    if html.count('role="switch"') != 1:
+        problems.append("demo-control должен быть доступным переключателем")
+    if html.count('aria-label="Рабочее время"') != 1:
+        problems.append("demo-switch должен иметь стабильное доступное имя")
+    if html.count("data-business-demo-status") != 1:
+        problems.append("не найден видимый статус Авто/Демо")
+    if "Написать в WhatsApp" not in js:
+        problems.append("нет точного нерабочего label «Написать в WhatsApp»")
+    demo_tokens = (
+        "var demoBusinessState = null",
+        "demoBusinessState ||",
+        "demoToggle.addEventListener('click'",
+        "demoToggle.setAttribute('aria-checked'",
+        "demoToggle.hidden = hidden",
+    )
+    if any(token not in js for token in demo_tokens):
+        problems.append("demo-switch не управляет обоими состояниями панели")
+    css = sources.get("action-bar.css", "")
+    if 'data-business-state="closed"' not in css or "repeat(2, minmax(0, 1fr))" not in css:
+        problems.append("нерабочее состояние должно иметь две равные колонки")
+    if ".mobile-bar__item[hidden]" not in css:
+        problems.append("скрытый телефон должен удаляться из layout")
+    if ".mobile-bar-demo:not([hidden])" not in css:
+        problems.append("demo-switch должен показываться только на mobile Preview")
+    if not re.search(r"@media\s*\(max-width:\s*960px\)\s*and\s*\(max-height:\s*400px\)[\s\S]*?\.mobile-bar-demo:not\(\[hidden\]\)[\s\S]*?position:\s*static", css):
+        problems.append("demo-switch должен оставаться доступным в landscape")
 
     return problems

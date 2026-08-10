@@ -1,7 +1,8 @@
-/* ACTION-BAR-SPEC v2.1.0 | 2026-08-10
+/* ACTION-BAR-SPEC v2.3.0 | 2026-08-10
    ========================================================================
    Карта layout: >960px — панель выключена; <=960px — fixed;
    при высоте <=400px — static, без компенсации страницы.
+   Рабочее состояние — 3 колонки; нерабочее — 2 колонки без телефона.
 
    Мобильная панель действий — общая надстройка всех клиентских Preview.
    Глобального box-sizing: border-box в проекте намеренно нет, поэтому
@@ -19,7 +20,7 @@
   bottom: 0;
   z-index: 40;
   display: none;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   background: var(--bg-footer);
   border-top: 2px solid var(--gold);
   padding-bottom: env(safe-area-inset-bottom);
@@ -31,6 +32,14 @@
     transform 250ms cubic-bezier(0, 0, 0.2, 1),
     opacity 250ms cubic-bezier(0, 0, 0.2, 1),
     visibility 0s linear 0s;
+}
+
+.mobile-bar[data-business-state="closed"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mobile-bar__item[hidden] {
+  display: none;
 }
 
 .mobile-bar.is-interactive {
@@ -55,8 +64,12 @@
   text-align: center;
 }
 
-.mobile-bar__item + .mobile-bar__item {
+.mobile-bar__item:not([hidden]) + .mobile-bar__item:not([hidden]) {
   border-left: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.mobile-bar__label {
+  white-space: nowrap;
 }
 
 .mobile-bar__item svg {
@@ -73,6 +86,62 @@
 
 .mobile-bar__item:active { background: rgba(255, 255, 255, 0.06); }
 .mobile-bar__item--cta:active { background: var(--wine-hover, #6f1919); }
+
+.mobile-bar-demo {
+  position: fixed;
+  right: 12px;
+  bottom: calc(var(--mobile-bar-h) + env(safe-area-inset-bottom) + 10px);
+  z-index: 41;
+  display: none;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 7px 11px;
+  border: 1px solid rgba(201, 151, 46, 0.7);
+  border-radius: 999px;
+  background: rgba(15, 17, 19, 0.96);
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  font: 600 10px/1 var(--font-narrow);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.mobile-bar-demo:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.mobile-bar-demo[hidden] { display: none; }
+
+.mobile-bar-demo__track {
+  position: relative;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.mobile-bar-demo__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 160ms ease;
+}
+
+.mobile-bar-demo[aria-checked="true"] .mobile-bar-demo__track {
+  background: var(--wine);
+}
+
+.mobile-bar-demo[aria-checked="true"] .mobile-bar-demo__track::after {
+  transform: translateX(12px);
+}
 
 .mobile-bar.is-hidden {
   transform: translateY(110%);
@@ -91,6 +160,7 @@
   }
 
   .mobile-bar { display: grid; }
+  .mobile-bar-demo:not([hidden]) { display: flex; }
 
   body {
     padding-bottom: calc(var(--mobile-bar-h) + env(safe-area-inset-bottom));
@@ -103,7 +173,17 @@
   .mobile-bar { position: static; }
 }
 
+@media (max-width: 960px) and (max-height: 400px) {
+  .mobile-bar-demo:not([hidden]) {
+    position: static;
+    display: flex;
+    width: max-content;
+    margin: 10px 12px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mobile-bar,
-  .mobile-bar.is-hidden { transition: none; }
+  .mobile-bar.is-hidden,
+  .mobile-bar-demo__track::after { transition: none; }
 }
