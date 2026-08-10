@@ -1392,6 +1392,16 @@ picture { display: block; }
     object-position: 50% 22%;
   }
 
+  /* Фото адвокатов ниже на четверть (решение владельца 2026-08-10):
+     4/5 → 16/15 = высота 0.9375 ширины вместо 1.25, ровно −25%.
+     cover при center top срезает низ кадра (корпус), головы не трогает. */
+  .attorney-photo { aspect-ratio: 16 / 15; }
+
+  /* В исходном кадре голова Александра ниже примерно на 5% высоты.
+     Используем мобильный запас cover, чтобы поднять её на уровень Юлии;
+     окно и масштаб обеих карточек остаются одинаковыми. */
+  .attorney-card:first-child .attorney-photo { object-position: center 16%; }
+
   .hero__actions { margin-bottom: 16px; }
 
   .facts-bar { flex-direction: column; align-items: flex-start; gap: 14px; }
