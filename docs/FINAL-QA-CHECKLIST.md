@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.1.3`
+**Версия:** `1.1.4`
 
 **Обновлено:** `2026-08-10`
 
@@ -8,9 +8,9 @@
 
 **Функциональный baseline:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
 
-**Функциональный baseline `final-dev1`:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
+**Функциональный baseline `final-dev1`:** `cc5f6e649ff39aa1f489745df9e5475d04808cb4`
 
-**Независимая приёмка baseline:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
+**Независимая приёмка baseline:** `cc5f6e649ff39aa1f489745df9e5475d04808cb4`
 
 Этот документ объединяет принятые владельцем решения, ошибки проекта,
 регрессионные проверки и незакрытые production-пункты. Он предназначен для
@@ -61,7 +61,7 @@
 | Action Bar | Зонная модель плюс расписание `Asia/Jerusalem`: вс–чт `[09:00, 18:00)` — 3 действия, остальное время — запись и WhatsApp; Preview demo-switch показывает оба состояния; одна версия `2.3.0` во всех клиентских Preview | Первую реализацию с порогом/направлением, постоянный состав из трёх действий и прежнее ограничение только отдельным вариантом `action-bar` |
 | Production | Action Bar не внедряется в `site/index.html`; production не изменяется при сборке Preview | Желание показать панель клиенту реализуется через производные Preview, а не через боевой источник |
 | `final-dev` | Использует тот же канонический артефакт, что `action-bar`, но публикуется отдельным alias | Создание второго идентичного build-каталога |
-| `final-dev1` | Отдельный desktop Hero: расширенный звонок, три преимущества, затем существующее длинное пояснение; до 960 px базовый Hero сохраняется | Перезапись `final-dev`, production или общего action-bar artifact |
+| `final-dev1` | Отдельный desktop Hero без дублирующего телефона в шапке: расширенный звонок, три преимущества, затем существующее длинное пояснение; до 960 px базовый Hero сохраняется | Перезапись `final-dev`, production или общего action-bar artifact |
 | Social preview | Готовый versioned PNG `1200×630` и обычные OG/Twitter meta; отдельный Chromium-рендерер не нужен | Более сложный воспроизводимый генератор, удалённый после решения владельца «просто сделать подходящее изображение» |
 | Lead hook | Код и контракт готовы, но доставка не считается live до secret, Catch, dedup и readback | Любое утверждение «форма уже отправляет в Albato» только по наличию endpoint |
 | Версии | Любое изменение требований меняет SemVer и дату во всех источниках соответствующего контракта | Неверсионированные устные изменения |
@@ -101,10 +101,10 @@
 | Social preview | `1.0.2` | `2026-08-10` | `docs/SOCIAL-PREVIEW.md`, meta-комментарий и versioned PNG |
 | Mobile Hero | `1.0.1` | `2026-08-10` | карта Preview и marker `HERO-MOBILE` в source/derived CSS |
 | Action Bar | `2.3.0` | `2026-08-10` | HTML/CSS/JS addon, task, manifest, verifier |
-| Desktop Hero `final-dev1` | `1.0.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
+| Desktop Hero `final-dev1` | `1.1.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.2.0` | `2026-08-10` | board и `scripts/client-preview-map.json` |
-| Этот чек-лист | `1.1.3` | `2026-08-10` | текущий файл |
+| Этот чек-лист | `1.1.4` | `2026-08-10` | текущий файл |
 
 - [x] Все marker Action Bar синхронизированы на `2.3.0`.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
@@ -140,6 +140,8 @@
 - [x] Hero B сохраняет звонок как главное действие.
 - [x] `final-dev1`: на desktop после CTA идут разделитель, расширенный звонок,
   три преимущества и только затем длинное пояснение.
+- [x] `final-dev1`: дублирующий телефон справа в desktop-шапке удалён; меню
+  центрировано, Hero-телефон и мобильный звонок в шторке сохранены.
 - [x] `final-dev1`: на ширине до 960 px новый ряд скрыт, а базовый мобильный
   Hero и Action Bar не регрессировали.
 - [ ] MANUAL После новых изменений повторить скриншоты 360/390/768/1024/1280/
@@ -467,7 +469,7 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 | Preview | URL | Baseline status |
 |---|---|---|
 | Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `[x]` deployment `bead8ade`, commit `8ccc820` |
-| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `0251de0f`, commit `8ccc820` |
+| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `8a163a38`, commit `cc5f6e6` |
 | Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `[x]` deployment `5f06866b`, commit `8ccc820` |
 | Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `[x]` deployment `be04a85e`, commit `8ccc820` |
 | Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `[x]` deployment `0161c006`, commit `8ccc820` |
@@ -481,10 +483,13 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 панель, `viewport-fit=cover`, CSS height 60, два IntersectionObserver, отсутствие
 scroll-listener, расписание `Asia/Jerusalem`, demo-switch, lead contract `1.1.0`
 и Function GET=405/Allow POST. Локальная browser-матрица прошла 10×360/390/768;
-живой `final-dev1` дополнительно проверен интерактивно, console errors — 0.
+живой `final-dev1` v1.1.0 дополнительно проверен интерактивно на desktop и
+mobile: `.nav-call` отсутствует, основной Hero-телефон и drawer-телефон
+сохранены, demo-switch меняет `2 ↔ 3` действия, console errors — 0.
 
-- [x] Все десять последних deployments имеют commit `8ccc820` и status
-  `success` по Cloudflare API.
+- [x] Последний deployment `final-dev1` имеет commit `cc5f6e6`; остальные
+  девять Preview остаются на `8ccc820`. Все имеют status `success` по
+  Cloudflare API.
 - [x] Production `https://gambarian-landing.pages.dev/` не обновлялся вместе с
   этими Preview: HTML SHA-256 до/после совпал
   `656cbcd0635952899e79b847d5c262724979d21f548ca66e13fe3a7d2ec13e22`;
