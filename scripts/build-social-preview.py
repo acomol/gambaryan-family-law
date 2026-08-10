@@ -127,13 +127,20 @@ body {{
 </div>
 </body></html>"""
 
+    # Host fontconfig/hinting defaults vary between machines (and CI runners),
+    # which shifts glyph antialiasing enough to break the byte-identical
+    # git-diff check even though the visual is unchanged. Force uniform,
+    # host-independent font rasterization so the PNG is reproducible.
+    determinism_args = ["--font-render-hinting=none", "--force-color-profile=srgb"]
     with sync_playwright() as playwright:
         try:
-            browser = playwright.chromium.launch(headless=True)
+            browser = playwright.chromium.launch(headless=True, args=determinism_args)
         except PlaywrightError:
             # Maintainer fallback: Windows usually has Chrome, while CI installs
             # Playwright Chromium pinned by requirements-build.txt.
-            browser = playwright.chromium.launch(channel="chrome", headless=True)
+            browser = playwright.chromium.launch(
+                channel="chrome", headless=True, args=determinism_args
+            )
         try:
             page = browser.new_page(viewport={"width": width, "height": height})
             page.set_content(document, wait_until="load")
