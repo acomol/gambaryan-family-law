@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 DATE = "2026-08-10"
 MARKER = f"FINAL-DEV1-HERO v{VERSION} | {DATE}"
 MARKER_RE = re.compile(r"FINAL-DEV1-HERO v(\d+\.\d+\.\d+) \| (\d{4}-\d{2}-\d{2})")
@@ -23,4 +23,22 @@ MOBILE_FALLBACK_SNIPPETS = (
     ".hero--final-dev1 .hero__call-label--compact { display: inline; }",
     """.hero--final-dev1 .hero__call-icon,
   .hero--final-dev1 .hero__call-copy { display: contents; }""",
+    "@media (max-width: 860px) and (min-height: 600px)",
+    ".hero--final-dev1 .hero__body { padding-top: 4px; }",
+    """.hero--final-dev1 .hero__title {
+    margin-bottom: 8px;
+    padding: 8px 0 10px;
+  }""",
+    ".hero--final-dev1 .hero__lede { margin-bottom: 6px; }",
+    ".hero--final-dev1 .hero-media { margin-bottom: 10px; }",
+    """.hero--final-dev1 .hero-photo {
+    display: block;
+    max-height: calc(100vh - 432px);
+    max-height: calc(100dvh - 432px);
+  }""",
+    ".hero--final-dev1 .hero__actions { margin-bottom: 10px; }",
+    "@media (min-width: 420px) and (max-width: 659px) and (min-height: 600px)",
+    "max-height: calc(100dvh - 396px);",
+    "@media (min-width: 660px) and (max-width: 860px) and (min-height: 600px)",
+    "max-height: calc(100dvh - 374px);",
 )

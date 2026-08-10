@@ -91,7 +91,7 @@ def verify_final_dev1(dest: Path) -> list[str]:
         "@media (max-width: 960px)" not in variant_css
         or any(snippet not in variant_css for snippet in MOBILE_FALLBACK_SNIPPETS)
     ):
-        problems.append("mobile/tablet fallback final-dev1 отсутствует или неполон")
+        problems.append("mobile/tablet fallback или short-viewport compaction final-dev1 неполны")
     return problems
 
 

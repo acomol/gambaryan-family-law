@@ -325,6 +325,39 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
   .hero--final-dev1 .hero__call-icon,
   .hero--final-dev1 .hero__call-copy {{ display: contents; }}
 }}
+
+@media (max-width: 860px) and (min-height: 600px) {{
+  /* Короткий мобильный viewport: поднимаем фото и обе CTA без изменения
+     текста. Базовое окно 4:3 сохраняется; max-height режет только низ кадра
+     на широких коротких экранах, оставляя воздух над головами. */
+  .hero--final-dev1 .hero__body {{ padding-top: 4px; }}
+  .hero--final-dev1 .hero__title {{
+    margin-bottom: 8px;
+    padding: 8px 0 10px;
+  }}
+  .hero--final-dev1 .hero__lede {{ margin-bottom: 6px; }}
+  .hero--final-dev1 .hero-media {{ margin-bottom: 10px; }}
+  .hero--final-dev1 .hero-photo {{
+    display: block;
+    max-height: calc(100vh - 432px);
+    max-height: calc(100dvh - 432px);
+  }}
+  .hero--final-dev1 .hero__actions {{ margin-bottom: 10px; }}
+}}
+
+@media (min-width: 420px) and (max-width: 659px) and (min-height: 600px) {{
+  .hero--final-dev1 .hero-photo {{
+    max-height: calc(100vh - 396px);
+    max-height: calc(100dvh - 396px);
+  }}
+}}
+
+@media (min-width: 660px) and (max-width: 860px) and (min-height: 600px) {{
+  .hero--final-dev1 .hero-photo {{
+    max-height: calc(100vh - 374px);
+    max-height: calc(100dvh - 374px);
+  }}
+}}
 """
     return html, css
 
@@ -432,7 +465,7 @@ def verify(dest: Path, key: str) -> list[str]:
             "@media (max-width: 960px)" not in variant_css
             or any(snippet not in variant_css for snippet in MOBILE_FALLBACK_SNIPPETS)
         ):
-            problems.append("mobile/tablet fallback final-dev1 отсутствует или неполон")
+            problems.append("mobile/tablet fallback или short-viewport compaction final-dev1 неполны")
     problems.extend(verify_action_bar_install(dest))
     return problems
 
