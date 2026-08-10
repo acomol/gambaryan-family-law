@@ -107,7 +107,7 @@ Hero и положение CTA; обе головы и волосы остают
 
 ### Cloudflare Preview
 
-- [ ] `final-dev1.gambarian-landing.pages.dev` возвращает `200` и содержит
+- [x] `final-dev1.gambarian-landing.pages.dev` возвращает `200` и содержит
   `FINAL-DEV1-HERO v1.3.0 | 2026-08-10`.
 - [x] `/lead-contract.js` возвращает JavaScript со схемой `1.1.0`.
 - [x] `GET /api/lead` возвращает `405` и `Allow: POST`.
@@ -115,7 +115,21 @@ Hero и положение CTA; обе головы и волосы остают
 
 ## Результат (`v1.3.0`)
 
-- Заполняется после локальной приёмки, push и Cloudflare Preview readback.
+- Feature commit: `a207d3f55ce1286c39aefd012c917a72ccb01773`.
+- Cloudflare deployment: `4842254e-d861-4c51-951c-5ce462b2ccb1`, status
+  `success`, branch `final-dev1`; stable alias и прямой deployment URL отдают
+  маркер `v1.3.0`.
+- GitHub Actions: [run 31409406158](https://github.com/acomol/gambaryan-family-law/actions/runs/31409406158),
+  conclusion `success`.
+- Live Browser QA: mobile `360×600`, `390×724`, `390×844`, `860×760` и
+  boundary `861×760`; desktop `1024×768`, `1280×720`, `1440×900`. На mobile
+  transform включён только до `860px`, обе CTA целиком и horizontal overflow
+  `0`; на desktop proof/note имеют `12/13px` и `13/14px` по breakpoint,
+  полностью входят в Hero.
+- Live Action Bar прошла Hero → чтение → форма: hidden/inert → visible →
+  hidden/inert. Fonts loaded, console errors/warnings `0`; production HTML
+  SHA-256 сохранился:
+  `656cbcd0635952899e79b847d5c262724979d21f548ca66e13fe3a7d2ec13e22`.
 
 ## Предыдущий результат (`v1.2.0`)
 

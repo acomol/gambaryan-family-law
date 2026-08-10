@@ -8,9 +8,9 @@
 
 **Функциональный baseline:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
 
-**Функциональный baseline `final-dev1`:** `507743eef9903f069a707fafb05baf65b69b88d4`
+**Функциональный baseline `final-dev1`:** `a207d3f55ce1286c39aefd012c917a72ccb01773`
 
-**Независимая приёмка baseline:** `507743eef9903f069a707fafb05baf65b69b88d4`
+**Независимая приёмка baseline:** `a207d3f55ce1286c39aefd012c917a72ccb01773`
 
 Этот документ объединяет принятые владельцем решения, ошибки проекта,
 регрессионные проверки и незакрытые production-пункты. Он предназначен для
@@ -36,7 +36,7 @@
 | Контур | Статус на `2026-08-10` |
 |---|---|
 | Десять Preview | **LIVE PASS:** Action Bar `2.3.0`, часы Израиля, demo-switch, assets и Function readback опубликованы на всех alias |
-| `final-dev1` | **LIVE PASS:** Hero `1.2.0`, обе mobile CTA от `360×600`, desktop-композиция и Action Bar `2.3.0` опубликованы и проверены |
+| `final-dev1` | **LIVE PASS:** Hero `1.3.0`, плотный mobile-кадр пары, обе CTA от `360×600`, читаемый desktop proof-блок и Action Bar `2.3.0` опубликованы и проверены |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -61,7 +61,7 @@
 | Action Bar | Зонная модель плюс расписание `Asia/Jerusalem`: вс–чт `[09:00, 18:00)` — 3 действия, остальное время — запись и WhatsApp; Preview demo-switch показывает оба состояния; одна версия `2.3.0` во всех клиентских Preview | Первую реализацию с порогом/направлением, постоянный состав из трёх действий и прежнее ограничение только отдельным вариантом `action-bar` |
 | Production | Action Bar не внедряется в `site/index.html`; production не изменяется при сборке Preview | Желание показать панель клиенту реализуется через производные Preview, а не через боевой источник |
 | `final-dev` | Использует тот же канонический артефакт, что `action-bar`, но публикуется отдельным alias | Создание второго идентичного build-каталога |
-| `final-dev1` | Отдельный desktop Hero без дублирующего телефона в шапке; на mobile фото и интервалы сжаты так, чтобы обе Hero CTA входили в портретный viewport от `360×600` | Перезапись `final-dev`, production или общего action-bar artifact |
+| `final-dev1` | Отдельный desktop Hero без дублирующего телефона в шапке; на mobile фото увеличено `1.15×` и сдвинуто на `7%` влево, интервалы сохраняют обе CTA от `360×600`; desktop proof/note увеличены до читаемых `12/13px` и `13/14px` | Перезапись `final-dev`, production или общего action-bar artifact |
 | Social preview | Готовый versioned PNG `1200×630` и обычные OG/Twitter meta; отдельный Chromium-рендерер не нужен | Более сложный воспроизводимый генератор, удалённый после решения владельца «просто сделать подходящее изображение» |
 | Lead hook | Код и контракт готовы, но доставка не считается live до secret, Catch, dedup и readback | Любое утверждение «форма уже отправляет в Albato» только по наличию endpoint |
 | Версии | Любое изменение требований меняет SemVer и дату во всех источниках соответствующего контракта | Неверсионированные устные изменения |
@@ -72,7 +72,7 @@
   `claude/website-development-kb0fu0`, не в `main`.
 - [x] Функциональные commits запушены в
   `origin/claude/website-development-kb0fu0`: девять Preview остаются на
-  `8ccc820`, отдельный `final-dev1` опубликован из `507743e`.
+  `8ccc820`, отдельный `final-dev1` опубликован из `a207d3f`.
 - [x] После docs-only commit различать новый PR head и deployed functional SHA:
   документационный commit сам по себе не означает новый deployment.
 - [x] После итогового docs commit ветка опережает `origin/main` на 70 коммитов
@@ -142,9 +142,13 @@
   три преимущества и только затем длинное пояснение.
 - [x] `final-dev1`: дублирующий телефон справа в desktop-шапке удалён; меню
   центрировано, Hero-телефон и мобильный звонок в шторке сохранены.
-- [x] `final-dev1` v1.2.0: на ширине до 860 px и высоте от 600 px фото поднято,
-  обе Hero CTA целиком входят минимум на 360×600/360×668/390×724; на обычном
-  mobile сохраняются asset, `4:3`, `object-position: 50% 22%` и Action Bar.
+- [x] `final-dev1` v1.3.0: на ширине до 860 px и высоте от 600 px фото поднято,
+  обе Hero CTA целиком входят минимум на 360×600/360×668/390×724; прежний
+  mobile asset внутри окна увеличен `1.15×` и сдвинут на `7%` влево, Action Bar
+  не регрессировал; на 861 px transform отсутствует.
+- [x] `final-dev1` v1.3.0: desktop proof/note имеют минимум `12/13px` на
+  961–1200 px и `13/14px` от 1201 px; проверены 1024×768 и 1280×720 без
+  clipping, пересечений и horizontal overflow.
 - [x] Landscape высотой ниже 600 px остаётся отдельной прокручиваемой
   композицией: требование «обе CTA в первом экране» к нему не применяется;
   обязательны отсутствие horizontal overflow и штатный static Action Bar.
@@ -473,7 +477,7 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 | Preview | URL | Baseline status |
 |---|---|---|
 | Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `[x]` deployment `bead8ade`, commit `8ccc820` |
-| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `c6fd60ad`, commit `507743e` |
+| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `4842254e`, commit `a207d3f` |
 | Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `[x]` deployment `5f06866b`, commit `8ccc820` |
 | Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `[x]` deployment `be04a85e`, commit `8ccc820` |
 | Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `[x]` deployment `0161c006`, commit `8ccc820` |
@@ -487,13 +491,13 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 панель, `viewport-fit=cover`, CSS height 60, два IntersectionObserver, отсутствие
 scroll-listener, расписание `Asia/Jerusalem`, demo-switch, lead contract `1.1.0`
 и Function GET=405/Allow POST. Локальная browser-матрица прошла 10×360/390/768;
-живой `final-dev1` v1.2.0 дополнительно проверен на 360×600, 360×668, 390×724,
-390×844, 720×760, 860×760, 861×760, 1280×900 и 1440×900: обе Hero CTA
-целиком на целевом portrait/mobile диапазоне, `.nav-call` отсутствует,
-horizontal overflow и console errors — 0; Action Bar прошла Hero → чтение →
-форма.
+живой `final-dev1` v1.3.0 дополнительно проверен на 360×600, 390×724,
+390×844, 860×760, 861×760, 1024×768, 1280×720 и 1440×900: обе Hero CTA
+целиком на целевом portrait/mobile диапазоне, новый кадр активен только до
+860 px, desktop proof/note увеличены, `.nav-call` отсутствует, horizontal
+overflow и console errors — 0; Action Bar прошла Hero → чтение → форма.
 
-- [x] Последний deployment `final-dev1` имеет commit `507743e`; остальные
+- [x] Последний deployment `final-dev1` имеет commit `a207d3f`; остальные
   девять Preview остаются на `8ccc820`. Все имеют status `success` по
   Cloudflare API.
 - [x] Production `https://gambarian-landing.pages.dev/` не обновлялся вместе с
@@ -507,7 +511,7 @@ horizontal overflow и console errors — 0; Action Bar прошла Hero → ч
 
 ## 14. GitHub и CI
 
-- [x] GitHub Actions run `31406145891` для `507743e` завершён `success`;
+- [x] GitHub Actions run `31409406158` для `a207d3f` завершён `success`;
   lint, typecheck и Next build прошли.
 - [x] GitHub Actions run `31394432909` для `dd6af2d` завершён `success`.
 - [x] GitHub Actions run `31389047603` завершён `success`; lint, typecheck и
@@ -535,7 +539,9 @@ horizontal overflow и console errors — 0; Action Bar прошла Hero → ч
 | Портрет обрезался до головы | Фиксированная альбомная высота + portrait + cover | `aspect-ratio`, `height:auto`, screenshot обеих карточек |
 | Самодельная вырезка давала артефакты/пропавшие руки | Сегментация и чёрный фон съедали тёмный костюм | Использовать полный студийный raster; проверять края и руки на реальном фоне |
 | Макушки срезались на wide Hero | `object-position` применялся к растущему crop surplus | 1440/1920/2560 |
-| Mobile Hero CTA уходила ниже первого экрана | Слишком высокий photo strip и отступы | `final-dev1` v1.2.0: 360×600/360×668/390×724 и 420/659/660/860/861 boundaries; обе CTA целиком, bottom-safe ≥8px, height-aware crop только когда 4:3 не помещается |
+| Mobile Hero CTA уходила ниже первого экрана | Слишком высокий photo strip и отступы | `final-dev1` v1.3.0: 360×600/360×668/390×724 и 420/659/660/860/861 boundaries; обе CTA целиком, bottom-safe ≥8px, height-aware crop только когда 4:3 не помещается |
+| На mobile слева от пары оставалось лишнее пустое поле | `object-position` по X не работает, когда source уже окна и `cover` режет только высоту | Final-dev1-only `translateX(-7%) scale(1.15)` до 860 px; проверять головы/волосы, CTA geometry, overflow и отсутствие transform на 861 px |
+| Desktop proof-блок был микротекстом | Размеры 10/11 px выбрали ради искусственного вмещения блока | Двухступенчатые 12/13 px и 13/14 px; обязательные 1024×768 и 1280×720 с text-fit и Hero bottom readback |
 | CSS будто не применялся | `<picture>` закрывался `</figure>` | Счётчики парных тегов/HTML parse до настройки CSS |
 | Fact-card accordion имел вложенные/слишком широкие интерактивы | Вся карточка была control вместо нативной кнопки | Семантическая button, keyboard/ARIA и отсутствие nested interactive |
 | Mobile-правка изменила desktop | Удаление текста из HTML вместо media query | Desktop before/after + утверждённый контент сохранять |
