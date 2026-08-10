@@ -486,10 +486,45 @@ picture { display: block; }
 .hero__call:hover .hero__call-num { color: var(--gold-light); }
 
 @media (max-width: 860px) {
-  /* На узком экране подпись съедает строку, а номер — то, ради чего строка
-     существует. Подпись убирается, доступное имя остаётся в aria-label. */
-  .hero__call-label { display: none; }
-  .hero__call-num { font-size: 22px; }
+  /* CTA-пара по макету владельца (2026-08-10): обе кнопки во всю ширину,
+     звонок — контурная кнопка в золотой рамке, а не текстовая строка.
+     border-box здесь локально и намеренно: глобального box-sizing в проекте
+     нет (см. шапку файла), а width:100% с рамкой и паддингом в content-box
+     вылезал бы за экран.
+     align-self: stretch обязателен: .hero-inner — флекс-колонка, и мобильное
+     правило align-items:center сжимает ряды под содержимое — без stretch
+     обе «полноширинные» кнопки остаются шириной с собственный текст. */
+  .hero__actions,
+  .hero__phone { align-self: stretch; }
+  /* Мобильное центрирование абзацев (.hero-inner p { margin: auto }) ставит
+     авто-марджины по поперечной оси — они забирают свободное место и гасят
+     stretch. Для ряда со звонком марджины возвращаются в ноль. */
+  .hero-inner .hero__phone { margin-left: 0; margin-right: 0; }
+  .hero__actions .btn--wine {
+    width: 100%;
+    box-sizing: border-box;
+    padding-block: 15px;
+  }
+  .hero__call {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    margin: 0;
+    padding: 13px 16px;
+    border: 1px solid rgba(240, 174, 31, 0.5);
+    border-radius: 8px;
+  }
+  .hero__call-label {
+    display: inline;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: rgba(255, 255, 255, 0.88);
+  }
+  .hero__call-num { font-size: 17px; }
 }
 
 .hero__note {
