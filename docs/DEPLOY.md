@@ -1,5 +1,8 @@
 # Куда публикуется сайт
 
+**Версия документа:** `1.1.0`
+**Обновлено:** `2026-08-10`
+
 Читать **до** любых попыток развернуть проект. Отдельная площадка не
 заводится: если развёртывание уже существует — обновляется оно.
 
@@ -9,7 +12,7 @@
 |---|---|
 | Временный адрес | **https://gambarian-landing.pages.dev/** |
 | Платформа | Cloudflare Pages |
-| Что публикуется | папка `site/` (статика: `index.html`, `styles.css`, `fonts.css`, `app.js`, `assets/`, `fonts/`) |
+| Что публикуется | папка `site/` + корневая `functions/` (`/api/lead`) |
 | Боевой домен клиента | www.gambarian.com — **ещё не подключён** |
 
 Пока сайт живёт на `pages.dev`, в `site/index.html` стоит
@@ -24,6 +27,19 @@ noindex только при переезде на настоящий домен.
 прямой загрузкой. Merge pull request сайт **не** обновляет.
 
 Обновление — одной командой на своей машине, из корня репозитория.
+
+### Albato lead hook
+
+`functions/api/lead.js` читает URL только из encrypted secret
+`ALBATO_WEBHOOK_URL`. Значение не хранится в репозитории и не должно попадать
+в HTML/JS. В Cloudflare Pages добавить **разные** значения в Production и
+Preview: Settings → Variables and Secrets → Add → Encrypt. Для локального
+`wrangler pages dev site` используется `.dev.vars`; файл игнорируется Git.
+
+После изменения secret нужен новый deployment. Технический readback маршрута:
+`GET /api/lead` возвращает `405` и `Allow: POST`. Полная приёмка требует
+контрольный POST, Albato Automation Log и readback конечной записи; контракт и
+версия описаны в `docs/LEAD-WEBHOOK-CONTRACT.md`.
 
 **Windows / PowerShell** (основной путь у владельца):
 

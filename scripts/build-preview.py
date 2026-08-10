@@ -38,7 +38,13 @@ def read(name):
     return open(os.path.join(SITE, name), encoding="utf-8").read()
 
 
-html, css, fontcss, js = read("index.html"), read("styles.css"), read("fonts.css"), read("app.js")
+html, css, fontcss, contractjs, js = (
+    read("index.html"),
+    read("styles.css"),
+    read("fonts.css"),
+    read("lead-contract.js"),
+    read("app.js"),
+)
 
 for font in sorted(set(re.findall(r"fonts/([A-Za-z0-9._-]+)", fontcss)), key=len, reverse=True):
     fontcss = fontcss.replace(f"fonts/{font}", data_uri(os.path.join(SITE, "fonts", font)))
@@ -52,7 +58,7 @@ for asset in sorted(set(re.findall(r"assets/[A-Za-z0-9._-]+", html + css)), key=
 
 # Ресурсы уже внутри документа — preload, внешние стили и скрипт не нужны.
 html = re.sub(r'\s*<link rel="(?:preload|stylesheet)"[^>]*>', "", html)
-html = re.sub(r'\s*<script src="app\.js"[^>]*></script>', "", html)
+html = re.sub(r'\s*<script src="(?:lead-contract|app)\.js"[^>]*></script>', "", html)
 
 title = re.search(r"<title>(.*?)</title>", html, re.S).group(1)
 body = re.search(r"<body>(.*)</body>", html, re.S).group(1)
@@ -68,7 +74,8 @@ theme = (
     " { margin: 0; background: #101214; color: #f2efe9; }"
 )
 
-style, script = f"<style>\n{theme}\n{fontcss}\n{css}\n</style>", f"<script>\n{js}\n</script>"
+style = f"<style>\n{theme}\n{fontcss}\n{css}\n</style>"
+script = f"<script>\n{contractjs}\n{js}\n</script>"
 
 if STANDALONE:
     head = re.search(r"<head>(.*?)</head>", html, re.S).group(1).strip()

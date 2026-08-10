@@ -509,24 +509,31 @@
       </div>
     </div>
     <div class="contact__form-col">
-      <form class="lead-form" novalidate="">
+      <form class="lead-form" action="/api/lead" method="post">
         <h3 class="lead-form__title">Форма обращения</h3>
         <p class="lead-form__note">Поля со звёздочкой (*) обязательны.</p>
-        <p class="lead-form__error" hidden>Не удалось отправить заявку. Позвоните: <a href="tel:+972545490623">054-549-0623</a> или напишите в <a href="https://wa.me/972545490623" target="_blank" rel="noopener">WhatsApp</a>.</p>
-        <div class="lead-form__row">
-          <label class="field">
-            <span class="field__label">Имя *</span>
-            <input required name="name" type="text" autocomplete="name" spellcheck="false" placeholder="Как к вам обращаться">
-          </label>
-          <label class="field">
-            <span class="field__label">Телефон *</span>
-            <input required name="phone" type="tel" inputmode="tel" autocomplete="tel" spellcheck="false" placeholder="+972 50 000 0000">
-          </label>
+        <div class="lead-form__error" role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" hidden>
+          <strong class="lead-form__error-title"></strong>
+          <span class="lead-form__error-text"></span>
+          <span class="lead-form__error-contact" hidden>Если ошибка повторяется, позвоните: <a href="tel:+972545490623">054-549-0623</a> или напишите в <a href="https://wa.me/972545490623" target="_blank" rel="noopener">WhatsApp</a>.</span>
         </div>
-        <label class="field field--last">
-          <span class="field__label">Email</span>
-          <input name="email" type="email" inputmode="email" autocomplete="email" spellcheck="false" placeholder="name@example.com">
-        </label>
+        <div class="lead-form__row">
+          <div class="field">
+            <label class="field__label" for="lead-name">Имя *</label>
+            <input id="lead-name" required name="name" type="text" autocomplete="name" autocapitalize="words" minlength="2" maxlength="100" aria-describedby="lead-name-error" aria-errormessage="lead-name-error" spellcheck="false" placeholder="Как к вам обращаться">
+            <span class="field__error" id="lead-name-error" hidden></span>
+          </div>
+          <div class="field">
+            <label class="field__label" for="lead-phone">Телефон *</label>
+            <input id="lead-phone" required name="phone" type="tel" inputmode="tel" autocomplete="tel" minlength="6" maxlength="40" pattern="(?=(?:\D*\d){6,15}\D*$)(?:\d|\+|\(|\)|\.|-|\s)+" aria-describedby="lead-phone-error" aria-errormessage="lead-phone-error" spellcheck="false" placeholder="+972 50 000 0000">
+            <span class="field__error" id="lead-phone-error" hidden></span>
+          </div>
+        </div>
+        <div class="field field--last">
+          <label class="field__label" for="lead-email">Email</label>
+          <input id="lead-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" pattern="[^\s@]+@[^\s@]+\.[^\s@]+" aria-describedby="lead-email-error" aria-errormessage="lead-email-error" spellcheck="false" placeholder="name@example.com">
+          <span class="field__error" id="lead-email-error" hidden></span>
+        </div>
         <button class="lead-form__submit" type="submit">Записаться на консультацию</button>
         <p class="lead-form__legal">Не отправляйте документы и конфиденциальные сведения через форму для назначения консультации.</p>
       </form>
@@ -592,6 +599,7 @@
 }
 </script>
 
+<script src="lead-contract.js" defer></script>
 <script src="app.js" defer></script>
 </body>
 </html>
