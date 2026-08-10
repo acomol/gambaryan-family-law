@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 DATE = "2026-08-10"
 MARKER = f"FINAL-DEV1-HERO v{VERSION} | {DATE}"
 MARKER_RE = re.compile(r"FINAL-DEV1-HERO v(\d+\.\d+\.\d+) \| (\d{4}-\d{2}-\d{2})")

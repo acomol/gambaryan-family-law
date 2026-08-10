@@ -58,6 +58,12 @@ def verify_final_dev1(dest: Path) -> list[str]:
         problems.append("version/date marker FINAL-DEV1-HERO расходится с контрактом")
     if 'class="hero hero--final-dev1"' not in hero:
         problems.append("Hero не изолирован классом hero--final-dev1")
+    if 'class="site-header site-header--final-dev1"' not in html:
+        problems.append("шапка final-dev1 не имеет изолирующего класса")
+    if 'class="nav-call"' in html:
+        problems.append("дублирующий desktop-телефон .nav-call остался в шапке")
+    if 'class="nav-drawer__call"' not in html:
+        problems.append("из мобильного меню пропал звонок")
     hero_phone_count = len(re.findall(r'class="[^"]*\bhero__phone\b[^"]*"', hero))
     if hero_phone_count != 1 or hero.count('class="hero__phone hero__contact-block"') != 1:
         problems.append("должен быть ровно один sentinel .hero__phone")
@@ -76,7 +82,10 @@ def verify_final_dev1(dest: Path) -> list[str]:
     marker_text = f"/* {FINAL_DEV1_MARKER}"
     variant_css_position = css.rfind(marker_text)
     variant_css = css[variant_css_position:] if variant_css_position >= 0 else ""
-    if "@media (min-width: 961px)" not in variant_css:
+    if (
+        "@media (min-width: 961px)" not in variant_css
+        or ".site-header--final-dev1 .site-header__bar" not in variant_css
+    ):
         problems.append("desktop-композиция final-dev1 должна начинаться с 961px")
     if (
         "@media (max-width: 960px)" not in variant_css

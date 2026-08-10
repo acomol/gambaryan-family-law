@@ -20,7 +20,7 @@
 | Версия | Назначение | URL |
 |---|---|---|
 | `final-dev` | Итоговая базовая версия + Action Bar | https://final-dev.gambarian-landing.pages.dev/ |
-| `final-dev1` | Новый desktop Hero: расширенный звонок, три преимущества и пояснение ниже + Action Bar | https://final-dev1.gambarian-landing.pages.dev/ |
+| `final-dev1` | Новый desktop Hero без дубля телефона в шапке: расширенный звонок, три преимущества и пояснение ниже + Action Bar | https://final-dev1.gambarian-landing.pages.dev/ |
 | `v1-playfair-onest` | Playfair Display + Onest + Action Bar | https://v1-playfair-onest.gambarian-landing.pages.dev/ |
 | `v2-lora-inter` | Lora + Inter + Action Bar | https://v2-lora-inter.gambarian-landing.pages.dev/ |
 | `v3-literata-manrope` | Literata + Manrope + Action Bar | https://v3-literata-manrope.gambarian-landing.pages.dev/ |
@@ -37,7 +37,7 @@
 | Карточка ссылки и логотип 1200×630 | `1.0.2` | 2026-08-10 |
 | Мобильная Hero-полоса | `1.0.1` | 2026-08-10 |
 | Нижняя панель | `2.3.0` | 2026-08-10 |
-| Desktop Hero `final-dev1` | `1.0.0` | 2026-08-10 |
+| Desktop Hero `final-dev1` | `1.1.0` | 2026-08-10 |
 | Lead hook / форма | `1.1.0` | 2026-08-10 |
 | Карта клиентских preview | `2.2.0` | 2026-08-10 |
 

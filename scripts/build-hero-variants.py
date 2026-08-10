@@ -35,6 +35,7 @@ MEDIA = re.compile(r'\n      <div class="hero-media">.*?</div>\n', re.S)
 ACTIONS = re.compile(r'\n      <div class="hero__actions">.*?</div>\n', re.S)
 PHONE = re.compile(r'\n      <p class="hero__phone">.*?</p>\n', re.S)
 NOTE = re.compile(r'\n      <p class="hero__note">.*?</p>\n', re.S)
+NAV_CALL = re.compile(r'\n    <a class="nav-call".*?</a>\n', re.S)
 
 CALL_ICON = (
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -195,6 +196,14 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
         '<section class="hero hero--final-dev1" id="top">',
         1,
     )
+    html, removed_nav_calls = NAV_CALL.subn("\n", html, count=1)
+    if removed_nav_calls != 1:
+        raise SystemExit("desktop-телефон .nav-call в шапке не найден")
+    html = html.replace(
+        '<header class="site-header">',
+        '<header class="site-header site-header--final-dev1">',
+        1,
+    )
     css = f"""
 /* FINAL-DEV1-HERO v{FINAL_DEV1_VERSION} | {FINAL_DEV1_DATE}
    Расширенная desktop-конверсия по утверждённому референсу. Все правила
@@ -202,6 +211,12 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
 .hero--final-dev1 .hero__call-label--compact {{ display: none; }}
 
 @media (min-width: 961px) {{
+  .site-header--final-dev1 .site-header__bar {{
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+  }}
+  .site-header--final-dev1 .logo {{ justify-self: start; }}
+  .site-header--final-dev1 .nav-links {{ grid-column: 2; }}
   .hero--final-dev1 .hero__body {{
     padding-top: clamp(48px, 5vw, 68px);
     padding-bottom: 30px;
@@ -376,6 +391,12 @@ def verify(dest: Path, key: str) -> list[str]:
             problems.append("FINAL-DEV1-HERO version/date должны совпадать в HTML и CSS")
         if 'class="hero hero--final-dev1"' not in hero:
             problems.append("Hero final-dev1 не имеет изолирующего класса")
+        if 'class="site-header site-header--final-dev1"' not in html:
+            problems.append("шапка final-dev1 не имеет изолирующего класса")
+        if 'class="nav-call"' in html:
+            problems.append("дублирующий desktop-телефон .nav-call остался в шапке")
+        if 'class="nav-drawer__call"' not in html:
+            problems.append("из мобильного меню пропал звонок")
         if hero.count('<li class="hero__proof">') != 3:
             problems.append("в final-dev1 должно быть ровно три преимущества с иконками")
         for must in (
@@ -401,7 +422,11 @@ def verify(dest: Path, key: str) -> list[str]:
         order_positions = [hero.find(token) for token in order_tokens]
         if any(position < 0 for position in order_positions) or order_positions != sorted(order_positions):
             problems.append("ожидался DOM-порядок CTA → звонок → иконки → пояснение")
-        if "@media (min-width: 961px)" not in variant_css or ".hero--final-dev1" not in variant_css:
+        if (
+            "@media (min-width: 961px)" not in variant_css
+            or ".hero--final-dev1" not in variant_css
+            or ".site-header--final-dev1 .site-header__bar" not in variant_css
+        ):
             problems.append("desktop-стили final-dev1 должны быть scoped и начинаться с 961px")
         if (
             "@media (max-width: 960px)" not in variant_css
