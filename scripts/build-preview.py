@@ -79,9 +79,8 @@ script = f"<script>\n{contractjs}\n{js}\n</script>"
 
 if STANDALONE:
     head = re.search(r"<head>(.*?)</head>", html, re.S).group(1).strip()
-    # og:image после вшивания превратился бы в мегабайтный data-URI внутри
-    # мета-тега: соцсети такое не читают, а вес страницы растёт вдвое.
-    head = re.sub(r'\s*<meta property="og:image"[^>]*>', "", head)
+    # Social preview использует абсолютный versioned URL в корне сайта, поэтому
+    # не вшивается в data-URI и остаётся пригодным для соцсетевых краулеров.
     page = ('<!DOCTYPE html>\n<html lang="ru">\n<head>\n'
             f"{head}\n{style}\n</head>\n<body>\n{body}\n{script}\n</body>\n</html>\n")
 else:

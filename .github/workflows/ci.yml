@@ -23,8 +23,18 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          python -m pip install --disable-pip-version-check -r requirements-build.txt
+          python -m playwright install --with-deps chromium
 
       - name: Lint
         run: npm run lint
@@ -34,3 +44,14 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Rebuild and verify social preview contract
+        run: |
+          python scripts/build-social-preview.py
+          preview_status="$(git status --porcelain --untracked-files=all -- 'site/social-preview-logo-*.png')"
+          if [ -n "$preview_status" ]; then
+            echo "::error title=Social preview artifact is stale::Rebuild the versioned PNG and commit the resulting file."
+            echo "$preview_status"
+            exit 1
+          fi
+          python scripts/build-social-preview.py --check
