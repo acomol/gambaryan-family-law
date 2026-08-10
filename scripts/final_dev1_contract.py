@@ -10,6 +10,20 @@ DATE = "2026-08-10"
 MARKER = f"FINAL-DEV1-HERO v{VERSION} | {DATE}"
 MARKER_RE = re.compile(r"FINAL-DEV1-HERO v(\d+\.\d+\.\d+) \| (\d{4}-\d{2}-\d{2})")
 
+PRECEDENT_COPY_VERSION = "1.0.0"
+PRECEDENT_COPY_DATE = "2026-08-11"
+PRECEDENT_COPY_MARKER = (
+    f"FINAL-DEV1-PRECEDENT-COPY v{PRECEDENT_COPY_VERSION} | {PRECEDENT_COPY_DATE}"
+)
+PRECEDENT_COPY_SNIPPETS = (
+    '<span class="precedent-card__eyebrow">ВПЕРВЫЕ</span>',
+    '<h3 class="precedent-card__title">СОЗДАН ПРЕЦЕДЕНТ <br class="precedent-copy__break">В МЕЖДУНАРОДНОЙ СУДЕБНОЙ ПРАКТИКЕ</h3>',
+    '<p>Добились возвращения похищенного ребёнка, <br class="precedent-copy__break">несмотря на отсутствие официально <br class="precedent-copy__break">зарегистрированных родительских прав</p>',
+)
+PRECEDENT_COPY_CSS_SNIPPET = """@media (max-width: 860px) {
+  .precedent-copy__break { display: none; }
+}"""
+
 REFERENCE_PATH = "docs/design-references/final-dev1-desktop-hero-v1.0.0.png"
 REFERENCE_SHA256 = "1E07C0D348AC6C61754D8B05B1FFD1A3F31C8F03B34D85749559707398BC27AB"
 REFERENCE_SIZE = (1293, 724)

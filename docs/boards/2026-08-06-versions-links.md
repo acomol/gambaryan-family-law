@@ -2,7 +2,7 @@
 
 **Версия карты:** `2.2.0`
 
-**Обновлено:** `2026-08-10`
+**Обновлено:** `2026-08-11`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
@@ -20,7 +20,7 @@
 | Версия | Назначение | URL |
 |---|---|---|
 | `final-dev` | Итоговая базовая версия + Action Bar | https://final-dev.gambarian-landing.pages.dev/ |
-| `final-dev1` | Новый Hero без дубля телефона; плотный mobile-кадр пары, читаемый desktop proof-блок, обе CTA на коротком mobile + Action Bar | https://final-dev1.gambarian-landing.pages.dev/ |
+| `final-dev1` | Новый Hero без дубля телефона; плотный mobile-кадр пары, читаемый desktop proof-блок, обновлённый текст прецедента, обе CTA на коротком mobile + Action Bar | https://final-dev1.gambarian-landing.pages.dev/ |
 | `v1-playfair-onest` | Playfair Display + Onest + Action Bar | https://v1-playfair-onest.gambarian-landing.pages.dev/ |
 | `v2-lora-inter` | Lora + Inter + Action Bar | https://v2-lora-inter.gambarian-landing.pages.dev/ |
 | `v3-literata-manrope` | Literata + Manrope + Action Bar | https://v3-literata-manrope.gambarian-landing.pages.dev/ |
@@ -34,7 +34,7 @@
 
 | Preview | Полная visual/responsive-приёмка |
 |---|---|
-| `final-dev1` | `PASS` по `FINAL-DEV1-HERO v1.3.0`; эталон процесса, вне scope нового прогона девяти URL |
+| `final-dev1` | Hero `PASS` по `FINAL-DEV1-HERO v1.3.0`; новый `PRECEDENT-COPY v1.0.0` — `PENDING` до live deployment/readback |
 | Остальные девять Preview | `PENDING` — обязателен отдельный прогон по `PREVIEW-BROWSER-QA v1.0.0` |
 
 Action Bar smoke уже выполнен на всех десяти URL, но он не заменяет полный
@@ -49,6 +49,7 @@ rendered-прогон каждого варианта. `final-dev` и `action-ba
 | Мобильная Hero-полоса | `1.0.1` | 2026-08-10 |
 | Нижняя панель | `2.3.0` | 2026-08-10 |
 | Desktop Hero `final-dev1` | `1.3.0` | 2026-08-10 |
+| Текст прецедента `final-dev1` | `1.0.0` | 2026-08-11 |
 | Lead hook / форма | `1.1.0` | 2026-08-10 |
 | Карта клиентских preview | `2.2.0` | 2026-08-10 |
 | Browser QA клиентских Preview | `1.0.0` | 2026-08-10 |

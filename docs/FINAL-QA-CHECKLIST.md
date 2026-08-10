@@ -1,8 +1,8 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.1.7`
+**Версия:** `1.1.8`
 
-**Обновлено:** `2026-08-10`
+**Обновлено:** `2026-08-11`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
@@ -102,10 +102,11 @@
 | Mobile Hero | `1.0.1` | `2026-08-10` | карта Preview и marker `HERO-MOBILE` в source/derived CSS |
 | Action Bar | `2.3.0` | `2026-08-10` | HTML/CSS/JS addon, task, manifest, verifier |
 | Desktop Hero `final-dev1` | `1.3.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
+| Текст прецедента `final-dev1` | `1.0.0` | `2026-08-11` | builder, HTML marker, task, browser readback |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.2.0` | `2026-08-10` | board и `scripts/client-preview-map.json` |
 | Browser QA клиентских Preview | `1.0.0` | `2026-08-10` | задача, композиционная спецификация и этот чек-лист |
-| Этот чек-лист | `1.1.7` | `2026-08-10` | текущий файл |
+| Этот чек-лист | `1.1.8` | `2026-08-11` | текущий файл |
 
 - [x] Все marker Action Bar синхронизированы на `2.3.0`.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
@@ -150,6 +151,10 @@
 - [x] `final-dev1` v1.3.0: desktop proof/note имеют минимум `12/13px` на
   961–1200 px и `13/14px` от 1201 px; проверены 1024×768 и 1280×720 без
   clipping, пересечений и horizontal overflow.
+- [ ] `final-dev1` `FINAL-DEV1-PRECEDENT-COPY v1.0.0`: дословно проверить
+  «ВПЕРВЫЕ / СОЗДАН ПРЕЦЕДЕНТ… / Добились возвращения…», обязательные
+  переносы, отсутствие clipping/overflow и неизменные фото/CTA на mobile и
+  desktop. Отметить `[x]` только после live deployment/readback.
 - [x] Landscape высотой ниже 600 px остаётся отдельной прокручиваемой
   композицией: требование «обе CTA в первом экране» к нему не применяется;
   обязательны отсутствие horizontal overflow и штатный static Action Bar.

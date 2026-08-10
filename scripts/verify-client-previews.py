@@ -18,6 +18,11 @@ from final_dev1_contract import (
     MARKER as FINAL_DEV1_MARKER,
     MOBILE_CROP_SNIPPETS,
     MOBILE_FALLBACK_SNIPPETS,
+    PRECEDENT_COPY_CSS_SNIPPET,
+    PRECEDENT_COPY_DATE,
+    PRECEDENT_COPY_MARKER,
+    PRECEDENT_COPY_SNIPPETS,
+    PRECEDENT_COPY_VERSION,
     REFERENCE_PATH,
     REFERENCE_SHA256,
     REFERENCE_SIZE,
@@ -66,6 +71,13 @@ def verify_final_dev1(dest: Path) -> list[str]:
         problems.append("дублирующий desktop-телефон .nav-call остался в шапке")
     if 'class="nav-drawer__call"' not in html:
         problems.append("из мобильного меню пропал звонок")
+    if html.count(PRECEDENT_COPY_MARKER) != 1:
+        problems.append("version/date marker FINAL-DEV1-PRECEDENT-COPY отсутствует")
+    for snippet in PRECEDENT_COPY_SNIPPETS:
+        if html.count(snippet) != 1:
+            problems.append("утверждённая редакция блока прецедента повреждена")
+    if PRECEDENT_COPY_CSS_SNIPPET not in css:
+        problems.append("mobile-переносы текста прецедента не защищены")
     hero_phone_count = len(re.findall(r'class="[^"]*\bhero__phone\b[^"]*"', hero))
     if hero_phone_count != 1 or hero.count('class="hero__phone hero__contact-block"') != 1:
         problems.append("должен быть ровно один sentinel .hero__phone")
@@ -117,6 +129,8 @@ def verify_final_dev1_sources() -> list[str]:
         problems.append("metadata версии final-dev1 task расходится с контрактом")
     if f"**Дата:** `{FINAL_DEV1_DATE}`" not in task_header:
         problems.append("metadata даты final-dev1 task расходится с контрактом")
+    if f"`{PRECEDENT_COPY_MARKER}`" not in task_text:
+        problems.append("metadata текста прецедента отсутствует в final-dev1 task")
     if REFERENCE_SHA256 not in task_text:
         problems.append("final-dev1 task не содержит SHA-256 текущего reference")
     if f"{REFERENCE_SIZE[0]}×{REFERENCE_SIZE[1]}" not in task_text:
@@ -128,6 +142,12 @@ def verify_final_dev1_sources() -> list[str]:
     )
     if board_contract not in board_text:
         problems.append("карта Preview не содержит текущую версию/дату final-dev1")
+    precedent_board_contract = (
+        f"| Текст прецедента `final-dev1` | `{PRECEDENT_COPY_VERSION}` | "
+        f"{PRECEDENT_COPY_DATE} |"
+    )
+    if precedent_board_contract not in board_text:
+        problems.append("карта Preview не содержит версию/дату текста прецедента")
     if not reference_path.exists():
         return problems + ["versioned reference PNG final-dev1 не найден"]
 

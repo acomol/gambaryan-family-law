@@ -5,8 +5,9 @@
 В site/ ничего не меняется: боевая версия остаётся текущей компоновкой,
 которая служит точкой отсчёта.
 
-Варианты отличаются ТОЛЬКО первым экраном. Всё остальное — текст, шрифты,
-секции, контакты — идентично, чтобы сравнение было честным.
+Варианты a/b отличаются только первым экраном. `dev1` дополнительно может
+содержать явно versioned и проверяемые owner-overrides; общий `site/` при этом
+остаётся неизменным.
 
     python scripts/build-hero-variants.py             # все
     python scripts/build-hero-variants.py a b dev1    # выборочно
@@ -26,6 +27,9 @@ from final_dev1_contract import (
     MARKER_RE as FINAL_DEV1_MARKER_RE,
     MOBILE_CROP_SNIPPETS,
     MOBILE_FALLBACK_SNIPPETS,
+    PRECEDENT_COPY_CSS_SNIPPET,
+    PRECEDENT_COPY_MARKER,
+    PRECEDENT_COPY_SNIPPETS,
     VERSION as FINAL_DEV1_VERSION,
 )
 
@@ -193,6 +197,20 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
       </ul>
 '''
     html = assemble(b["_html"], ["media", "actions", "phone", "note"], b)
+    precedent_before = '''      <div class="precedent-card__text">
+        <span class="precedent-card__eyebrow">Международный прецедент</span>
+        <h3 class="precedent-card__title">Возвращение похищенного ребёнка при незарегистрированных родительских правах</h3>
+        <p>Александр Гамбарян — автор международного судебного прецедента, связанного с возвращением похищенного ребёнка в ситуации, когда родительские права не были зарегистрированы. Опыт конкретного дела помогает видеть правовые и международные аспекты таких споров. Каждый новый случай оценивается отдельно.</p>
+      </div>'''
+    precedent_after = f'''      <div class="precedent-card__text">
+        <!-- {PRECEDENT_COPY_MARKER} -->
+        <span class="precedent-card__eyebrow">ВПЕРВЫЕ</span>
+        <h3 class="precedent-card__title">СОЗДАН ПРЕЦЕДЕНТ <br class="precedent-copy__break">В МЕЖДУНАРОДНОЙ СУДЕБНОЙ ПРАКТИКЕ</h3>
+        <p>Добились возвращения похищенного ребёнка, <br class="precedent-copy__break">несмотря на отсутствие официально <br class="precedent-copy__break">зарегистрированных родительских прав</p>
+      </div>'''
+    if html.count(precedent_before) != 1:
+        raise SystemExit("исходный текст блока прецедента не найден ровно один раз")
+    html = html.replace(precedent_before, precedent_after, 1)
     html = html.replace(
         '<section class="hero" id="top">',
         '<section class="hero hero--final-dev1" id="top">',
@@ -211,6 +229,8 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
    Расширенная desktop-конверсия по утверждённому референсу. Все правила
    привязаны к варианту: site/, production и прежние Preview не меняются. */
 .hero--final-dev1 .hero__call-label--compact {{ display: none; }}
+
+{PRECEDENT_COPY_CSS_SNIPPET}
 
 @media (min-width: 961px) {{
   .site-header--final-dev1 .site-header__bar {{
@@ -452,6 +472,13 @@ def verify(dest: Path, key: str) -> list[str]:
             problems.append("из мобильного меню пропал звонок")
         if hero.count('<li class="hero__proof">') != 3:
             problems.append("в final-dev1 должно быть ровно три преимущества с иконками")
+        if html.count(PRECEDENT_COPY_MARKER) != 1:
+            problems.append("FINAL-DEV1-PRECEDENT-COPY version/date marker отсутствует")
+        for snippet in PRECEDENT_COPY_SNIPPETS:
+            if html.count(snippet) != 1:
+                problems.append("утверждённая редакция блока прецедента повреждена")
+        if PRECEDENT_COPY_CSS_SNIPPET not in variant_css:
+            problems.append("mobile-переносы текста прецедента не защищены")
         for must in (
             "Или позвоните сразу",
             "Срочный вопрос? Позвоните напрямую",
