@@ -6,11 +6,11 @@
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Функциональный baseline:** `594ad8b2a60f424e5b174b12765dab3980012187`
+**Функциональный baseline:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
 
-**Функциональный baseline `final-dev1`:** `dd6af2d609d4fa74804090fb59bf1066e7ea0fb2`
+**Функциональный baseline `final-dev1`:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
 
-**Независимая приёмка baseline:** `e591d3e18541c1be134425cc8f3a7c65b9b7dbe8`
+**Независимая приёмка baseline:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
 
 Этот документ объединяет принятые владельцем решения, ошибки проекта,
 регрессионные проверки и незакрытые production-пункты. Он предназначен для
@@ -35,8 +35,8 @@
 
 | Контур | Статус на `2026-08-10` |
 |---|---|
-| Девять baseline Preview | **PASS по UI/Function markers:** общий Action Bar и варианты проверены; **OPEN/MAJOR:** social image живёт на другом host |
-| `final-dev1` | **LIVE PASS:** отдельный desktop Hero опубликован и проверен; исходные девять Preview не перезаписаны |
+| Десять Preview | **LIVE PASS:** Action Bar `2.3.0`, часы Израиля, demo-switch, assets и Function readback опубликованы на всех alias |
+| `final-dev1` | **LIVE PASS:** отдельный desktop Hero и общий Action Bar `2.3.0` опубликованы и проверены |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -70,11 +70,12 @@
 
 - [x] Работа ведётся в `acomol/gambaryan-family-law`, ветка
   `claude/website-development-kb0fu0`, не в `main`.
-- [x] Перед документационным коммитом Local HEAD,
-  `origin/claude/website-development-kb0fu0` и PR head совпадали на
-  функциональном baseline `594ad8b`.
-- [ ] После коммита этого файла различать новый PR head и deployed functional
-  SHA `594ad8b`; docs-only commit сам по себе не означает новый deployment.
+- [x] Функциональный commit `8ccc820` запушен в
+  `origin/claude/website-development-kb0fu0`; все десять Preview deployments
+  привязаны Cloudflare API к тому же commit SHA.
+- [ ] После следующего docs-only commit различать новый PR head и deployed
+  functional SHA `8ccc820`; документационный commit сам по себе не означает
+  новый deployment.
 - [x] Ветка опережает `main` на 60 коммитов и не отстаёт от него.
 - [x] Рабочее дерево после push было чистым.
 - [x] `.dev.vars*`, `.wrangler/`, Python cache и локальные credentials не
@@ -235,9 +236,9 @@
   состояниях; смена времени не отправляет событие аналитики.
 - [x] Состояние обновляется на следующей минуте, `pageshow`, возврате вкладки и
   фокусе окна; при ошибке `Intl` выбирается безопасное нерабочее состояние.
-- [ ] LIVE Проверить `08:59:59/09:00:00/17:59:59/18:00:00`, пятницу/субботу и
+- [x] LIVE Проверены `08:59:59/09:00:00/17:59:59/18:00:00`, пятница/суббота и
   DST на каноническом Preview после публикации `2.3.0`.
-- [ ] LIVE На всех десяти Preview проверить open/closed smoke на 360/390/768px:
+- [x] LIVE На всех десяти Preview проверен open/closed smoke на 360/390/768px:
   3/2 focusable action, высота 60px, равные колонки, панель без собственного
   overflow.
 - [ ] OPEN Отдельно от Action Bar исправить старый overflow контента:
@@ -255,7 +256,9 @@
   `aria-checked=true` означает рабочее состояние, а видимый `Авто/Демо`
   отражает режим. Скрытие зоны удаляет control из Tab-порядка.
 - [x] Переключение не меняет URL, ссылки/методы и не отправляет аналитику.
-- [ ] LIVE Проверить переключение `3 ↔ 2` на каждом из десяти Preview.
+- [x] LIVE Переключение `3 ↔ 2` опубликовано и asset/readback проверен на каждом
+  из десяти Preview; интерактивный browser-smoke дополнительно выполнен на
+  `final-dev1`.
 
 ### Доступность и ложные клики
 
@@ -459,36 +462,33 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
   --commit-dirty=true
 ```
 
-### Девять baseline URL и новый `final-dev1`
+### Десять Preview — Action Bar v2.3.0
 
 | Preview | URL | Baseline status |
 |---|---|---|
-| Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `[x]` |
-| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` commit `dd6af2d`, deployment `eecb9e75` |
-| Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `[x]` |
-| Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `[x]` |
-| Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `[x]` |
-| PT Serif + Golos Text | https://v4-ptserif-golos.gambarian-landing.pages.dev/ | `[x]` |
-| Hero A | https://hero-a-actions-first.gambarian-landing.pages.dev/ | `[x]` |
-| Hero B | https://hero-b-call-first.gambarian-landing.pages.dev/ | `[x]` |
-| Action Bar | https://action-bar.gambarian-landing.pages.dev/ | `[x]` |
-| Текст с номерами | https://review-numbered.gambarian-landing.pages.dev/ | `[x]` |
+| Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `[x]` deployment `bead8ade`, commit `8ccc820` |
+| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `0251de0f`, commit `8ccc820` |
+| Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `[x]` deployment `5f06866b`, commit `8ccc820` |
+| Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `[x]` deployment `be04a85e`, commit `8ccc820` |
+| Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `[x]` deployment `0161c006`, commit `8ccc820` |
+| PT Serif + Golos Text | https://v4-ptserif-golos.gambarian-landing.pages.dev/ | `[x]` deployment `6e1a212a`, commit `8ccc820` |
+| Hero A | https://hero-a-actions-first.gambarian-landing.pages.dev/ | `[x]` deployment `8432480e`, commit `8ccc820` |
+| Hero B | https://hero-b-call-first.gambarian-landing.pages.dev/ | `[x]` deployment `e6cbf220`, commit `8ccc820` |
+| Action Bar | https://action-bar.gambarian-landing.pages.dev/ | `[x]` deployment `d989985a`, commit `8ccc820` |
+| Текст с номерами | https://review-numbered.gambarian-landing.pages.dev/ | `[x]` deployment `d1a64e77`, commit `8ccc820` |
 
-Для каждого URL на baseline подтверждено: HTTP 200, Action Bar `2.1.0`, одна
+Для каждого URL на baseline подтверждено: HTTP 200, Action Bar `2.3.0`, одна
 панель, `viewport-fit=cover`, CSS height 60, два IntersectionObserver, отсутствие
-scroll-listener, lead contract `1.1.0`, Function GET=405, autofill и variant-
-marker. На всех девяти проверены Hero hidden и reading visible; полный
-browser-state matrix выполнен на каноническом `action-bar`. Console errors — 0;
-есть одно предсуществующее предупреждение о неиспользованном desktop Hero
-preload на mobile.
+scroll-listener, расписание `Asia/Jerusalem`, demo-switch, lead contract `1.1.0`
+и Function GET=405/Allow POST. Локальная browser-матрица прошла 10×360/390/768;
+живой `final-dev1` дополнительно проверен интерактивно, console errors — 0.
 
-- [x] Все девять последних deployments имели commit `594ad8b` и status success.
-- [x] Отдельный `final-dev1` deployment `eecb9e75` имеет commit `dd6af2d`,
-  status `success`; live desktop/mobile, Action Bar, lead contract и Function
-  readback прошли.
+- [x] Все десять последних deployments имеют commit `8ccc820` и status
+  `success` по Cloudflare API.
 - [x] Production `https://gambarian-landing.pages.dev/` не обновлялся вместе с
-  этими Preview. Его отдельный baseline: commit `cb9135c`, deployment от
-  `2026-08-10 09:14:19`; без Action Bar, lead Function и social PNG `v1.0.2`.
+  этими Preview: HTML SHA-256 до/после совпал
+  `656cbcd0635952899e79b847d5c262724979d21f548ca66e13fe3a7d2ec13e22`;
+  Action Bar/demo отсутствуют, `/api/lead` остаётся старым HTML fallback 200.
 - [ ] OPEN `docs/DEPLOY.md` содержит историческую фразу, что аккаунт Pages не
   проверен живым API; в этой сессии аккаунт и проект уже подтверждены.
 - [ ] MANUAL Перед отправкой заказчику открыть все десять ссылок в обычном
