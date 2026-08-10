@@ -62,6 +62,7 @@ npx --yes wrangler@latest pages deploy site --project-name=gambarian-landing --b
 | `hero-a-actions-first.gambarian-landing.pages.dev` | компоновка hero: действия перед фото |
 | `hero-b-call-first.gambarian-landing.pages.dev` | компоновка hero: звонок — главное действие |
 | `action-bar.gambarian-landing.pages.dev` | вариант с мобильной нижней панелью действий |
+| `review-numbered.gambarian-landing.pages.dev` | клиентская копия с номерами у каждого текстового блока (для правок) |
 
 Все варианты пересобираются одной командой после любой правки `site/`:
 
@@ -69,7 +70,17 @@ npx --yes wrangler@latest pages deploy site --project-name=gambarian-landing --b
 python3 scripts/build-font-variants.py     # → build/font-variants/*
 python3 scripts/build-hero-variants.py     # → build/variants/hero-*
 python3 scripts/build-action-bar.py        # → build/variants/action-bar
+python3 scripts/build-review-numbered.py   # → build/variants/review-numbered
 ```
+
+`build-review-numbered.py` собирает **одну** страницу (не набор вариантов):
+102 бейджа, по одному на каждый смысловой блок текста, в формате «3.11».
+Повторяющийся шаблонный текст (одинаковая кнопка/абзац в 8 карточках услуг)
+помечен только на первом появлении — этого достаточно, чтобы клиент сослался
+на номер в правке. Мобильное меню (дублирует шапку, скрыто по умолчанию) не
+нумеруется. Каждая замена в скрипте проверяется по факту совпадений в HTML
+(`(сколько всего, сколько пометить, старое, новое)`) — сборка падает, если
+разметка разошлась с ожиданием, а не вставляет бейдж не туда молча.
 
 Затем каждый деплоится тем же `wrangler pages deploy <папка> --branch=<slug>`.
 `build/` в `.gitignore`, пересобирается локально.
