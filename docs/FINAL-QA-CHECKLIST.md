@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.1.5`
+**Версия:** `1.1.6`
 
 **Обновлено:** `2026-08-10`
 
@@ -101,10 +101,10 @@
 | Social preview | `1.0.2` | `2026-08-10` | `docs/SOCIAL-PREVIEW.md`, meta-комментарий и versioned PNG |
 | Mobile Hero | `1.0.1` | `2026-08-10` | карта Preview и marker `HERO-MOBILE` в source/derived CSS |
 | Action Bar | `2.3.0` | `2026-08-10` | HTML/CSS/JS addon, task, manifest, verifier |
-| Desktop Hero `final-dev1` | `1.2.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
+| Desktop Hero `final-dev1` | `1.3.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.2.0` | `2026-08-10` | board и `scripts/client-preview-map.json` |
-| Этот чек-лист | `1.1.5` | `2026-08-10` | текущий файл |
+| Этот чек-лист | `1.1.6` | `2026-08-10` | текущий файл |
 
 - [x] Все marker Action Bar синхронизированы на `2.3.0`.
 - [x] Lead browser/Function используют единую карту `1.1.0`.

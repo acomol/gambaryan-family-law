@@ -22,7 +22,9 @@ from pathlib import Path
 from action_bar_addon import install_action_bar, verify_action_bar_install
 from final_dev1_contract import (
     DATE as FINAL_DEV1_DATE,
+    DESKTOP_READABILITY_SNIPPETS,
     MARKER_RE as FINAL_DEV1_MARKER_RE,
+    MOBILE_CROP_SNIPPETS,
     MOBILE_FALLBACK_SNIPPETS,
     VERSION as FINAL_DEV1_VERSION,
 )
@@ -219,7 +221,7 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
   .site-header--final-dev1 .nav-links {{ grid-column: 2; }}
   .hero--final-dev1 .hero__body {{
     padding-top: clamp(48px, 5vw, 68px);
-    padding-bottom: 30px;
+    padding-bottom: 26px;
   }}
   .hero--final-dev1 .hero-row {{ margin-bottom: 16px; }}
   .hero--final-dev1 .hero__title {{
@@ -231,7 +233,7 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
   .hero--final-dev1 .hero__contact-block {{
     box-sizing: border-box;
     width: 100%;
-    max-width: 500px;
+    max-width: 560px;
     margin: 0 0 16px;
     padding-top: 14px;
     border-top: 1px solid rgba(240, 174, 31, 0.5);
@@ -262,7 +264,7 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
   }}
   .hero--final-dev1 .hero__call-label--desktop {{
     font-family: var(--font-body);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 400;
     letter-spacing: 0;
     text-transform: none;
@@ -272,17 +274,17 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
   .hero--final-dev1 .hero__call-help {{
     grid-column: 1 / -1;
     margin-top: 3px;
-    font-size: 11px;
-    line-height: 1.35;
-    color: rgba(255, 255, 255, 0.48);
+    font-size: 12px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.64);
   }}
   .hero--final-dev1 .hero__proofs {{
     box-sizing: border-box;
     display: grid;
     width: 100%;
-    max-width: 500px;
+    max-width: 600px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin: 0 0 14px;
+    margin: 0 0 16px;
     padding: 0;
     list-style: none;
   }}
@@ -291,7 +293,7 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
     min-width: 0;
     align-items: center;
     gap: 8px;
-    padding: 0 9px;
+    padding: 0 8px;
     border-left: 1px solid rgba(240, 174, 31, 0.28);
   }}
   .hero--final-dev1 .hero__proof:first-child {{
@@ -299,21 +301,31 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
     border-left: 0;
   }}
   .hero--final-dev1 .hero__proof svg {{
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     flex: none;
     color: var(--gold);
   }}
   .hero--final-dev1 .hero__proof span {{
-    font-size: 10px;
-    line-height: 1.25;
-    color: rgba(255, 255, 255, 0.76);
+    font-size: 12px;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.82);
   }}
   .hero--final-dev1 .hero__note {{
-    max-width: 580px;
-    font-size: 11px;
-    line-height: 1.45;
-    color: rgba(255, 255, 255, 0.5);
+    max-width: 640px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.64);
+  }}
+}}
+
+@media (min-width: 1201px) {{
+  .hero--final-dev1 .hero__contact-block {{ max-width: 580px; }}
+  .hero--final-dev1 .hero__proofs {{ max-width: 640px; }}
+  .hero--final-dev1 .hero__proof span {{ font-size: 13px; }}
+  .hero--final-dev1 .hero__note {{
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.66);
   }}
 }}
 
@@ -324,6 +336,14 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
   .hero--final-dev1 .hero__call-label--compact {{ display: inline; }}
   .hero--final-dev1 .hero__call-icon,
   .hero--final-dev1 .hero__call-copy {{ display: contents; }}
+}}
+
+@media (max-width: 860px) {{
+  .hero--final-dev1 .hero-media {{ overflow: hidden; }}
+  .hero--final-dev1 .hero-photo {{
+    transform: translateX(-7%) scale(1.15);
+    transform-origin: 50% 22%;
+  }}
 }}
 
 @media (max-width: 860px) and (min-height: 600px) {{
@@ -463,9 +483,16 @@ def verify(dest: Path, key: str) -> list[str]:
             problems.append("desktop-стили final-dev1 должны быть scoped и начинаться с 961px")
         if (
             "@media (max-width: 960px)" not in variant_css
-            or any(snippet not in variant_css for snippet in MOBILE_FALLBACK_SNIPPETS)
+            or any(
+                snippet not in variant_css
+                for snippet in (
+                    *MOBILE_FALLBACK_SNIPPETS,
+                    *MOBILE_CROP_SNIPPETS,
+                    *DESKTOP_READABILITY_SNIPPETS,
+                )
+            )
         ):
-            problems.append("mobile/tablet fallback или short-viewport compaction final-dev1 неполны")
+            problems.append("mobile crop, fallback или desktop readability final-dev1 неполны")
     problems.extend(verify_action_bar_install(dest))
     return problems
 

@@ -14,7 +14,9 @@ from action_bar_addon import SPEC_DATE, SPEC_VERSION, verify_action_bar_install
 from final_dev1_contract import (
     BOARD_PATH,
     DATE as FINAL_DEV1_DATE,
+    DESKTOP_READABILITY_SNIPPETS,
     MARKER as FINAL_DEV1_MARKER,
+    MOBILE_CROP_SNIPPETS,
     MOBILE_FALLBACK_SNIPPETS,
     REFERENCE_PATH,
     REFERENCE_SHA256,
@@ -89,9 +91,16 @@ def verify_final_dev1(dest: Path) -> list[str]:
         problems.append("desktop-композиция final-dev1 должна начинаться с 961px")
     if (
         "@media (max-width: 960px)" not in variant_css
-        or any(snippet not in variant_css for snippet in MOBILE_FALLBACK_SNIPPETS)
+        or any(
+            snippet not in variant_css
+            for snippet in (
+                *MOBILE_FALLBACK_SNIPPETS,
+                *MOBILE_CROP_SNIPPETS,
+                *DESKTOP_READABILITY_SNIPPETS,
+            )
+        )
     ):
-        problems.append("mobile/tablet fallback или short-viewport compaction final-dev1 неполны")
+        problems.append("mobile crop, fallback или desktop readability final-dev1 неполны")
     return problems
 
 
