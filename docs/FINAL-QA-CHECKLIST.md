@@ -8,9 +8,9 @@
 
 **Функциональный baseline:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
 
-**Функциональный baseline `final-dev1`:** `cc5f6e649ff39aa1f489745df9e5475d04808cb4`
+**Функциональный baseline `final-dev1`:** `507743eef9903f069a707fafb05baf65b69b88d4`
 
-**Независимая приёмка baseline:** `cc5f6e649ff39aa1f489745df9e5475d04808cb4`
+**Независимая приёмка baseline:** `507743eef9903f069a707fafb05baf65b69b88d4`
 
 Этот документ объединяет принятые владельцем решения, ошибки проекта,
 регрессионные проверки и незакрытые production-пункты. Он предназначен для
@@ -36,7 +36,7 @@
 | Контур | Статус на `2026-08-10` |
 |---|---|
 | Десять Preview | **LIVE PASS:** Action Bar `2.3.0`, часы Израиля, demo-switch, assets и Function readback опубликованы на всех alias |
-| `final-dev1` | **LIVE PASS:** отдельный desktop Hero и общий Action Bar `2.3.0` опубликованы и проверены |
+| `final-dev1` | **LIVE PASS:** Hero `1.2.0`, обе mobile CTA от `360×600`, desktop-композиция и Action Bar `2.3.0` опубликованы и проверены |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -70,13 +70,13 @@
 
 - [x] Работа ведётся в `acomol/gambaryan-family-law`, ветка
   `claude/website-development-kb0fu0`, не в `main`.
-- [x] Функциональный commit `8ccc820` запушен в
-  `origin/claude/website-development-kb0fu0`; все десять Preview deployments
-  привязаны Cloudflare API к тому же commit SHA.
-- [ ] После следующего docs-only commit различать новый PR head и deployed
-  functional SHA `8ccc820`; документационный commit сам по себе не означает
-  новый deployment.
-- [x] Ветка опережает `main` на 60 коммитов и не отстаёт от него.
+- [x] Функциональные commits запушены в
+  `origin/claude/website-development-kb0fu0`: девять Preview остаются на
+  `8ccc820`, отдельный `final-dev1` опубликован из `507743e`.
+- [x] После docs-only commit различать новый PR head и deployed functional SHA:
+  документационный commit сам по себе не означает новый deployment.
+- [x] После итогового docs commit ветка опережает `origin/main` на 70 коммитов
+  и не отстаёт от него.
 - [x] Рабочее дерево после push было чистым.
 - [x] `.dev.vars*`, `.wrangler/`, Python cache и локальные credentials не
   коммитятся.
@@ -473,7 +473,7 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 | Preview | URL | Baseline status |
 |---|---|---|
 | Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `[x]` deployment `bead8ade`, commit `8ccc820` |
-| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `8a163a38`, commit `cc5f6e6` |
+| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `c6fd60ad`, commit `507743e` |
 | Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `[x]` deployment `5f06866b`, commit `8ccc820` |
 | Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `[x]` deployment `be04a85e`, commit `8ccc820` |
 | Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `[x]` deployment `0161c006`, commit `8ccc820` |
@@ -487,11 +487,13 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 панель, `viewport-fit=cover`, CSS height 60, два IntersectionObserver, отсутствие
 scroll-listener, расписание `Asia/Jerusalem`, demo-switch, lead contract `1.1.0`
 и Function GET=405/Allow POST. Локальная browser-матрица прошла 10×360/390/768;
-живой `final-dev1` v1.1.0 дополнительно проверен интерактивно на desktop и
-mobile: `.nav-call` отсутствует, основной Hero-телефон и drawer-телефон
-сохранены, demo-switch меняет `2 ↔ 3` действия, console errors — 0.
+живой `final-dev1` v1.2.0 дополнительно проверен на 360×600, 360×668, 390×724,
+390×844, 720×760, 860×760, 861×760, 1280×900 и 1440×900: обе Hero CTA
+целиком на целевом portrait/mobile диапазоне, `.nav-call` отсутствует,
+horizontal overflow и console errors — 0; Action Bar прошла Hero → чтение →
+форма.
 
-- [x] Последний deployment `final-dev1` имеет commit `cc5f6e6`; остальные
+- [x] Последний deployment `final-dev1` имеет commit `507743e`; остальные
   девять Preview остаются на `8ccc820`. Все имеют status `success` по
   Cloudflare API.
 - [x] Production `https://gambarian-landing.pages.dev/` не обновлялся вместе с
@@ -505,6 +507,8 @@ mobile: `.nav-call` отсутствует, основной Hero-телефон
 
 ## 14. GitHub и CI
 
+- [x] GitHub Actions run `31406145891` для `507743e` завершён `success`;
+  lint, typecheck и Next build прошли.
 - [x] GitHub Actions run `31394432909` для `dd6af2d` завершён `success`.
 - [x] GitHub Actions run `31389047603` завершён `success`; lint, typecheck и
   Next build прошли.
