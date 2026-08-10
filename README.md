@@ -13,6 +13,7 @@
 > | Куда и как публикуется | [`docs/DEPLOY.md`](docs/DEPLOY.md) |
 > | Композиция экранов и критерии приёмки | [`docs/SCREEN-COMPOSITION.md`](docs/SCREEN-COMPOSITION.md) |
 > | Журнал ошибок и разборов | [`docs/ERRORS.md`](docs/ERRORS.md) |
+> | Финальный чек-лист: решения, регрессии и production-блокеры | [`docs/FINAL-QA-CHECKLIST.md`](docs/FINAL-QA-CHECKLIST.md) |
 >
 > Пересобрать файл-одностраничник:
 >

@@ -1,6 +1,6 @@
 # Куда публикуется сайт
 
-**Версия документа:** `1.1.0`
+**Версия документа:** `1.1.1`
 **Обновлено:** `2026-08-10`
 
 Читать **до** любых попыток развернуть проект. Отдельная площадка не
@@ -69,8 +69,15 @@ bash scripts/deploy-pages.sh
 
 ```bash
 npx wrangler login                                    # один раз
-npx wrangler pages deploy site --project-name=gambarian-landing
+npx --yes wrangler@4.120.0 pages deploy site \
+  --project-name=gambarian-landing \
+  --branch=main
 ```
+
+`--branch` обязателен: без него Wrangler берёт текущую Git-ветку и вместо
+production может молча создать Preview. Если production branch проекта
+изменится с `main`, сначала получить новое значение через Cloudflare API и
+обновить команду.
 
 В автоматической среде вместо входа через браузер — токен с правом
 «Cloudflare Pages: Edit» в `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`.
