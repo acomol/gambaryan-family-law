@@ -34,7 +34,7 @@
 
 | Preview | Полная visual/responsive-приёмка |
 |---|---|
-| `final-dev1` | Hero `PASS` по `FINAL-DEV1-HERO v1.3.0`; новый `PRECEDENT-COPY v1.0.0` — `PENDING` до live deployment/readback |
+| `final-dev1` | `LIVE PASS`: Hero `FINAL-DEV1-HERO v1.3.0` + `PRECEDENT-COPY v1.0.0` |
 | Остальные девять Preview | `PENDING` — обязателен отдельный прогон по `PREVIEW-BROWSER-QA v1.0.0` |
 
 Action Bar smoke уже выполнен на всех десяти URL, но он не заменяет полный

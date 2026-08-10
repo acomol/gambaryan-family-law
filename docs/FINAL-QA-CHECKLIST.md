@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.1.8`
+**Версия:** `1.1.9`
 
 **Обновлено:** `2026-08-11`
 
@@ -8,9 +8,9 @@
 
 **Функциональный baseline:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
 
-**Функциональный baseline `final-dev1`:** `a207d3f55ce1286c39aefd012c917a72ccb01773`
+**Функциональный baseline `final-dev1`:** `51e9b8241fae3acdf693c569156e21c50a71ac50`
 
-**Независимая приёмка baseline:** `a207d3f55ce1286c39aefd012c917a72ccb01773`
+**Независимая приёмка baseline:** `51e9b8241fae3acdf693c569156e21c50a71ac50`
 
 Этот документ объединяет принятые владельцем решения, ошибки проекта,
 регрессионные проверки и незакрытые production-пункты. Он предназначен для
@@ -33,10 +33,10 @@
 
 ## Текущий итог
 
-| Контур | Статус на `2026-08-10` |
+| Контур | Статус на `2026-08-11` |
 |---|---|
 | Десять Preview | **PARTIAL:** Action Bar `2.3.0`, часы Израиля, demo-switch, assets и Function readback LIVE PASS на всех alias; полная visual/responsive-приёмка закрыта только для `final-dev1` |
-| `final-dev1` | **LIVE PASS:** Hero `1.3.0`, плотный mobile-кадр пары, обе CTA от `360×600`, читаемый desktop proof-блок и Action Bar `2.3.0` опубликованы и проверены |
+| `final-dev1` | **LIVE PASS:** Hero `1.3.0`, Precedent Copy `1.0.0`, плотный mobile-кадр пары, обе CTA от `360×600`, читаемый desktop proof-блок и Action Bar `2.3.0` опубликованы и проверены |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -72,10 +72,10 @@
   `claude/website-development-kb0fu0`, не в `main`.
 - [x] Функциональные commits запушены в
   `origin/claude/website-development-kb0fu0`: девять Preview остаются на
-  `8ccc820`, отдельный `final-dev1` опубликован из `a207d3f`.
+  `8ccc820`, отдельный `final-dev1` опубликован из `51e9b82`.
 - [x] После docs-only commit различать новый PR head и deployed functional SHA:
   документационный commit сам по себе не означает новый deployment.
-- [x] После итогового docs commit ветка опережает `origin/main` на 70 коммитов
+- [x] После итогового docs commit ветка опережает `origin/main` на 75 коммитов
   и не отстаёт от него.
 - [x] Рабочее дерево после push было чистым.
 - [x] `.dev.vars*`, `.wrangler/`, Python cache и локальные credentials не
@@ -106,7 +106,7 @@
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.2.0` | `2026-08-10` | board и `scripts/client-preview-map.json` |
 | Browser QA клиентских Preview | `1.0.0` | `2026-08-10` | задача, композиционная спецификация и этот чек-лист |
-| Этот чек-лист | `1.1.8` | `2026-08-11` | текущий файл |
+| Этот чек-лист | `1.1.9` | `2026-08-11` | текущий файл |
 
 - [x] Все marker Action Bar синхронизированы на `2.3.0`.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
@@ -151,10 +151,10 @@
 - [x] `final-dev1` v1.3.0: desktop proof/note имеют минимум `12/13px` на
   961–1200 px и `13/14px` от 1201 px; проверены 1024×768 и 1280×720 без
   clipping, пересечений и horizontal overflow.
-- [ ] `final-dev1` `FINAL-DEV1-PRECEDENT-COPY v1.0.0`: дословно проверить
+- [x] `final-dev1` `FINAL-DEV1-PRECEDENT-COPY v1.0.0`: дословно проверены
   «ВПЕРВЫЕ / СОЗДАН ПРЕЦЕДЕНТ… / Добились возвращения…», обязательные
   переносы, отсутствие clipping/overflow и неизменные фото/CTA на mobile и
-  desktop. Отметить `[x]` только после live deployment/readback.
+  desktop; stable alias и deployment URL прошли live readback.
 - [x] Landscape высотой ниже 600 px остаётся отдельной прокручиваемой
   композицией: требование «обе CTA в первом экране» к нему не применяется;
   обязательны отсутствие horizontal overflow и штатный static Action Bar.
@@ -483,7 +483,7 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 | Preview | URL | Baseline status |
 |---|---|---|
 | Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `[x]` deployment `bead8ade`, commit `8ccc820` |
-| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `4842254e`, commit `a207d3f` |
+| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `8c91b32e`, commit `51e9b82` |
 | Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `[x]` deployment `5f06866b`, commit `8ccc820` |
 | Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `[x]` deployment `be04a85e`, commit `8ccc820` |
 | Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `[x]` deployment `0161c006`, commit `8ccc820` |
@@ -504,7 +504,7 @@ scroll-listener, расписание `Asia/Jerusalem`, demo-switch, lead contra
 860 px, desktop proof/note увеличены, `.nav-call` отсутствует, horizontal
 overflow и console errors — 0; Action Bar прошла Hero → чтение → форма.
 
-- [x] Последний deployment `final-dev1` имеет commit `a207d3f`; остальные
+- [x] Последний deployment `final-dev1` имеет commit `51e9b82`; остальные
   девять Preview остаются на `8ccc820`. Все имеют status `success` по
   Cloudflare API.
 - [x] Production `https://gambarian-landing.pages.dev/` не обновлялся вместе с
@@ -552,7 +552,7 @@ overflow и console errors — 0; Action Bar прошла Hero → чтение 
 
 ## 14. GitHub и CI
 
-- [x] GitHub Actions run `31409406158` для `a207d3f` завершён `success`;
+- [x] GitHub Actions run `31433776655` для `51e9b82` завершён `success`;
   lint, typecheck и Next build прошли.
 - [x] GitHub Actions run `31394432909` для `dd6af2d` завершён `success`.
 - [x] GitHub Actions run `31389047603` завершён `success`; lint, typecheck и
