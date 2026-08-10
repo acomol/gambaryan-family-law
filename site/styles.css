@@ -1415,6 +1415,9 @@ picture { display: block; }
 
   /* Снимок полосой во всю ширину экрана */
   .hero-media {
+    /* HERO-MOBILE v1.0.1 | 2026-08-10: flex-start нейтрализует
+       центрирование широкого flex-item; полоса занимает ровно 0–100vw. */
+    align-self: flex-start;
     position: relative;
     left: calc(var(--pad-x) * -1);
     right: auto;

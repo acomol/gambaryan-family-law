@@ -10,7 +10,7 @@
 <title>Адвокат по семейному праву в Израиле — Александр Гамбарян | Гамбарян &amp; Партнёры</title>
 <meta name="description" content="Развод в Израиле, брачный договор, медиация, алименты, отцовство, раздел имущества и международные дела о возвращении детей. Консультация на русском языке. Тель-Авив, Карлибах 10 / онлайн.">
 <meta name="theme-color" content="#101214">
-<!-- SOCIAL-PREVIEW v1.0.1 | 2026-08-10
+<!-- SOCIAL-PREVIEW v1.0.2 | 2026-08-10
      Карта и порядок обновления: docs/SOCIAL-PREVIEW.md. При изменении
      требований обновить и версию, и дату, затем пересобрать PNG. -->
 <meta property="og:type" content="website">
@@ -19,8 +19,8 @@
 <meta property="og:site_name" content="Гамбарян &amp; Партнёры">
 <meta property="og:title" content="Адвокат по семейному праву в Израиле — Александр Гамбарян">
 <meta property="og:description" content="Развод без судебного спора, брачный договор, медиация, алименты, отцовство, раздел имущества, международные дела о возвращении детей. Консультация на русском языке.">
-<meta property="og:image" content="https://gambarian-landing.pages.dev/social-preview-logo-v1.0.1-1200x630.png">
-<meta property="og:image:secure_url" content="https://gambarian-landing.pages.dev/social-preview-logo-v1.0.1-1200x630.png">
+<meta property="og:image" content="https://final-dev.gambarian-landing.pages.dev/social-preview-logo-v1.0.2-1200x630.png">
+<meta property="og:image:secure_url" content="https://final-dev.gambarian-landing.pages.dev/social-preview-logo-v1.0.2-1200x630.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -28,7 +28,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Адвокат по семейному праву в Израиле — Александр Гамбарян">
 <meta name="twitter:description" content="Развод без судебного спора, брачный договор, медиация, алименты, отцовство, раздел имущества, международные дела о возвращении детей. Консультация на русском языке.">
-<meta name="twitter:image" content="https://gambarian-landing.pages.dev/social-preview-logo-v1.0.1-1200x630.png">
+<meta name="twitter:image" content="https://final-dev.gambarian-landing.pages.dev/social-preview-logo-v1.0.2-1200x630.png">
 <meta name="twitter:image:alt" content="Логотип «Гамбарян &amp; Партнёры — Адвокаты»">
 <style>
 :root, :root[data-theme="light"], :root[data-theme="dark"] { color-scheme: dark; background: #101214; }
@@ -1556,6 +1556,9 @@ picture { display: block; }
 
   /* Снимок полосой во всю ширину экрана */
   .hero-media {
+    /* HERO-MOBILE v1.0.1 | 2026-08-10: flex-start нейтрализует
+       центрирование широкого flex-item; полоса занимает ровно 0–100vw. */
+    align-self: flex-start;
     position: relative;
     left: calc(var(--pad-x) * -1);
     right: auto;
