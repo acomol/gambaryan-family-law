@@ -1,6 +1,6 @@
 # Live release: `final-dev3`
 
-**Версия:** `FINAL-DEV3-LIVE-RELEASE v1.0.0`
+**Версия:** `FINAL-DEV3-LIVE-RELEASE v1.1.0`
 
 **Дата:** `2026-08-11`
 
@@ -11,12 +11,12 @@
 | Поле | Значение |
 |---|---|
 | Stable URL | https://final-dev3.gambarian-landing.pages.dev/ |
-| Immutable URL | https://2f20dc33.gambarian-landing.pages.dev/ |
-| Deployment UUID | `2f20dc33-714f-4b3a-86ea-b51880e33f05` |
-| Source commit | `78f429db90e20554af03693978cd89e8bd10f984` |
-| GitHub CI | `31482179779` — `success` |
+| Immutable URL | https://52a9addb.gambarian-landing.pages.dev/ |
+| Deployment UUID | `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07` |
+| Source commit | `88efa2ce0fb9dc5903e1f435310b372383a20d09` |
+| GitHub CI | `31486509765` — `success` |
 | Cloudflare status | `deploy / success` |
-| HTML SHA-256 | `742522199a314c7f8f4378d571487f444a633e4374305f767251a23a25b92b02` |
+| HTML SHA-256 | `48d8e11b40934c85e5ba7e90c98400ad9852fa4937eaae60bbff92450309a6ec` |
 
 Опубликован только каталог `build/variants/final-dev3` в Cloudflare branch
 `final-dev3` закреплённым Wrangler `4.120.0`. Production и прежние десять
@@ -26,7 +26,7 @@ Preview не передеплоивались.
 
 - Stable и immutable URL возвращают одинаковый HTML, HTTP `200` и
   `text/html`.
-- HTML/CSS содержат `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`; унаследованы
+- HTML/CSS/variant script содержат `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`; унаследованы
   `FINAL-DEV1-HERO v1.3.0`, текущие тексты и `noindex`.
 - `fonts.css` возвращает `text/css`; Playfair Display и Onest загружены как
   локальные webfonts.
@@ -48,6 +48,9 @@ Preview не передеплоивались.
   декодированного WebP-фото и не является layout-изменением.
 - Action Bar: Hero `hidden/inert`, чтение — три действия, demo closed — два
   действия и подпись «Демо · Нерабочее время», у формы снова `hidden/inert`.
+- Hero-контакт синхронен с тем же состоянием: open — исходный телефон;
+  closed — «Написать в WhatsApp» с canonical WhatsApp URL/иконкой. Вторых
+  часов, timer или отдельного состояния Hero нет.
 - Autofill `name/tel/email`; пустая форма показывает точные inline-ошибки и
   summary. Реальный POST не выполнялся; console warning/error `0`.
 
@@ -69,6 +72,13 @@ Cloudflare API и HTTP SHA-сверка подтвердили:
 Strict clone намеренно наследует OPEN-дефект `final-dev1` при browser zoom
 `200%`: desktop proof/call-help скрываются mobile-правилом. Поэтому полный
 WCAG AA PASS не заявляется.
+
+## История
+
+Предыдущий `FINAL-DEV3-DESIGN v1.0.0` был опубликован из commit `78f429d`:
+deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`, immutable URL
+https://2f20dc33.gambarian-landing.pages.dev/. Он остаётся историческим
+strict clone `final-dev1`; стабильный alias теперь обслуживает `v1.1.0`.
 
 ## Related
 

@@ -1,12 +1,12 @@
 # Полная browser/responsive-приёмка клиентских Preview
 
-**Версия:** `PREVIEW-BROWSER-QA v1.2.0`
+**Версия:** `PREVIEW-BROWSER-QA v1.2.1`
 
 **Дата:** `2026-08-11`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Статус:** `LOCAL PASS 11/11; HISTORICAL LIVE PASS v1.0.0; v1.1.0 PENDING LIVE`
+**Статус:** `LIVE PASS 11/11; final-dev3 v1.1.0 LIVE PASS`
 
 ## Цель
 
@@ -96,11 +96,11 @@ screenshots обязательны для репрезентативных mobil
 - [x] `#contact`, `tel:+972545490623` и WhatsApp ведут по назначению; форма
   сохраняет autocomplete, inline-ошибки и focus первого невалидного поля.
 - [x] Console `error` и `warning` равны нулю.
-- [x] `final-dev3` live URL возвращает 200 и исторический marker `v1.0.0`;
+- [x] `final-dev3` live URL возвращает 200 и текущий marker `v1.1.0`;
   `/lead-contract.js` содержит `1.1.0`, `GET /api/lead` возвращает 405 и
   `Allow: POST`. Для десяти исторических alias этот live-гейт уже закрыт.
-- [ ] PENDING Новый marker `FINAL-DEV3-DESIGN v1.1.0` и live Hero-state
-  readback проверяются только после нового deploy.
+- [x] Новый marker `FINAL-DEV3-DESIGN v1.1.0` и live Hero-state readback
+  проверены после отдельного deploy.
 
 ## Проверки по назначению варианта
 
@@ -112,7 +112,7 @@ screenshots обязательны для репрезентативных mobil
 | `hero-b-call-first` | Сохраняется объявленный порядок с доминирующим звонком; `tel:` и `#contact` не перепутаны |
 | `review-numbered` | Ровно 102 уникальных `data-rvn`; бейджи читаемы и не закрывают исходный текст |
 | `final-dev3 v1.0.0` | HISTORICAL: strict clone `final-dev1`, pixel-identical на `1293×724` и `390×844` |
-| `final-dev3 v1.1.0` | LOCAL PASS: Playfair Display + Onest, текущие тексты, Action Bar `2.3.1`; open Hero сохраняет телефон, closed показывает точный WhatsApp CTA; demo-sync и один state/timer |
+| `final-dev3 v1.1.0` | LIVE PASS: Playfair Display + Onest, текущие тексты, Action Bar `2.3.1`; open Hero сохраняет телефон, closed показывает точный WhatsApp CTA; demo-sync и один state/timer |
 
 Исходные точки, закрытые в локальном кандидате:
 
@@ -192,7 +192,8 @@ alias. Исправление вносится в source/generator, а не вр
   `Asia/Jerusalem`, state и timer; runner
   `PREVIEW-BROWSER-QA-RUNNER v1.2.0 | 2026-08-11` прошёл `173/173`, single
   `15/15`.
-- [ ] PENDING LIVE Повторить `15/15` и isolation readback после deploy.
+- [x] LIVE `15/15`, deployment `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07`
+  и isolation readback после deploy прошли.
 
 ## Related
 

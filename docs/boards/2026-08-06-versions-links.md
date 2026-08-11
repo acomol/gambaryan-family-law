@@ -1,6 +1,6 @@
 # Одиннадцать Cloudflare Preview-версий для заказчика
 
-**Версия карты:** `2.4.1`
+**Версия карты:** `2.4.2`
 
 **Обновлено:** `2026-08-11`
 
@@ -21,7 +21,7 @@
 |---|---|---|
 | `final-dev` | Итоговая базовая версия + Action Bar | https://final-dev.gambarian-landing.pages.dev/ |
 | `final-dev1` | Новый Hero без дубля телефона; плотный mobile-кадр пары, читаемый desktop proof-блок, обновлённый текст прецедента, обе CTA на коротком mobile + Action Bar | https://final-dev1.gambarian-landing.pages.dev/ |
-| `final-dev3` | Выбранный кандидат: Playfair Display + Onest, текущие тексты и Action Bar 2.3.1; live пока обслуживает исторический `v1.0.0`, Hero business-hours `v1.1.0` ожидает публикации | https://final-dev3.gambarian-landing.pages.dev/ |
+| `final-dev3` | Выбранный кандидат: Playfair Display + Onest, текущие тексты и Action Bar 2.3.1; Hero синхронно меняет телефон на WhatsApp вне рабочих часов | https://final-dev3.gambarian-landing.pages.dev/ |
 | `v1-playfair-onest` | Playfair Display + Onest + Action Bar | https://v1-playfair-onest.gambarian-landing.pages.dev/ |
 | `v2-lora-inter` | Lora + Inter + Action Bar | https://v2-lora-inter.gambarian-landing.pages.dev/ |
 | `v3-literata-manrope` | Literata + Manrope + Action Bar | https://v3-literata-manrope.gambarian-landing.pages.dev/ |
@@ -32,8 +32,7 @@
 | `review-numbered` | Копия текста со 102 подписанными номерами + Action Bar | https://review-numbered.gambarian-landing.pages.dev/ |
 
 Исторический live-контракт: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
-Текущий кандидат: `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11` — **PENDING
-LIVE**, стабильный URL до нового deploy не является доказательством `v1.1.0`.
+Текущий live-контракт: `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`.
 
 ## Статус полной browser-приёмки
 
@@ -41,7 +40,7 @@ LIVE**, стабильный URL до нового deploy не является 
 |---|---|
 | Все десять Preview | `LIVE PASS`: commit `98374c1`; local `100/100` + `50/50` + `6/6`, live HTTP/browser `10/10` по `PREVIEW-BROWSER-QA v1.0.1` |
 | `final-dev3` `v1.0.0` | `HISTORICAL LIVE PASS`: commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`; live `15/15`, полный локальный прогон `173/173`, strict-clone/readback/isolation PASS |
-| `final-dev3` `v1.1.0` | `LOCAL PASS; PENDING LIVE`: Hero-телефон/WhatsApp синхронизированы с Action Bar `2.3.1`; `15/15` и полная матрица `173/173` прошли, deploy/readback ещё не выполнены |
+| `final-dev3` `v1.1.0` | `LIVE PASS`: commit `88efa2c`, deployment `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07`; Hero-телефон/WhatsApp синхронизированы с Action Bar `2.3.1`; live `15/15`, локально `173/173`, isolation PASS |
 
 Action Bar smoke уже выполнен на прежних десяти URL, но он не заменяет полный
 rendered-прогон каждого варианта. `final-dev` и `action-bar` используют общий
@@ -57,10 +56,10 @@ rendered-прогон каждого варианта. `final-dev` и `action-ba
 | Mobile-адаптация клиентских Preview | `1.0.0` | 2026-08-11 |
 | Desktop Hero `final-dev1` | `1.3.0` | 2026-08-10 |
 | Текст прецедента `final-dev1` | `1.0.0` | 2026-08-11 |
-| Финальный кандидат `final-dev3` | `1.1.0` (`PENDING LIVE`; live `1.0.0`) | 2026-08-11 |
+| Финальный кандидат `final-dev3` | `1.1.0` (`LIVE PASS`) | 2026-08-11 |
 | Lead hook / форма | `1.1.0` | 2026-08-10 |
 | Карта клиентских preview | `2.4.0` | 2026-08-11 |
-| Browser QA клиентских Preview | `1.2.0` | 2026-08-11 |
+| Browser QA клиентских Preview | `1.2.1` | 2026-08-11 |
 
 ## Как работает конверсионный путь
 

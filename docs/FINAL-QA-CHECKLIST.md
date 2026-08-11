@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.3.2`
+**Версия:** `1.3.3`
 
 **Обновлено:** `2026-08-11`
 
@@ -14,9 +14,9 @@
 
 **Клиентский Preview release:** `98374c133f91a7c47112561f86debbcec2129f6c`
 
-**Preview release `final-dev3`:** `78f429db90e20554af03693978cd89e8bd10f984`
+**Preview release `final-dev3`:** `88efa2ce0fb9dc5903e1f435310b372383a20d09`
 
-**Кандидат `final-dev3 v1.1.0`:** `LOCAL PASS; PENDING LIVE`
+**Кандидат `final-dev3 v1.1.0`:** `LIVE PASS`
 
 **Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
@@ -45,7 +45,7 @@
 |---|---|
 | Десять Preview | **LIVE PASS:** commit `98374c1`, Action Bar `2.3.1`, Client Preview Mobile `1.0.0`; локальные 100/100 + 50/50 + 6/6 и live HTTP/browser readback 10/10 прошли |
 | `final-dev1` | **LIVE PASS:** Hero `1.3.0`, Precedent Copy `1.0.0` и исходные assets сохранены; marker `FINAL-DEV1-DESIGN` отсутствует |
-| `final-dev3` | **HISTORICAL LIVE PASS `v1.0.0`:** commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`, live `15/15`, локальная карта `173/173`. **LOCAL PASS; PENDING LIVE `v1.1.0`:** новый Hero business-hours прошёл `173/173`, но ещё не опубликован |
+| `final-dev3` | **LIVE PASS `v1.1.0`:** commit `88efa2c`, deployment `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07`, live `15/15`, локальная карта `173/173`, Hero business-hours и isolation PASS. `v1.0.0` сохранён как исторический release |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -116,18 +116,18 @@
 | Client Preview Mobile | `1.0.0` | `2026-08-11` | `client-preview.css`, manifest и verifier |
 | Desktop Hero `final-dev1` | `1.3.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
 | Текст прецедента `final-dev1` | `1.0.0` | `2026-08-11` | builder, HTML marker, task, browser readback |
-| Дизайн-кандидат `final-dev3` | `1.1.0` (`LOCAL PASS, PENDING LIVE`; live `1.0.0`) | `2026-08-11` | task, source, builder и verifier готовы; deploy/readback pending |
+| Дизайн-кандидат `final-dev3` | `1.1.0` (`LIVE PASS`) | `2026-08-11` | task, source, builder, verifier, deploy и live-readback |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.4.0` | `2026-08-11` | board и `scripts/client-preview-map.json` |
-| Browser QA клиентских Preview | `1.2.0` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
+| Browser QA клиентских Preview | `1.2.1` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
 | Build tools | `1.1.1` | `2026-08-11` | `requirements-build.txt` |
 | Browser QA runner | `1.2.0` | `2026-08-11` | `scripts/qa-browser-matrix.py` |
-| Этот чек-лист | `1.3.2` | `2026-08-11` | текущий файл |
+| Этот чек-лист | `1.3.3` | `2026-08-11` | текущий файл |
 
 - [x] Все локальные и live marker Action Bar синхронизированы на `2.3.1`;
   исторический `final-dev3 v1.0.0` прошёл отдельный Preview readback.
-- [x] LOCAL Marker/source/generator `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`
-  согласованы; новый live deployment ещё не проверен.
+- [x] Marker/source/generator/live `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`
+  согласованы.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
 - [x] Все social meta указывают на PNG `v1.0.2`.
 - [ ] При следующем изменении требований одновременно увеличить версию,
@@ -141,7 +141,7 @@
 - [x] Формулировка основного CTA — «Записаться на консультацию».
 - [x] Опубликованный `final-dev3 v1.0.0` и прежние варианты ведут из Hero к
   форме и звонку.
-- [x] LOCAL В `final-dev3 v1.1.0` закрытое состояние заменяет только
+- [x] LIVE В `final-dev3 v1.1.0` закрытое состояние заменяет только
   Hero-телефон на `Написать в WhatsApp`; одновременно телефон и WhatsApp в
   одном Hero-состоянии не показываются.
 - [x] Адрес ведёт в Google Maps по адресу без непроверенных координат.
@@ -575,14 +575,14 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
   Action Bar/demo отсутствуют, `/api/lead` остаётся старым HTML fallback 200.
 - [ ] OPEN `docs/DEPLOY.md` содержит историческую фразу, что аккаунт Pages не
   проверен живым API; в этой сессии аккаунт и проект уже подтверждены.
-- [ ] MANUAL Перед отправкой заказчику открыть все десять ссылок в обычном
+- [ ] MANUAL Перед отправкой заказчику открыть все одиннадцать ссылок в обычном
   мобильном браузере, исключив кеш/авторизацию/anti-bot экран.
 
 ### `final-dev3 v1.0.0` — HISTORICAL LIVE PASS
 
-| Preview | Стабильный URL | Deployment | Контракты |
+| Preview | Исторический immutable URL | Deployment | Контракты |
 |---|---|---:|---|
-| Финальная Dev 3 | https://final-dev3.gambarian-landing.pages.dev/ | `2f20dc33-714f-4b3a-86ea-b51880e33f05` | commit `78f429d`; `FINAL-DEV3-DESIGN v1.0.0`; Playfair Display + Onest; текущие тексты; Action Bar `2.3.1`; mobile `1.0.0` |
+| Финальная Dev 3 | https://2f20dc33.gambarian-landing.pages.dev/ | `2f20dc33-714f-4b3a-86ea-b51880e33f05` | commit `78f429d`; `FINAL-DEV3-DESIGN v1.0.0`; Playfair Display + Onest; текущие тексты; Action Bar `2.3.1`; mobile `1.0.0` |
 
 - [x] LOCAL Каталог входит в Preview-карту `2.4.0` и воспроизводимо собирается
   из `final-dev1`.
@@ -592,17 +592,16 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 - [x] Cloudflare API и HTTP SHA подтвердили: десять исторических Preview и
   production не изменились.
 
-### `final-dev3 v1.1.0` — PENDING LIVE
+### `final-dev3 v1.1.0` — LIVE PASS
 
-- [ ] Новый marker, commit, deployment ID и live readback отсутствуют до
-  публикации кандидата.
-- [ ] После публикации отдельно подтвердить open/closed Hero, demo-sync,
-  единственный state/timer Action Bar и изоляцию production/прежних десяти
-  Preview; не переносить сюда PASS `v1.0.0`.
+- [x] Commit `88efa2c`, CI `31486509765`, deployment
+  `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07` и marker `v1.1.0` подтверждены.
+- [x] Open/closed Hero, demo-sync, единственный state/timer Action Bar и
+  изоляция production/прежних десяти Preview подтверждены отдельно.
 
 ### Полная browser/responsive-приёмка всех Preview
 
-Контракт: `PREVIEW-BROWSER-QA v1.2.0 | 2026-08-11`.
+Контракт: `PREVIEW-BROWSER-QA v1.2.1 | 2026-08-11`.
 
 | Preview | Локальный кандидат | Live после публикации |
 |---|---|---|
@@ -617,7 +616,7 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 | `action-bar` | `[x] PASS`; byte-identical с `final-dev` | `[x] PASS` |
 | `review-numbered` | `[x] PASS`; 102 уникальных номера, прежний overflow закрыт | `[x] PASS` |
 | `final-dev3 v1.0.0` | `[x] HISTORICAL PASS`; strict clone `final-dev1`, single `15/15`, pixel-identical на двух контрольных viewport | `[x] HISTORICAL PASS` |
-| `final-dev3 v1.1.0` | `[x] PASS`; оба Hero business-state, demo-sync, single `15/15`, форма центрирована | `[ ] PENDING LIVE` |
+| `final-dev3 v1.1.0` | `[x] PASS`; оба Hero business-state, demo-sync, single `15/15`, форма центрирована | `[x] LIVE PASS` |
 
 - [x] Выполнено `100/100` ячеек: десять Preview × `360×600`, `360×668`,
   `390×724`, `390×844`, `720×760`, `860×760`, `861×760`, `1024×768`,
@@ -655,7 +654,7 @@ runner `1.1.0` относится к опубликованному `final-dev3 
   изоляции десяти старых alias/production.
 - [x] LOCAL Полная матрица `v1.1.0` прошла `173/173`, single `15/15`; проверены
   auto open/closed, оба demo-состояния Hero/Action Bar и центрирование формы.
-- [ ] PENDING LIVE Повторить `15/15` и isolation readback после deploy.
+- [x] LIVE `15/15` и isolation readback после deploy прошли.
 
 ## 14. GitHub и CI
 
@@ -776,7 +775,8 @@ runner `1.1.0` относится к опубликованному `final-dev3 
 - [x] LOCAL Реализация и локальная приёмка
   `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`: `173/173`, single `15/15`,
   verifier `11/11`.
-- [ ] PENDING Commit/push и live deployment/readback `v1.1.0`.
+- [x] Commit/push и live deployment/readback `v1.1.0` прошли: `88efa2c`,
+  `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07`.
 - [ ] CLIENT Решить, нужна ли отсутствующая секция «Подготовка к консультации».
 - [ ] CLIENT Решить состав формы: topic вместо email, четвёртым полем или без
   topic.

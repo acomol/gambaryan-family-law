@@ -1,10 +1,10 @@
 # Задание: отдельный `final-dev3` после утверждения Preview
 
-**Версия:** `FINAL-DEV3-PLAN v1.3.0`
+**Версия:** `FINAL-DEV3-PLAN v1.3.1`
 
 **Дата:** `2026-08-11`
 
-**Статус:** `LOCAL PASS — FINAL-DEV3-DESIGN v1.1.0 PENDING LIVE`
+**Статус:** `COMPLETE — FINAL-DEV3-DESIGN v1.1.0 LIVE PASS`
 
 ## Цель
 
@@ -25,8 +25,7 @@ Hero, тексты и нижнюю панель, а Hero-контакт синх
 `final-dev3` является отдельным воспроизводимым кандидатом и Cloudflare alias,
 а не скрытой заменой шрифтовых файлов или новым редизайном. Опубликованный
 `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11` остаётся историческим LIVE PASS;
-новый кандидат получает marker `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11` и не
-считается live до отдельного deploy/readback.
+стабильный alias теперь обслуживает `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`.
 
 ## Изменение `v1.1.0`
 
@@ -91,9 +90,10 @@ Hero, тексты и нижнюю панель, а Hero-контакт синх
   Action Bar `2.3.1`, lead/autofill и визуальные ошибки полей не регрессируют.
 - [x] Полный локальный browser-прогон: `110/110 + 55/55 + 8/8 = 173/173`;
   одиночный `final-dev3` — `15/15`; центрирование формы входит в gate.
-- [ ] PENDING Commit, push, Preview deploy и live-readback нового marker.
-- [x] LOCAL Git diff подтверждает отсутствие изменений в production и прежних
-  десяти Preview; Cloudflare API/HTTP readback повторяется после deploy.
+- [x] Commit `88efa2c`, CI `31486509765`, Preview deployment
+  `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07` и live-readback нового marker прошли.
+- [x] Cloudflare API и HTTP SHA-readback подтвердили отсутствие изменений в
+  production и прежних десяти Preview.
 
 ## Related
 

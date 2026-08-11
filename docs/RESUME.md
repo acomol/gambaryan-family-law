@@ -1,6 +1,6 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v1.1.2`
+**Версия:** `HANDOFF-RESUME v1.1.3`
 
 **Обновлено:** `2026-08-11`
 
@@ -15,12 +15,9 @@
   статус `draft`. Тело PR обновляет ведущий агент после появления финального SHA.
 - Клиентский Preview release: `98374c133f91a7c47112561f86debbcec2129f6c`;
   документационный HEAD не означает новый Cloudflare deployment.
-- `final-dev3` release: `78f429db90e20554af03693978cd89e8bd10f984`;
-  deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`, CI `31482179779` success;
-  это исторический live `FINAL-DEV3-DESIGN v1.0.0`.
-- Текущий кандидат `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11` — `LOCAL PASS,
-  PENDING LIVE`: локальные `15/15` и `173/173` прошли; commit/deployment/readback
-  ещё не зафиксированы.
+- `final-dev3` release: `88efa2ce0fb9dc5903e1f435310b372383a20d09`;
+  deployment `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07`, CI `31486509765` success;
+  это live `FINAL-DEV3-DESIGN v1.1.0`.
 - `site/`, `functions/` и `site-addons/` не менять в рамках handoff-refresh.
   Production не обновлялся вместе с последним Preview release.
 
@@ -76,8 +73,8 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 `98374c1`: они имеют Action Bar
 `2.3.1` и `CLIENT-PREVIEW-MOBILE v1.0.0`. У `final-dev1` дополнительно
 подтверждён Hero `1.3.0` и Precedent Copy `1.0.0`. Одиннадцатый alias
-`final-dev3 v1.0.0` опубликован отдельно из commit `78f429d` и прошёл
-live-readback. Новый `v1.1.0` ещё не опубликован.
+`final-dev3 v1.1.0` опубликован отдельно из commit `88efa2c` и прошёл
+live-readback; `v1.0.0` сохранён как исторический release.
 
 | Контур | URL | Deployment | Контракты |
 |---|---|---:|---|
@@ -91,7 +88,7 @@ live-readback. Новый `v1.1.0` ещё не опубликован.
 | `hero-b-call-first` | https://hero-b-call-first.gambarian-landing.pages.dev/ | `b4e3c1de-b801-4c97-a70c-0d5903eed5b0` | Hero B; Action Bar `2.3.1`; mobile `1.0.0` |
 | `action-bar` | https://action-bar.gambarian-landing.pages.dev/ | `f5b76f77-4212-4754-b590-b0d9387df083` | эталон Action Bar `2.3.1`; mobile `1.0.0` |
 | `review-numbered` | https://review-numbered.gambarian-landing.pages.dev/ | `aaa2e734-486f-4433-82b3-34fdadb3a683` | 102 подписи; Action Bar `2.3.1`; mobile `1.0.0` |
-| `final-dev3` | https://final-dev3.gambarian-landing.pages.dev/ | `2f20dc33-714f-4b3a-86ea-b51880e33f05` | **live `v1.0.0`**: commit `78f429d`, strict clone `final-dev1`, live `15/15`; **candidate `v1.1.0` PENDING LIVE**: Hero phone/WhatsApp business-hours |
+| `final-dev3` | https://final-dev3.gambarian-landing.pages.dev/ | `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07` | **live `v1.1.0`**: commit `88efa2c`, Hero phone/WhatsApp business-hours, live `15/15`; исторический `v1.0.0` — `2f20dc33…` |
 | Production | https://gambarian-landing.pages.dev/ | `af10299b-1257-4f65-b66d-4b1e3041bf74` | commit `cb9135c`; `noindex`; Action Bar/client-preview markers отсутствуют |
 
 Production HTML до и после Preview release имел SHA-256
@@ -153,7 +150,7 @@ python scripts/qa-browser-matrix.py http://127.0.0.1:<port>/ --all-previews
 режим использует одиннадцать путей и дополнительные группы из
 `docs/FINAL-QA-CHECKLIST.md`. Результат
 `final-dev3 v1.1.0` повторно прошёл
-`110/110 + 55/55 + 8/8 = 173/173`; live-прогон остаётся pending.
+`110/110 + 55/55 + 8/8 = 173/173`; live-прогон `15/15` также прошёл.
 Опубликованный release десяти Preview сохраняет отдельный результат
 `100/100 + 50/50 + 6/6`.
 
@@ -181,9 +178,9 @@ Playfair Display + Onest, текущими текстами и Action Bar `2.3.1
 - demo-switch синхронно меняет Hero и Action Bar;
 - Hero не создаёт второй clock, timer или state map.
 
-Кандидат остаётся `PENDING LIVE` до commit/push, нового deployment и
-live-readback. Локально прошли `15/15`, полная матрица `173/173`, оба
-Hero-state и центрирование формы. Он наследует известный zoom-200% дефект
+Кандидат опубликован: commit `88efa2c`, deployment `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07`,
+live `15/15` и isolation readback прошли. Локально прошли полная матрица
+`173/173`, оба Hero-state и центрирование формы. Он наследует известный zoom-200% дефект
 `final-dev1`; полный WCAG AA PASS заявлять нельзя.
 
 До production-ready остаются решения/действия владельца:

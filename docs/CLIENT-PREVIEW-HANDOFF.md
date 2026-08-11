@@ -1,6 +1,6 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v1.2.2`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v1.2.3`
 
 **Дата:** `2026-08-11`
 
@@ -27,7 +27,7 @@
 | 8 | `hero-b-call-first` | Hero B: звонок является главным действием, запись — вторым | [Открыть Hero B](https://hero-b-call-first.gambarian-landing.pages.dev/) |
 | 9 | `action-bar` | Эталон поведения мобильной нижней панели | [Открыть Action Bar](https://action-bar.gambarian-landing.pages.dev/) |
 | 10 | `review-numbered` | Служебная версия со 102 номерами для точного согласования текста; не кандидат на финальный дизайн | [Открыть подписанный текст](https://review-numbered.gambarian-landing.pages.dev/) |
-| 11 | `final-dev3` | На URL сейчас исторический `v1.0.0` strict clone `final-dev1` (**LIVE PASS**). Кандидат `v1.1.0` добавляет синхронный Hero phone/WhatsApp business-hours и пока **PENDING LIVE** | [Открыть final-dev3](https://final-dev3.gambarian-landing.pages.dev/) |
+| 11 | `final-dev3` | Текущий `v1.1.0`: Hero и нижняя панель синхронно переключаются между телефоном и WhatsApp по рабочему времени (**LIVE PASS**) | [Открыть final-dev3](https://final-dev3.gambarian-landing.pages.dev/) |
 
 `final-dev` и `action-bar` намеренно публикуются из одного канонического
 артефакта. Их два URL оставлены, чтобы один использовать как общий вариант, а
@@ -61,7 +61,7 @@
 - Cloudflare deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`, live
   HTTP/asset/Function readback и browser `15/15` прошли.
 
-## Что изменяется в `final-dev3 v1.1.0`
+## Что реализовано в `final-dev3 v1.1.0`
 
 - Marker: `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`.
 - Action Bar `2.3.1` остаётся единственным источником расписания
@@ -71,8 +71,8 @@
 - Demo-switch одновременно меняет Hero и Action Bar. Вторые часы, timer или
   отдельная карта состояния Hero не создаются.
 - Кандидат локально прошёл `15/15` и полную матрицу `173/173`, включая оба
-  состояния Hero и центрирование мобильной формы. Он ещё не опубликован:
-  live PASS `v1.0.0` на него не переносится.
+  состояния Hero и центрирование мобильной формы. Live deployment
+  `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07` повторно прошёл `15/15`.
 
 ## Как работает конверсионный путь
 
@@ -152,7 +152,7 @@ webhook, а не создание записи в CRM/таблице.
 - [x] Решение `v1.1.0`: Hero phone/WhatsApp следует тому же состоянию Action
   Bar; demo-switch синхронизирует оба элемента без второго timer/state.
 - [x] Локальная реализация и browser QA `FINAL-DEV3-DESIGN v1.1.0` завершены.
-- [ ] PENDING Commit, deploy и live-readback `v1.1.0`.
+- [x] Commit `88efa2c`, deploy и live-readback `v1.1.0` прошли.
 
 ### Тексты кандидата и оставшиеся клиентские решения
 
@@ -208,8 +208,8 @@ webhook, а не создание записи в CRM/таблице.
 - [x] Branch `final-dev3 v1.0.0` опубликован отдельно; live
   HTTP/assets/Function/browser readback и изоляция прежних URL прошли.
 - [x] Локальная матрица `v1.1.0`: `173/173`, одиночный прогон `15/15`.
-- [ ] PENDING Перед передачей `v1.1.0` заказчику опубликовать новый marker и
-  выполнить live Hero/Action Bar sync readback.
+- [x] Перед передачей `v1.1.0` заказчику опубликован новый marker; live
+  Hero/Action Bar sync и isolation readback прошли.
 
 ## Источники проверки
 
