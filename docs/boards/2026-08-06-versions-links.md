@@ -1,137 +1,89 @@
 # Одиннадцать Cloudflare Preview-версий для заказчика
 
-**Версия карты:** `2.4.2`
+**Версия карты:** `2.4.0`
 
 **Обновлено:** `2026-08-11`
 
-**Ветка:** `claude/website-development-kb0fu0`
+**Статус:** `LOCAL QA PASS / LIVE PENDING`
 
-Все адреса ниже — стабильные Cloudflare Pages Preview aliases. При повторной
-сборке содержимое обновляется, ссылка остаётся прежней. Production
-`gambarian-landing.pages.dev` в клиентскую выборку не входит.
+Стабильные aliases ниже сейчас обслуживают предыдущий опубликованный release.
+Он сохранён как `HISTORICAL LIVE`; описание отличий в таблице относится к
+новому локальному кандидату и станет live только после отдельного деплоя.
 
-Все Preview используют **одну и ту же Action Bar v2.3.1** из единственного
-источника `site-addons/action-bar/`. Версии
-различаются только заявленным вариантом — шрифтами, Hero или подписанными
-номерами. Production при публикации не изменился.
+## Ссылки и различия
 
-## Ссылки
+| № | Preview | Отличие нового кандидата | URL |
+|---:|---|---|---|
+| 1 | `final-dev` | Базовая композиция и эталон Action Bar | https://final-dev.gambarian-landing.pages.dev/ |
+| 2 | `final-dev1` | Без desktop-дубля телефона, плотный mobile crop и короткая mobile-композиция | https://final-dev1.gambarian-landing.pages.dev/ |
+| 3 | `final-dev3` | Те же композиция и Playfair/Onest, что в `final-dev1`; единственное отличие — Hero синхронен с business-hours Action Bar | https://final-dev3.gambarian-landing.pages.dev/ |
+| 4 | `v1-playfair-onest` | Playfair Display + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ |
+| 5 | `v2-lora-inter` | Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ |
+| 6 | `v3-literata-manrope` | Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ |
+| 7 | `v4-ptserif-golos` | PT Serif + Golos Text | https://v4-ptserif-golos.gambarian-landing.pages.dev/ |
+| 8 | `hero-a-actions-first` | Hero: действия перед фото | https://hero-a-actions-first.gambarian-landing.pages.dev/ |
+| 9 | `hero-b-call-first` | Hero: телефонный блок выше формы/фото | https://hero-b-call-first.gambarian-landing.pages.dev/ |
+| 10 | `action-bar` | Эталон зонной мобильной панели | https://action-bar.gambarian-landing.pages.dev/ |
+| 11 | `review-numbered` | Реально использованные client/owner блоки со служебными номерами | https://review-numbered.gambarian-landing.pages.dev/ |
 
-| Версия | Назначение | URL |
-|---|---|---|
-| `final-dev` | Итоговая базовая версия + Action Bar | https://final-dev.gambarian-landing.pages.dev/ |
-| `final-dev1` | Новый Hero без дубля телефона; плотный mobile-кадр пары, читаемый desktop proof-блок, обновлённый текст прецедента, обе CTA на коротком mobile + Action Bar | https://final-dev1.gambarian-landing.pages.dev/ |
-| `final-dev3` | Выбранный кандидат: Playfair Display + Onest, текущие тексты и Action Bar 2.3.1; Hero синхронно меняет телефон на WhatsApp вне рабочих часов | https://final-dev3.gambarian-landing.pages.dev/ |
-| `v1-playfair-onest` | Playfair Display + Onest + Action Bar | https://v1-playfair-onest.gambarian-landing.pages.dev/ |
-| `v2-lora-inter` | Lora + Inter + Action Bar | https://v2-lora-inter.gambarian-landing.pages.dev/ |
-| `v3-literata-manrope` | Literata + Manrope + Action Bar | https://v3-literata-manrope.gambarian-landing.pages.dev/ |
-| `v4-ptserif-golos` | PT Serif + Golos Text + Action Bar | https://v4-ptserif-golos.gambarian-landing.pages.dev/ |
-| `hero-a-actions-first` | Действия перед фотографией + Action Bar | https://hero-a-actions-first.gambarian-landing.pages.dev/ |
-| `hero-b-call-first` | Звонок как главное действие + Action Bar | https://hero-b-call-first.gambarian-landing.pages.dev/ |
-| `action-bar` | Эталонная версия мобильной Action Bar | https://action-bar.gambarian-landing.pages.dev/ |
-| `review-numbered` | Копия текста со 102 подписанными номерами + Action Bar | https://review-numbered.gambarian-landing.pages.dev/ |
+## Общее для нового кандидата
 
-Исторический live-контракт: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
-Текущий live-контракт: `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`.
-
-## Статус полной browser-приёмки
-
-| Preview | Полная visual/responsive-приёмка |
-|---|---|
-| Все десять Preview | `LIVE PASS`: commit `98374c1`; local `100/100` + `50/50` + `6/6`, live HTTP/browser `10/10` по `PREVIEW-BROWSER-QA v1.0.1` |
-| `final-dev3` `v1.0.0` | `HISTORICAL LIVE PASS`: commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`; live `15/15`, полный локальный прогон `173/173`, strict-clone/readback/isolation PASS |
-| `final-dev3` `v1.1.0` | `LIVE PASS`: commit `88efa2c`, deployment `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07`; Hero-телефон/WhatsApp синхронизированы с Action Bar `2.3.1`; live `15/15`, локально `173/173`, isolation PASS |
-
-Action Bar smoke уже выполнен на прежних десяти URL, но он не заменяет полный
-rendered-прогон каждого варианта. `final-dev` и `action-bar` используют общий
-артефакт, но матрица и live-readback выполняются на каждом из двух URL.
+- каждый размещённый смысловой блок входит в client allowlist или в точный
+  `OWNER-APPROVED` блок Юлии; полный coverage 45 client ID не требуется;
+- вне client/owner allowlist разрешены только identity и `SYSTEM-UI`;
+- форма содержит только `Имя`/`Телефон`; Email, topic, proof-тексты и редакция
+  «ВПЕРВЫЕ…» отсутствуют;
+- Action Bar `2.3.2` общий для всех вариантов и использует `wa.me` без
+  неутверждённого `?text=` prefill;
+- production не меняется.
 
 ## Версии контрактов
 
-| Функционал | Версия | Дата |
-|---|---:|---:|
-| Карточка ссылки и логотип 1200×630 | `1.0.2` | 2026-08-10 |
-| Мобильная Hero-полоса | `1.0.1` | 2026-08-10 |
-| Нижняя панель | `2.3.1` | 2026-08-11 |
-| Mobile-адаптация клиентских Preview | `1.0.0` | 2026-08-11 |
-| Desktop Hero `final-dev1` | `1.3.0` | 2026-08-10 |
-| Текст прецедента `final-dev1` | `1.0.0` | 2026-08-11 |
-| Финальный кандидат `final-dev3` | `1.1.0` (`LIVE PASS`) | 2026-08-11 |
-| Lead hook / форма | `1.1.0` | 2026-08-10 |
-| Карта клиентских preview | `2.4.0` | 2026-08-11 |
-| Browser QA клиентских Preview | `1.2.1` | 2026-08-11 |
+| Функционал | Локальный кандидат | Дата | Live до публикации |
+|---|---:|---:|---:|
+| Action Bar | `2.3.2` | 2026-08-11 | `2.3.1` `HISTORICAL` |
+| Client Preview Mobile | `1.1.0` | 2026-08-11 | `1.0.0` `HISTORICAL` |
+| Client Copy allowlist + Owner override | `1.0.0` | 2026-08-11 | LOCAL PASS; новый live отсутствует |
+| Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `1.3.0` `HISTORICAL` |
+| `final-dev3` | `2.0.0` | 2026-08-11 | `1.1.0` `HISTORICAL` |
+| Lead hook / форма (name + phone only) | `2.0.0` | 2026-08-11 | `1.1.0` `HISTORICAL` |
+| Review numbering | `2.0.0` | 2026-08-11 | прежние 102 подписи `HISTORICAL` |
+| Browser QA runner | `1.3.0` | 2026-08-11 | `1.2.x` `HISTORICAL` |
 
-## Как работает конверсионный путь
+Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.0 | 2026-08-11`.
 
-- Hero сразу объясняет специализацию и ведёт к форме либо звонку. На мобильном
-  фото занимает полную ширину экрана без бокового смещения; CTA остаются
-  крупными и доступны без точного попадания.
-- Action Bar одинаково работает во всех Preview из карты: скрыта на Hero, видна
-  при чтении, снова скрывается у формы, при открытом меню и при фокусе в поле.
-  По времени Израиля в воскресенье–четверг с 09:00 включительно до 18:00
-  исключительно доступны звонок, запись и WhatsApp. В остальное время телефон
-  автоматически убирается, остаются «Записаться» и «Написать в WhatsApp».
-  Preview-переключатель рядом с панелью позволяет показать заказчику оба
-  состояния. Верхняя подпись переключателя и состав нижней панели меняются из
-  одной карты состояния: `Авто · Рабочее время` или
-  `Демо · Рабочее время` соответствует трём действиям; `Авто · Нерабочее
-  время` или `Демо · Нерабочее время` — двум. Перезагрузка возвращает
-  автоматический режим.
-- Только кандидат `final-dev3 v1.1.0` дополнительно отражает то же состояние в
-  Hero: в рабочее время сохраняет текущий телефон, в нерабочее показывает
-  `Написать в WhatsApp` с WhatsApp-ссылкой и иконкой. Hero не считает время и
-  не запускает второй timer; demo-switch меняет Hero и панель вместе.
-- Поля формы имеют `autocomplete=name|tel|email`, корректные типы и ограничения.
-  Ошибка показывается рядом с конкретным полем, а фокус переводится на первое
-  место, которое нужно исправить; введённые данные при повторе сохраняются.
-- После подключения encrypted secret форма отправляет JSON в `/api/lead`,
-  Cloudflare Function валидирует его и передаёт в Albato. Повтор одной заявки
-  сохраняет `submission_id`, поэтому downstream можно настроить как upsert.
-- Сейчас Cloudflare endpoint и клиентская логика опубликованы, но Albato
-  delivery не считается принятым до установки Preview secret, Catch webhook,
-  дедупликации и контрольного readback конечной записи.
-- При пересылке любой preview-ссылки Open Graph/Twitter используют фирменный
-  логотип 1200×630 со стабильного `final-dev` image origin.
+## Историческая live-приёмка
+
+| Release | Статус |
+|---|---|
+| Прежние десять Preview, commit `98374c1` | `HISTORICAL LIVE PASS` |
+| `final-dev3 v1.0.0`, commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05` | `HISTORICAL LIVE PASS` |
+| `final-dev3 v1.1.0`, commit `88efa2c`, deployment `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07` | `HISTORICAL LIVE PASS` |
+
+Эти live-результаты и промежуточный локальный PASS `45/45` не доказывают
+финальный allowlist-контракт. Исправленный кандидат отдельно прошёл локальную
+матрицу `173/173`; deployment пока не выполнялся и требует разрешения владельца.
 
 ## Карта пересборки
 
 | Группа | Источник | Производные |
 |---|---|---|
-| База | `site/` | исходник для одиннадцати производных; production не изменяется |
-| Нижняя панель — single source | `site-addons/action-bar/` | центральный этап сборки добавляет Action Bar во все Preview из карты |
-| Итоговая Dev | `scripts/build-action-bar.py` | `final-dev` использует тот же канонический `build/variants/action-bar`, что и эталон панели |
-| Итоговая Dev 1 | `scripts/build-hero-variants.py dev1` | отдельный `build/variants/final-dev1`; desktop Hero не меняет `site/` и `final-dev` |
-| Итоговая Dev 3 | `scripts/build-hero-variants.py dev3` | отдельный `build/variants/final-dev3`; наследует `final-dev1`, а в `v1.1.0` меняет только Hero-контакт по уже вычисленному состоянию Action Bar |
-| Шрифты | `scripts/build-font-variants.py` + центральный этап Action Bar | четыре `build/font-variants/*` |
-| Hero | `scripts/build-hero-variants.py` + центральный этап Action Bar | два `build/variants/hero-*` |
-| Эталон панели | `scripts/build-action-bar.py` | `build/variants/action-bar` |
-| Номера текста | `scripts/build-review-numbered.py` + центральный этап Action Bar | `build/variants/review-numbered` |
+| База | `site/` | все одиннадцать Preview |
+| Copy | frozen `docs/sources/client-copy-short-v1.0.0.txt` + `scripts/client_copy_contract.py` | client allowlist, owner override и статический gate source + builds |
+| Action Bar | `site-addons/action-bar/` | общий addon во всех Preview |
+| Hero | `scripts/build-hero-variants.py` | `final-dev1`, `final-dev3`, Hero A/B |
+| Шрифты | `scripts/build-font-variants.py` | четыре font Preview |
+| Review | `scripts/build-review-numbered.py` | `review-numbered`, 38 используемых client ID + owner block |
 
-Копии CSS, HTML или JS панели внутри отдельных генераторов не допускаются:
-изменение `site-addons/action-bar/` должно попадать во все Preview из карты при
-одной пересборке.
+## Ограничения
 
-Исполняемая карта `branch → build directory`, версия Wrangler и дата хранятся в
-`scripts/client-preview-map.json`. Версия карты и версия Action Bar хранятся
-раздельно: добавление Preview не меняет контракт панели. `final-dev` и `action-bar` намеренно
-публикуются из одного канонического артефакта, поэтому их панель не может
-разойтись.
-
-После пересборки общий статический гейт запускается командой
-`python scripts/verify-client-previews.py`.
-
-## Ограничения Preview
-
-- Все страницы имеют `noindex` и не являются боевым доменом.
-- GTM/GA4 ещё не подключены: события Action Bar складываются в `dataLayer`, но
-  не уходят в аналитику без контейнера.
-- Реальный POST в Albato не выполнять до настройки секрета и Catch webhook.
+- Preview имеют `noindex` и не являются production.
+- Реальный Albato POST не выполнять до настройки секрета и readback.
+- Stable URL не означает, что локальный кандидат уже опубликован.
 
 ## Related
 
-- [Куда публикуется сайт](../DEPLOY.md)
-- [Контракт lead hook](../LEAD-WEBHOOK-CONTRACT.md)
-- [Карточка ссылки](../SOCIAL-PREVIEW.md)
-- [Требования аналитики](../TRACKING-REQUIREMENTS.md)
-- [Полная browser/responsive-приёмка Preview](../tasks/2026-08-10-all-previews-browser-qa.md)
-- [Live release final-dev3](../reviews/2026-08-11-final-dev3-live-release.md)
+- [Строгий клиентский copy](../tasks/2026-08-11-client-approved-copy-only.md)
+- [Пакет для заказчика](../CLIENT-PREVIEW-HANDOFF.md)
+- [Финальный QA](../FINAL-QA-CHECKLIST.md)
+- [Deploy runbook](../DEPLOY.md)

@@ -1,10 +1,10 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.3.3`
+**Версия:** `2.1.0`
 
 **Обновлено:** `2026-08-11`
 
-**Ветка:** `claude/website-development-kb0fu0`
+**Ветка:** `codex/client-approved-copy-only`
 
 **Функциональный baseline:** `8ccc8201e9b77e8c8069fed8cc548e50df497aa8`
 
@@ -16,13 +16,105 @@
 
 **Preview release `final-dev3`:** `88efa2ce0fb9dc5903e1f435310b372383a20d09`
 
-**Кандидат `final-dev3 v1.1.0`:** `LIVE PASS`
+**Кандидат `final-dev3 v2.0.0`:** `LOCAL QA PASS / LIVE PENDING`
 
 **Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
 Этот документ объединяет принятые владельцем решения, ошибки проекта,
 регрессионные проверки и незакрытые production-пункты. Он предназначен для
 финального прогона Codex/Claude и не заменяет тематические спецификации.
+
+## Действующий release gate: client-approved copy only
+
+Последние явные решения владельца задают allowlist, а не обязательный coverage:
+каждый размещённый смысловой текст должен входить в 45-строчный client allowlist
+или в точный `OWNER-APPROVED` блок Юлии. Вне них допустимы только существующая
+identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Телефон`, без Email/topic.
+
+| Контракт | Текущая версия | Статус |
+|---|---:|---|
+| Client Copy contract/verifier | `1.0.0` | LOCAL PASS: allowlist + owner override |
+| Action Bar | `2.3.2` | LOCAL PASS; live `2.3.1` historical |
+| Client Preview Mobile | `1.1.0` | LOCAL PASS; live `1.0.0` historical |
+| `FINAL-DEV1-HERO` | `2.0.0` | LOCAL PASS; live `1.3.0` historical |
+| `FINAL-DEV3-DESIGN` | `2.0.0` | LOCAL PASS; live `1.1.0` historical |
+| Lead contract | `2.0.0` | LOCAL PASS: name/phone only; live `1.1.0` historical |
+| Review Numbered | `2.0.0` | LOCAL PASS: 38 used client ID + owner block; прежние 102 historical |
+| Browser QA runner | `1.3.0` | LOCAL PASS `173/173` |
+| Этот чек-лист | `2.1.0` | active |
+
+### A. Источник и copy
+
+- [x] Frozen source `docs/sources/client-copy-short-v1.0.0.txt` имеет SHA-256
+  `5234CC5D9A3A4DF991827EF02E8DA46AE9C8B46D33C84CC33671E4B0465FA18E`;
+  размер `14 895 bytes`.
+- [x] Каждый реально размещённый client-блок дословно входит в 45-строчный
+  allowlist; missing разрешённых ID допустим и отражён в `CONTENT-MISSING.md`.
+- [x] Точный прежний блок Юлии присутствует как `OWNER-APPROVED` без изменений.
+- [x] Все одиннадцать производных не содержат смыслового текста вне
+  client/owner allowlist.
+- [x] Вне содержательных allowlist остаются только identity,
+  navigation/accessibility/form state/business-hours demo/review instruction
+  (`SYSTEM-UI`).
+- [x] `Email`, `topic`, proof-тексты, «Или позвоните сразу» и редакция
+  «ВПЕРВЫЕ…» отсутствуют.
+- [x] Сокращённые факты/заголовки не заменяют клиентские формулировки.
+
+### B. Action Bar и WhatsApp
+
+- [x] Marker/source/manifest/verifier согласованы на `2.3.2 | 2026-08-11`.
+- [x] Все WhatsApp Action Bar href равны `https://wa.me/972545490623` без
+  query `?text=` и без неутверждённого prefill.
+- [x] Open/closed расписание: `Asia/Jerusalem`, вс–чт `[09:00,18:00)`.
+- [x] Demo-switch меняет видимую подпись, панель и `final-dev3` Hero синхронно.
+- [x] Hero не создаёт второй timer/карту состояния.
+- [x] Панель скрыта на Hero, у формы, при menu open и focus in form.
+
+### C. Форма и lead `2.0.0`
+
+- [x] Поля формы: только обязательные имя/телефон; Email и topic отсутствуют.
+- [x] Browser/Function не принимают и не отправляют `email`/`topic`.
+- [x] Browser/Function payload совпадают со схемой `2.0.0` name/phone-only.
+- [x] Real Albato POST не выполнялся; secret/dedup/readback остаются BLOCKED.
+
+### D. Сборка и browser QA
+
+- [x] После owner correction все builders завершаются с кодом `0`; `build/` не
+  правился вручную.
+- [x] После owner correction `verify-client-copy`, `verify-client-previews`,
+  lead tests — PASS.
+- [x] После owner correction Browser runner `1.3.0` проходит все одиннадцать
+  Preview: `173/173`.
+- [x] Проверены `360×600`, `390×724`, `960×760`, `961×760`, `1024×768`,
+  `1280×720`, `1440×900`; horizontal overflow `0`.
+- [x] LOCAL manual visual: головы/волосы, текст поверх фото, CTA и форма по
+  центру проверены на `360×600`, `390×844` и `1440×900`; реальный iPhone
+  safe-area остаётся отдельным внешним шагом.
+- [x] KNOWN OPEN: Zoom 200% defect остаётся OPEN; полный WCAG AA PASS не
+  заявляется.
+
+### E. Git, публикация и передача
+
+- [x] Изменения только в feature branch; secrets отсутствуют.
+- [ ] `git diff --check`, commit, push и CI — PASS.
+- [x] Production и live Preview не менялись во время финальной локальной
+  приёмки после owner correction.
+- [ ] Preview deployment выполняется только после отдельного разрешения.
+- [ ] После разрешения: 11/11 served markers/behavior, API `405`, production
+  readback и soft-404 exclusion.
+- [ ] Только после live-readback пакет можно передавать клиенту.
+
+## HISTORICAL AUDIT TRAIL — SUPERSEDED КАК ТЕКУЩАЯ ПРИЁМКА
+
+Всё ниже сохранено как журнал прежних ошибок, решений и live-доказательств.
+Галочки ниже относятся к старым releases (`final-dev1 1.3.0`, `final-dev3
+1.1.0`, Action Bar `2.3.1`, Client Preview Mobile `1.0.0`, lead `1.1.0`, review
+со 102 номерами) и не закрывают действующий gate выше. Промежуточный PASS
+`45/45` и сопровождавший его старый прогон `173/173` получены до финальных
+решений вернуть Юлию и убрать topic. Текущий отдельный прогон после коррекции —
+`173/173 LOCAL PASS` — зафиксирован в действующем gate выше.
+Упоминания Email, topic, proof и «ВПЕРВЫЕ…» — история отменённых решений; точный
+блок Юлии, напротив, остаётся действующим `OWNER-APPROVED` override.
 
 ## Как читать статусы
 
@@ -252,7 +344,7 @@
 - [ ] OPEN Статус в `docs/FONT-VARIANTS.md` устарел: документ всё ещё говорит,
   что варианты 2–4 не опубликованы, хотя четыре Preview уже live.
 
-## 7. Action Bar: historical baseline v2.3.0 / current Preview v2.3.1
+## 7. Action Bar: historical baseline v2.3.0 / then-current Preview v2.3.1
 
 ### Состав и single source
 
@@ -777,11 +869,11 @@ runner `1.1.0` относится к опубликованному `final-dev3 
   verifier `11/11`.
 - [x] Commit/push и live deployment/readback `v1.1.0` прошли: `88efa2c`,
   `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07`.
-- [ ] CLIENT Решить, нужна ли отсутствующая секция «Подготовка к консультации».
-- [ ] CLIENT Решить состав формы: topic вместо email, четвёртым полем или без
-  topic.
-- [ ] CLIENT Согласовать расширение top-line на уголовное/миграционное право и
-  добавленные секционные/служебные формулировки.
+- [x] SUPERSEDED Полный coverage документа не требуется; отсутствие секции
+  «Подготовка к консультации» допустимо и отражается в coverage-отчёте.
+- [x] OWNER Форма содержит только `Имя` и `Телефон`, без Email/topic.
+- [x] SUPERSEDED Несогласованные расширения top-line и добавленные смысловые
+  формулировки запрещены allowlist-контрактом.
 - [x] Блок Юлии Саакян отдельно подтверждён владельцем `2026-08-10`.
 - [x] «Более 30 лет» и исходный порядок карточек фактов подтверждены владельцем.
 
@@ -820,6 +912,8 @@ auth/IP-состояния, `TRACKING-REQUIREMENTS.md` — частично ст
 
 ## Related
 
+- [Действующий client-approved copy task](tasks/2026-08-11-client-approved-copy-only.md)
+- [Карта источников текста](CONTENT-SOURCE-MAP.md)
 - [Журнал ошибок](ERRORS.md)
 - [Карта одиннадцати Preview и URL](boards/2026-08-06-versions-links.md)
 - [Задание Final Dev 1](tasks/2026-08-10-final-dev1-desktop-hero.md)

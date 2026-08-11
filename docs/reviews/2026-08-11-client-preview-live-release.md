@@ -1,10 +1,15 @@
-# Live-релиз десяти клиентских Preview
+> **HISTORICAL / SUPERSEDED AS CURRENT 2026-08-11.** Это доказательство
+> предыдущего live release, а не публикации исправленного allowlist-кандидата.
+> Актуальные входы: [`../RESUME.md`](../RESUME.md) и
+> [`../tasks/2026-08-11-client-approved-copy-only.md`](../tasks/2026-08-11-client-approved-copy-only.md).
+
+# Live-релиз десяти клиентских Preview — HISTORICAL
 
 **Версия:** `CLIENT-PREVIEW-LIVE-RELEASE v1.0.0`
 
 **Дата:** `2026-08-11`
 
-**Статус:** `PASS`
+**Статус:** `HISTORICAL LIVE PASS / SUPERSEDED AS CURRENT`
 
 **Git commit:** `98374c133f91a7c47112561f86debbcec2129f6c`
 

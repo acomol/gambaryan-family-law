@@ -5,11 +5,10 @@
 В site/ ничего не меняется: боевая версия остаётся текущей компоновкой,
 которая служит точкой отсчёта.
 
-Варианты a/b отличаются только первым экраном. `dev1` дополнительно может
-содержать явно versioned и проверяемые owner-overrides. `dev3` является
-отдельным маркированным клоном `dev1`; общий `site/` при этом остаётся
-неизменным. В `dev3` добавлен только scoped adapter, который синхронизирует
-Hero с уже рассчитанным Action Bar состоянием рабочего времени.
+Варианты a/b отличаются только компоновкой первого экрана. `dev1` сохраняет
+утверждённый клиентский текст и добавляет только versioned layout/crop.
+`dev3` является отдельным маркированным клоном `dev1`; в нём добавлен только
+scoped adapter, синхронизирующий Hero с уже рассчитанным Action Bar состоянием.
 
     python scripts/build-hero-variants.py             # все
     python scripts/build-hero-variants.py a b dev1 dev3    # выборочно
@@ -29,9 +28,6 @@ from final_dev1_contract import (
     MARKER_RE as FINAL_DEV1_MARKER_RE,
     MOBILE_CROP_SNIPPETS,
     MOBILE_FALLBACK_SNIPPETS,
-    PRECEDENT_COPY_CSS_SNIPPET,
-    PRECEDENT_COPY_MARKER,
-    PRECEDENT_COPY_SNIPPETS,
     VERSION as FINAL_DEV1_VERSION,
 )
 from final_dev3_contract import (
@@ -56,18 +52,9 @@ FINAL_DEV3_ADDON = ROOT / "site-addons" / "final-dev3"
 
 MEDIA = re.compile(r'\n      <div class="hero-media">.*?</div>\n', re.S)
 ACTIONS = re.compile(r'\n      <div class="hero__actions">.*?</div>\n', re.S)
-PHONE = re.compile(r'\n      <p class="hero__phone">.*?</p>\n', re.S)
-NOTE = re.compile(r'\n      <p class="hero__note">.*?</p>\n', re.S)
+PHONE = re.compile(r'\n      <p class="hero__phone"[^>]*>.*?</p>\n', re.S)
+NOTE = re.compile(r'\n      <p class="hero__note"[^>]*>.*?</p>\n', re.S)
 NAV_CALL = re.compile(r'\n    <a class="nav-call".*?</a>\n', re.S)
-
-CALL_ICON = (
-    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-    '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 '
-    '19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 '
-    '2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 '
-    '2.81.7A2 2 0 0 1 22 16.92z"></path></svg>'
-)
 
 
 def parts(html: str) -> dict:
@@ -137,49 +124,19 @@ def variant_a(html: str) -> tuple[str, str]:
 
 def variant_b(html: str) -> tuple[str, str]:
     b = parts(html)
-    # Кнопка становится звонком, запись на консультацию — строкой.
-    b["actions"] = (
-        '\n      <div class="hero__actions">\n'
-        '        <a class="btn btn--wine hero__call-btn" href="tel:+972545490623" '
-        'data-action="phone_click" aria-label="Позвонить: плюс 972 54 549 06 23">'
-        f'{CALL_ICON}<span>Позвонить&nbsp;054-549-0623</span></a>\n'
-        '      </div>\n'
-    )
-    b["phone"] = (
-        '\n      <p class="hero__phone"><a class="hero__form-link" href="#contact" '
-        'data-action="form_anchor_click">Или оставьте заявку — ответим в рабочее время</a></p>\n'
-    )
-    html = assemble(b["_html"], ["media", "actions", "phone", "note"], b)
+    # Смысловой текст и data-copy-id остаются неизменными; меняется только
+    # порядок, чтобы утверждённый блок телефона/WhatsApp шёл перед записью.
+    html = assemble(b["_html"], ["media", "phone", "actions", "note"], b)
     html = html.replace(
         '<section class="hero" id="top">',
         '<section class="hero hero--call-first" id="top">',
         1,
     )
     css = """
-/* === Вариант B: звонок — главное действие =================================
-   Приоритет обратный текущему: цель практики — телефонный звонок, поэтому
-   доминантой сделан он, а форма уведена в текстовую строку. Номер стоит
-   прямо в кнопке — приём koberg-law.co.il, где подпись кнопки есть сам
-   номер: человек видит, куда звонит, ещё до нажатия. */
-.hero__call-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 17px;
-  letter-spacing: 0.01em;
-}
-.hero__call-btn svg { flex: none; }
-.hero__form-link {
-  color: rgba(255, 255, 255, 0.72);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  display: inline-block;
-  padding: 10px 6px;
-  margin: -10px -6px;
-}
-.hero__form-link:hover { color: #fff; }
+/* === Вариант B: утверждённый контактный блок перед записью ================ */
+.hero--call-first .hero__phone { margin-bottom: 18px; }
 @media (max-width: 860px) {
-  .hero__call-btn { width: 100%; justify-content: center; font-size: 18px; }
+  .hero--call-first .hero__phone { margin-bottom: 12px; }
 }
 """
     return html, css
@@ -188,56 +145,21 @@ def variant_b(html: str) -> tuple[str, str]:
 # --- Final Dev 1: расширенная desktop-конверсия ----------------------------
 
 def variant_final_dev1(html: str) -> tuple[str, str]:
-    """Добавляет подтверждённый владельцем desktop-блок под основным CTA.
-
-    До 960px новый ряд преимуществ скрыт, а звонок сохраняет базовую
-    компактную разметку. Это оставляет мобильный Hero и Action Bar без
-    визуальных и поведенческих изменений.
-    """
+    """Добавляет только scoped layout/crop поверх утверждённого текста."""
     b = parts(html)
-    b["phone"] = f'''
-      <!-- FINAL-DEV1-HERO v{FINAL_DEV1_VERSION} | {FINAL_DEV1_DATE} -->
-      <div class="hero__phone hero__contact-block">
-        <a class="hero__call hero__call--expanded" href="tel:+972545490623" data-action="phone_click" aria-label="Позвонить: плюс 972 54 549 06 23">
-          <span class="hero__call-icon" aria-hidden="true">{CALL_ICON}</span>
-          <span class="hero__call-copy">
-            <span class="hero__call-label hero__call-label--desktop">Или позвоните сразу</span>
-            <span class="hero__call-label hero__call-label--compact">Позвонить</span>
-            <span class="hero__call-num nowrap-token">054-549-0623</span>
-            <span class="hero__call-help">Срочный вопрос? Позвоните напрямую</span>
-          </span>
-        </a>
-      </div>
-      <ul class="hero__proofs" aria-label="Преимущества работы">
-        <li class="hero__proof">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 6h14M5 6l-3 6h6L5 6Zm14 0-3 6h6l-3-6ZM8 21h8"></path></svg>
-          <span>Семейное право<br>во всех аспектах</span>
-        </li>
-        <li class="hero__proof">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
-          <span>Конфиденциальность<br>и защита интересов</span>
-        </li>
-        <li class="hero__proof">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="3.5"></circle><path d="M5 21v-2a7 7 0 0 1 14 0v2"></path></svg>
-          <span>Индивидуальный подход<br>к каждому делу</span>
-        </li>
-      </ul>
-'''
+    if b["phone"].count('class="hero__phone"') != 1:
+        raise SystemExit("исходный утверждённый контактный блок Hero повреждён")
+    b["phone"] = b["phone"].replace(
+        '\n      <p class="hero__phone"',
+        f'\n      <!-- FINAL-DEV1-HERO v{FINAL_DEV1_VERSION} | {FINAL_DEV1_DATE} -->'
+        '\n      <p class="hero__phone hero__contact-block"',
+        1,
+    ).replace(
+        'class="hero__call"',
+        'class="hero__call hero__call--expanded"',
+        1,
+    )
     html = assemble(b["_html"], ["media", "actions", "phone", "note"], b)
-    precedent_before = '''      <div class="precedent-card__text">
-        <span class="precedent-card__eyebrow">Международный прецедент</span>
-        <h3 class="precedent-card__title">Возвращение похищенного ребёнка при незарегистрированных родительских правах</h3>
-        <p>Александр Гамбарян — автор международного судебного прецедента, связанного с возвращением похищенного ребёнка в ситуации, когда родительские права не были зарегистрированы. Опыт конкретного дела помогает видеть правовые и международные аспекты таких споров. Каждый новый случай оценивается отдельно.</p>
-      </div>'''
-    precedent_after = f'''      <div class="precedent-card__text">
-        <!-- {PRECEDENT_COPY_MARKER} -->
-        <span class="precedent-card__eyebrow">ВПЕРВЫЕ</span>
-        <h3 class="precedent-card__title">СОЗДАН ПРЕЦЕДЕНТ <br class="precedent-copy__break">В МЕЖДУНАРОДНОЙ СУДЕБНОЙ ПРАКТИКЕ</h3>
-        <p>Добились возвращения похищенного ребёнка, <br class="precedent-copy__break">несмотря на отсутствие официально <br class="precedent-copy__break">зарегистрированных родительских прав</p>
-      </div>'''
-    if html.count(precedent_before) != 1:
-        raise SystemExit("исходный текст блока прецедента не найден ровно один раз")
-    html = html.replace(precedent_before, precedent_after, 1)
     html = html.replace(
         '<section class="hero" id="top">',
         '<section class="hero hero--final-dev1" id="top">',
@@ -253,11 +175,7 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
     )
     css = f"""
 /* FINAL-DEV1-HERO v{FINAL_DEV1_VERSION} | {FINAL_DEV1_DATE}
-   Расширенная desktop-конверсия по утверждённому референсу. Все правила
-   привязаны к варианту: site/, production и прежние Preview не меняются. */
-.hero--final-dev1 .hero__call-label--compact {{ display: none; }}
-
-{PRECEDENT_COPY_CSS_SNIPPET}
+   Только компоновка и кроп; смысловой текст наследуется из client-copy. */
 
 @media (min-width: 961px) {{
   .site-header--final-dev1 .site-header__bar {{
@@ -292,72 +210,7 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
     margin: 0;
     padding: 0;
   }}
-  .hero--final-dev1 .hero__call-icon {{
-    box-sizing: border-box;
-    display: grid;
-    width: 42px;
-    height: 42px;
-    flex: none;
-    place-items: center;
-    border: 1px solid var(--gold);
-    border-radius: 50%;
-  }}
-  .hero--final-dev1 .hero__call-icon svg {{ width: 19px; height: 19px; }}
-  .hero--final-dev1 .hero__call-copy {{
-    display: grid;
-    grid-template-columns: auto auto;
-    column-gap: 14px;
-    align-items: baseline;
-  }}
-  .hero--final-dev1 .hero__call-label--desktop {{
-    font-family: var(--font-body);
-    font-size: 14px;
-    font-weight: 400;
-    letter-spacing: 0;
-    text-transform: none;
-    color: rgba(255, 255, 255, 0.72);
-  }}
   .hero--final-dev1 .hero__call-num {{ font-size: 22px; }}
-  .hero--final-dev1 .hero__call-help {{
-    grid-column: 1 / -1;
-    margin-top: 3px;
-    font-size: 12px;
-    line-height: 1.4;
-    color: rgba(255, 255, 255, 0.64);
-  }}
-  .hero--final-dev1 .hero__proofs {{
-    box-sizing: border-box;
-    display: grid;
-    width: 100%;
-    max-width: 600px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin: 0 0 16px;
-    padding: 0;
-    list-style: none;
-  }}
-  .hero--final-dev1 .hero__proof {{
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 8px;
-    padding: 0 8px;
-    border-left: 1px solid rgba(240, 174, 31, 0.28);
-  }}
-  .hero--final-dev1 .hero__proof:first-child {{
-    padding-left: 0;
-    border-left: 0;
-  }}
-  .hero--final-dev1 .hero__proof svg {{
-    width: 22px;
-    height: 22px;
-    flex: none;
-    color: var(--gold);
-  }}
-  .hero--final-dev1 .hero__proof span {{
-    font-size: 12px;
-    line-height: 1.35;
-    color: rgba(255, 255, 255, 0.82);
-  }}
   .hero--final-dev1 .hero__note {{
     max-width: 640px;
     font-size: 13px;
@@ -368,21 +221,10 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
 
 @media (min-width: 1201px) {{
   .hero--final-dev1 .hero__contact-block {{ max-width: 580px; }}
-  .hero--final-dev1 .hero__proofs {{ max-width: 640px; }}
-  .hero--final-dev1 .hero__proof span {{ font-size: 13px; }}
   .hero--final-dev1 .hero__note {{
     font-size: 14px;
     color: rgba(255, 255, 255, 0.66);
   }}
-}}
-
-@media (max-width: 960px) {{
-  .hero--final-dev1 .hero__proofs,
-  .hero--final-dev1 .hero__call-label--desktop,
-  .hero--final-dev1 .hero__call-help {{ display: none; }}
-  .hero--final-dev1 .hero__call-label--compact {{ display: inline; }}
-  .hero--final-dev1 .hero__call-icon,
-  .hero--final-dev1 .hero__call-copy {{ display: contents; }}
 }}
 
 @media (max-width: 860px) {{
@@ -406,23 +248,30 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
   .hero--final-dev1 .hero-media {{ margin-bottom: 10px; }}
   .hero--final-dev1 .hero-photo {{
     display: block;
-    max-height: calc(100vh - 432px);
-    max-height: calc(100dvh - 432px);
+    max-height: calc(100vh - 472px);
+    max-height: calc(100dvh - 472px);
   }}
   .hero--final-dev1 .hero__actions {{ margin-bottom: 10px; }}
 }}
 
+@media (max-width: 379px) and (min-height: 600px) {{
+  .hero--final-dev1 .hero-photo {{
+    max-height: calc(100vh - 492px);
+    max-height: calc(100dvh - 492px);
+  }}
+}}
+
 @media (min-width: 420px) and (max-width: 659px) and (min-height: 600px) {{
   .hero--final-dev1 .hero-photo {{
-    max-height: calc(100vh - 396px);
-    max-height: calc(100dvh - 396px);
+    max-height: calc(100vh - 424px);
+    max-height: calc(100dvh - 424px);
   }}
 }}
 
 @media (min-width: 660px) and (max-width: 860px) and (min-height: 600px) {{
   .hero--final-dev1 .hero-photo {{
-    max-height: calc(100vh - 374px);
-    max-height: calc(100dvh - 374px);
+    max-height: calc(100vh - 402px);
+    max-height: calc(100dvh - 402px);
   }}
 }}
 """
@@ -484,16 +333,18 @@ def verify(dest: Path, key: str) -> list[str]:
         problems.append("в разметке остались неподставленные слоты")
     if hero.count("hero-media") < 1:
         problems.append("фотография пропала из hero")
-    if "wa.me" in hero:
-        problems.append("WhatsApp вернулся в hero — он должен быть выведен")
     if 'href="#contact"' not in hero:
         problems.append("из hero нет пути к форме")
     if "tel:+972545490623" not in hero:
         problems.append("из hero нет звонка")
     if html.count('id="contact"') != 1:
         problems.append("якорь формы повреждён")
-    # текст первого экрана не должен меняться между вариантами
-    for must in ("Адвокат по семейному праву в Израиле", "054-549-0623"):
+    # Утверждённый клиентский текст не должен меняться между вариантами.
+    for must in (
+        "Развод в Израиле? Адвокат по семейному праву — на русском языке",
+        "Записаться на консультацию",
+        "054-549-0623",
+    ):
         if must not in hero:
             problems.append(f"пропал текст «{must}»")
 
@@ -519,24 +370,6 @@ def verify(dest: Path, key: str) -> list[str]:
             problems.append("дублирующий desktop-телефон .nav-call остался в шапке")
         if 'class="nav-drawer__call"' not in html:
             problems.append("из мобильного меню пропал звонок")
-        if hero.count('<li class="hero__proof">') != 3:
-            problems.append("в final-dev1 должно быть ровно три преимущества с иконками")
-        if html.count(PRECEDENT_COPY_MARKER) != 1:
-            problems.append("FINAL-DEV1-PRECEDENT-COPY version/date marker отсутствует")
-        for snippet in PRECEDENT_COPY_SNIPPETS:
-            if html.count(snippet) != 1:
-                problems.append("утверждённая редакция блока прецедента повреждена")
-        if PRECEDENT_COPY_CSS_SNIPPET not in variant_css:
-            problems.append("mobile-переносы текста прецедента не защищены")
-        for must in (
-            "Или позвоните сразу",
-            "Срочный вопрос? Позвоните напрямую",
-            "Семейное право",
-            "Конфиденциальность",
-            "Индивидуальный подход",
-        ):
-            if must not in hero:
-                problems.append(f"в final-dev1 пропал текст «{must}»")
         hero_phone_count = len(
             re.findall(r'class="[^"]*\bhero__phone\b[^"]*"', hero)
         )
@@ -545,12 +378,11 @@ def verify(dest: Path, key: str) -> list[str]:
         order_tokens = (
             'class="hero__actions"',
             'class="hero__phone hero__contact-block"',
-            'class="hero__proofs"',
             'class="hero__note"',
         )
         order_positions = [hero.find(token) for token in order_tokens]
         if any(position < 0 for position in order_positions) or order_positions != sorted(order_positions):
-            problems.append("ожидался DOM-порядок CTA → звонок → иконки → пояснение")
+            problems.append("ожидался DOM-порядок CTA → контакты → пояснение")
         if (
             "@media (min-width: 961px)" not in variant_css
             or ".hero--final-dev1" not in variant_css
@@ -558,8 +390,7 @@ def verify(dest: Path, key: str) -> list[str]:
         ):
             problems.append("desktop-стили final-dev1 должны быть scoped и начинаться с 961px")
         if (
-            "@media (max-width: 960px)" not in variant_css
-            or any(
+            any(
                 snippet not in variant_css
                 for snippet in (
                     *MOBILE_FALLBACK_SNIPPETS,
@@ -568,7 +399,7 @@ def verify(dest: Path, key: str) -> list[str]:
                 )
             )
         ):
-            problems.append("mobile crop, fallback или desktop readability final-dev1 неполны")
+            problems.append("mobile crop, compaction или desktop layout final-dev1 неполны")
     if key == "dev3":
         styles = (dest / "styles.css").read_text(encoding="utf-8")
         script_path = dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT

@@ -24,17 +24,13 @@ from final_dev1_contract import (
     MARKER as FINAL_DEV1_MARKER,
     MOBILE_CROP_SNIPPETS,
     MOBILE_FALLBACK_SNIPPETS,
-    PRECEDENT_COPY_CSS_SNIPPET,
-    PRECEDENT_COPY_DATE,
-    PRECEDENT_COPY_MARKER,
-    PRECEDENT_COPY_SNIPPETS,
-    PRECEDENT_COPY_VERSION,
     REFERENCE_PATH,
     REFERENCE_SHA256,
     REFERENCE_SIZE,
     TASK_PATH,
     VERSION as FINAL_DEV1_VERSION,
 )
+from client_copy_contract import APPROVED_COPY
 from final_dev3_contract import (
     ACTION_BAR_SCRIPT_TAG as FINAL_DEV3_ACTION_BAR_SCRIPT_TAG,
     BOARD_PATH as FINAL_DEV3_BOARD_PATH,
@@ -117,27 +113,17 @@ def verify_final_dev1(dest: Path) -> list[str]:
         problems.append("дублирующий desktop-телефон .nav-call остался в шапке")
     if 'class="nav-drawer__call"' not in html:
         problems.append("из мобильного меню пропал звонок")
-    if html.count(PRECEDENT_COPY_MARKER) != 1:
-        problems.append("version/date marker FINAL-DEV1-PRECEDENT-COPY отсутствует")
-    for snippet in PRECEDENT_COPY_SNIPPETS:
-        if html.count(snippet) != 1:
-            problems.append("утверждённая редакция блока прецедента повреждена")
-    if PRECEDENT_COPY_CSS_SNIPPET not in css:
-        problems.append("mobile-переносы текста прецедента не защищены")
     hero_phone_count = len(re.findall(r'class="[^"]*\bhero__phone\b[^"]*"', hero))
     if hero_phone_count != 1 or hero.count('class="hero__phone hero__contact-block"') != 1:
         problems.append("должен быть ровно один sentinel .hero__phone")
-    if hero.count('<li class="hero__proof">') != 3:
-        problems.append("должно быть ровно три преимущества с иконками")
     order_tokens = (
         'class="hero__actions"',
         'class="hero__phone hero__contact-block"',
-        'class="hero__proofs"',
         'class="hero__note"',
     )
     order_positions = [hero.find(token) for token in order_tokens]
     if any(position < 0 for position in order_positions) or order_positions != sorted(order_positions):
-        problems.append("ожидался DOM-порядок CTA → звонок → иконки → пояснение")
+        problems.append("ожидался DOM-порядок CTA → контакты → пояснение")
 
     marker_text = f"/* {FINAL_DEV1_MARKER}"
     variant_css_position = css.rfind(marker_text)
@@ -148,8 +134,7 @@ def verify_final_dev1(dest: Path) -> list[str]:
     ):
         problems.append("desktop-композиция final-dev1 должна начинаться с 961px")
     if (
-        "@media (max-width: 960px)" not in variant_css
-        or any(
+        any(
             snippet not in variant_css
             for snippet in (
                 *MOBILE_FALLBACK_SNIPPETS,
@@ -158,7 +143,7 @@ def verify_final_dev1(dest: Path) -> list[str]:
             )
         )
     ):
-        problems.append("mobile crop, fallback или desktop readability final-dev1 неполны")
+        problems.append("mobile crop, compaction или desktop layout final-dev1 неполны")
     return problems
 
 
@@ -175,8 +160,6 @@ def verify_final_dev1_sources() -> list[str]:
         problems.append("metadata версии final-dev1 task расходится с контрактом")
     if f"**Дата:** `{FINAL_DEV1_DATE}`" not in task_header:
         problems.append("metadata даты final-dev1 task расходится с контрактом")
-    if f"`{PRECEDENT_COPY_MARKER}`" not in task_text:
-        problems.append("metadata текста прецедента отсутствует в final-dev1 task")
     if REFERENCE_SHA256 not in task_text:
         problems.append("final-dev1 task не содержит SHA-256 текущего reference")
     if f"{REFERENCE_SIZE[0]}×{REFERENCE_SIZE[1]}" not in task_text:
@@ -188,12 +171,6 @@ def verify_final_dev1_sources() -> list[str]:
     )
     if board_contract not in board_text:
         problems.append("карта Preview не содержит текущую версию/дату final-dev1")
-    precedent_board_contract = (
-        f"| Текст прецедента `final-dev1` | `{PRECEDENT_COPY_VERSION}` | "
-        f"{PRECEDENT_COPY_DATE} |"
-    )
-    if precedent_board_contract not in board_text:
-        problems.append("карта Preview не содержит версию/дату текста прецедента")
     if not reference_path.exists():
         return problems + ["versioned reference PNG final-dev1 не найден"]
 
@@ -313,6 +290,16 @@ def main() -> int:
     manifest = json.loads(MAP_PATH.read_text(encoding="utf-8"))
     problems: list[str] = []
     previews = manifest.get("previews", [])
+    source_html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    source_copy_ids = re.findall(r'data-copy-id="([^"]+)"', source_html)
+    if len(source_copy_ids) != len(set(source_copy_ids)):
+        problems.append("site/index.html содержит повторяющиеся data-copy-id")
+    unknown_source_ids = sorted(set(source_copy_ids) - set(APPROVED_COPY))
+    if unknown_source_ids:
+        problems.append(
+            "site/index.html содержит неизвестные data-copy-id: "
+            + ", ".join(unknown_source_ids)
+        )
     problems.extend(verify_final_dev1_sources())
     problems.extend(verify_final_dev3_sources())
 
@@ -361,11 +348,13 @@ def main() -> int:
         if branch == "v2-lora-inter" and "FONT-VARIANT-V2-MOBILE v1.0.0 | 2026-08-11" not in styles:
             problems.append(f"{branch}: нет mobile overflow-fix")
         if branch == "review-numbered":
-            labels = re.findall(r'data-rvn="([^"]+)"', html)
-            if len(labels) != 102 or len(set(labels)) != 102:
-                problems.append(f"{branch}: ожидалось 102 уникальных номера")
-            if "REVIEW-NUMBERED v1.0.0 | 2026-08-11" not in styles:
-                problems.append(f"{branch}: нет versioned mobile overflow-fix")
+            labels = re.findall(r'data-copy-id="([^"]+)"', html)
+            if labels != source_copy_ids:
+                problems.append(
+                    f"{branch}: client-copy ID должны точно повторять текущий source"
+                )
+            if "REVIEW-NUMBERED v2.0.0 | 2026-08-11" not in styles:
+                problems.append(f"{branch}: нет versioned client-copy overlay")
         if branch in {"final-dev1", "final-dev3"}:
             problems.extend(f"{branch}: {problem}" for problem in verify_final_dev1(dest))
         if branch == "final-dev3":

@@ -1,6 +1,12 @@
 > ## Лендинг «Гамбарян и Партнёры»
 >
-> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v1.1.1 | 2026-08-11`
+> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v2.0.0 | 2026-08-11`
+>
+> **Текущий статус:** `LOCAL QA PASS / LIVE PENDING / NOT SENT`.
+> Стабильные Preview URL пока обслуживают предыдущий опубликованный release и
+> считаются `HISTORICAL LIVE`; новый клиентский copy-кандидат с
+> `CLIENT-PREVIEW-MOBILE v1.1.0` прошёл локальную матрицу `173/173`, но не
+> опубликован.
 >
 > Рабочий сайт живёт в папке [`site/`](site/). Шаблон-клонировщик, описанный
 > ниже, — исходная заготовка репозитория; к самому лендингу он отношения не
@@ -8,7 +14,10 @@
 >
 > | Что | Где |
 > |---|---|
-> | **Клиентские Preview** — 11 стабильных Cloudflare URL, включая `final-dev3` | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
+> | **Начать/продолжить работу** | [`docs/RESUME.md`](docs/RESUME.md) |
+> | **Действующее задание** — только утверждённый клиентом текст | [`docs/tasks/2026-08-11-client-approved-copy-only.md`](docs/tasks/2026-08-11-client-approved-copy-only.md) |
+> | **Клиентские Preview** — локальный кандидат для 11 стабильных Cloudflare URL | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
+> | Frozen source утверждённого текста | [`docs/sources/client-copy-short-v1.0.0.txt`](docs/sources/client-copy-short-v1.0.0.txt) |
 > | Исторический Claude artifact | https://claude.ai/code/artifact/f6f44336-a84c-4122-a74b-65c47e53b0c0 |
 > | **Боевой адрес** — пока отдаёт версию до правок | https://gambarian-landing.pages.dev/ |
 > | Исходники страницы | [`site/`](site/) — `index.html`, `styles.css`, `fonts.css`, `app.js`, `assets/`, `fonts/` |
@@ -18,9 +27,9 @@
 > | Журнал ошибок и разборов | [`docs/ERRORS.md`](docs/ERRORS.md) |
 > | Финальный чек-лист: решения, регрессии и production-блокеры | [`docs/FINAL-QA-CHECKLIST.md`](docs/FINAL-QA-CHECKLIST.md) |
 > | Пакет из 11 Preview для согласования | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
-> | Live release: commit, deployment ID и readback | [`docs/reviews/2026-08-11-client-preview-live-release.md`](docs/reviews/2026-08-11-client-preview-live-release.md) |
+> | Исторический live release: commit, deployment ID и readback | [`docs/reviews/2026-08-11-client-preview-live-release.md`](docs/reviews/2026-08-11-client-preview-live-release.md) |
 > | Карта источников утверждённого текста | [`docs/CONTENT-SOURCE-MAP.md`](docs/CONTENT-SOURCE-MAP.md) |
-> | `final-dev3` — `LIVE PASS` | [`docs/reviews/2026-08-11-final-dev3-live-release.md`](docs/reviews/2026-08-11-final-dev3-live-release.md) |
+> | `final-dev3 v1.1.0` — `HISTORICAL LIVE PASS` | [`docs/reviews/2026-08-11-final-dev3-live-release.md`](docs/reviews/2026-08-11-final-dev3-live-release.md) |
 >
 > Пересобрать файл-одностраничник:
 >

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 
-VERSION = "1.1.0"
+VERSION = "2.0.0"
 DATE = "2026-08-11"
 MARKER = f"FINAL-DEV3-DESIGN v{VERSION} | {DATE}"
 MARKER_RE = re.compile(
@@ -19,7 +19,7 @@ BODY_CLASS = "page--final-dev3"
 HTML_COMMENT = f"<!-- {MARKER} -->"
 CSS_COMMENT = f"/* {MARKER} */"
 BODY_MARKER_SNIPPET = f'<body class="{BODY_CLASS}">\n{HTML_COMMENT}'
-CSS_MARKER_SNIPPET = f"\n{CSS_COMMENT}"
+CSS_MARKER_SNIPPET = f"\n{CSS_COMMENT}\n"
 HERO_BUSINESS_SCRIPT = "hero-business-hours.js"
 ACTION_BAR_SCRIPT_TAG = '<script src="action-bar.js" defer></script>'
 HERO_BUSINESS_SCRIPT_TAG = f'<script src="{HERO_BUSINESS_SCRIPT}" defer></script>'
@@ -37,7 +37,7 @@ def apply_html_contract(html: str) -> str:
 
 
 def apply_css_contract(css: str) -> str:
-    """Добавляет CSS marker без новых визуальных правил."""
+    """Добавляет только versioned CSS marker."""
 
     if MARKER in css:
         raise ValueError("final-dev3 CSS contract уже применён")
@@ -69,6 +69,6 @@ def normalize_html(html: str) -> str:
 
 
 def normalize_css(css: str) -> str:
-    """Удаляет только final-dev3 CSS marker для byte-level сверки с dev1."""
+    """Удаляет только final-dev3 CSS contract для byte-level сверки с dev1."""
 
     return css.replace(CSS_MARKER_SNIPPET, "", 1)

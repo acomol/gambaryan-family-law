@@ -65,7 +65,7 @@ def measure_and_pin(dest: Path) -> tuple[int, dict[str, int], dict[str, object]]
             launch_options = (
                 {"executable_path": str(bundled_chrome)}
                 if bundled_chrome.exists()
-                else {"channel": "chrome"}
+                else {}
             )
             browser = playwright.chromium.launch(**launch_options)
             try:
@@ -230,7 +230,6 @@ def verify(
     autofill_fields = {
         "name": ("text", "name"),
         "phone": ("tel", "tel"),
-        "email": ("email", "email"),
     }
     for field_name, (field_type, autocomplete) in autofill_fields.items():
         autofill_pattern = (
@@ -240,6 +239,8 @@ def verify(
         )
         if not re.search(autofill_pattern, html):
             problems.append(f"поле {field_name} не готово к автозаполнению")
+    if re.search(r'<(?:input|select|textarea)\b[^>]*\bname="(?:email|topic)"', html):
+        problems.append("форма должна содержать только поля name и phone")
     for name in ("action-bar.css", "action-bar.js"):
         if name not in html:
             problems.append(f"{name} не подключён в index.html")
@@ -247,8 +248,8 @@ def verify(
             problems.append(f"{name} не скопирован в сборку")
     if "wa.me/972545490623" not in html:
         problems.append("номер WhatsApp должен быть без плюса и пробелов")
-    if "?text=" not in html:
-        problems.append("у WhatsApp нет предзаполненного текста")
+    if "?text=" in html:
+        problems.append("у WhatsApp остался неутверждённый предзаполненный текст")
     if "tel:+972545490623" not in html:
         problems.append("телефон в tel: не найден")
     if "viewport-fit=cover" not in html:

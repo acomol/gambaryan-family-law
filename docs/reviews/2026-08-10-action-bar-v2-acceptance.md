@@ -1,4 +1,9 @@
-# Приёмка: нижняя панель v2.1.0 и фото адвокатов
+> **HISTORICAL / SUPERSEDED 2026-08-11.** Это приёмка старой Action Bar
+> `v2.1.0`, не текущего кандидата `v2.3.2`. Актуальные входы:
+> [`../RESUME.md`](../RESUME.md) и
+> [`../tasks/2026-08-11-client-approved-copy-only.md`](../tasks/2026-08-11-client-approved-copy-only.md).
+
+# Приёмка: нижняя панель v2.1.0 и фото адвокатов — HISTORICAL
 
 > Ревью read-only. Код не менялся, деплой не выполнялся.
 > Предмет: `594ad8b`, ветка `claude/website-development-kb0fu0`, PR #2.

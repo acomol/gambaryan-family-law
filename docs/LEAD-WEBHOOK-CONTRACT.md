@@ -1,14 +1,16 @@
 # Albato lead webhook contract
 
-**Версия схемы:** `1.1.0`
-**Дата требований:** `2026-08-10`
-**Статус:** код подготовлен; live-доставка не включена до установки secret,
-контрольного catch, downstream-dedupe и утверждённого privacy notice.
+**Версия схемы:** `2.0.0`
+**Дата требований:** `2026-08-11`
+**Статус:** `LOCAL PASS / LIVE PENDING`; live-доставка не
+включена до установки secret, контрольного catch, downstream-dedupe и
+утверждённого privacy notice.
 
 ## История требований
 
 | Версия | Дата | Изменение |
 | --- | --- | --- |
+| `2.0.0` | `2026-08-11` | Поля `email` и `topic` удалены по решению владельца; форма передаёт только имя и телефон |
 | `1.1.0` | `2026-08-10` | Точные inline-ошибки, визуальное выделение поля, фокус на первом неверном поле и раздельные причины сбоев доставки |
 | `1.0.0` | `2026-08-10` | Исходная схема lead payload и same-origin webhook |
 
@@ -27,7 +29,7 @@
 | Участок | Источник истины | Ответственность |
 | --- | --- | --- |
 | Версия, дата, поля и лимиты | `site/lead-contract.js` | единая карта browser + Function |
-| Поля формы и browser autofill | `site/index.html` | `name`, `tel`, `email`; native validation |
+| Поля формы и browser autofill | `site/index.html` | только `name` и `tel`; native validation |
 | Сбор first-touch attribution | `site/app.js` | читает список из общей карты |
 | Endpoint браузера | `site/app.js` | читает `/api/lead` из общей карты |
 | Payload и доставка | `functions/api/lead.js` | импортирует карту, валидирует и отправляет |
@@ -40,15 +42,15 @@
 lead-form → POST /api/lead → Cloudflare Pages Function → Albato Incoming Webhook
 ```
 
-## Payload `1.1.0`
+## Payload `2.0.0`
 
 Albato получает плоский JSON. Все ключи присутствуют; для отсутствующей
 attribution передаётся пустая строка.
 
 | Поле | Тип | Источник |
 | --- | --- | --- |
-| `schema_version` | string | сервер, `1.1.0` |
-| `schema_date` | date string | сервер, `2026-08-10` |
+| `schema_version` | string | сервер, `2.0.0` |
+| `schema_date` | date string | сервер, `2026-08-11` |
 | `event_name` | string | сервер, `lead_form_submit` |
 | `source_system` | string | сервер, `gambarian_family_law_landing` |
 | `submission_id` | UUID v4 | браузер; сервер создаёт fallback |
@@ -58,14 +60,13 @@ attribution передаётся пустая строка.
 | `landing_language` | string | сервер, `ru` |
 | `name` | string | форма, 2–100 символов |
 | `phone` | string | форма, 6–15 цифр, исходное форматирование сохранено |
-| `email` | string | форма, optional, lowercase |
 | `referrer_host` | string | внешний hostname без URL/path/query |
 | `utm_source`, `utm_medium`, `utm_campaign`, `utm_id` | string | session first touch |
 | `utm_term`, `utm_content` | string | session first touch |
 | `gclid`, `gbraid`, `wbraid`, `fbclid` | string | session first touch |
 
-Не отправляются IP, User-Agent, полный URL/referrer, cookie/GA client ID и
-текст дела. Payload и webhook URL не логируются.
+Не отправляются IP, User-Agent, полный URL/referrer, cookie/GA client ID,
+email, topic и свободный текст дела. Payload и webhook URL не логируются.
 
 ### Ошибки browser API
 
@@ -77,8 +78,7 @@ attribution передаётся пустая строка.
   "ok": false,
   "error": "invalid_lead",
   "field_errors": {
-    "phone": "invalid_format",
-    "email": "invalid_format"
+    "phone": "invalid_format"
   }
 }
 ```
@@ -89,7 +89,8 @@ attribution передаётся пустая строка.
 
 ## UI и аналитика
 
-- browser autofill остаётся нативным: `autocomplete="name|tel|email"`;
+- browser autofill остаётся нативным для имени и телефона:
+  `autocomplete="name|tel"`; других полей формы нет;
 - success показывается только после HTTP `2xx` от `/api/lead`;
 - неверное поле получает `aria-invalid`, контрастную рамку и точную inline-
   подсказку; summary перечисляет поля и фокус переводится на первое из них;
@@ -108,7 +109,8 @@ Production и Preview должны использовать разные Albato 
 
 Минимальная приёмка перед production:
 
-1. Albato `Catch a Webhook` получает полный синтетический payload `1.1.0`.
+1. Albato `Catch a Webhook` получает полный синтетический payload `2.0.0`:
+   присутствуют `name` и `phone`; `topic` и `email` отсутствуют.
 2. Невалидная форма создаёт `0` запросов.
 3. Каждое неверное поле визуально выделено, содержит точное сообщение и
    связано с ним через `aria-errormessage`; фокус стоит на первой ошибке.

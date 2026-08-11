@@ -362,25 +362,6 @@
       }
     }
 
-    if (
-      input.name === "email" &&
-      value &&
-      value.length > limits.email
-    ) {
-      return validation.fields.email.tooLong;
-    }
-    if (
-      input.name === "email" &&
-      value &&
-      (
-        input.validity.typeMismatch ||
-        input.validity.patternMismatch ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-      )
-    ) {
-      return validation.fields.email.invalidFormat;
-    }
-
     return "";
   }
 
@@ -524,6 +505,11 @@
           }
         }
       });
+      input.addEventListener("change", function () {
+        if (input.getAttribute("aria-invalid") === "true") {
+          setFieldError(input, fieldMessage(input));
+        }
+      });
       input.addEventListener("blur", function () {
         if (input.getAttribute("aria-invalid") === "true") {
           setFieldError(input, fieldMessage(input));
@@ -540,13 +526,10 @@
         return;
       }
 
-      var data = {};
-      new FormData(form).forEach(function (value, key) {
-        data[key] = value;
-      });
-      data.name = data.name.trim();
-      data.phone = data.phone.trim();
-      data.email = data.email.trim().toLowerCase();
+      var data = {
+        name: form.elements.name.value.trim(),
+        phone: form.elements.phone.value.trim(),
+      };
       Object.assign(data, attribution, {
         landing_path: window.location.pathname,
       });

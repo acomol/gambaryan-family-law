@@ -1,6 +1,6 @@
-/* FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11
+/* FINAL-DEV3-DESIGN v2.0.0 | 2026-08-11
    final-dev3 only: Hero follows the business state already calculated by
-   Action Bar 2.3.1. This adapter has no clock, timer, storage or URL state. */
+   Action Bar 2.3.2. This adapter has no clock, timer, storage or URL state. */
 
 (function () {
   'use strict';
@@ -8,9 +8,10 @@
   var CLOSED_LABEL = 'Написать в WhatsApp';
   var bar = document.querySelector('.mobile-bar[data-business-state]');
   var heroAction = document.querySelector('.hero--final-dev1 .hero__call--expanded');
+  var heroContact = heroAction && heroAction.closest('.hero__phone');
   var whatsappAction = bar && bar.querySelector('[data-business-action="whatsapp"]');
 
-  if (!bar || !heroAction || !whatsappAction) return;
+  if (!bar || !heroAction || !heroContact || !whatsappAction) return;
 
   var originalMarkup = heroAction.innerHTML;
   var originalAttributes = {};
@@ -61,6 +62,7 @@
     label.textContent = CLOSED_LABEL;
 
     heroAction.replaceChildren(icon, label);
+    heroContact.setAttribute('data-hero-business-state', 'closed');
     closed = true;
   }
 
@@ -69,6 +71,7 @@
 
     controlledAttributes.forEach(restoreAttribute);
     heroAction.innerHTML = originalMarkup;
+    heroContact.removeAttribute('data-hero-business-state');
     closed = false;
   }
 

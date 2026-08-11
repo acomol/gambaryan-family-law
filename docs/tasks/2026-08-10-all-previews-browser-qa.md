@@ -1,4 +1,9 @@
-# Полная browser/responsive-приёмка клиентских Preview
+> **HISTORICAL / SUPERSEDED AS CURRENT 2026-08-11.** Приёмка ниже относится к
+> прежним `2.3.1`/`v1.1.0` и review со 102 номерами. Текущий allowlist-gate:
+> [`2026-08-11-client-approved-copy-only.md`](2026-08-11-client-approved-copy-only.md),
+> точка входа: [`../RESUME.md`](../RESUME.md).
+
+# Полная browser/responsive-приёмка клиентских Preview — HISTORICAL
 
 **Версия:** `PREVIEW-BROWSER-QA v1.2.1`
 
@@ -6,7 +11,7 @@
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Статус:** `LIVE PASS 11/11; final-dev3 v1.1.0 LIVE PASS`
+**Статус:** `HISTORICAL LIVE PASS 11/11 / SUPERSEDED AS CURRENT`
 
 ## Цель
 

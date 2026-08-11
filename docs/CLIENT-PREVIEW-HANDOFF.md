@@ -1,240 +1,88 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v1.2.3`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v2.1.0`
 
 **Дата:** `2026-08-11`
 
-**Ветка:** `claude/website-development-kb0fu0`
+**Статус:** `LOCAL QA PASS / DO NOT SEND / LIVE PENDING`
 
-**Область:** одиннадцать опубликованных Cloudflare Pages Preview. Production в
-этот пакет не входит и не изменяется.
+## Важное перед отправкой
 
-## Что открыть
+Стабильные URL сейчас показывают исторический опубликованный release. Последняя
+коррекция владельца реализована локально: точный блок Юлии сохранён, поля
+«Тема обращения» и Email удалены, автоматическая матрица прошла `173/173`.
+Клиенту ссылки не отправлять до ручного visual QA, deployment и live-readback
+исправленного кандидата.
 
-Все URL стабильные: при следующей публикации содержимое обновляется, адрес
-остаётся тем же. Для сравнения Hero и нижней панели сначала открыть ссылку на
-телефоне; шрифты дополнительно сравнить на desktop.
+## Что одинаково во всех одиннадцати кандидатах
 
-| № | Preview | Что сравнить | URL |
-|---:|---|---|---|
-| 1 | `final-dev` | Базовый итоговый вариант со стандартным Hero | [Открыть final-dev](https://final-dev.gambarian-landing.pages.dev/) |
-| 2 | `final-dev1` | Расширенный desktop Hero: звонок и преимущества под основной CTA; без дубля телефона в desktop-шапке; плотнее mobile-кадр пары; новая редакция прецедента | [Открыть final-dev1](https://final-dev1.gambarian-landing.pages.dev/) |
-| 3 | `v1-playfair-onest` | Шрифты Playfair Display + Onest: нынешняя журнальная подача | [Открыть шрифт 1](https://v1-playfair-onest.gambarian-landing.pages.dev/) |
-| 4 | `v2-lora-inter` | Шрифты Lora + Inter: спокойная классическая подача | [Открыть шрифт 2](https://v2-lora-inter.gambarian-landing.pages.dev/) |
-| 5 | `v3-literata-manrope` | Шрифты Literata + Manrope: приоритет экранной читаемости | [Открыть шрифт 3](https://v3-literata-manrope.gambarian-landing.pages.dev/) |
-| 6 | `v4-ptserif-golos` | Шрифты PT Serif + Golos Text: плотная кириллическая подача | [Открыть шрифт 4](https://v4-ptserif-golos.gambarian-landing.pages.dev/) |
-| 7 | `hero-a-actions-first` | Hero A: действия размещены перед фотографией | [Открыть Hero A](https://hero-a-actions-first.gambarian-landing.pages.dev/) |
-| 8 | `hero-b-call-first` | Hero B: звонок является главным действием, запись — вторым | [Открыть Hero B](https://hero-b-call-first.gambarian-landing.pages.dev/) |
-| 9 | `action-bar` | Эталон поведения мобильной нижней панели | [Открыть Action Bar](https://action-bar.gambarian-landing.pages.dev/) |
-| 10 | `review-numbered` | Служебная версия со 102 номерами для точного согласования текста; не кандидат на финальный дизайн | [Открыть подписанный текст](https://review-numbered.gambarian-landing.pages.dev/) |
-| 11 | `final-dev3` | Текущий `v1.1.0`: Hero и нижняя панель синхронно переключаются между телефоном и WhatsApp по рабочему времени (**LIVE PASS**) | [Открыть final-dev3](https://final-dev3.gambarian-landing.pages.dev/) |
+- каждый размещённый смысловой текст входит в client allowlist или в точный
+  `OWNER-APPROVED` блок Юлии; использовать все 45 client ID необязательно;
+- общий Action Bar `2.3.2` с business-hours и demo-switch;
+- общий mobile-слой `CLIENT-PREVIEW-MOBILE v1.1.0`;
+- WhatsApp `wa.me/972545490623` без неутверждённого prefill;
+- форма содержит только обязательные имя и телефон, без Email и topic;
+- одинаковые телефон/WhatsApp, `noindex`, lead/autofill/validation;
+- точный прежний блок Юлии сохранён; proof-тексты и редакция «ВПЕРВЫЕ…»
+  отсутствуют.
 
-`final-dev` и `action-bar` намеренно публикуются из одного канонического
-артефакта. Их два URL оставлены, чтобы один использовать как общий вариант, а
-второй — как отдельный эталон панели.
+## Короткое описание каждого URL
 
-## Что одинаково во всех одиннадцати опубликованных версиях
+| URL | Что отличается |
+|---|---|
+| https://final-dev.gambarian-landing.pages.dev/ | Базовый визуальный вариант и эталон Action Bar |
+| https://final-dev1.gambarian-landing.pages.dev/ | Без desktop-дубля телефона, плотнее mobile-фото, CTA входят на коротком экране |
+| https://final-dev3.gambarian-landing.pages.dev/ | Те же композиция и Playfair/Onest, что в `final-dev1`; единственное отличие — Hero синхронен с business-hours панели |
+| https://v1-playfair-onest.gambarian-landing.pages.dev/ | Playfair Display + Onest |
+| https://v2-lora-inter.gambarian-landing.pages.dev/ | Lora + Inter |
+| https://v3-literata-manrope.gambarian-landing.pages.dev/ | Literata + Manrope |
+| https://v4-ptserif-golos.gambarian-landing.pages.dev/ | PT Serif + Golos Text |
+| https://hero-a-actions-first.gambarian-landing.pages.dev/ | Hero: действия идут перед фотографией |
+| https://hero-b-call-first.gambarian-landing.pages.dev/ | Hero: контактный блок поднят выше |
+| https://action-bar.gambarian-landing.pages.dev/ | Эталон поведения нижней мобильной панели |
+| https://review-numbered.gambarian-landing.pages.dev/ | Служебная сверка реально использованных client/owner блоков по номерам |
 
-- Мобильная Action Bar — `ACTION-BAR-SPEC v2.3.1 | 2026-08-11`.
-- Адаптация коротких мобильных экранов —
-  `CLIENT-PREVIEW-MOBILE v1.0.0 | 2026-08-11`.
-- Форма и lead payload — `1.1.0 | 2026-08-10`.
-- Логика формы, автозаполнение, проверка полей и техническая схема передачи
-  заявки не зависят от выбранного шрифта или Hero.
-- При пересылке ссылки используется фирменное изображение с логотипом
-  `1200×630` через Open Graph/Twitter metadata.
-- Preview имеют `noindex`; production не является частью сравнения.
+## Что должен проверить клиент
 
-## Что уже проверено для `final-dev3 v1.0.0`
+- какой шрифт лучше читается;
+- какой порядок Hero понятнее;
+- нормально ли кадрированы адвокаты на mobile/desktop;
+- помещаются ли CTA и не перекрывают ли фото;
+- понятны ли рабочее/нерабочее состояния панели и `final-dev3` Hero;
+- нет ли смысловых формулировок вне client/owner allowlist.
 
-- Marker: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
-- Preview-карта: `2.4.0`, одиннадцать вариантов; исторический release проверен
-  runner `1.1.0`, текущий Hero-state runner — `1.2.0`.
-- Локально: одиночный прогон `15/15`, полная карта
-  `110/110 + 55/55 + 8/8 = 173/173`.
-- `final-dev1` и `final-dev3` pixel-identical на `1293×724` и `390×844`;
-  различия ограничены служебным marker/body class, а общие assets/scripts/fonts
-  идентичны.
-- Известный унаследованный дефект при browser zoom `200%` остаётся OPEN:
-  proof/call-help скрываются mobile-правилом. Поэтому полный WCAG AA PASS для
-  `final-dev1` и `final-dev3` не заявляется.
-- Cloudflare deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`, live
-  HTTP/asset/Function readback и browser `15/15` прошли.
+## Что уже не требуется выбирать
 
-## Что реализовано в `final-dev3 v1.1.0`
-
-- Marker: `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`.
-- Action Bar `2.3.1` остаётся единственным источником расписания
-  `Asia/Jerusalem`: воскресенье–четверг, `[09:00, 18:00)`.
-- В рабочее время Hero сохраняет текущий телефон; в нерабочее показывает
-  точный текст `Написать в WhatsApp`, WhatsApp-ссылку и WhatsApp-иконку.
-- Demo-switch одновременно меняет Hero и Action Bar. Вторые часы, timer или
-  отдельная карта состояния Hero не создаются.
-- Кандидат локально прошёл `15/15` и полную матрицу `173/173`, включая оба
-  состояния Hero и центрирование мобильной формы. Live deployment
-  `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07` повторно прошёл `15/15`.
-
-## Как работает конверсионный путь
-
-### Hero
-
-На первом экране уже есть основные CTA, поэтому мобильная нижняя панель там
-скрыта и не дублирует действия. Варианты Hero позволяют выбрать порядок:
-базовый, действия раньше фотографии, звонок первым либо расширенный
-`final-dev1`. В `final-dev1` на desktop под основной кнопкой показаны отдельный
-звонок, три преимущества и длинное пояснение; телефон справа в desktop-шапке
-удалён как дубль. На mobile сохраняется компактная композиция.
-
-В кандидате `final-dev3 v1.1.0` меняется только этот Hero-контакт: рабочее
-состояние сохраняет текущий телефон, нерабочее показывает
-`Написать в WhatsApp` со ссылкой и иконкой. Состояние берётся из Action Bar
-`2.3.1`, поэтому demo-switch меняет Hero и панель синхронно.
-
-### Нижняя панель
-
-Панель работает только до `960px` и реагирует на зону страницы:
-
-1. Hero с CTA виден — панель скрыта.
-2. Пользователь читает страницу — панель видна.
-3. Форма видна, меню открыто или фокус находится в поле — панель скрыта.
-
-Расписание считается по `Asia/Jerusalem`: воскресенье–четверг с `09:00`
-включительно до `18:00` исключительно доступны «Позвонить», «Записаться» и
-«WhatsApp». В остальное время телефон полностью убирается, остаются
-«Записаться» и «Написать в WhatsApp».
-
-Preview-переключатель показывает оба режима без ожидания нужного часа. Верхняя
-подпись и нижняя панель синхронны: `Авто · Рабочее время` или
-`Демо · Рабочее время` означает три действия; `Авто · Нерабочее время` или
-`Демо · Нерабочее время` — два. Перезагрузка возвращает автоматическое
-расписание.
-
-### Заявка, Albato и автозаполнение
-
-Поля используют нативное автозаполнение браузера: `name`, `tel`, `email`.
-Первый источник визита сохраняется в рамках сессии: UTM-метки и поддерживаемые
-click ID добавляются к заявке без текста дела, cookie ID, полного URL или IP.
-
-Поток после включения интеграции:
-
-```text
-форма → POST /api/lead → Cloudflare Pages Function → Albato webhook → конечная система
-```
-
-Webhook URL хранится только в encrypted secret Cloudflare и не попадает в HTML
-или Git. Одинаковая ручная повторная отправка сохраняет `submission_id`; защита
-от дублей настраивается как dedup/upsert в Albato или конечной системе.
-
-Важно: код endpoint подготовлен, но live-доставка в Albato не считается
-принятой до установки отдельного Preview secret, контрольного Catch webhook,
-dedup/upsert и readback конечной записи. HTTP-ответ Albato подтверждает приём
-webhook, а не создание записи в CRM/таблице.
-
-### Проверка полей и понятные ошибки
-
-- Имя и телефон обязательны; email необязателен.
-- Под неверным полем показывается точная причина, поле получает контрастное
-  визуальное выделение, а фокус переводится на первую ошибку.
-- Отдельно объясняются отсутствие сети, timeout, временная недоступность,
-  ограничение частоты и ошибка доставки.
-- При ошибке введённые данные не очищаются; кнопка позволяет повторить
-  отправку.
-
-## Что требуется утвердить
-
-### Визуальные решения
-
-- [x] Исторический `final-dev3 v1.0.0` = strict clone `final-dev1`.
-- [x] Шрифт кандидата: Playfair Display + Onest.
-- [x] Hero кандидата: расширенный `final-dev1` без дополнительного редизайна.
-- [x] Нижняя панель кандидата: Action Bar `2.3.1`, включая состав, расписание и
-  тексты рабочего/нерабочего состояния.
-- [x] Решение `v1.1.0`: Hero phone/WhatsApp следует тому же состоянию Action
-  Bar; demo-switch синхронизирует оба элемента без второго timer/state.
-- [x] Локальная реализация и browser QA `FINAL-DEV3-DESIGN v1.1.0` завершены.
-- [x] Commit `88efa2c`, deploy и live-readback `v1.1.0` прошли.
-
-### Тексты кандидата и оставшиеся клиентские решения
-
-- [x] `final-dev3` сохраняет текущие H1, лид и остальные тексты `final-dev1`
-  без скрытого объединения с font Preview или клиентским черновиком.
-- [ ] Создавать ли отдельный блок «Подготовка к консультации» (`6.6`, `6.9`,
-  `6.12`).
-- [ ] Поле `7.19` «Тема обращения»: вместо Email, четвёртым полем или не
-  добавлять.
-- [ ] Утвердить, удалить или сузить фразу «Семейное, уголовное и миграционное
-  право — от первой консультации до завершения дела».
-- [ ] Унифицировать ли пункт меню «Получить консультацию» с утверждённым
-  «Записаться на консультацию».
-- [ ] Подтвердить добавленные интерфейсные заголовки/надстрочники секций либо
-  перечислить, какие убрать.
-
-Полная карта источников и точные формулировки находятся в
-[CONTENT-SOURCE-MAP.md](CONTENT-SOURCE-MAP.md).
-
-## Форма ответа заказчика
-
-```text
-1. Кандидат final-dev3: утверждаю / правки: ____________________
-2. Шрифт Playfair Display + Onest: утверждаю / правки: ____________________
-3. Hero final-dev1 без дополнительного редизайна: утверждаю / правки: ______
-4. Нижняя панель: утверждаю / правки: ____________________
-
-5. Тексты:
-- H1: клиентский 1.7 / текущий короткий
-- Лид: клиентский 1.8 / текущий короткий
-- «Подготовка к консультации»: добавить / не добавлять
-- «Тема обращения»: вместо Email / четвёртым / не добавлять
-- Широкая фраза о семейном, уголовном и миграционном праве:
-  утвердить / удалить / заменить на ____________________
-- Пункт меню: «Получить» / «Записаться»
-- Интерфейсные заголовки секций: утвердить / правки: ____________________
-
-6. Остальные комментарии: ____________________
-```
+- форма содержит только `Имя` и `Телефон`: ни topic, ни Email;
+- полный client coverage не требуется: документ работает как allowlist;
+- точный прежний блок Юлии подтверждён владельцем и сохраняется;
+- Action Bar WhatsApp не подставляет неутверждённое сообщение.
 
 ## Перед отправкой заказчику
 
-- [x] Все одиннадцать URL открываются и содержат свой текущий release marker.
-- [x] На mobile проверены оба состояния Action Bar и синхронная верхняя
-  подпись.
-- [x] На desktop Action Bar отсутствует.
-- [x] Исторический release десяти Preview прошёл `100/100` основных
-  viewport-ячеек и `50/50` breakpoint/landscape-ячеек; шрифты загружены,
-  fallback и overflow не найдены.
-- [x] Production до и после публикации Preview не изменился.
-- [x] `final-dev3 v1.0.0` локально прошёл `15/15` и полный прогон `173/173`; две
-  контрольные геометрии pixel-identical с `final-dev1`.
-- [x] Branch `final-dev3 v1.0.0` опубликован отдельно; live
-  HTTP/assets/Function/browser readback и изоляция прежних URL прошли.
-- [x] Локальная матрица `v1.1.0`: `173/173`, одиночный прогон `15/15`.
-- [x] Перед передачей `v1.1.0` заказчику опубликован новый marker; live
-  Hero/Action Bar sync и isolation readback прошли.
+- [x] `CLIENT-COPY-VERIFIER v1.0.0` — каждый размещённый смысловой блок входит в
+  client/owner allowlist на всех 11; coverage `45/45` не требуется;
+- [x] lead tests `2.0.0` после удаления Email/topic — PASS;
+- [x] full browser matrix `PREVIEW-BROWSER-QA-RUNNER v1.3.0` — `173/173` PASS;
+- [ ] manual screenshots/visual inspection — PASS;
+- [ ] commit/push feature branch и CI — PASS;
+- [ ] явное разрешение владельца на Preview deploy получено;
+- [ ] 11/11 stable URL проверены по marker и served behavior;
+- [ ] production readback показывает отсутствие изменений.
 
-## Источники проверки
+## Исторические releases
 
-Технические утверждения сверены по парным источникам:
-
-- Hero: `docs/tasks/2026-08-10-final-dev1-desktop-hero.md` и
-  `scripts/build-hero-variants.py`.
-- Action Bar: `docs/tasks/2026-08-10-action-bar-v2.md` и
-  `site-addons/action-bar/action-bar.js`/`.html`.
-- Lead/autofill/validation: `docs/LEAD-WEBHOOK-CONTRACT.md` и
-  `site/index.html` + `site/app.js` + `functions/api/lead.js`.
-- Состав одиннадцати URL: `scripts/client-preview-map.json` v2.4.0 и
-  `docs/boards/2026-08-06-versions-links.md`.
-- Текст: исходный клиентский документ и три аудита
-  `docs/CONTENT-APPROVED.md`, `docs/CONTENT-MISSING.md`,
-  `docs/CONTENT-EXTRA.md`.
+`final-dev3 v1.0.0` и `v1.1.0`, Action Bar `2.3.1`, прежний
+`final-dev1 v1.3.0` и review со 102 подписями — `HISTORICAL LIVE PASS`.
+Их результаты и промежуточный локальный PASS `45/45` не считаются приёмкой
+исправленного allowlist-кандидата. Отдельный текущий локальный результат
+`173/173` относится уже к исправленному кандидату, но не заменяет live-readback.
 
 ## Related
 
-- [Карта одиннадцати Preview](boards/2026-08-06-versions-links.md)
-- [Карта источников текста](CONTENT-SOURCE-MAP.md)
-- [Контракт lead hook](LEAD-WEBHOOK-CONTRACT.md)
-- [Контракт Action Bar](tasks/2026-08-10-action-bar-v2.md)
-- [Полная browser-приёмка](tasks/2026-08-10-all-previews-browser-qa.md)
-- [Локальный QA-отчёт](reviews/2026-08-11-client-preview-local-qa.md)
-- [Live release-отчёт](reviews/2026-08-11-client-preview-live-release.md)
-- [Live release final-dev3](reviews/2026-08-11-final-dev3-live-release.md)
-- [Задание Final Dev 3](tasks/2026-08-11-final-dev3-design-system.md)
+- [Карта Preview](boards/2026-08-06-versions-links.md)
+- [Действующее задание](tasks/2026-08-11-client-approved-copy-only.md)
+- [Карта источников](CONTENT-SOURCE-MAP.md)
+- [Frozen client source](sources/client-copy-short-v1.0.0.txt)
+- [Финальный QA](FINAL-QA-CHECKLIST.md)
+- [Screen composition](SCREEN-COMPOSITION.md)

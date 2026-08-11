@@ -3,7 +3,7 @@
 
 # Gambarian Family Law Landing Page
 
-**Версия правил:** `PROJECT-AGENT-RULES v1.1.0`
+**Версия правил:** `PROJECT-AGENT-RULES v1.2.0`
 
 **Обновлено:** `2026-08-11`
 
@@ -45,6 +45,10 @@
   клиентских текстов.
 - `python -B scripts/verify-client-previews.py` — проверить все собранные
   Preview из исполняемой карты.
+- `python -B scripts/verify-client-copy.py` — проверить frozen-копию
+  клиентского документа, каждый использованный client/owner-approved блок и
+  разрешённый служебный текст в source и всех Preview; полный coverage `45/45`
+  не требуется.
 - `node scripts/verify-lead-hook.mjs` — проверить browser/Function contract
   формы без реальной отправки в Albato.
 - `python scripts/qa-browser-matrix.py <base-url>` — прогнать responsive/browser
@@ -85,6 +89,10 @@ functions/api/lead.js       # Cloudflare Pages lead endpoint
 scripts/build-*.py          # генераторы клиентских вариантов
 scripts/client-preview-map.json
                             # branch -> build directory + версии контрактов
+scripts/client_copy_contract.py
+                            # exact copy contract для 45 клиентских блоков
+docs/sources/client-copy-short-v1.0.0.txt
+                            # immutable byte-for-byte frozen source клиента
 build/variants/             # производные Hero/Action Bar/review (не править)
 build/font-variants/        # производные шрифтовые Preview (не править)
 docs/                       # задания, контракты, QA, deploy и handoff

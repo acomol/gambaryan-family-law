@@ -1,4 +1,9 @@
-# Задание: привести handoff-поверхности к фактическому состоянию
+> **HISTORICAL / COMPLETED / SUPERSEDED 2026-08-11.** Это задание обновляло
+> предыдущий пакет `2.3.1`. Актуальная точка входа —
+> [`../RESUME.md`](../RESUME.md), действующая задача —
+> [`2026-08-11-client-approved-copy-only.md`](2026-08-11-client-approved-copy-only.md).
+
+# Задание: привести handoff-поверхности к фактическому состоянию — HISTORICAL
 
 > Исполнитель: Codex. Приёмка: ведущий агент сессии.
 > Ветка: `claude/website-development-kb0fu0`. База: `ef4f301`.

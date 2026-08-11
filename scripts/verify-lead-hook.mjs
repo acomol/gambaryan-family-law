@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const EXPECTED_VERSION = "1.1.0";
-const EXPECTED_DATE = "2026-08-10";
+const EXPECTED_VERSION = "2.0.0";
+const EXPECTED_DATE = "2026-08-11";
 const BASE_URL = "https://gambarian-landing.pages.dev/api/lead";
 
 const functionSource = fs.readFileSync("functions/api/lead.js", "utf8");
@@ -28,17 +28,21 @@ assert.ok(contract.includes("**Версия схемы:** `" + EXPECTED_VERSION 
 assert.ok(contract.includes("**Дата требований:** `" + EXPECTED_DATE + "`"));
 assert.match(index, /<form class="lead-form" action="\/api\/lead" method="post">/);
 assert.ok(index.includes('<script src="lead-contract.js" defer></script>'));
-for (const token of ['autocomplete="name"', 'autocomplete="tel"', 'autocomplete="email"']) {
+for (const token of ['autocomplete="name"', 'autocomplete="tel"']) {
   assert.ok(index.includes(token), `Нет ${token}`);
 }
-for (const field of ["name", "phone", "email"]) {
+assert.ok(!index.includes('autocomplete="email"'), "Поле email не удалено");
+assert.ok(!index.includes('name="topic"'), "Поле topic не удалено");
+for (const field of ["name", "phone"]) {
   assert.ok(index.includes(`id="lead-${field}-error"`));
   assert.ok(index.includes(`aria-errormessage="lead-${field}-error"`));
 }
 assert.ok(app.includes("var LEAD_ENDPOINT = LEAD_CONTRACT.endpoint;"));
 assert.ok(app.includes("showValidationErrors"));
 assert.ok(app.includes("showServerValidationErrors"));
-assert.ok(app.includes("input.validity.typeMismatch"));
+assert.ok(!app.includes("LEAD_CONTRACT.topicOptions"));
+assert.ok(!app.includes("data.email"));
+assert.ok(!app.includes("data.topic"));
 assert.ok(styles.includes('input[aria-invalid="true"]'));
 assert.ok(styles.includes(".field--invalid"));
 assert.ok(!`${index}\n${app}`.includes("ALBATO_WEBHOOK_URL"));
@@ -108,12 +112,19 @@ assert.deepEqual((await response.json()).field_errors, {
 response = await call("POST", JSON.stringify({ padding: "x".repeat(9000) }));
 assert.equal(response.status, 413);
 
+const validLead = leadModule.validateLead({
+  name: "Тестовый Лид",
+  phone: "+972 50 000 0000",
+});
+assert.equal(validLead.fieldErrors && Object.keys(validLead.fieldErrors).length, 0);
+
 const submissionId = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
 const input = {
   schema_version: "client-cannot-override",
   name: "  Тестовый Лид  ",
   phone: "+972 50 000 0000",
-  email: "TEST@EXAMPLE.COM",
+  topic: "международное дело",
+  email: "drop@example.com",
   submission_id: submissionId,
   landing_path: "/",
   utm_source: "google",
@@ -143,7 +154,8 @@ try {
   assert.equal(payload.schema_date, EXPECTED_DATE);
   assert.equal(payload.event_name, "lead_form_submit");
   assert.equal(payload.name, "Тестовый Лид");
-  assert.equal(payload.email, "test@example.com");
+  assert.equal(payload.topic, undefined);
+  assert.equal(payload.email, undefined);
   assert.equal(payload.utm_source, "google");
   assert.equal(payload.utm_medium, "");
   assert.equal(payload.unknown, undefined);

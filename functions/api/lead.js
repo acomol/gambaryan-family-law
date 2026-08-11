@@ -31,7 +31,6 @@ function validateLead(value) {
   var codes = LEAD_CONTRACT.validation.codes;
   var name = cleanString(value.name, limits.name + 1);
   var phone = cleanString(value.phone, limits.phone + 1);
-  var email = cleanString(value.email, limits.email + 1).toLowerCase();
   var submissionId = cleanString(value.submission_id, 64);
   var landingPath = cleanString(value.landing_path, limits.landingPath);
   var referrerHost = cleanString(
@@ -51,10 +50,6 @@ function validateLead(value) {
     !/^[0-9+().\-\s]+$/.test(phone)
   ) {
     fieldErrors.phone = phone ? codes.invalidFormat : codes.required;
-  }
-  if (email.length > limits.email) fieldErrors.email = codes.tooLong;
-  else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    fieldErrors.email = codes.invalidFormat;
   }
   if (Object.keys(fieldErrors).length) {
     return { lead: null, fieldErrors: fieldErrors };
@@ -79,7 +74,6 @@ function validateLead(value) {
     lead: {
       name: name,
       phone: phone,
-      email: email,
       submissionId: validSubmissionId ? submissionId : crypto.randomUUID(),
       landingPath: landingPath || "/",
       referrerHost: referrerHost,
@@ -103,7 +97,6 @@ function buildPayload(lead) {
       landing_language: LEAD_CONTRACT.landingLanguage,
       name: lead.name,
       phone: lead.phone,
-      email: lead.email,
       referrer_host: lead.referrerHost,
     },
     lead.attribution,

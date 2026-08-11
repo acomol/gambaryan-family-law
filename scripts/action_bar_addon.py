@@ -17,9 +17,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ADDON = ROOT / "site-addons" / "action-bar"
 CLIENT_PREVIEW_ADDON = ROOT / "site-addons" / "client-preview"
-SPEC_VERSION = "2.3.1"
+SPEC_VERSION = "2.3.2"
 SPEC_DATE = "2026-08-11"
-CLIENT_PREVIEW_VERSION = "1.0.0"
+CLIENT_PREVIEW_VERSION = "1.1.0"
 CLIENT_PREVIEW_DATE = "2026-08-11"
 SPEC_MARKER_RE = re.compile(
     r"ACTION-BAR-SPEC\s+(v\d+\.\d+\.\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})"
@@ -146,6 +146,8 @@ def verify_action_bar_install(dest: Path) -> list[str]:
         problems.append("не найдено действие «Записаться»")
     if html.count('data-business-label="whatsapp"') != 1:
         problems.append("не найден переключаемый label WhatsApp")
+    if "?text=" in html:
+        problems.append("WhatsApp не должен содержать неутверждённый prefill")
     if len(re.findall(r'<button\b(?=[^>]*\bdata-business-demo(?:\s|=))(?=[^>]*\bhidden\b)[^>]*>', html)) != 1:
         problems.append("нужен один скрытый до инициализации demo-switch")
     if html.count('role="switch"') != 1:

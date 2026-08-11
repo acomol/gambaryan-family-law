@@ -3,8 +3,8 @@
 
   root.GAMBARIAN_LEAD_CONTRACT = Object.freeze({
     // Требование владельца: при изменении схемы обновлять и версию, и дату.
-    schemaVersion: "1.1.0",
-    schemaDate: "2026-08-10",
+    schemaVersion: "2.0.0",
+    schemaDate: "2026-08-11",
     endpoint: "/api/lead",
     eventName: "lead_form_submit",
     sourceSystem: "gambarian_family_law_landing",
@@ -29,7 +29,6 @@
       phone: 40,
       phoneDigitsMin: 6,
       phoneDigitsMax: 15,
-      email: 254,
       attribution: 255,
       landingPath: 256,
       referrerHost: 255,
@@ -38,7 +37,6 @@
       fieldLabels: Object.freeze({
         name: "Имя",
         phone: "Телефон",
-        email: "Email",
       }),
       fields: Object.freeze({
         name: Object.freeze({
@@ -49,10 +47,6 @@
         phone: Object.freeze({
           required: "Введите номер телефона.",
           invalidFormat: "Введите от 6 до 15 цифр. Можно использовать +, пробелы, скобки, точки и дефисы.",
-        }),
-        email: Object.freeze({
-          invalidFormat: "Введите email в формате name@example.com или оставьте поле пустым.",
-          tooLong: "Email должен быть не длиннее 254 символов.",
         }),
       }),
       codes: Object.freeze({

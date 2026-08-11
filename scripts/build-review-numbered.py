@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
-"""Собирает копию лендинга с номерами у текстовых блоков — для отправки клиенту.
+"""Собирает клиентскую копию с номерами утверждённых текстовых блоков.
 
-Клиент правит текст, ссылаясь на номер вместо описания «то самое место».
-Один номер = один смысловой блок текста. Повторяющийся шаблонный текст
-(одинаковая кнопка в каждой из 8 карточек услуг, одинаковый абзац био и т.д.)
-помечен номером только на первом появлении — правка распространяется на все
-копии автоматически, второй номер для дубля не нужен.
-
-Мобильное меню (nav-drawer) не нумеруется: оно дублирует шапку дословно и
-скрыто по умолчанию — его не видно при обычной прокрутке.
+Canonical ``site/index.html`` сам хранит стабильные ``data-copy-id``. Эта
+сборка только показывает их как бейджи и поэтому не зависит от формулировок
+текста или от структуры отдельных секций.
 
     python scripts/build-review-numbered.py
 """
@@ -17,359 +12,71 @@ from __future__ import annotations
 
 import re
 import shutil
+from collections import Counter
 from pathlib import Path
 
 from action_bar_addon import install_action_bar, verify_action_bar_install
+from client_copy_contract import APPROVED_COPY
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 DEST = ROOT / "build" / "variants" / "review-numbered"
-REVIEW_NUMBERED_VERSION = "1.0.0"
+REVIEW_NUMBERED_VERSION = "2.0.0"
 REVIEW_NUMBERED_UPDATED = "2026-08-11"
 
+# Эти строки относились к отменённым редакциям и не должны возвращаться в
+# клиентскую копию. Проверка выполняется по HTML после установки Action Bar.
+FORBIDDEN_TEXT = (
+    'name="email"',
+    'name="topic"',
+    'type="email"',
+    "name@example.com",
+    ">Email<",
+    ">EMAIL<",
+    "Адвокат по семейному праву в Израиле",
+    "Развод, раздел имущества, споры о детях. Более 30 лет практики, консультация на русском языке.",
+    "Семейное, уголовное и миграционное право — от первой консультации до завершения дела.",
+    "Коротко о практике",
+    "Опыт, который подтверждается фактами",
+    "Кто ведёт ваше дело",
+    "Или позвоните сразу",
+    "Срочный вопрос? Позвоните напрямую",
+    "Семейное право<br>во всех аспектах",
+    "Конфиденциальность<br>и защита интересов",
+    "Индивидуальный подход<br>к каждому делу",
+    "ВПЕРВЫЕ",
+    "СОЗДАН ПРЕЦЕДЕНТ",
+    "Добились возвращения похищенного ребёнка",
+)
 
-def badge(n: str) -> str:
-    return f'<b class="rvn" data-rvn="{n}">{n}</b>'
+BODY_RE = re.compile(r"<body\b[^>]*>", re.IGNORECASE)
+CLASS_RE = re.compile(r"\bclass=(?P<quote>['\"])(?P<value>[^'\"]*)(?P=quote)", re.IGNORECASE)
+COPY_ID_RE = re.compile(r"\bdata-copy-id=(?P<quote>['\"])(?P<value>[^'\"]+)(?P=quote)")
 
-
-# Каждая запись: (сколько раз строка встречается ДО правки, сколько из них
-# помечать бейджем, старая подстрока, новая подстрока). Второе число меньше
-# первого там, где текст дословно повторяется — в мобильном меню (дублирует
-# шапку, скрыто по умолчанию) и в шаблоне карточек услуг (повторяется 8 раз).
-# Порядок записей соответствует порядку блоков на странице сверху вниз.
-REPLACEMENTS: list[tuple[int, int, str, str]] = [
-    # ---------- 0. Шапка ----------
-    (1, 1,
-     '<a class="logo" href="#top" aria-label="Гамбарян и Партнёры — адвокаты, на главную">',
-     '<a class="logo" href="#top" aria-label="Гамбарян и Партнёры — адвокаты, на главную">' + badge("0.1")),
-    # href=... встречается дважды: в шапке и в мобильном меню (nav-drawer,
-    # скрыто по умолчанию). Бейдж — только на видимой версии в шапке.
-    (2, 1, 'href="#services">Услуги</a>', 'href="#services">' + badge("0.2") + 'Услуги</a>'),
-    (2, 1, 'href="#precedent">Прецедент</a>', 'href="#precedent">' + badge("0.3") + 'Прецедент</a>'),
-    (2, 1, 'href="#attorney">Адвокаты</a>', 'href="#attorney">' + badge("0.4") + 'Адвокаты</a>'),
-    (2, 1, 'href="#contact">Контакты</a>', 'href="#contact">' + badge("0.5") + 'Контакты</a>'),
-    (1, 1,
-     '<span class="nav-call__num nowrap-token">054-549-0623</span>',
-     '<span class="nav-call__num nowrap-token">' + badge("0.6") + '054-549-0623</span>'),
-
-    # ---------- 1. Первый экран ----------
-    (1, 1,
-     '<span class="eyebrow">Адвокатская практика · Тель-Авив</span>',
-     '<span class="eyebrow">' + badge("1.1") + 'Адвокатская практика · Тель-Авив</span>'),
-    (1, 1,
-     '<h1 class="hero__title">Адвокат по семейному праву в Израиле</h1>',
-     '<h1 class="hero__title">' + badge("1.2") + 'Адвокат по семейному праву в Израиле</h1>'),
-    (1, 1,
-     '<p class="hero__lede">Развод, раздел имущества, споры о детях. Более 30 лет практики, консультация на русском языке.</p>',
-     '<p class="hero__lede">' + badge("1.3") + 'Развод, раздел имущества, споры о детях. Более 30 лет практики, консультация на русском языке.</p>'),
-    (1, 1,
-     '<a class="btn btn--wine" href="#contact">Записаться на консультацию</a>',
-     '<a class="btn btn--wine" href="#contact">' + badge("1.4") + 'Записаться на консультацию</a>'),
-    (1, 1,
-     'aria-label="Позвонить: плюс 972 54 549 06 23"><svg width="18"',
-     'aria-label="Позвонить: плюс 972 54 549 06 23">' + badge("1.5") + '<svg width="18"'),
-    (1, 1,
-     '<p class="hero__note">В ходе консультации вы получите исчерпывающую информацию по вашей ситуации, профессиональные ответы на наиболее важные и срочные вопросы, а также рекомендации по дальнейшим действиям.</p>',
-     '<p class="hero__note">' + badge("1.6") + 'В ходе консультации вы получите исчерпывающую информацию по вашей ситуации, профессиональные ответы на наиболее важные и срочные вопросы, а также рекомендации по дальнейшим действиям.</p>'),
-
-    # ---------- 2. Факты ----------
-    (1, 1,
-     '<div class="eyebrow eyebrow--wine">Коротко о практике</div>',
-     '<div class="eyebrow eyebrow--wine">' + badge("2.1") + 'Коротко о практике</div>'),
-    (1, 1,
-     'Опыт, который подтверждается фактами</h2>',
-     badge("2.2") + 'Опыт, который подтверждается фактами</h2>'),
-    (1, 1,
-     '<span class="fact-card__num">30+</span>\n          <span class="fact-card__unit">лет</span>',
-     '<span class="fact-card__num">' + badge("2.3") + '30+</span>\n          <span class="fact-card__unit">лет</span>'),
-    (1, 1,
-     '<div class="fact-card__sub">Профессиональный опыт в юриспруденции</div>',
-     '<div class="fact-card__sub">' + badge("2.4") + 'Профессиональный опыт в юриспруденции</div>'),
-    (1, 1,
-     '<p>Семейное, уголовное и миграционное право — от первой консультации до завершения дела.</p>',
-     '<p>' + badge("2.5") + 'Семейное, уголовное и миграционное право — от первой консультации до завершения дела.</p>'),
-    (1, 1,
-     '<span class="fact-card__num">1</span>\n          <span class="fact-card__unit">прецедент</span>',
-     '<span class="fact-card__num">' + badge("2.6") + '1</span>\n          <span class="fact-card__unit">прецедент</span>'),
-    (1, 1,
-     '<div class="fact-card__sub">Международная судебная практика</div>',
-     '<div class="fact-card__sub">' + badge("2.7") + 'Международная судебная практика</div>'),
-    (1, 1,
-     '<p>Создание прецедента в международной судебной практике — возвращение похищенного ребёнка при незарегистрированных родительских правах.</p>',
-     '<p>' + badge("2.8") + 'Создание прецедента в международной судебной практике — возвращение похищенного ребёнка при незарегистрированных родительских правах.</p>'),
-    (1, 1,
-     '<span class="fact-card__num">900+</span>\n          <span class="fact-card__unit">публикаций</span>',
-     '<span class="fact-card__num">' + badge("2.9") + '900+</span>\n          <span class="fact-card__unit">публикаций</span>'),
-    (1, 1,
-     '<div class="fact-card__sub">Экспертные статьи и обзоры практики</div>',
-     '<div class="fact-card__sub">' + badge("2.10") + 'Экспертные статьи и обзоры практики</div>'),
-    (1, 1,
-     '<p>Автор более 900 опубликованных материалов, включая экспертные статьи в области уголовного, семейного и миграционного права, аналитические обзоры судебной практики и прецедентов, а также цикл юридических эссе, основанных на многолетнем опыте адвокатской деятельности.</p>',
-     '<p>' + badge("2.11") + 'Автор более 900 опубликованных материалов, включая экспертные статьи в области уголовного, семейного и миграционного права, аналитические обзоры судебной практики и прецедентов, а также цикл юридических эссе, основанных на многолетнем опыте адвокатской деятельности.</p>'),
-    (1, 1,
-     '<span>Адвокат Израиля, лицензия <strong>№&nbsp;30178</strong></span>',
-     '<span>' + badge("2.12") + 'Адвокат Израиля, лицензия <strong>№&nbsp;30178</strong></span>'),
-    # Строка встречается дважды дословно: здесь и в чек-листе адвоката
-    # Александра (5.8) — это разные места на странице, не шаблонный повтор,
-    # нумеруем оба. Строки идут по порядку в списке, поэтому здесь ещё 2.
-    (2, 1,
-     '<span>Языки работы — русский, иврит, английский</span>',
-     '<span>' + badge("2.13") + 'Языки работы — русский, иврит, английский</span>'),
-    (1, 1,
-     '<span>Приём — <a class="map-link"',
-     '<span>' + badge("2.14") + 'Приём — <a class="map-link"'),
-
-    # ---------- 3. Услуги ----------
-    (1, 1, '<div class="eyebrow">Семейное право</div>', '<div class="eyebrow">' + badge("3.1") + 'Семейное право</div>'),
-    (1, 1,
-     'С чем обращаются к адвокату</h2>',
-     badge("3.2") + 'С чем обращаются к адвокату</h2>'),
-    (1, 1, 'aria-selected="true">Развод</button>', 'aria-selected="true">' + badge("3.3") + 'Развод</button>'),
-    (1, 1, 'tabindex="-1">Алименты</button>', 'tabindex="-1">' + badge("3.4") + 'Алименты</button>'),
-    (1, 1, 'tabindex="-1">Дети</button>', 'tabindex="-1">' + badge("3.5") + 'Дети</button>'),
-    (1, 1, 'tabindex="-1">Отцовство</button>', 'tabindex="-1">' + badge("3.6") + 'Отцовство</button>'),
-    (1, 1, 'tabindex="-1">Раздел имущества</button>', 'tabindex="-1">' + badge("3.7") + 'Раздел имущества</button>'),
-    (1, 1, 'tabindex="-1">Медиация</button>', 'tabindex="-1">' + badge("3.8") + 'Медиация</button>'),
-    (1, 1, 'tabindex="-1">Брачный договор</button>', 'tabindex="-1">' + badge("3.9") + 'Брачный договор</button>'),
-    (1, 1, 'tabindex="-1">Защита при угрозах</button>', 'tabindex="-1">' + badge("3.10") + 'Защита при угрозах</button>'),
-
-    (1, 1,
-     '<h3 class="svc-title">Развод без судебного спора и бракоразводные процессы</h3>',
-     '<h3 class="svc-title">' + badge("3.11") + 'Развод без судебного спора и бракоразводные процессы</h3>'),
-    (1, 1,
-     '<p class="svc-lead">Консультация и полное юридическое сопровождение развода по взаимному согласию — без судебного спора между супругами. Если достичь соглашения не удаётся, адвокат подготовит необходимые документы и обеспечит ведение бракоразводного процесса в суде и других компетентных инстанциях.</p>',
-     '<p class="svc-lead">' + badge("3.19") + 'Консультация и полное юридическое сопровождение развода по взаимному согласию — без судебного спора между супругами. Если достичь соглашения не удаётся, адвокат подготовит необходимые документы и обеспечит ведение бракоразводного процесса в суде и других компетентных инстанциях.</p>'),
-
-    (1, 1, '<h3 class="svc-title">Алименты</h3>', '<h3 class="svc-title">' + badge("3.12") + 'Алименты</h3>'),
-    (1, 1,
-     '<p class="svc-lead">Установление, взыскание и пересмотр алиментов на детей, включая временные выплаты на период рассмотрения дела.</p>',
-     '<p class="svc-lead">' + badge("3.20") + 'Установление, взыскание и пересмотр алиментов на детей, включая временные выплаты на период рассмотрения дела.</p>'),
-
-    (1, 1,
-     '<h3 class="svc-title">Дети, родительские права и международное возвращение</h3>',
-     '<h3 class="svc-title">' + badge("3.13") + 'Дети, родительские права и международное возвращение</h3>'),
-    (1, 1,
-     '<p class="svc-lead">Соглашения и споры о месте проживания ребёнка и порядке общения. Возвращение похищенных детей в международных делах, включая ситуации с незарегистрированными родительскими правами.</p>',
-     '<p class="svc-lead">' + badge("3.21") + 'Соглашения и споры о месте проживания ребёнка и порядке общения. Возвращение похищенных детей в международных делах, включая ситуации с незарегистрированными родительскими правами.</p>'),
-
-    (1, 1,
-     '<h3 class="svc-title">Установление или оспаривание отцовства · тест&nbsp;ДНК</h3>',
-     '<h3 class="svc-title">' + badge("3.14") + 'Установление или оспаривание отцовства · тест&nbsp;ДНК</h3>'),
-    (1, 1,
-     '<p class="svc-lead">Сопровождение обращения в семейный суд, получения постановления о генетической проверке и процедуры установления либо оспаривания отцовства. В Израиле тест проводится на основании судебного постановления.</p>',
-     '<p class="svc-lead">' + badge("3.22") + 'Сопровождение обращения в семейный суд, получения постановления о генетической проверке и процедуры установления либо оспаривания отцовства. В Израиле тест проводится на основании судебного постановления.</p>'),
-
-    (1, 1, '<h3 class="svc-title">Раздел имущества</h3>', '<h3 class="svc-title">' + badge("3.15") + 'Раздел имущества</h3>'),
-    (1, 1,
-     '<p class="svc-lead">Квартира и ипотека, банковские счета, пенсионные накопления, бизнес и долги — в переговорах, соглашении и судебном процессе.</p>',
-     '<p class="svc-lead">' + badge("3.23") + 'Квартира и ипотека, банковские счета, пенсионные накопления, бизнес и долги — в переговорах, соглашении и судебном процессе.</p>'),
-
-    (1, 1,
-     '<h3 class="svc-title">Семейная медиация и соглашение</h3>',
-     '<h3 class="svc-title">' + badge("3.16") + 'Семейная медиация и соглашение</h3>'),
-    (1, 1,
-     '<p class="svc-lead">Если стороны готовы к конструктивному диалогу, офис обеспечивает полное сопровождение процедуры медиации, помогает согласовать условия, касающиеся детей, алиментов и раздела имущества, а также подготовить юридически грамотное соглашение и представить его на утверждение в установленном законом порядке.</p>',
-     '<p class="svc-lead">' + badge("3.24") + 'Если стороны готовы к конструктивному диалогу, офис обеспечивает полное сопровождение процедуры медиации, помогает согласовать условия, касающиеся детей, алиментов и раздела имущества, а также подготовить юридически грамотное соглашение и представить его на утверждение в установленном законом порядке.</p>'),
-
-    (1, 1, '<h3 class="svc-title">Брачный договор</h3>', '<h3 class="svc-title">' + badge("3.17") + 'Брачный договор</h3>'),
-    (1, 1,
-     '<p class="svc-lead">Составление брачного договора на оптимальных для ситуации пары условиях: имущество, бизнес, обязательства и защита интересов каждого супруга. Сопровождение официального утверждения.</p>',
-     '<p class="svc-lead">' + badge("3.25") + 'Составление брачного договора на оптимальных для ситуации пары условиях: имущество, бизнес, обязательства и защита интересов каждого супруга. Сопровождение официального утверждения.</p>'),
-
-    (1, 1,
-     '<h3 class="svc-title">Защита при угрозах и насилии</h3>',
-     '<h3 class="svc-title">' + badge("3.18") + 'Защита при угрозах и насилии</h3>'),
-    (1, 1,
-     '<p class="svc-lead">Подготовка срочного обращения за защитным ордером. При непосредственной опасности необходимо обращаться в экстренные службы, не ожидая ответа через форму сайта.</p>',
-     '<p class="svc-lead">' + badge("3.26") + 'Подготовка срочного обращения за защитным ордером. При непосредственной опасности необходимо обращаться в экстренные службы, не ожидая ответа через форму сайта.</p>'),
-
-    # Повторяющийся шаблон карточек услуг — встречается 8 раз (по одной на
-    # карточку), бейдж ставим только на первое появление.
-    (8, 1,
-     '<a class="svc-card__cta" href="#contact">Записаться на консультацию</a>',
-     '<a class="svc-card__cta" href="#contact">' + badge("3.27 (пример — так во всех 8 карточках)") + 'Записаться на консультацию</a>'),
-    (8, 1,
-     '<div class="svc-media__label">Ведёт</div>',
-     '<div class="svc-media__label">' + badge("3.28 (пример — так во всех 8 карточках)") + 'Ведёт</div>'),
-    (8, 1,
-     '<div class="svc-media__name">Александр Гамбарян</div>',
-     '<div class="svc-media__name">' + badge("3.29 (пример — так во всех 8 карточках)") + 'Александр Гамбарян</div>'),
-    (8, 1,
-     '<div class="svc-media__license">Адвокат Израиля, лицензия №&nbsp;30178</div>',
-     '<div class="svc-media__license">' + badge("3.30 (пример — так во всех 8 карточках)") + 'Адвокат Израиля, лицензия №&nbsp;30178</div>'),
-    (8, 1,
-     '<p>Более 30 лет профессионального опыта в юриспруденции. Языки работы — русский, иврит, английский.</p>',
-     '<p>' + badge("3.31 (пример — так во всех 8 карточках)") + 'Более 30 лет профессионального опыта в юриспруденции. Языки работы — русский, иврит, английский.</p>'),
-
-    # ---------- 4. Прецедент ----------
-    (1, 1,
-     '<span class="precedent-card__eyebrow">Международный прецедент</span>',
-     '<span class="precedent-card__eyebrow">' + badge("4.1") + 'Международный прецедент</span>'),
-    (1, 1,
-     '<h3 class="precedent-card__title">Возвращение похищенного ребёнка при незарегистрированных родительских правах</h3>',
-     '<h3 class="precedent-card__title">' + badge("4.2") + 'Возвращение похищенного ребёнка при незарегистрированных родительских правах</h3>'),
-    (1, 1,
-     '<p>Александр Гамбарян — автор международного судебного прецедента, связанного с возвращением похищенного ребёнка в ситуации, когда родительские права не были зарегистрированы. Опыт конкретного дела помогает видеть правовые и международные аспекты таких споров. Каждый новый случай оценивается отдельно.</p>',
-     '<p>' + badge("4.3") + 'Александр Гамбарян — автор международного судебного прецедента, связанного с возвращением похищенного ребёнка в ситуации, когда родительские права не были зарегистрированы. Опыт конкретного дела помогает видеть правовые и международные аспекты таких споров. Каждый новый случай оценивается отдельно.</p>'),
-    (1, 1,
-     '<a class="btn btn--gold-lg" href="#contact">Записаться на консультацию</a>',
-     '<a class="btn btn--gold-lg" href="#contact">' + badge("4.4") + 'Записаться на консультацию</a>'),
-    (1, 1,
-     'stroke-linecap="round" stroke-linejoin="round"></path></svg>Написать в WhatsApp</a>',
-     'stroke-linecap="round" stroke-linejoin="round"></path></svg>' + badge("4.5") + 'Написать в WhatsApp</a>'),
-
-    # ---------- 5. Адвокаты ----------
-    (1, 1, '<div class="eyebrow eyebrow--wine">Адвокаты</div>', '<div class="eyebrow eyebrow--wine">' + badge("5.1") + 'Адвокаты</div>'),
-    (1, 1, 'Кто ведёт ваше дело</h2>', badge("5.2") + 'Кто ведёт ваше дело</h2>'),
-
-    (1, 1,
-     '<h3 class="attorney-card__name">Александр Гамбарян</h3>',
-     '<h3 class="attorney-card__name">' + badge("5.3") + 'Александр Гамбарян</h3>'),
-    (1, 1,
-     '<div class="attorney-card__role">Адвокат · семейное право</div>',
-     '<div class="attorney-card__role">' + badge("5.4") + 'Адвокат · семейное право</div>'),
-    (1, 1,
-     '<span>Более 30 лет профессионального опыта в юриспруденции</span>',
-     '<span>' + badge("5.5") + 'Более 30 лет профессионального опыта в юриспруденции</span>'),
-    (1, 1,
-     '<span>Автор международного судебного прецедента по возвращению похищенного ребёнка при незарегистрированных родительских правах</span>',
-     '<span>' + badge("5.6") + 'Автор международного судебного прецедента по возвращению похищенного ребёнка при незарегистрированных родительских правах</span>'),
-    (1, 1,
-     '<span>Адвокат Израиля, лицензия №&nbsp;30178</span>',
-     '<span>' + badge("5.7") + 'Адвокат Израиля, лицензия №&nbsp;30178</span>'),
-    (1, 1,
-     '<span>Языки работы — русский, иврит, английский</span>',
-     '<span>' + badge("5.8") + 'Языки работы — русский, иврит, английский</span>'),
-    (1, 1,
-     '<span>Приём — Тель-Авив / онлайн · <a class="map-link"',
-     '<span>' + badge("5.9") + 'Приём — Тель-Авив / онлайн · <a class="map-link"'),
-    (1, 1,
-     '<a class="btn--gold-block" href="#contact">Записаться к Александру</a>',
-     '<a class="btn--gold-block" href="#contact">' + badge("5.10") + 'Записаться к Александру</a>'),
-
-    (1, 1,
-     '<h3 class="attorney-card__name">Юлия Саакян</h3>',
-     '<h3 class="attorney-card__name">' + badge("5.11") + 'Юлия Саакян</h3>'),
-    (1, 1,
-     '<div class="attorney-card__role">Адвокат-партнёр · миграционное и семейное право</div>',
-     '<div class="attorney-card__role">' + badge("5.12") + 'Адвокат-партнёр · миграционное и семейное право</div>'),
-    (1, 1,
-     '<span>Более 17 лет в юриспруденции — защита прав людей и правовые решения в сложных ситуациях</span>',
-     '<span>' + badge("5.13") + 'Более 17 лет в юриспруденции — защита прав людей и правовые решения в сложных ситуациях</span>'),
-    (1, 1,
-     '<span>Высшее юридическое образование с отличием</span>',
-     '<span>' + badge("5.14") + 'Высшее юридическое образование с отличием</span>'),
-    (1, 1,
-     '<span>Возглавляла юридические подразделения в государственных учреждениях, в том числе в сфере международного сотрудничества</span>',
-     '<span>' + badge("5.15") + 'Возглавляла юридические подразделения в государственных учреждениях, в том числе в сфере международного сотрудничества</span>'),
-    (1, 1,
-     '<span>Специализация — миграционное и семейное право Израиля: репатриация, гражданство, статус, семейные споры</span>',
-     '<span>' + badge("5.16") + 'Специализация — миграционное и семейное право Израиля: репатриация, гражданство, статус, семейные споры</span>'),
-    (1, 1,
-     '<span>Представительство в МВД Израиля, апелляционных инстанциях и судах</span>',
-     '<span>' + badge("5.17") + 'Представительство в МВД Израиля, апелляционных инстанциях и судах</span>'),
-    (1, 1,
-     '<a class="btn--gold-block" href="#contact">Записаться к Юлии</a>',
-     '<a class="btn--gold-block" href="#contact">' + badge("5.18") + 'Записаться к Юлии</a>'),
-
-    (1, 1,
-     '<p class="attorneys__note">В течение всего процесса, от первой консультации до завершения дела, клиент получает полное сопровождение на русском языке, включающее в себя разъяснение содержания и заполнение подготовленных документов.</p>',
-     '<p class="attorneys__note">' + badge("5.19") + 'В течение всего процесса, от первой консультации до завершения дела, клиент получает полное сопровождение на русском языке, включающее в себя разъяснение содержания и заполнение подготовленных документов.</p>'),
-
-    # ---------- 6. Контакт ----------
-    (1, 1, '<div class="eyebrow">Консультация</div>', '<div class="eyebrow">' + badge("6.1") + 'Консультация</div>'),
-    (1, 1, 'Для ознакомительного разговора</h2>', badge("6.2") + 'Для ознакомительного разговора</h2>'),
-    (1, 1,
-     '<p class="contact__lead">Оставьте свои контактные данные — специалист офиса свяжется с вами, уточнит обстоятельства и тему обращения, а также согласует удобные дату и время консультации.</p>',
-     '<p class="contact__lead">' + badge("6.3") + 'Оставьте свои контактные данные — специалист офиса свяжется с вами, уточнит обстоятельства и тему обращения, а также согласует удобные дату и время консультации.</p>'),
-    (1, 1,
-     '<span class="contact-list__label">Телефон</span>',
-     '<span class="contact-list__label">' + badge("6.4") + 'Телефон</span>'),
-    (1, 1,
-     '<span class="contact-list__label">WhatsApp</span>',
-     '<span class="contact-list__label">' + badge("6.5") + 'WhatsApp</span>'),
-    (1, 1,
-     '<span class="contact-list__label">Приём</span>',
-     '<span class="contact-list__label">' + badge("6.6") + 'Приём</span>'),
-    (1, 1,
-     '<h3 class="lead-form__title">Форма обращения</h3>',
-     '<h3 class="lead-form__title">' + badge("6.7") + 'Форма обращения</h3>'),
-    (1, 1,
-     '<p class="lead-form__note">Поля со звёздочкой (*) обязательны.</p>',
-     '<p class="lead-form__note">' + badge("6.8") + 'Поля со звёздочкой (*) обязательны.</p>'),
-    (1, 1,
-     '<div class="lead-form__error" role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" hidden>',
-     '<div class="lead-form__error" role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" hidden>' + badge("6.9")),
-    (1, 1,
-     '<label class="field__label" for="lead-name">Имя *</label>',
-     '<label class="field__label" for="lead-name">' + badge("6.10") + 'Имя *</label>'),
-    (1, 1,
-     '<label class="field__label" for="lead-phone">Телефон *</label>',
-     '<label class="field__label" for="lead-phone">' + badge("6.11") + 'Телефон *</label>'),
-    (1, 1,
-     '<label class="field__label" for="lead-email">Email</label>',
-     '<label class="field__label" for="lead-email">' + badge("6.12") + 'Email</label>'),
-    (1, 1,
-     '<button class="lead-form__submit" type="submit">Записаться на консультацию</button>',
-     '<button class="lead-form__submit" type="submit">' + badge("6.13") + 'Записаться на консультацию</button>'),
-    (1, 1,
-     '<p class="lead-form__legal">Не отправляйте документы и конфиденциальные сведения через форму для назначения консультации.</p>',
-     '<p class="lead-form__legal">' + badge("6.14") + 'Не отправляйте документы и конфиденциальные сведения через форму для назначения консультации.</p>'),
-    (1, 1,
-     '<div class="form-success__title">Заявка получена</div>',
-     '<div class="form-success__title">' + badge("6.15") + 'Заявка получена</div>'),
-    (1, 1,
-     '<p>Специалист офиса свяжется с вами, чтобы уточнить тему обращения и согласовать дату и время консультации.</p>',
-     '<p>' + badge("6.16") + 'Специалист офиса свяжется с вами, чтобы уточнить тему обращения и согласовать дату и время консультации.</p>'),
-    (1, 1,
-     '<button class="form-success__again" type="button">Отправить ещё одну заявку</button>',
-     '<button class="form-success__again" type="button">' + badge("6.17") + 'Отправить ещё одну заявку</button>'),
-
-    # ---------- 7. Футер ----------
-    (1, 1,
-     '<div class="logo">\n        <span class="logo__word">',
-     '<div class="logo">' + badge("7.1") + '\n        <span class="logo__word">'),
-    (1, 1,
-     '<span class="site-footer__label">Офис</span>',
-     '<span class="site-footer__label">' + badge("7.2") + 'Офис</span>'),
-    (1, 1,
-     '<span class="site-footer__label">Связь</span>',
-     '<span class="site-footer__label">' + badge("7.3") + 'Связь</span>'),
-    (1, 1,
-     '<p class="site-footer__legal">Информация на странице носит ознакомительный характер и не является юридической консультацией. Возможные действия и результат зависят от обстоятельств конкретного дела. © 2026 Адвокат Александр Гамбарян. Лицензия №&nbsp;30178</p>',
-     '<p class="site-footer__legal">' + badge("7.4") + 'Информация на странице носит ознакомительный характер и не является юридической консультацией. Возможные действия и результат зависят от обстоятельств конкретного дела. © 2026 Адвокат Александр Гамбарян. Лицензия №&nbsp;30178</p>'),
-]
-
-BANNER = """
-<!-- REVIEW-NUMBERED v1.0.0 | 2026-08-11 -->
-<div class="rvn-banner">
-  <p><strong>Копия для правок.</strong> У каждого текстового блока — номер слева.
-  Присылайте правки со ссылкой на номер: «3.11 — заменить заголовок на …».</p>
-  <p class="rvn-banner__note">Номера вида «3.27 (пример — так во всех 8 карточках)»
-  отмечают текст, который повторяется одинаково в нескольких карточках услуг —
-  правка одного места применяется ко всем.</p>
+BANNER = f"""
+<!-- REVIEW-NUMBERED v{REVIEW_NUMBERED_VERSION} | {REVIEW_NUMBERED_UPDATED} -->
+<div class="rvn-banner" role="note" aria-label="Служебная инструкция">
+  <p><strong>Копия для согласования текста.</strong> Перед каждым утверждённым
+  текстовым блоком показан его номер.</p>
+  <p class="rvn-banner__note">Для правки укажите номер и новую формулировку,
+  например: «3.12 — заменить текст на …».</p>
 </div>
 """
 
-BADGE_CSS = """
-/* ==========================================================================
-   REVIEW-NUMBERED v1.0.0 | 2026-08-11
-   Номера для клиентской копии — только в этой сборке, в боевой версии их нет.
-   Бейдж самодостаточен по контрасту (тёмный фон + золотая рамка), поэтому
-   читается одинаково на светлых секциях (факты, адвокаты) и тёмных
-   (hero, услуги, контакты) без отдельных правил на каждую секцию.
+BADGE_CSS = f"""
+/* ===========================================================================
+   REVIEW-NUMBERED v{REVIEW_NUMBERED_VERSION} | {REVIEW_NUMBERED_UPDATED}
+   Служебные номера существуют только в клиентской копии.
    ========================================================================== */
-.rvn {
+.page--review-numbered [data-copy-id]::before {{
+  content: attr(data-copy-id);
   display: inline-flex;
-  /* Логотип в шапке — flex-column (.logo), и без этого бейдж растягивался
-     на всю ширину блока вместо того, чтобы облегать число. */
-  align-self: flex-start;
   flex: none;
   align-items: center;
   justify-content: center;
   min-width: 30px;
-  height: 20px;
-  padding: 0 6px;
+  min-height: 20px;
+  padding: 2px 6px;
   margin-right: 7px;
   vertical-align: middle;
   font-family: "Onest", Helvetica, Arial, sans-serif;
@@ -384,11 +91,9 @@ BADGE_CSS = """
   border-radius: 999px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
-  user-select: all;
-}
-h1 .rvn, h2 .rvn, h3 .rvn { vertical-align: 0.28em; }
+}}
 
-.rvn-banner {
+.rvn-banner {{
   max-width: 720px;
   margin: 18px auto 0;
   padding: 14px 20px;
@@ -399,50 +104,68 @@ h1 .rvn, h2 .rvn, h3 .rvn { vertical-align: 0.28em; }
   font-family: "Onest", Helvetica, Arial, sans-serif;
   font-size: 13.5px;
   line-height: 1.55;
-}
-.rvn-banner p { margin: 0 0 6px; }
-.rvn-banner p:last-child { margin-bottom: 0; }
-.rvn-banner strong { color: #f0ae1f; }
-.rvn-banner__note { color: rgba(255, 255, 255, 0.6); font-size: 12.5px; }
-
-@media (max-width: 480px) {
-  /* Длинные служебные подписи должны переноситься внутри карточки, а не
-     расширять страницу. Исходный текст и нумерация при этом сохраняются. */
-  .rvn {
-    flex: 0 1 auto;
-    min-width: 0;
-    max-width: 100%;
-    height: auto;
-    min-height: 20px;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-align: center;
-  }
-
-  .rvn:not([data-rvn*="("]) {
-    flex: none;
-    min-width: 30px;
-    white-space: nowrap;
-  }
-
-  .svc-media__label,
-  .svc-media__person > div,
-  .precedent-card__text,
-  .precedent-card__actions {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  .precedent-card__actions { width: 100%; }
-
-  .precedent-card__actions .btn {
-    min-width: 0;
-    max-width: 100%;
-    padding-inline: 16px;
-    text-align: center;
-  }
-}
+}}
+.rvn-banner p {{ margin: 0 0 6px; }}
+.rvn-banner p:last-child {{ margin-bottom: 0; }}
+.rvn-banner strong {{ color: #f0ae1f; }}
+.rvn-banner__note {{ color: rgba(255, 255, 255, 0.66); font-size: 12.5px; }}
 """
+
+
+def _source_copy_ids() -> tuple[str, ...]:
+    html = (SITE / "index.html").read_text(encoding="utf-8")
+    copy_ids = tuple(match.group("value") for match in COPY_ID_RE.finditer(html))
+    counts = Counter(copy_ids)
+    duplicates = sorted(copy_id for copy_id, count in counts.items() if count > 1)
+    unknown = sorted(set(copy_ids) - set(APPROVED_COPY))
+    if duplicates or unknown:
+        details = []
+        if duplicates:
+            details.append("повторы: " + ", ".join(duplicates))
+        if unknown:
+            details.append("неизвестные ID: " + ", ".join(unknown))
+        raise SystemExit("Сборка остановлена — " + "; ".join(details))
+    return copy_ids
+
+
+def _add_body_class(html: str) -> str:
+    matches = list(BODY_RE.finditer(html))
+    if len(matches) != 1:
+        raise SystemExit(
+            f"Сборка остановлена — ожидался один <body>, найдено {len(matches)}"
+        )
+
+    body = matches[0].group(0)
+    class_match = CLASS_RE.search(body)
+    if class_match:
+        classes = class_match.group("value").split()
+        if "page--review-numbered" not in classes:
+            classes.append("page--review-numbered")
+        replacement = (
+            body[: class_match.start()]
+            + f'class="{" ".join(classes)}"'
+            + body[class_match.end() :]
+        )
+    else:
+        replacement = body[:-1] + ' class="page--review-numbered">'
+
+    return html[: matches[0].start()] + replacement + html[matches[0].end() :]
+
+
+def _insert_banner(html: str) -> str:
+    hero = re.search(
+        r"<section\b(?=[^>]*\bid=(?:['\"])top(?:['\"]))[^>]*>",
+        html,
+        re.IGNORECASE,
+    )
+    if not hero:
+        raise SystemExit("Сборка остановлена — Hero с id=top не найден")
+
+    hero_end = html.find("</section>", hero.end())
+    if hero_end < 0:
+        raise SystemExit("Сборка остановлена — закрывающий тег Hero не найден")
+    hero_end += len("</section>")
+    return html[:hero_end] + "\n" + BANNER + html[hero_end:]
 
 
 def build() -> Path:
@@ -451,85 +174,92 @@ def build() -> Path:
     DEST.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(SITE, DEST)
 
-    html = (DEST / "index.html").read_text(encoding="utf-8")
-    problems = []
-    for expected_total, replace_count, old, new in REPLACEMENTS:
-        found = html.count(old)
-        if found != expected_total:
-            problems.append(f"ожидал {expected_total}, нашёл {found}: {old[:70]!r}")
-            continue
-        html = html.replace(old, new, replace_count)
-    if problems:
-        raise SystemExit("Сборка остановлена — разметка разошлась с ожиданием:\n  " +
-                          "\n  ".join(problems))
+    index_path = DEST / "index.html"
+    html = index_path.read_text(encoding="utf-8")
+    html = _add_body_class(html)
+    html = _insert_banner(html)
+    index_path.write_text(html, encoding="utf-8")
 
-    if html.count("<body>") != 1:
-        raise SystemExit("Сборка остановлена — ожидался один <body>")
-    html = html.replace("<body>", '<body class="page--review-numbered">', 1)
+    styles_path = DEST / "styles.css"
+    styles = styles_path.read_text(encoding="utf-8")
+    styles_path.write_text(styles + "\n" + BADGE_CSS, encoding="utf-8")
 
-    hero_start = html.find('<section class="hero" id="top">')
-    hero_end = html.find("</section>", hero_start)
-    if hero_start < 0 or hero_end < 0:
-        raise SystemExit("Сборка остановлена — Hero для вставки инструкции не найден")
-    hero_end += len("</section>")
-    html = html[:hero_end] + "\n" + BANNER + html[hero_end:]
-    html = html.replace("<!-- вариант", "<!-- клиентская копия с номерами -->\n<!-- вариант", 1)
-    if "<!-- вариант" not in html:
-        html = html.replace("<title>", "<!-- клиентская копия с номерами -->\n<title>", 1)
-    (DEST / "index.html").write_text(html, encoding="utf-8")
-
-    styles = (DEST / "styles.css").read_text(encoding="utf-8")
-    (DEST / "styles.css").write_text(styles + "\n" + BADGE_CSS, encoding="utf-8")
     install_action_bar(DEST)
     return DEST
 
 
 def verify(dest: Path) -> list[str]:
-    problems = []
+    problems: list[str] = []
     html = (dest / "index.html").read_text(encoding="utf-8")
     css = (dest / "styles.css").read_text(encoding="utf-8")
 
-    n_badges = len(re.findall(r'class="rvn"', html))
-    expected = len(REPLACEMENTS)
-    if n_badges != expected:
-        problems.append(f"вставлено бейджей {n_badges}, ожидалось {expected}")
+    copy_ids = [match.group("value") for match in COPY_ID_RE.finditer(html)]
+    counts = Counter(copy_ids)
+    duplicates = sorted(copy_id for copy_id, count in counts.items() if count > 1)
+    actual = set(copy_ids)
+    expected_copy_ids = _source_copy_ids()
+    expected = set(expected_copy_ids)
+    missing = sorted(expected - actual)
+    unexpected = sorted(actual - expected)
 
-    if ".rvn {" not in css:
-        problems.append("стили бейджей не подключены")
+    if len(copy_ids) != len(expected_copy_ids):
+        problems.append(
+            f"атрибутов data-copy-id {len(copy_ids)}, ожидалось {len(expected_copy_ids)}"
+        )
+    if duplicates:
+        problems.append("data-copy-id повторяются: " + ", ".join(duplicates))
+    if missing:
+        problems.append("не найдены data-copy-id: " + ", ".join(missing))
+    if unexpected:
+        problems.append("неожиданные data-copy-id: " + ", ".join(unexpected))
+
     marker = f"REVIEW-NUMBERED v{REVIEW_NUMBERED_VERSION} | {REVIEW_NUMBERED_UPDATED}"
-    if marker not in css:
-        problems.append(f"в styles.css нет маркера {marker}")
     if html.count(f"<!-- {marker} -->") != 1:
         problems.append(f"в index.html нет единственного маркера {marker}")
-    if "rvn-banner" not in html:
-        problems.append("баннер с инструкцией не вставлен")
-    if html.count('class="page--review-numbered"') != 1:
-        problems.append("review-numbered не имеет изолирующего body-класса")
+    if marker not in css:
+        problems.append(f"в styles.css нет маркера {marker}")
+    if "[data-copy-id]::before" not in css or "content: attr(data-copy-id)" not in css:
+        problems.append("CSS-бейджи data-copy-id не подключены")
+    if html.count('class="rvn-banner"') != 1:
+        problems.append("служебный баннер с инструкцией не вставлен")
+    body_matches = list(BODY_RE.finditer(html))
+    body_classes = (
+        CLASS_RE.search(body_matches[0].group(0)).group("value").split()
+        if len(body_matches) == 1 and CLASS_RE.search(body_matches[0].group(0))
+        else []
+    )
+    if len(body_matches) != 1 or body_classes.count("page--review-numbered") != 1:
+        problems.append("review-numbered не имеет единственного изолирующего body-класса")
     if 'name="robots" content="noindex"' not in html:
         problems.append("noindex пропал — эта копия не должна индексироваться")
 
-    # текст не должен был потеряться или задвоиться при вставке
-    for must in ("Адвокат по семейному праву в Израиле", "054-549-0623",
-                 "Записаться на консультацию", "Юлия Саакян"):
-        if must not in html:
-            problems.append(f"пропал текст «{must}»")
+    for forbidden in FORBIDDEN_TEXT:
+        if forbidden in html:
+            problems.append(f"найден отменённый текст/поле: {forbidden!r}")
+    if re.search(r"\bemail\b", html, re.IGNORECASE):
+        problems.append("найдено отменённое поле/упоминание Email")
+    if re.search(r'\bname=["\']topic["\']', html, re.IGNORECASE):
+        problems.append("найдено отменённое поле topic")
 
     problems.extend(verify_action_bar_install(dest))
-
     return problems
 
 
 def main() -> int:
     dest = build()
     problems = verify(dest)
+    copy_id_count = len(_source_copy_ids())
     print(f"Собрано: {dest.relative_to(ROOT)}")
-    print(f"Бейджей вставлено: {len(REPLACEMENTS)}")
+    print(f"Использованных утверждённых data-copy-id: {copy_id_count}")
     if problems:
         print("ПРОВЕРКА НЕ ПРОЙДЕНА:")
-        for p in problems:
-            print("  ✗", p)
+        for problem in problems:
+            print("  ✗", problem)
         return 1
-    print("Проверка пройдена: все номера на месте, текст не повреждён, noindex сохранён.")
+    print(
+        f"Проверка пройдена: {copy_id_count} уникальных номеров, "
+        "noindex и Action Bar сохранены."
+    )
     return 0
 
 

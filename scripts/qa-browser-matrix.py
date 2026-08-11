@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.2.0 | 2026-08-11
+"""PREVIEW-BROWSER-QA-RUNNER v1.3.0 | 2026-08-11
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -40,9 +40,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 from urllib.parse import quote, urljoin, urlparse, urlunparse
 
@@ -54,9 +55,9 @@ from final_dev3_contract import (
 )
 
 
-RUNNER_VERSION = "1.2.0"
-ACTION_BAR_VERSION = "2.3.1"
-CLIENT_PREVIEW_MOBILE_VERSION = "1.0.0"
+RUNNER_VERSION = "1.3.0"
+ACTION_BAR_VERSION = "2.3.2"
+CLIENT_PREVIEW_MOBILE_VERSION = "1.1.0"
 
 MAIN_VIEWPORTS = (
     (360, 600),
@@ -79,6 +80,14 @@ BREAKPOINT_VIEWPORTS = (
 )
 LARGE_VIEWPORTS = ((1920, 1080), (2560, 1440))
 SHORT_PORTRAIT_VIEWPORTS = {(360, 600), (360, 668), (390, 724)}
+SOURCE_COPY_IDS = tuple(
+    re.findall(
+        r'data-copy-id="([^"]+)"',
+        (Path(__file__).resolve().parent.parent / "site" / "index.html").read_text(
+            encoding="utf-8"
+        ),
+    )
+)
 
 
 @dataclass(frozen=True)
@@ -318,6 +327,9 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               iconMatchesWhatsApp: Boolean(
                 heroSvg && whatsappSvg && heroSvg.innerHTML === whatsappSvg.innerHTML
               ),
+              heroContactActionCount: document.querySelectorAll(
+                '.hero--final-dev1 .hero__phone > a'
+              ).length,
             };
           };
           const heroBusinessSync = [];
@@ -417,7 +429,9 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               visibleItemCount: visibleBarItems.length,
               itemWidths: barItemWidths,
             } : { present: false },
-            reviewNumbers: [...document.querySelectorAll('[data-rvn]')].map((node) => node.dataset.rvn),
+            reviewNumbers: [...document.querySelectorAll('[data-copy-id]')].map(
+              (node) => node.dataset.copyId
+            ),
             variant: {
               finalDev1: Boolean(document.querySelector('.hero--final-dev1')),
               finalDev3: Boolean(document.body?.classList.contains(finalDev3BodyClass)),
@@ -502,6 +516,11 @@ def validate_metrics(
                 )
             for snapshot in business_sync:
                 state = snapshot["barState"]
+                if snapshot["heroContactActionCount"] != 1:
+                    failures.append(
+                        "final-dev3-hero-contact-actions="
+                        f"{snapshot['heroContactActionCount']} expected=1"
+                    )
                 if state == "open":
                     if snapshot["href"] != "tel:+972545490623":
                         failures.append(f"final-dev3-hero-open-href={snapshot['href']}")
@@ -514,7 +533,7 @@ def validate_metrics(
                         failures.append(
                             f"final-dev3-hero-open-action={snapshot['dataAction']}"
                         )
-                    if snapshot["ariaLabel"] != "Позвонить: плюс 972 54 549 06 23":
+                    if snapshot["ariaLabel"] != "Позвонить: 054-549-0623":
                         failures.append(
                             f"final-dev3-hero-open-label={snapshot['ariaLabel']}"
                         )
@@ -631,8 +650,11 @@ def validate_metrics(
         failures.append("hero-b-marker-missing")
     if target.name == "review-numbered":
         numbers = metrics["reviewNumbers"]
-        if len(numbers) != 102 or len(set(numbers)) != 102:
-            failures.append(f"review-numbers={len(numbers)}/{len(set(numbers))} expected=102/102")
+        if numbers != list(SOURCE_COPY_IDS):
+            failures.append(
+                f"review-numbers={len(numbers)}/{len(set(numbers))} "
+                f"expected-source={len(SOURCE_COPY_IDS)}"
+            )
 
     failures.extend(f"console-{message['type']}:{message['text']}" for message in console_messages)
     failures.extend(f"page-error:{message}" for message in page_errors)

@@ -1,10 +1,15 @@
-# Локальная приёмка десяти клиентских Preview
+> **HISTORICAL / SUPERSEDED 2026-08-11.** Отчёт относится к предыдущим десяти
+> Preview с Action Bar `2.3.1` и review со 102 номерами. Он не закрывает текущий
+> allowlist-gate. Актуальные входы: [`../RESUME.md`](../RESUME.md) и
+> [`../tasks/2026-08-11-client-approved-copy-only.md`](../tasks/2026-08-11-client-approved-copy-only.md).
+
+# Локальная приёмка десяти клиентских Preview — HISTORICAL
 
 **Версия:** `CLIENT-PREVIEW-LOCAL-QA v1.0.0`
 
 **Дата:** `2026-08-11`
 
-**Статус:** `PASS LOCAL / LIVE PENDING`
+**Статус:** `HISTORICAL PASS LOCAL / SUPERSEDED`
 
 **Проверенная база:** рабочее дерево поверх `43ffeb446cb3ef85a31dfa20cc82b9c348da9058`;
 release commit фиксируется отдельным live-отчётом после push/deploy.
