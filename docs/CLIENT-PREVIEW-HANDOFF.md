@@ -1,6 +1,6 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v1.2.1`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v1.2.2`
 
 **Дата:** `2026-08-11`
 
@@ -27,7 +27,7 @@
 | 8 | `hero-b-call-first` | Hero B: звонок является главным действием, запись — вторым | [Открыть Hero B](https://hero-b-call-first.gambarian-landing.pages.dev/) |
 | 9 | `action-bar` | Эталон поведения мобильной нижней панели | [Открыть Action Bar](https://action-bar.gambarian-landing.pages.dev/) |
 | 10 | `review-numbered` | Служебная версия со 102 номерами для точного согласования текста; не кандидат на финальный дизайн | [Открыть подписанный текст](https://review-numbered.gambarian-landing.pages.dev/) |
-| 11 | `final-dev3` | Выбранная сборка: strict clone `final-dev1`, Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`; **LIVE PASS** | [Открыть final-dev3](https://final-dev3.gambarian-landing.pages.dev/) |
+| 11 | `final-dev3` | На URL сейчас исторический `v1.0.0` strict clone `final-dev1` (**LIVE PASS**). Кандидат `v1.1.0` добавляет синхронный Hero phone/WhatsApp business-hours и пока **PENDING LIVE** | [Открыть final-dev3](https://final-dev3.gambarian-landing.pages.dev/) |
 
 `final-dev` и `action-bar` намеренно публикуются из одного канонического
 артефакта. Их два URL оставлены, чтобы один использовать как общий вариант, а
@@ -45,10 +45,11 @@
   `1200×630` через Open Graph/Twitter metadata.
 - Preview имеют `noindex`; production не является частью сравнения.
 
-## Что уже проверено для `final-dev3`
+## Что уже проверено для `final-dev3 v1.0.0`
 
 - Marker: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
-- Preview-карта: `2.4.0`, одиннадцать вариантов; browser-runner: `1.1.0`.
+- Preview-карта: `2.4.0`, одиннадцать вариантов; исторический release проверен
+  runner `1.1.0`, текущий Hero-state runner — `1.2.0`.
 - Локально: одиночный прогон `15/15`, полная карта
   `110/110 + 55/55 + 8/8 = 173/173`.
 - `final-dev1` и `final-dev3` pixel-identical на `1293×724` и `390×844`;
@@ -60,6 +61,19 @@
 - Cloudflare deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`, live
   HTTP/asset/Function readback и browser `15/15` прошли.
 
+## Что изменяется в `final-dev3 v1.1.0`
+
+- Marker: `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`.
+- Action Bar `2.3.1` остаётся единственным источником расписания
+  `Asia/Jerusalem`: воскресенье–четверг, `[09:00, 18:00)`.
+- В рабочее время Hero сохраняет текущий телефон; в нерабочее показывает
+  точный текст `Написать в WhatsApp`, WhatsApp-ссылку и WhatsApp-иконку.
+- Demo-switch одновременно меняет Hero и Action Bar. Вторые часы, timer или
+  отдельная карта состояния Hero не создаются.
+- Кандидат локально прошёл `15/15` и полную матрицу `173/173`, включая оба
+  состояния Hero и центрирование мобильной формы. Он ещё не опубликован:
+  live PASS `v1.0.0` на него не переносится.
+
 ## Как работает конверсионный путь
 
 ### Hero
@@ -70,6 +84,11 @@
 `final-dev1`. В `final-dev1` на desktop под основной кнопкой показаны отдельный
 звонок, три преимущества и длинное пояснение; телефон справа в desktop-шапке
 удалён как дубль. На mobile сохраняется компактная композиция.
+
+В кандидате `final-dev3 v1.1.0` меняется только этот Hero-контакт: рабочее
+состояние сохраняет текущий телефон, нерабочее показывает
+`Написать в WhatsApp` со ссылкой и иконкой. Состояние берётся из Action Bar
+`2.3.1`, поэтому demo-switch меняет Hero и панель синхронно.
 
 ### Нижняя панель
 
@@ -125,11 +144,15 @@ webhook, а не создание записи в CRM/таблице.
 
 ### Визуальные решения
 
-- [x] Технический кандидат: `final-dev3` = strict clone `final-dev1`.
+- [x] Исторический `final-dev3 v1.0.0` = strict clone `final-dev1`.
 - [x] Шрифт кандидата: Playfair Display + Onest.
 - [x] Hero кандидата: расширенный `final-dev1` без дополнительного редизайна.
 - [x] Нижняя панель кандидата: Action Bar `2.3.1`, включая состав, расписание и
   тексты рабочего/нерабочего состояния.
+- [x] Решение `v1.1.0`: Hero phone/WhatsApp следует тому же состоянию Action
+  Bar; demo-switch синхронизирует оба элемента без второго timer/state.
+- [x] Локальная реализация и browser QA `FINAL-DEV3-DESIGN v1.1.0` завершены.
+- [ ] PENDING Commit, deploy и live-readback `v1.1.0`.
 
 ### Тексты кандидата и оставшиеся клиентские решения
 
@@ -180,10 +203,13 @@ webhook, а не создание записи в CRM/таблице.
   viewport-ячеек и `50/50` breakpoint/landscape-ячеек; шрифты загружены,
   fallback и overflow не найдены.
 - [x] Production до и после публикации Preview не изменился.
-- [x] `final-dev3` локально прошёл `15/15` и полный прогон `173/173`; две
+- [x] `final-dev3 v1.0.0` локально прошёл `15/15` и полный прогон `173/173`; две
   контрольные геометрии pixel-identical с `final-dev1`.
-- [x] Branch `final-dev3` опубликован отдельно; live
+- [x] Branch `final-dev3 v1.0.0` опубликован отдельно; live
   HTTP/assets/Function/browser readback и изоляция прежних URL прошли.
+- [x] Локальная матрица `v1.1.0`: `173/173`, одиночный прогон `15/15`.
+- [ ] PENDING Перед передачей `v1.1.0` заказчику опубликовать новый marker и
+  выполнить live Hero/Action Bar sync readback.
 
 ## Источники проверки
 

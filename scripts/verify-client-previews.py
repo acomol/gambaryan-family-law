@@ -36,10 +36,13 @@ from final_dev1_contract import (
     VERSION as FINAL_DEV1_VERSION,
 )
 from final_dev3_contract import (
+    ACTION_BAR_SCRIPT_TAG as FINAL_DEV3_ACTION_BAR_SCRIPT_TAG,
     BOARD_PATH as FINAL_DEV3_BOARD_PATH,
     BODY_CLASS as FINAL_DEV3_BODY_CLASS,
     CSS_COMMENT as FINAL_DEV3_CSS_COMMENT,
     DATE as FINAL_DEV3_DATE,
+    HERO_BUSINESS_SCRIPT as FINAL_DEV3_HERO_BUSINESS_SCRIPT,
+    HERO_BUSINESS_SCRIPT_TAG as FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG,
     HTML_COMMENT as FINAL_DEV3_HTML_COMMENT,
     MARKER as FINAL_DEV3_MARKER,
     MARKER_RE as FINAL_DEV3_MARKER_RE,
@@ -69,7 +72,28 @@ EXPECTED_PREVIEWS = {
     "review-numbered": "build/variants/review-numbered",
 }
 
-FINAL_DEV3_MARKED_FILES = {"index.html", "styles.css"}
+FINAL_DEV3_NORMALIZED_FILES = {"index.html", "styles.css"}
+FINAL_DEV3_CONTRACT_FILES = FINAL_DEV3_NORMALIZED_FILES | {
+    FINAL_DEV3_HERO_BUSINESS_SCRIPT
+}
+FINAL_DEV3_SCRIPT_REQUIRED_TOKENS = (
+    ".mobile-bar[data-business-state]",
+    ".hero--final-dev1 .hero__call--expanded",
+    '[data-business-action="whatsapp"]',
+    "Написать в WhatsApp",
+    "data-action', 'whatsapp_click",
+    "new MutationObserver(syncFromActionBar)",
+    "attributeFilter: ['data-business-state']",
+)
+FINAL_DEV3_SCRIPT_FORBIDDEN_TOKENS = (
+    "setTimeout(",
+    "setInterval(",
+    "DateTimeFormat(",
+    "localStorage",
+    "sessionStorage",
+    "location.search",
+    "URLSearchParams",
+)
 
 
 def verify_final_dev1(dest: Path) -> list[str]:
@@ -200,17 +224,32 @@ def verify_final_dev3_sources() -> list[str]:
         text = path.read_text(encoding="utf-8") if path.exists() else ""
         if FINAL_DEV3_MARKER not in text:
             problems.append(f"{label} не содержит текущий marker final-dev3")
+    source_path = ROOT / "site-addons" / "final-dev3" / FINAL_DEV3_HERO_BUSINESS_SCRIPT
+    if not source_path.exists():
+        problems.append("единый источник final-dev3 Hero adapter не найден")
+    else:
+        script = source_path.read_text(encoding="utf-8")
+        expected_marker = (FINAL_DEV3_VERSION, FINAL_DEV3_DATE)
+        if FINAL_DEV3_MARKER_RE.findall(script) != [expected_marker]:
+            problems.append("JS version/date final-dev3 расходятся с контрактом")
+        if any(token not in script for token in FINAL_DEV3_SCRIPT_REQUIRED_TOKENS):
+            problems.append("единый источник final-dev3 Hero adapter неполон")
+        if any(token in script for token in FINAL_DEV3_SCRIPT_FORBIDDEN_TOKENS):
+            problems.append("final-dev3 Hero adapter содержит второй источник состояния")
     return problems
 
 
 def verify_final_dev3(dest: Path, baseline: Path) -> list[str]:
-    """Доказывает, что final-dev3 отличается от final-dev1 только контрактом."""
+    """Допускает только versioned Hero-hours delta поверх final-dev1."""
 
     problems: list[str] = []
     html = (dest / "index.html").read_text(encoding="utf-8")
     css = (dest / "styles.css").read_text(encoding="utf-8")
     baseline_html = (baseline / "index.html").read_text(encoding="utf-8")
     baseline_css = (baseline / "styles.css").read_text(encoding="utf-8")
+    script_path = dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT
+    source_path = ROOT / "site-addons" / "final-dev3" / FINAL_DEV3_HERO_BUSINESS_SCRIPT
+    script = script_path.read_text(encoding="utf-8") if script_path.exists() else ""
     expected_marker = (FINAL_DEV3_VERSION, FINAL_DEV3_DATE)
 
     if html.count(FINAL_DEV3_HTML_COMMENT) != 1:
@@ -223,6 +262,22 @@ def verify_final_dev3(dest: Path, baseline: Path) -> list[str]:
         problems.append("HTML version/date final-dev3 расходятся с контрактом")
     if FINAL_DEV3_MARKER_RE.findall(css) != [expected_marker]:
         problems.append("CSS version/date final-dev3 расходятся с контрактом")
+    if FINAL_DEV3_MARKER_RE.findall(script) != [expected_marker]:
+        problems.append("JS version/date final-dev3 расходятся с контрактом")
+    if html.count(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) != 1:
+        problems.append("Hero business-hours adapter должен быть подключён ровно один раз")
+    elif html.find(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) < html.find(
+        FINAL_DEV3_ACTION_BAR_SCRIPT_TAG
+    ):
+        problems.append("Hero business-hours adapter должен загружаться после action-bar.js")
+    if not script_path.exists():
+        problems.append("Hero business-hours adapter не скопирован в final-dev3")
+    elif not source_path.exists() or script_path.read_bytes() != source_path.read_bytes():
+        problems.append("Hero business-hours adapter расходится с единым источником")
+    if any(token not in script for token in FINAL_DEV3_SCRIPT_REQUIRED_TOKENS):
+        problems.append("Hero business-hours adapter неполон")
+    if any(token in script for token in FINAL_DEV3_SCRIPT_FORBIDDEN_TOKENS):
+        problems.append("Hero business-hours adapter содержит второй источник состояния")
     if normalize_final_dev3_html(html) != baseline_html:
         problems.append("нормализованный index.html final-dev3 отличается от final-dev1")
     if normalize_final_dev3_css(css) != baseline_css:
@@ -231,12 +286,14 @@ def verify_final_dev3(dest: Path, baseline: Path) -> list[str]:
     candidate_files = {
         path.relative_to(dest).as_posix(): path
         for path in dest.rglob("*")
-        if path.is_file() and path.relative_to(dest).as_posix() not in FINAL_DEV3_MARKED_FILES
+        if path.is_file()
+        and path.relative_to(dest).as_posix() not in FINAL_DEV3_CONTRACT_FILES
     }
     baseline_files = {
         path.relative_to(baseline).as_posix(): path
         for path in baseline.rglob("*")
-        if path.is_file() and path.relative_to(baseline).as_posix() not in FINAL_DEV3_MARKED_FILES
+        if path.is_file()
+        and path.relative_to(baseline).as_posix() not in FINAL_DEV3_NORMALIZED_FILES
     }
     if candidate_files.keys() != baseline_files.keys():
         problems.append("полный набор файлов final-dev3 отличается от final-dev1")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.1.0 | 2026-08-11
+"""PREVIEW-BROWSER-QA-RUNNER v1.2.0 | 2026-08-11
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -30,9 +30,10 @@ actions to end at least 8px above the viewport bottom. The process exits 0 only
 when every emitted cell passes.
 
 This machine runner does not replace visual review of heads/hair, text/photo
-overlaps or microtext readability, and it does not execute the separate Action
-Bar/form interaction smoke. Those manual/browser interaction gates remain
-required by ``docs/tasks/2026-08-10-all-previews-browser-qa.md``.
+overlaps or microtext readability, and it does not execute the separate form
+interaction smoke. It does toggle both business states for the final-dev3 Hero;
+the remaining manual/browser interaction gates stay required by
+``docs/tasks/2026-08-10-all-previews-browser-qa.md``.
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ from final_dev3_contract import (
 )
 
 
-RUNNER_VERSION = "1.1.0"
+RUNNER_VERSION = "1.2.0"
 ACTION_BAR_VERSION = "2.3.1"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.0.0"
 
@@ -261,6 +262,7 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
           const hero = document.querySelector('.hero');
           const heroMedia = document.querySelector('.hero-media');
           const bar = document.querySelector('.mobile-bar');
+          const leadForm = document.querySelector('.lead-form');
           const visible = (element) => {
             const style = getComputedStyle(element);
             const rect = element.getBoundingClientRect();
@@ -284,7 +286,7 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
           });
 
           const actionRects = [...document.querySelectorAll(
-            '.hero a[href="#contact"], .hero a[href^="tel:"]'
+            '.hero a[href="#contact"], .hero a[href^="tel:"], .hero a[data-action="whatsapp_click"]'
           )].filter(visible).map((element) => {
             const rect = element.getBoundingClientRect();
             return { bottom: rect.bottom, left: rect.left, right: rect.right, top: rect.top };
@@ -292,6 +294,45 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
           const lastActionBottom = actionRects.length
             ? Math.max(...actionRects.map((rect) => rect.bottom))
             : null;
+
+          const heroBusinessAction = document.querySelector(
+            '.hero--final-dev1 .hero__call--expanded'
+          );
+          const whatsappAction = bar?.querySelector('[data-business-action="whatsapp"]');
+          const demoToggle = document.querySelector('[data-business-demo]');
+          const businessSnapshot = () => {
+            const heroSvg = heroBusinessAction?.querySelector('svg');
+            const whatsappSvg = whatsappAction?.querySelector('svg');
+            return {
+              barState: bar?.dataset.businessState || null,
+              href: heroBusinessAction?.getAttribute('href') || null,
+              target: heroBusinessAction?.getAttribute('target') || null,
+              rel: heroBusinessAction?.getAttribute('rel') || null,
+              dataAction: heroBusinessAction?.getAttribute('data-action') || null,
+              ariaLabel: heroBusinessAction?.getAttribute('aria-label') || null,
+              visibleText: (heroBusinessAction?.innerText || '').replace(/\\s+/g, ' ').trim(),
+              rawText: (heroBusinessAction?.textContent || '').replace(/\\s+/g, ' ').trim(),
+              whatsappHref: whatsappAction?.getAttribute('href') || null,
+              whatsappTarget: whatsappAction?.getAttribute('target') || null,
+              whatsappRel: whatsappAction?.getAttribute('rel') || null,
+              iconMatchesWhatsApp: Boolean(
+                heroSvg && whatsappSvg && heroSvg.innerHTML === whatsappSvg.innerHTML
+              ),
+            };
+          };
+          const heroBusinessSync = [];
+          if (
+            document.body?.classList.contains(finalDev3BodyClass) &&
+            heroBusinessAction && bar && demoToggle
+          ) {
+            heroBusinessSync.push(businessSnapshot());
+            demoToggle.click();
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            heroBusinessSync.push(businessSnapshot());
+            demoToggle.click();
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            heroBusinessSync.push(businessSnapshot());
+          }
 
           const clientPreviewStylesheet = [...document.querySelectorAll(
             'link[rel="stylesheet"][href]'
@@ -319,6 +360,7 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
             }
           }
           const source = document.documentElement.outerHTML;
+          const leadFormRect = leadForm ? leadForm.getBoundingClientRect() : null;
           const barStyle = bar ? getComputedStyle(bar) : null;
           const barRect = bar ? bar.getBoundingClientRect() : null;
           const visibleBarItems = bar
@@ -348,8 +390,16 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               heroCount: document.querySelectorAll('.hero').length,
               mediaCount: document.querySelectorAll('.hero-media').length,
               mediaTransform: heroMedia ? getComputedStyle(heroMedia).transform : null,
+              businessSync: heroBusinessSync,
             },
             fonts: fontSamples,
+            form: leadFormRect ? {
+              present: true,
+              leftGap: leadFormRect.left,
+              rightGap: innerWidth - leadFormRect.right,
+              width: leadFormRect.width,
+              withinViewport: leadFormRect.left >= -0.5 && leadFormRect.right <= innerWidth + 0.5,
+            } : { present: false },
             markers: {
               actionBar: source.includes(`ACTION-BAR-SPEC v${actionVersion}`),
               clientPreviewMobile: clientPreviewCss.includes(
@@ -400,6 +450,7 @@ def validate_metrics(
     failures: list[str] = []
     layout = metrics["layout"]
     hero = metrics["hero"]
+    form = metrics["form"]
     bar = metrics["actionBar"]
 
     if layout["scrollWidth"] != layout["clientWidth"] or layout["clientWidth"] != width:
@@ -423,6 +474,77 @@ def validate_metrics(
         bottom = hero["lastActionBottom"]
         if bottom is None or bottom > height - 8:
             failures.append(f"hero-action-bottom={bottom} required<={height - 8}")
+
+    if target.name == "final-dev3":
+        if width <= 860:
+            if not form["present"]:
+                failures.append("final-dev3-mobile-form-missing")
+            else:
+                if not form["withinViewport"]:
+                    failures.append(
+                        "final-dev3-mobile-form-outside-viewport="
+                        f"{form['leftGap']}/{form['rightGap']}"
+                    )
+                if abs(form["leftGap"] - form["rightGap"]) > 1:
+                    failures.append(
+                        "final-dev3-mobile-form-not-centered="
+                        f"{form['leftGap']}/{form['rightGap']}"
+                    )
+        business_sync = hero["businessSync"]
+        if len(business_sync) != 3:
+            failures.append(f"final-dev3-hero-business-snapshots={len(business_sync)} expected=3")
+        else:
+            states = [snapshot["barState"] for snapshot in business_sync]
+            expected_states = [states[0], "closed" if states[0] == "open" else "open", states[0]]
+            if states[0] not in {"open", "closed"} or states != expected_states:
+                failures.append(
+                    f"final-dev3-hero-business-sequence={states} expected={expected_states}"
+                )
+            for snapshot in business_sync:
+                state = snapshot["barState"]
+                if state == "open":
+                    if snapshot["href"] != "tel:+972545490623":
+                        failures.append(f"final-dev3-hero-open-href={snapshot['href']}")
+                    if snapshot["target"] is not None or snapshot["rel"] is not None:
+                        failures.append(
+                            "final-dev3-hero-open-external-attrs="
+                            f"{snapshot['target']}/{snapshot['rel']}"
+                        )
+                    if snapshot["dataAction"] != "phone_click":
+                        failures.append(
+                            f"final-dev3-hero-open-action={snapshot['dataAction']}"
+                        )
+                    if snapshot["ariaLabel"] != "Позвонить: плюс 972 54 549 06 23":
+                        failures.append(
+                            f"final-dev3-hero-open-label={snapshot['ariaLabel']}"
+                        )
+                    if "054-549-0623" not in snapshot["rawText"]:
+                        failures.append("final-dev3-hero-open-phone-copy-missing")
+                    if snapshot["iconMatchesWhatsApp"]:
+                        failures.append("final-dev3-hero-open-icon-is-whatsapp")
+                elif state == "closed":
+                    if snapshot["href"] != snapshot["whatsappHref"]:
+                        failures.append("final-dev3-hero-closed-whatsapp-href-mismatch")
+                    if snapshot["target"] != snapshot["whatsappTarget"]:
+                        failures.append("final-dev3-hero-closed-whatsapp-target-mismatch")
+                    if snapshot["rel"] != snapshot["whatsappRel"]:
+                        failures.append("final-dev3-hero-closed-whatsapp-rel-mismatch")
+                    if snapshot["dataAction"] != "whatsapp_click":
+                        failures.append(
+                            f"final-dev3-hero-closed-action={snapshot['dataAction']}"
+                        )
+                    if snapshot["ariaLabel"] != "Написать в WhatsApp":
+                        failures.append(
+                            f"final-dev3-hero-closed-label={snapshot['ariaLabel']}"
+                        )
+                    if snapshot["visibleText"] != "Написать в WhatsApp":
+                        failures.append(
+                            f"final-dev3-hero-closed-copy={snapshot['visibleText']}"
+                        )
+                    if "054-549-0623" in snapshot["rawText"] or "Позвон" in snapshot["rawText"]:
+                        failures.append("final-dev3-hero-closed-phone-copy-visible")
+                    if not snapshot["iconMatchesWhatsApp"]:
+                        failures.append("final-dev3-hero-closed-icon-not-whatsapp")
 
     if not metrics["markers"]["actionBar"]:
         failures.append(f"missing-action-bar-marker-v{ACTION_BAR_VERSION}")
@@ -674,7 +796,7 @@ def main(argv: list[str] | None = None) -> int:
             "targets": len(targets),
             "limitations": [
                 "visual review is still required for heads/hair, overlaps, and microtext",
-                "Action Bar and form interaction smoke is not included",
+                "general Action Bar and form interaction smoke is not included beyond final-dev3 Hero state sync",
             ],
             "suites": suites,
             "totals": {"pass": passed, "fail": failed, "total": len(results)},

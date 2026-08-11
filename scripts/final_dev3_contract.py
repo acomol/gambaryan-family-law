@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 DATE = "2026-08-11"
 MARKER = f"FINAL-DEV3-DESIGN v{VERSION} | {DATE}"
 MARKER_RE = re.compile(
@@ -20,6 +20,10 @@ HTML_COMMENT = f"<!-- {MARKER} -->"
 CSS_COMMENT = f"/* {MARKER} */"
 BODY_MARKER_SNIPPET = f'<body class="{BODY_CLASS}">\n{HTML_COMMENT}'
 CSS_MARKER_SNIPPET = f"\n{CSS_COMMENT}"
+HERO_BUSINESS_SCRIPT = "hero-business-hours.js"
+ACTION_BAR_SCRIPT_TAG = '<script src="action-bar.js" defer></script>'
+HERO_BUSINESS_SCRIPT_TAG = f'<script src="{HERO_BUSINESS_SCRIPT}" defer></script>'
+HERO_BUSINESS_SCRIPT_SNIPPET = f"\n{HERO_BUSINESS_SCRIPT_TAG}"
 
 
 def apply_html_contract(html: str) -> str:
@@ -40,10 +44,28 @@ def apply_css_contract(css: str) -> str:
     return css + CSS_MARKER_SNIPPET
 
 
-def normalize_html(html: str) -> str:
-    """Удаляет только final-dev3 HTML contract для byte-level сверки с dev1."""
+def apply_script_contract(html: str) -> str:
+    """Подключает final-dev3 adapter строго после общего Action Bar."""
 
-    return html.replace(BODY_MARKER_SNIPPET, "<body>", 1)
+    if html.count(ACTION_BAR_SCRIPT_TAG) != 1:
+        raise ValueError("final-dev3 ожидает ровно один action-bar.js")
+    if HERO_BUSINESS_SCRIPT_TAG in html:
+        raise ValueError("final-dev3 Hero business-hours contract уже применён")
+    return html.replace(
+        ACTION_BAR_SCRIPT_TAG,
+        ACTION_BAR_SCRIPT_TAG + HERO_BUSINESS_SCRIPT_SNIPPET,
+        1,
+    )
+
+
+def normalize_html(html: str) -> str:
+    """Удаляет только final-dev3 HTML/script contract для сверки с dev1."""
+
+    return html.replace(BODY_MARKER_SNIPPET, "<body>", 1).replace(
+        HERO_BUSINESS_SCRIPT_SNIPPET,
+        "",
+        1,
+    )
 
 
 def normalize_css(css: str) -> str:

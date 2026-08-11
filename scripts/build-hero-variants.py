@@ -8,7 +8,8 @@
 Варианты a/b отличаются только первым экраном. `dev1` дополнительно может
 содержать явно versioned и проверяемые owner-overrides. `dev3` является
 отдельным маркированным клоном `dev1`; общий `site/` при этом остаётся
-неизменным.
+неизменным. В `dev3` добавлен только scoped adapter, который синхронизирует
+Hero с уже рассчитанным Action Bar состоянием рабочего времени.
 
     python scripts/build-hero-variants.py             # все
     python scripts/build-hero-variants.py a b dev1 dev3    # выборочно
@@ -34,19 +35,24 @@ from final_dev1_contract import (
     VERSION as FINAL_DEV1_VERSION,
 )
 from final_dev3_contract import (
+    ACTION_BAR_SCRIPT_TAG as FINAL_DEV3_ACTION_BAR_SCRIPT_TAG,
     BODY_CLASS as FINAL_DEV3_BODY_CLASS,
     CSS_COMMENT as FINAL_DEV3_CSS_COMMENT,
     DATE as FINAL_DEV3_DATE,
+    HERO_BUSINESS_SCRIPT as FINAL_DEV3_HERO_BUSINESS_SCRIPT,
+    HERO_BUSINESS_SCRIPT_TAG as FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG,
     HTML_COMMENT as FINAL_DEV3_HTML_COMMENT,
     MARKER_RE as FINAL_DEV3_MARKER_RE,
     VERSION as FINAL_DEV3_VERSION,
     apply_css_contract as apply_final_dev3_css_contract,
     apply_html_contract as apply_final_dev3_html_contract,
+    apply_script_contract as apply_final_dev3_script_contract,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 OUT = ROOT / "build" / "variants"
+FINAL_DEV3_ADDON = ROOT / "site-addons" / "final-dev3"
 
 MEDIA = re.compile(r'\n      <div class="hero-media">.*?</div>\n', re.S)
 ACTIONS = re.compile(r'\n      <div class="hero__actions">.*?</div>\n', re.S)
@@ -424,7 +430,7 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
 
 
 def variant_final_dev3(html: str) -> tuple[str, str]:
-    """Создаёт отдельный маркированный клон актуального final-dev1."""
+    """Создаёт отдельный маркированный кандидат на базе final-dev1."""
 
     html, css = variant_final_dev1(html)
     return (
@@ -457,6 +463,12 @@ def build(key: str) -> Path:
     styles = (dest / "styles.css").read_text(encoding="utf-8")
     (dest / "styles.css").write_text(styles + "\n" + css, encoding="utf-8")
     install_action_bar(dest)
+    if key == "dev3":
+        source = FINAL_DEV3_ADDON / FINAL_DEV3_HERO_BUSINESS_SCRIPT
+        shutil.copy(source, dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT)
+        html_path = dest / "index.html"
+        html = apply_final_dev3_script_contract(html_path.read_text(encoding="utf-8"))
+        html_path.write_text(html, encoding="utf-8")
     return dest
 
 
@@ -559,17 +571,57 @@ def verify(dest: Path, key: str) -> list[str]:
             problems.append("mobile crop, fallback или desktop readability final-dev1 неполны")
     if key == "dev3":
         styles = (dest / "styles.css").read_text(encoding="utf-8")
+        script_path = dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT
+        script = script_path.read_text(encoding="utf-8") if script_path.exists() else ""
         expected_marker = (FINAL_DEV3_VERSION, FINAL_DEV3_DATE)
         html_markers = FINAL_DEV3_MARKER_RE.findall(html)
         css_markers = FINAL_DEV3_MARKER_RE.findall(styles)
-        if html_markers != [expected_marker] or css_markers != [expected_marker]:
-            problems.append("FINAL-DEV3-DESIGN version/date должны совпадать в HTML и CSS")
+        script_markers = FINAL_DEV3_MARKER_RE.findall(script)
+        if (
+            html_markers != [expected_marker]
+            or css_markers != [expected_marker]
+            or script_markers != [expected_marker]
+        ):
+            problems.append("FINAL-DEV3-DESIGN version/date должны совпадать в HTML/CSS/JS")
         if html.count(FINAL_DEV3_HTML_COMMENT) != 1:
             problems.append("final-dev3 HTML marker должен встречаться ровно один раз")
         if styles.count(FINAL_DEV3_CSS_COMMENT) != 1:
             problems.append("final-dev3 CSS marker должен встречаться ровно один раз")
         if html.count(f'<body class="{FINAL_DEV3_BODY_CLASS}">') != 1:
             problems.append("final-dev3 должен иметь отдельный scoped body class")
+        if html.count(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) != 1:
+            problems.append("final-dev3 Hero adapter должен быть подключён ровно один раз")
+        elif html.find(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) < html.find(
+            FINAL_DEV3_ACTION_BAR_SCRIPT_TAG
+        ):
+            problems.append("final-dev3 Hero adapter должен загружаться после action-bar.js")
+        source_path = FINAL_DEV3_ADDON / FINAL_DEV3_HERO_BUSINESS_SCRIPT
+        if not script_path.exists():
+            problems.append("final-dev3 Hero adapter не скопирован")
+        elif not source_path.exists() or script_path.read_bytes() != source_path.read_bytes():
+            problems.append("final-dev3 Hero adapter расходится с единым источником")
+        required_script_tokens = (
+            ".mobile-bar[data-business-state]",
+            ".hero--final-dev1 .hero__call--expanded",
+            '[data-business-action="whatsapp"]',
+            "Написать в WhatsApp",
+            "data-action', 'whatsapp_click",
+            "new MutationObserver(syncFromActionBar)",
+            "attributeFilter: ['data-business-state']",
+        )
+        if any(token not in script for token in required_script_tokens):
+            problems.append("final-dev3 Hero business-hours adapter неполон")
+        forbidden_script_tokens = (
+            "setTimeout(",
+            "setInterval(",
+            "DateTimeFormat(",
+            "localStorage",
+            "sessionStorage",
+            "location.search",
+            "URLSearchParams",
+        )
+        if any(token in script for token in forbidden_script_tokens):
+            problems.append("final-dev3 Hero adapter не должен иметь второй источник состояния")
     problems.extend(verify_action_bar_install(dest))
     return problems
 

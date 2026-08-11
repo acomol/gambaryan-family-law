@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.3.1`
+**Версия:** `1.3.2`
 
 **Обновлено:** `2026-08-11`
 
@@ -15,6 +15,8 @@
 **Клиентский Preview release:** `98374c133f91a7c47112561f86debbcec2129f6c`
 
 **Preview release `final-dev3`:** `78f429db90e20554af03693978cd89e8bd10f984`
+
+**Кандидат `final-dev3 v1.1.0`:** `LOCAL PASS; PENDING LIVE`
 
 **Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
@@ -43,7 +45,7 @@
 |---|---|
 | Десять Preview | **LIVE PASS:** commit `98374c1`, Action Bar `2.3.1`, Client Preview Mobile `1.0.0`; локальные 100/100 + 50/50 + 6/6 и live HTTP/browser readback 10/10 прошли |
 | `final-dev1` | **LIVE PASS:** Hero `1.3.0`, Precedent Copy `1.0.0` и исходные assets сохранены; marker `FINAL-DEV1-DESIGN` отсутствует |
-| `final-dev3` | **LIVE PASS:** commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`; strict clone `final-dev1`, live `15/15`, локальная карта `173/173` |
+| `final-dev3` | **HISTORICAL LIVE PASS `v1.0.0`:** commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`, live `15/15`, локальная карта `173/173`. **LOCAL PASS; PENDING LIVE `v1.1.0`:** новый Hero business-hours прошёл `173/173`, но ещё не опубликован |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -69,7 +71,7 @@
 | Production | Action Bar не внедряется в `site/index.html`; production не изменяется при сборке Preview | Желание показать панель клиенту реализуется через производные Preview, а не через боевой источник |
 | `final-dev` | Использует тот же канонический артефакт, что `action-bar`, но публикуется отдельным alias | Создание второго идентичного build-каталога |
 | `final-dev1` | Отдельный desktop Hero без дублирующего телефона в шапке; на mobile фото увеличено `1.15×` и сдвинуто на `7%` влево, интервалы сохраняют обе CTA от `360×600`; desktop proof/note увеличены до читаемых `12/13px` и `13/14px` | Перезапись `final-dev`, production или общего action-bar artifact |
-| `final-dev3` | Отдельный strict clone `final-dev1`: Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`; только служебные marker/body class `v1.0.0`, без визуального редизайна | Подмешивание font-preview implementation, правки `site/`/production или скрытое исправление унаследованных дефектов |
+| `final-dev3` | Исторический `v1.0.0` — strict clone `final-dev1`. Кандидат `v1.1.0` сохраняет Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`, но синхронно меняет Hero-контакт: открыто — текущий телефон; закрыто — `Написать в WhatsApp` со ссылкой/иконкой | Вторые часы, timer или отдельная карта состояния Hero; подмешивание font-preview implementation; правки `site/`, production или прежних десяти Preview |
 | Social preview | Готовый versioned PNG `1200×630` и обычные OG/Twitter meta; отдельный Chromium-рендерер не нужен | Более сложный воспроизводимый генератор, удалённый после решения владельца «просто сделать подходящее изображение» |
 | Lead hook | Код и контракт готовы, но доставка не считается live до secret, Catch, dedup и readback | Любое утверждение «форма уже отправляет в Albato» только по наличию endpoint |
 | Версии | Любое изменение требований меняет SemVer и дату во всех источниках соответствующего контракта | Неверсионированные устные изменения |
@@ -114,16 +116,18 @@
 | Client Preview Mobile | `1.0.0` | `2026-08-11` | `client-preview.css`, manifest и verifier |
 | Desktop Hero `final-dev1` | `1.3.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
 | Текст прецедента `final-dev1` | `1.0.0` | `2026-08-11` | builder, HTML marker, task, browser readback |
-| Дизайн-кандидат `final-dev3` | `1.0.0` | `2026-08-11` | контракт, builder, HTML/CSS marker, verifier, task |
+| Дизайн-кандидат `final-dev3` | `1.1.0` (`LOCAL PASS, PENDING LIVE`; live `1.0.0`) | `2026-08-11` | task, source, builder и verifier готовы; deploy/readback pending |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.4.0` | `2026-08-11` | board и `scripts/client-preview-map.json` |
-| Browser QA клиентских Preview | `1.1.1` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
+| Browser QA клиентских Preview | `1.2.0` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
 | Build tools | `1.1.1` | `2026-08-11` | `requirements-build.txt` |
-| Browser QA runner | `1.1.0` | `2026-08-11` | `scripts/qa-browser-matrix.py` |
-| Этот чек-лист | `1.3.1` | `2026-08-11` | текущий файл |
+| Browser QA runner | `1.2.0` | `2026-08-11` | `scripts/qa-browser-matrix.py` |
+| Этот чек-лист | `1.3.2` | `2026-08-11` | текущий файл |
 
 - [x] Все локальные и live marker Action Bar синхронизированы на `2.3.1`;
-  `final-dev3` прошёл отдельный Preview readback.
+  исторический `final-dev3 v1.0.0` прошёл отдельный Preview readback.
+- [x] LOCAL Marker/source/generator `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`
+  согласованы; новый live deployment ещё не проверен.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
 - [x] Все social meta указывают на PNG `v1.0.2`.
 - [ ] При следующем изменении требований одновременно увеличить версию,
@@ -135,7 +139,11 @@
   различия делаются CSS-правилом.
 - [x] На одном экране не остаются две одинаковые винные кнопки к одной цели.
 - [x] Формулировка основного CTA — «Записаться на консультацию».
-- [x] Hero ведёт к форме и звонку; WhatsApp в Hero не дублирует эти действия.
+- [x] Опубликованный `final-dev3 v1.0.0` и прежние варианты ведут из Hero к
+  форме и звонку.
+- [x] LOCAL В `final-dev3 v1.1.0` закрытое состояние заменяет только
+  Hero-телефон на `Написать в WhatsApp`; одновременно телефон и WhatsApp в
+  одном Hero-состоянии не показываются.
 - [x] Адрес ведёт в Google Maps по адресу без непроверенных координат.
 - [x] Вариант Hero C с мини-формой снят решением владельца и не публикуется.
 - [x] `review-numbered` содержит 102 уникальных подписи для согласования текста.
@@ -170,11 +178,14 @@
   «ВПЕРВЫЕ / СОЗДАН ПРЕЦЕДЕНТ… / Добились возвращения…», обязательные
   переносы, отсутствие clipping/overflow и неизменные фото/CTA на mobile и
   desktop; stable alias и deployment URL прошли live readback.
-- [x] LOCAL `final-dev3` `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`: strict clone
+- [x] HISTORICAL LOCAL `final-dev3` `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`: strict clone
   `final-dev1` с Playfair Display + Onest, текущими текстами и Action Bar
   `2.3.1`; нормализованные HTML/CSS и общие assets/scripts/fonts совпадают.
-- [x] LOCAL `final-dev1 ↔ final-dev3` pixel-identical на `1293×724` и
+- [x] HISTORICAL LOCAL `final-dev1 ↔ final-dev3 v1.0.0` pixel-identical на `1293×724` и
   `390×844`; служебный marker/body class не меняет rendered-композицию.
+- [x] LOCAL `final-dev3 v1.1.0`: открытое состояние сохраняет текущий
+  Hero-телефон, закрытое показывает точный текст `Написать в WhatsApp`,
+  WhatsApp-ссылку и WhatsApp-иконку; остальная геометрия Hero не меняется.
 - [x] Landscape высотой ниже 600 px остаётся отдельной прокручиваемой
   композицией: требование «обе CTA в первом экране» к нему не применяется;
   обязательны отсутствие horizontal overflow и штатный static Action Bar.
@@ -196,9 +207,9 @@
   правки контракта и решения владельца. Разбор и расчёты:
   `docs/reviews/2026-08-11-final-dev1-v1.4.0-spec-validation.md`
   (документ HISTORICAL в части типографики, но эта находка — действующая).
-- [ ] OPEN `final-dev3` намеренно наследует тот же zoom-200% дефект как strict
-  clone; локальный native-viewport PASS не является полным WCAG AA PASS для
-  `final-dev1` или `final-dev3`.
+- [ ] OPEN `final-dev3` наследует тот же zoom-200% дефект из базы `final-dev1`;
+  вариантное переключение Hero-контакта `v1.1.0` его не исправляет. Локальный
+  native-viewport PASS не является полным WCAG AA PASS для этих вариантов.
 - [ ] OPEN Общий Hero-raster содержит людей с немного разной высотой макушек.
   CSS не может независимо передвинуть две головы внутри одного изображения;
   для полной симметрии нужен новый asset.
@@ -315,6 +326,10 @@
   `3 ↔ 2`, `aria-checked`, focus, неизменным URL и нулём analytics events.
 - [x] LIVE Action Bar `2.3.1` опубликована и интерактивно проверена на всех
   десяти alias: верхняя подпись, `3 ↔ 2`, focus, URL и analytics согласованы.
+- [x] LOCAL `final-dev3 v1.1.0`: автоматическое расписание и demo-switch
+  одновременно меняют Action Bar и Hero-контакт. Action Bar `2.3.1` остаётся
+  единственным владельцем `Asia/Jerusalem`, open/closed state и timer; Hero не
+  создаёт второй clock, timer или карту состояния.
 
 ### Доступность и ложные клики
 
@@ -474,9 +489,11 @@ git diff --check
   `branch → directory`, наличие build directories, version/date, единственный
   bar, byte-identical CSS/JS, viewport metadata и versioned reference
   `final-dev1`.
-- [x] Для `final-dev3` verifier проверяет marker/body class `v1.0.0`,
+- [x] Для исторического `final-dev3 v1.0.0` verifier проверял marker/body class,
   нормализованное равенство HTML/CSS с `final-dev1`, идентичность общих
   assets/scripts/fonts и связь marker с task/board.
+- [x] LOCAL Для `v1.1.0` verifier проверяет единственный
+  Hero business-hours adapter и разрешает только эту versioned разницу.
 - [ ] OPEN Локальный verifier не проверяет variant-marker каждого старого
   output или живые Cloudflare aliases; это отдельный API/HTTP/browser readback.
 - [x] Windows stdout verifier принудительно UTF-8 и проходит даже при cp1252.
@@ -486,9 +503,10 @@ git diff --check
 - [x] `requirements-build.txt` закрепляет `fonttools`, `playwright` и `brotli`;
   после установки manifest отдельно устанавливается Playwright Chromium.
 - [x] Воспроизводимый browser runner сохранён как
-  `scripts/qa-browser-matrix.py` v1.1.0: принимает base URL и выдаёт машинный
-  PASS/FAIL по каждой ячейке и итоговый счёт; карта из одиннадцати вариантов
-  ожидает `110 + 55 + 8 = 173` ячейки.
+  `scripts/qa-browser-matrix.py` v1.2.0: принимает base URL, переключает и
+  проверяет оба Hero business-state `final-dev3`, выдаёт машинный PASS/FAIL по
+  каждой ячейке и итоговый счёт; карта из одиннадцати вариантов ожидает
+  `110 + 55 + 8 = 173` ячейки.
 - [ ] OPEN `verify-fact-cards.mjs` требует не объявленный `playwright-core` и
   сейчас не является воспроизводимым gate.
 
@@ -560,7 +578,7 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 - [ ] MANUAL Перед отправкой заказчику открыть все десять ссылок в обычном
   мобильном браузере, исключив кеш/авторизацию/anti-bot экран.
 
-### `final-dev3` — LIVE PASS
+### `final-dev3 v1.0.0` — HISTORICAL LIVE PASS
 
 | Preview | Стабильный URL | Deployment | Контракты |
 |---|---|---:|---|
@@ -574,9 +592,17 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 - [x] Cloudflare API и HTTP SHA подтвердили: десять исторических Preview и
   production не изменились.
 
+### `final-dev3 v1.1.0` — PENDING LIVE
+
+- [ ] Новый marker, commit, deployment ID и live readback отсутствуют до
+  публикации кандидата.
+- [ ] После публикации отдельно подтвердить open/closed Hero, demo-sync,
+  единственный state/timer Action Bar и изоляцию production/прежних десяти
+  Preview; не переносить сюда PASS `v1.0.0`.
+
 ### Полная browser/responsive-приёмка всех Preview
 
-Контракт: `PREVIEW-BROWSER-QA v1.1.1 | 2026-08-11`.
+Контракт: `PREVIEW-BROWSER-QA v1.2.0 | 2026-08-11`.
 
 | Preview | Локальный кандидат | Live после публикации |
 |---|---|---|
@@ -590,7 +616,8 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 | `hero-b-call-first` | `[x] PASS`; звонок — главное действие | `[x] PASS` |
 | `action-bar` | `[x] PASS`; byte-identical с `final-dev` | `[x] PASS` |
 | `review-numbered` | `[x] PASS`; 102 уникальных номера, прежний overflow закрыт | `[x] PASS` |
-| `final-dev3` | `[x] PASS`; strict clone `final-dev1`, single `15/15`, pixel-identical на двух контрольных viewport | `[x] PASS` |
+| `final-dev3 v1.0.0` | `[x] HISTORICAL PASS`; strict clone `final-dev1`, single `15/15`, pixel-identical на двух контрольных viewport | `[x] HISTORICAL PASS` |
+| `final-dev3 v1.1.0` | `[x] PASS`; оба Hero business-state, demo-sync, single `15/15`, форма центрирована | `[ ] PENDING LIVE` |
 
 - [x] Выполнено `100/100` ячеек: десять Preview × `360×600`, `360×668`,
   `390×724`, `390×844`, `720×760`, `860×760`, `861×760`, `1024×768`,
@@ -616,16 +643,19 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
   прошли на каждом из десяти stable alias. Реальный POST в Albato не выполнялся.
 
 Исторические числа выше (`100/100 + 50/50 + 6/6`) относятся к release десяти
-опубликованных Preview и сохраняются без пересчёта. Текущая локальная карта
-`2.4.0` с runner `1.1.0` дополнительно прошла:
+опубликованных Preview и сохраняются без пересчёта. Результат карты `2.4.0` с
+runner `1.1.0` относится к опубликованному `final-dev3 v1.0.0`:
 
 - [x] `110/110` основных ячеек;
 - [x] `55/55` breakpoint/landscape-ячеек;
 - [x] `8/8` large-desktop-ячеек;
-- [x] общий локальный результат `173/173`, включая `final-dev3` single `15/15`;
-- [x] pixel-equivalence `final-dev1 ↔ final-dev3` на `1293×724` и `390×844`;
-- [x] LIVE `final-dev3` прошёл `15/15`, asset/Function readback и проверку
+- [x] общий локальный результат `173/173`, включая `final-dev3 v1.0.0` single `15/15`;
+- [x] pixel-equivalence `final-dev1 ↔ final-dev3 v1.0.0` на `1293×724` и `390×844`;
+- [x] LIVE `final-dev3 v1.0.0` прошёл `15/15`, asset/Function readback и проверку
   изоляции десяти старых alias/production.
+- [x] LOCAL Полная матрица `v1.1.0` прошла `173/173`, single `15/15`; проверены
+  auto open/closed, оба demo-состояния Hero/Action Bar и центрирование формы.
+- [ ] PENDING LIVE Повторить `15/15` и isolation readback после deploy.
 
 ## 14. GitHub и CI
 
@@ -734,10 +764,19 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
   экспериментальные Hero A/B.
 - [x] OWNER `2026-08-11`: сохранить текущие тексты, включая текущую композицию
   Hero H1/lede, и Action Bar `2.3.1`.
-- [x] LOCAL `final-dev3` собран и прошёл strict-clone/verifier/browser/pixel
+- [x] LOCAL `final-dev3 v1.0.0` собран и прошёл strict-clone/verifier/browser/pixel
   гейты; marker `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
 - [x] LIVE `final-dev3`: deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`;
-  readback прошёл без изменения старых Preview/production.
+  readback исторического `v1.0.0` прошёл без изменения старых
+  Preview/production.
+- [x] OWNER `2026-08-11`: в `final-dev3 v1.1.0` Hero сохраняет текущий телефон
+  в рабочее время и показывает `Написать в WhatsApp` со ссылкой/иконкой в
+  нерабочее; Action Bar `2.3.1` — единственный источник расписания/state/timer,
+  demo-switch синхронизирует Hero и панель.
+- [x] LOCAL Реализация и локальная приёмка
+  `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`: `173/173`, single `15/15`,
+  verifier `11/11`.
+- [ ] PENDING Commit/push и live deployment/readback `v1.1.0`.
 - [ ] CLIENT Решить, нужна ли отсутствующая секция «Подготовка к консультации».
 - [ ] CLIENT Решить состав формы: topic вместо email, четвёртым полем или без
   topic.

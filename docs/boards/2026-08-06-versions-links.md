@@ -1,6 +1,6 @@
 # Одиннадцать Cloudflare Preview-версий для заказчика
 
-**Версия карты:** `2.4.0`
+**Версия карты:** `2.4.1`
 
 **Обновлено:** `2026-08-11`
 
@@ -21,7 +21,7 @@
 |---|---|---|
 | `final-dev` | Итоговая базовая версия + Action Bar | https://final-dev.gambarian-landing.pages.dev/ |
 | `final-dev1` | Новый Hero без дубля телефона; плотный mobile-кадр пары, читаемый desktop proof-блок, обновлённый текст прецедента, обе CTA на коротком mobile + Action Bar | https://final-dev1.gambarian-landing.pages.dev/ |
-| `final-dev3` | Выбранный кандидат: byte-equivalent `final-dev1`, Playfair Display + Onest, текущие тексты и Action Bar 2.3.1 | https://final-dev3.gambarian-landing.pages.dev/ |
+| `final-dev3` | Выбранный кандидат: Playfair Display + Onest, текущие тексты и Action Bar 2.3.1; live пока обслуживает исторический `v1.0.0`, Hero business-hours `v1.1.0` ожидает публикации | https://final-dev3.gambarian-landing.pages.dev/ |
 | `v1-playfair-onest` | Playfair Display + Onest + Action Bar | https://v1-playfair-onest.gambarian-landing.pages.dev/ |
 | `v2-lora-inter` | Lora + Inter + Action Bar | https://v2-lora-inter.gambarian-landing.pages.dev/ |
 | `v3-literata-manrope` | Literata + Manrope + Action Bar | https://v3-literata-manrope.gambarian-landing.pages.dev/ |
@@ -31,14 +31,17 @@
 | `action-bar` | Эталонная версия мобильной Action Bar | https://action-bar.gambarian-landing.pages.dev/ |
 | `review-numbered` | Копия текста со 102 подписанными номерами + Action Bar | https://review-numbered.gambarian-landing.pages.dev/ |
 
-Контракт выбранного кандидата: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
+Исторический live-контракт: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
+Текущий кандидат: `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11` — **PENDING
+LIVE**, стабильный URL до нового deploy не является доказательством `v1.1.0`.
 
 ## Статус полной browser-приёмки
 
 | Preview | Полная visual/responsive-приёмка |
 |---|---|
 | Все десять Preview | `LIVE PASS`: commit `98374c1`; local `100/100` + `50/50` + `6/6`, live HTTP/browser `10/10` по `PREVIEW-BROWSER-QA v1.0.1` |
-| `final-dev3` | `LIVE PASS`: commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`; live `15/15`, полный локальный прогон `173/173`, strict-clone/readback/isolation PASS |
+| `final-dev3` `v1.0.0` | `HISTORICAL LIVE PASS`: commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`; live `15/15`, полный локальный прогон `173/173`, strict-clone/readback/isolation PASS |
+| `final-dev3` `v1.1.0` | `LOCAL PASS; PENDING LIVE`: Hero-телефон/WhatsApp синхронизированы с Action Bar `2.3.1`; `15/15` и полная матрица `173/173` прошли, deploy/readback ещё не выполнены |
 
 Action Bar smoke уже выполнен на прежних десяти URL, но он не заменяет полный
 rendered-прогон каждого варианта. `final-dev` и `action-bar` используют общий
@@ -54,10 +57,10 @@ rendered-прогон каждого варианта. `final-dev` и `action-ba
 | Mobile-адаптация клиентских Preview | `1.0.0` | 2026-08-11 |
 | Desktop Hero `final-dev1` | `1.3.0` | 2026-08-10 |
 | Текст прецедента `final-dev1` | `1.0.0` | 2026-08-11 |
-| Финальный кандидат `final-dev3` | `1.0.0` | 2026-08-11 |
+| Финальный кандидат `final-dev3` | `1.1.0` (`PENDING LIVE`; live `1.0.0`) | 2026-08-11 |
 | Lead hook / форма | `1.1.0` | 2026-08-10 |
 | Карта клиентских preview | `2.4.0` | 2026-08-11 |
-| Browser QA клиентских Preview | `1.1.1` | 2026-08-11 |
+| Browser QA клиентских Preview | `1.2.0` | 2026-08-11 |
 
 ## Как работает конверсионный путь
 
@@ -75,6 +78,10 @@ rendered-прогон каждого варианта. `final-dev` и `action-ba
   `Демо · Рабочее время` соответствует трём действиям; `Авто · Нерабочее
   время` или `Демо · Нерабочее время` — двум. Перезагрузка возвращает
   автоматический режим.
+- Только кандидат `final-dev3 v1.1.0` дополнительно отражает то же состояние в
+  Hero: в рабочее время сохраняет текущий телефон, в нерабочее показывает
+  `Написать в WhatsApp` с WhatsApp-ссылкой и иконкой. Hero не считает время и
+  не запускает второй timer; demo-switch меняет Hero и панель вместе.
 - Поля формы имеют `autocomplete=name|tel|email`, корректные типы и ограничения.
   Ошибка показывается рядом с конкретным полем, а фокус переводится на первое
   место, которое нужно исправить; введённые данные при повторе сохраняются.
@@ -95,7 +102,7 @@ rendered-прогон каждого варианта. `final-dev` и `action-ba
 | Нижняя панель — single source | `site-addons/action-bar/` | центральный этап сборки добавляет Action Bar во все Preview из карты |
 | Итоговая Dev | `scripts/build-action-bar.py` | `final-dev` использует тот же канонический `build/variants/action-bar`, что и эталон панели |
 | Итоговая Dev 1 | `scripts/build-hero-variants.py dev1` | отдельный `build/variants/final-dev1`; desktop Hero не меняет `site/` и `final-dev` |
-| Итоговая Dev 3 | `scripts/build-hero-variants.py dev3` | отдельный `build/variants/final-dev3`; визуально и по copy повторяет выбранный `final-dev1` |
+| Итоговая Dev 3 | `scripts/build-hero-variants.py dev3` | отдельный `build/variants/final-dev3`; наследует `final-dev1`, а в `v1.1.0` меняет только Hero-контакт по уже вычисленному состоянию Action Bar |
 | Шрифты | `scripts/build-font-variants.py` + центральный этап Action Bar | четыре `build/font-variants/*` |
 | Hero | `scripts/build-hero-variants.py` + центральный этап Action Bar | два `build/variants/hero-*` |
 | Эталон панели | `scripts/build-action-bar.py` | `build/variants/action-bar` |

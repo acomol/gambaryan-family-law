@@ -1,12 +1,12 @@
 # Полная browser/responsive-приёмка клиентских Preview
 
-**Версия:** `PREVIEW-BROWSER-QA v1.1.1`
+**Версия:** `PREVIEW-BROWSER-QA v1.2.0`
 
 **Дата:** `2026-08-11`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Статус:** `PASS LOCAL 11/11; LIVE PASS 11/11`
+**Статус:** `LOCAL PASS 11/11; HISTORICAL LIVE PASS v1.0.0; v1.1.0 PENDING LIVE`
 
 ## Цель
 
@@ -38,11 +38,13 @@
 byte-identical состояние проверяется как дополнительный инвариант, а не как
 основание пропустить один из URL.
 
-`final-dev3` — отдельный strict clone `final-dev1`: Playfair Display + Onest,
-текущие тексты и Action Bar `2.3.1`. Допустимы только служебные marker/body
-class `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`; нормализованные HTML/CSS,
-общие assets/scripts/fonts и rendered-композиция должны совпадать с
-`final-dev1`.
+Опубликованный `final-dev3 v1.0.0` — исторический strict clone `final-dev1`:
+Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`. Кандидат
+`FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11` сохраняет эту базу, но меняет
+Hero-контакт по уже вычисленному состоянию Action Bar `2.3.1`
+(`Asia/Jerusalem`, Sun–Thu, `[09:00, 18:00)`): открыто — текущий телефон;
+закрыто — `Написать в WhatsApp` со ссылкой и иконкой. Второй
+clock/timer/state map не допускается.
 
 ## Матрица viewport
 
@@ -61,6 +63,9 @@ class `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`; нормализованные HT
 - `960×760`, `961×760`, `960×400`, `960×401` — канонический Action Bar;
 - на каждом опубликованном live alias — mobile smoke и
   readback URL.
+- для `final-dev3 v1.1.0` — auto open/closed и оба demo-состояния на mobile с
+  проверкой синхронности Hero/Action Bar; на desktop — оба Hero-state при
+  по-прежнему скрытых Action Bar/demo.
 
 ## Универсальная приёмка
 
@@ -82,16 +87,20 @@ screenshots обязательны для репрезентативных mobil
   системный fallback, внешних font-запросов нет.
 - [x] Action Bar проходит Hero → чтение → форма: `hidden/inert` → видима и
   интерактивна не позднее 300 ms → `hidden/inert`.
-- [x] Demo-switch меняет три действия на два и обратно; reload возвращает
-  автоматическое расписание.
+- [x] Исторический demo-switch меняет три действия на два и обратно; reload
+  возвращает автоматическое расписание.
+- [x] LOCAL `final-dev3 v1.1.0`: demo-switch и автоматическое расписание
+  одновременно меняют Action Bar и Hero-контакт; существует один state/timer.
 - [x] На ширине до `960px` панель доступна, от `961px` скрыта; её высота 60px,
   колонки равны и собственного overflow нет.
 - [x] `#contact`, `tel:+972545490623` и WhatsApp ведут по назначению; форма
   сохраняет autocomplete, inline-ошибки и focus первого невалидного поля.
 - [x] Console `error` и `warning` равны нулю.
-- [x] `final-dev3` live URL возвращает 200 и правильный marker варианта;
+- [x] `final-dev3` live URL возвращает 200 и исторический marker `v1.0.0`;
   `/lead-contract.js` содержит `1.1.0`, `GET /api/lead` возвращает 405 и
   `Allow: POST`. Для десяти исторических alias этот live-гейт уже закрыт.
+- [ ] PENDING Новый marker `FINAL-DEV3-DESIGN v1.1.0` и live Hero-state
+  readback проверяются только после нового deploy.
 
 ## Проверки по назначению варианта
 
@@ -102,7 +111,8 @@ screenshots обязательны для репрезентативных mobil
 | `hero-a-actions-first` | Сохраняется объявленный порядок с действиями до фотографии и основной записью |
 | `hero-b-call-first` | Сохраняется объявленный порядок с доминирующим звонком; `tel:` и `#contact` не перепутаны |
 | `review-numbered` | Ровно 102 уникальных `data-rvn`; бейджи читаемы и не закрывают исходный текст |
-| `final-dev3` | Strict clone `final-dev1`: marker `v1.0.0`, Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`; pixel-identical на `1293×724` и `390×844` |
+| `final-dev3 v1.0.0` | HISTORICAL: strict clone `final-dev1`, pixel-identical на `1293×724` и `390×844` |
+| `final-dev3 v1.1.0` | LOCAL PASS: Playfair Display + Onest, текущие тексты, Action Bar `2.3.1`; open Hero сохраняет телефон, closed показывает точный WhatsApp CTA; demo-sync и один state/timer |
 
 Исходные точки, закрытые в локальном кандидате:
 
@@ -157,20 +167,32 @@ alias. Исправление вносится в source/generator, а не вр
 Эти числа относятся к опубликованному release десяти URL и не переписываются
 результатами добавленного позже `final-dev3`.
 
-### Текущая карта `2.4.0`
+### Историческая карта `2.4.0` с `final-dev3 v1.0.0`
 
 - [x] Browser-runner `PREVIEW-BROWSER-QA-RUNNER v1.1.0 | 2026-08-11`.
 - [x] `110/110` основных ячеек: одиннадцать Preview × десять viewport.
 - [x] `55/55` breakpoint/landscape-ячеек.
 - [x] `8/8` large-desktop ячеек; общий результат `173/173`.
 - [x] Одиночный прогон `final-dev3` прошёл `15/15`.
-- [x] Скриншоты `final-dev1 ↔ final-dev3` pixel-identical на `1293×724` и
+- [x] Скриншоты `final-dev1 ↔ final-dev3 v1.0.0` pixel-identical на `1293×724` и
   `390×844`; статический verifier подтвердил нормализованное равенство
   HTML/CSS и идентичность общих assets/scripts/fonts.
 - [ ] OPEN Strict clone наследует дефект `final-dev1` при browser zoom `200%`:
   proof/call-help скрываются mobile-правилом. Полный WCAG AA PASS не заявлять.
 - [x] Cloudflare deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05` и live
   readback `final-dev3` прошли; прежние десять alias и production не изменились.
+
+### Кандидат `final-dev3 v1.1.0`
+
+- [x] LOCAL Пересобрать и подтвердить marker
+  `FINAL-DEV3-DESIGN v1.1.0 | 2026-08-11`.
+- [x] LOCAL На auto open/closed и обоих demo-состояниях подтвердить точный
+  Hero phone/WhatsApp CTA, ссылку, иконку и синхронность с Action Bar.
+- [x] LOCAL Action Bar `2.3.1` остаётся единственным владельцем
+  `Asia/Jerusalem`, state и timer; runner
+  `PREVIEW-BROWSER-QA-RUNNER v1.2.0 | 2026-08-11` прошёл `173/173`, single
+  `15/15`.
+- [ ] PENDING LIVE Повторить `15/15` и isolation readback после deploy.
 
 ## Related
 
