@@ -1,14 +1,14 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v1.1.0`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v1.2.0`
 
 **Дата:** `2026-08-11`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Область:** десять Cloudflare Pages Preview. Production в этот пакет не входит
-и не изменяется. Разработка отдельного `final-dev3` возобновляется только после
-выбора заказчика.
+**Область:** десять исторически опубликованных Cloudflare Pages Preview и
+одиннадцатый кандидат `final-dev3`, который прошёл локальную приёмку, но ещё не
+опубликован. Production в этот пакет не входит и не изменяется.
 
 ## Что открыть
 
@@ -28,6 +28,7 @@
 | 8 | `hero-b-call-first` | Hero B: звонок является главным действием, запись — вторым | [Открыть Hero B](https://hero-b-call-first.gambarian-landing.pages.dev/) |
 | 9 | `action-bar` | Эталон поведения мобильной нижней панели | [Открыть Action Bar](https://action-bar.gambarian-landing.pages.dev/) |
 | 10 | `review-numbered` | Служебная версия со 102 номерами для точного согласования текста; не кандидат на финальный дизайн | [Открыть подписанный текст](https://review-numbered.gambarian-landing.pages.dev/) |
+| 11 | `final-dev3` | Выбранная сборка: strict clone `final-dev1`, Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`; **LIVE PENDING — заказчику пока не отправлять** | [Будущий стабильный URL final-dev3](https://final-dev3.gambarian-landing.pages.dev/) |
 
 `final-dev` и `action-bar` намеренно публикуются из одного канонического
 артефакта. Их два URL оставлены, чтобы один использовать как общий вариант, а
@@ -44,6 +45,21 @@
 - При пересылке ссылки используется фирменное изображение с логотипом
   `1200×630` через Open Graph/Twitter metadata.
 - Preview имеют `noindex`; production не является частью сравнения.
+
+## Что уже проверено для `final-dev3`
+
+- Marker: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
+- Preview-карта: `2.4.0`, одиннадцать вариантов; browser-runner: `1.1.0`.
+- Локально: одиночный прогон `15/15`, полная карта
+  `110/110 + 55/55 + 8/8 = 173/173`.
+- `final-dev1` и `final-dev3` pixel-identical на `1293×724` и `390×844`;
+  различия ограничены служебным marker/body class, а общие assets/scripts/fonts
+  идентичны.
+- Известный унаследованный дефект при browser zoom `200%` остаётся OPEN:
+  proof/call-help скрываются mobile-правилом. Поэтому полный WCAG AA PASS для
+  `final-dev1` и `final-dev3` не заявляется.
+- Cloudflare deployment, live HTTP/asset/Function readback и live browser smoke
+  `final-dev3` ещё не выполнены.
 
 ## Как работает конверсионный путь
 
@@ -110,16 +126,16 @@ webhook, а не создание записи в CRM/таблице.
 
 ### Визуальные решения
 
-- [ ] Основной вариант: `final-dev` / `final-dev1` / другой Preview.
-- [ ] Шрифт: `1 Playfair + Onest` / `2 Lora + Inter` /
-  `3 Literata + Manrope` / `4 PT Serif + Golos Text`.
-- [ ] Порядок Hero: базовый / `Hero A` / `Hero B` / расширенный `final-dev1`.
-- [ ] Нижняя панель: состав, расписание и тексты рабочего/нерабочего состояния.
+- [x] Технический кандидат: `final-dev3` = strict clone `final-dev1`.
+- [x] Шрифт кандидата: Playfair Display + Onest.
+- [x] Hero кандидата: расширенный `final-dev1` без дополнительного редизайна.
+- [x] Нижняя панель кандидата: Action Bar `2.3.1`, включая состав, расписание и
+  тексты рабочего/нерабочего состояния.
 
-### Открытые решения по тексту
+### Тексты кандидата и оставшиеся клиентские решения
 
-- [ ] H1: утверждённый клиентский `1.7` или текущий короткий заголовок.
-- [ ] Лид Hero: полный клиентский `1.8` или текущая короткая версия.
+- [x] `final-dev3` сохраняет текущие H1, лид и остальные тексты `final-dev1`
+  без скрытого объединения с font Preview или клиентским черновиком.
 - [ ] Создавать ли отдельный блок «Подготовка к консультации» (`6.6`, `6.9`,
   `6.12`).
 - [ ] Поле `7.19` «Тема обращения»: вместо Email, четвёртым полем или не
@@ -137,9 +153,9 @@ webhook, а не создание записи в CRM/таблице.
 ## Форма ответа заказчика
 
 ```text
-1. Основной Preview: ____________________
-2. Шрифтовый вариант: 1 / 2 / 3 / 4
-3. Hero: базовый / A / B / final-dev1
+1. Кандидат final-dev3: утверждаю / правки: ____________________
+2. Шрифт Playfair Display + Onest: утверждаю / правки: ____________________
+3. Hero final-dev1 без дополнительного редизайна: утверждаю / правки: ______
 4. Нижняя панель: утверждаю / правки: ____________________
 
 5. Тексты:
@@ -161,9 +177,14 @@ webhook, а не создание записи в CRM/таблице.
 - [x] На mobile проверены оба состояния Action Bar и синхронная верхняя
   подпись.
 - [x] На desktop Action Bar отсутствует.
-- [x] Локальный кандидат прошёл `100/100` основных viewport-ячеек и `50/50`
-  breakpoint/landscape-ячеек; шрифты загружены, fallback и overflow не найдены.
+- [x] Исторический release десяти Preview прошёл `100/100` основных
+  viewport-ячеек и `50/50` breakpoint/landscape-ячеек; шрифты загружены,
+  fallback и overflow не найдены.
 - [x] Production до и после публикации Preview не изменился.
+- [x] `final-dev3` локально прошёл `15/15` и полный прогон `173/173`; две
+  контрольные геометрии pixel-identical с `final-dev1`.
+- [ ] PENDING Опубликовать только branch `final-dev3`, затем выполнить live
+  HTTP/assets/Function/browser readback. До этого URL №11 заказчику не отправлять.
 
 ## Источники проверки
 
@@ -175,7 +196,7 @@ webhook, а не создание записи в CRM/таблице.
   `site-addons/action-bar/action-bar.js`/`.html`.
 - Lead/autofill/validation: `docs/LEAD-WEBHOOK-CONTRACT.md` и
   `site/index.html` + `site/app.js` + `functions/api/lead.js`.
-- Состав десяти URL: `scripts/client-preview-map.json` и
+- Состав одиннадцати URL: `scripts/client-preview-map.json` v2.4.0 и
   `docs/boards/2026-08-06-versions-links.md`.
 - Текст: исходный клиентский документ и три аудита
   `docs/CONTENT-APPROVED.md`, `docs/CONTENT-MISSING.md`,
@@ -183,10 +204,11 @@ webhook, а не создание записи в CRM/таблице.
 
 ## Related
 
-- [Карта десяти Preview](boards/2026-08-06-versions-links.md)
+- [Карта одиннадцати Preview](boards/2026-08-06-versions-links.md)
 - [Карта источников текста](CONTENT-SOURCE-MAP.md)
 - [Контракт lead hook](LEAD-WEBHOOK-CONTRACT.md)
 - [Контракт Action Bar](tasks/2026-08-10-action-bar-v2.md)
 - [Полная browser-приёмка](tasks/2026-08-10-all-previews-browser-qa.md)
 - [Локальный QA-отчёт](reviews/2026-08-11-client-preview-local-qa.md)
 - [Live release-отчёт](reviews/2026-08-11-client-preview-live-release.md)
+- [Задание Final Dev 3](tasks/2026-08-11-final-dev3-design-system.md)

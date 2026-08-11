@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.2.3`
+**Версия:** `1.3.0`
 
 **Обновлено:** `2026-08-11`
 
@@ -41,6 +41,7 @@
 |---|---|
 | Десять Preview | **LIVE PASS:** commit `98374c1`, Action Bar `2.3.1`, Client Preview Mobile `1.0.0`; локальные 100/100 + 50/50 + 6/6 и live HTTP/browser readback 10/10 прошли |
 | `final-dev1` | **LIVE PASS:** Hero `1.3.0`, Precedent Copy `1.0.0` и исходные assets сохранены; marker `FINAL-DEV1-DESIGN` отсутствует |
+| `final-dev3` | **LOCAL PASS / LIVE PENDING:** strict clone `final-dev1`, Playfair Display + Onest, текущие тексты, Action Bar `2.3.1`; single `15/15`, карта `173/173`, pixel-identical на `1293×724` и `390×844` |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -66,6 +67,7 @@
 | Production | Action Bar не внедряется в `site/index.html`; production не изменяется при сборке Preview | Желание показать панель клиенту реализуется через производные Preview, а не через боевой источник |
 | `final-dev` | Использует тот же канонический артефакт, что `action-bar`, но публикуется отдельным alias | Создание второго идентичного build-каталога |
 | `final-dev1` | Отдельный desktop Hero без дублирующего телефона в шапке; на mobile фото увеличено `1.15×` и сдвинуто на `7%` влево, интервалы сохраняют обе CTA от `360×600`; desktop proof/note увеличены до читаемых `12/13px` и `13/14px` | Перезапись `final-dev`, production или общего action-bar artifact |
+| `final-dev3` | Отдельный strict clone `final-dev1`: Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`; только служебные marker/body class `v1.0.0`, без визуального редизайна | Подмешивание font-preview implementation, правки `site/`/production или скрытое исправление унаследованных дефектов |
 | Social preview | Готовый versioned PNG `1200×630` и обычные OG/Twitter meta; отдельный Chromium-рендерер не нужен | Более сложный воспроизводимый генератор, удалённый после решения владельца «просто сделать подходящее изображение» |
 | Lead hook | Код и контракт готовы, но доставка не считается live до secret, Catch, dedup и readback | Любое утверждение «форма уже отправляет в Albato» только по наличию endpoint |
 | Версии | Любое изменение требований меняет SemVer и дату во всех источниках соответствующего контракта | Неверсионированные устные изменения |
@@ -110,15 +112,16 @@
 | Client Preview Mobile | `1.0.0` | `2026-08-11` | `client-preview.css`, manifest и verifier |
 | Desktop Hero `final-dev1` | `1.3.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
 | Текст прецедента `final-dev1` | `1.0.0` | `2026-08-11` | builder, HTML marker, task, browser readback |
+| Дизайн-кандидат `final-dev3` | `1.0.0` | `2026-08-11` | контракт, builder, HTML/CSS marker, verifier, task |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
-| Карта Preview | `2.3.0` | `2026-08-11` | board и `scripts/client-preview-map.json` |
-| Browser QA клиентских Preview | `1.0.1` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
+| Карта Preview | `2.4.0` | `2026-08-11` | board и `scripts/client-preview-map.json` |
+| Browser QA клиентских Preview | `1.1.0` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
 | Build tools | `1.1.1` | `2026-08-11` | `requirements-build.txt` |
-| Browser QA runner | `1.0.2` | `2026-08-11` | `scripts/qa-browser-matrix.py` |
-| Этот чек-лист | `1.2.3` | `2026-08-11` | текущий файл |
+| Browser QA runner | `1.1.0` | `2026-08-11` | `scripts/qa-browser-matrix.py` |
+| Этот чек-лист | `1.3.0` | `2026-08-11` | текущий файл |
 
-- [x] Все локальные marker Action Bar синхронизированы на `2.3.1`; live-readback
-  этой версии выполняется только после Preview deploy.
+- [x] Все локальные marker Action Bar синхронизированы на `2.3.1`; для
+  `final-dev3` live-readback этой версии выполняется только после Preview deploy.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
 - [x] Все social meta указывают на PNG `v1.0.2`.
 - [ ] При следующем изменении требований одновременно увеличить версию,
@@ -165,6 +168,11 @@
   «ВПЕРВЫЕ / СОЗДАН ПРЕЦЕДЕНТ… / Добились возвращения…», обязательные
   переносы, отсутствие clipping/overflow и неизменные фото/CTA на mobile и
   desktop; stable alias и deployment URL прошли live readback.
+- [x] LOCAL `final-dev3` `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`: strict clone
+  `final-dev1` с Playfair Display + Onest, текущими текстами и Action Bar
+  `2.3.1`; нормализованные HTML/CSS и общие assets/scripts/fonts совпадают.
+- [x] LOCAL `final-dev1 ↔ final-dev3` pixel-identical на `1293×724` и
+  `390×844`; служебный marker/body class не меняет rendered-композицию.
 - [x] Landscape высотой ниже 600 px остаётся отдельной прокручиваемой
   композицией: требование «обе CTA в первом экране» к нему не применяется;
   обязательны отсутствие horizontal overflow и штатный static Action Bar.
@@ -186,6 +194,9 @@
   правки контракта и решения владельца. Разбор и расчёты:
   `docs/reviews/2026-08-11-final-dev1-v1.4.0-spec-validation.md`
   (документ HISTORICAL в части типографики, но эта находка — действующая).
+- [ ] OPEN `final-dev3` намеренно наследует тот же zoom-200% дефект как strict
+  clone; локальный native-viewport PASS не является полным WCAG AA PASS для
+  `final-dev1` или `final-dev3`.
 - [ ] OPEN Общий Hero-raster содержит людей с немного разной высотой макушек.
   CSS не может независимо передвинуть две головы внутри одного изображения;
   для полной симметрии нужен новый asset.
@@ -457,10 +468,13 @@ git diff --check
 
 - [x] Каждый builder копирует `site/`, выполняет собственную замену, затем
   устанавливает общий Action Bar.
-- [x] `verify-client-previews.py` проверяет точную карту десяти
+- [x] `verify-client-previews.py` проверяет точную карту одиннадцати
   `branch → directory`, наличие build directories, version/date, единственный
   bar, byte-identical CSS/JS, viewport metadata и versioned reference
   `final-dev1`.
+- [x] Для `final-dev3` verifier проверяет marker/body class `v1.0.0`,
+  нормализованное равенство HTML/CSS с `final-dev1`, идентичность общих
+  assets/scripts/fonts и связь marker с task/board.
 - [ ] OPEN Локальный verifier не проверяет variant-marker каждого старого
   output или живые Cloudflare aliases; это отдельный API/HTTP/browser readback.
 - [x] Windows stdout verifier принудительно UTF-8 и проходит даже при cp1252.
@@ -470,8 +484,9 @@ git diff --check
 - [x] `requirements-build.txt` закрепляет `fonttools`, `playwright` и `brotli`;
   после установки manifest отдельно устанавливается Playwright Chromium.
 - [x] Воспроизводимый browser runner сохранён как
-  `scripts/qa-browser-matrix.py`: принимает base URL и выдаёт машинный PASS/FAIL
-  по каждой ячейке и итоговый счёт.
+  `scripts/qa-browser-matrix.py` v1.1.0: принимает base URL и выдаёт машинный
+  PASS/FAIL по каждой ячейке и итоговый счёт; карта из одиннадцати вариантов
+  ожидает `110 + 55 + 8 = 173` ячейки.
 - [ ] OPEN `verify-fact-cards.mjs` требует не объявленный `playwright-core` и
   сейчас не является воспроизводимым gate.
 
@@ -543,9 +558,23 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 - [ ] MANUAL Перед отправкой заказчику открыть все десять ссылок в обычном
   мобильном браузере, исключив кеш/авторизацию/anti-bot экран.
 
+### `final-dev3` — локальный кандидат, live PENDING
+
+| Preview | Стабильный URL | Deployment | Контракты |
+|---|---|---:|---|
+| Финальная Dev 3 | https://final-dev3.gambarian-landing.pages.dev/ | **PENDING** | `FINAL-DEV3-DESIGN v1.0.0`; Playfair Display + Onest; текущие тексты; Action Bar `2.3.1`; mobile `1.0.0` |
+
+- [x] LOCAL Каталог входит в Preview-карту `2.4.0` и воспроизводимо собирается
+  из `final-dev1`.
+- [ ] PENDING Опубликовать только branch `final-dev3`, записать deployment UUID
+  и functional SHA, затем проверить HTTP 200, `noindex`, content-type/assets,
+  markers, `/lead-contract.js`, Function GET=405/Allow POST и browser smoke.
+- [ ] PENDING После публикации доказать, что десять исторических Preview и
+  production не изменились. До этого URL `final-dev3` заказчику не передавать.
+
 ### Полная browser/responsive-приёмка всех Preview
 
-Контракт: `PREVIEW-BROWSER-QA v1.0.1 | 2026-08-11`.
+Контракт: `PREVIEW-BROWSER-QA v1.1.0 | 2026-08-11`.
 
 | Preview | Локальный кандидат | Live после публикации |
 |---|---|---|
@@ -559,6 +588,7 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 | `hero-b-call-first` | `[x] PASS`; звонок — главное действие | `[x] PASS` |
 | `action-bar` | `[x] PASS`; byte-identical с `final-dev` | `[x] PASS` |
 | `review-numbered` | `[x] PASS`; 102 уникальных номера, прежний overflow закрыт | `[x] PASS` |
+| `final-dev3` | `[x] PASS`; strict clone `final-dev1`, single `15/15`, pixel-identical на двух контрольных viewport | `[ ] PENDING` |
 
 - [x] Выполнено `100/100` ячеек: десять Preview × `360×600`, `360×668`,
   `390×724`, `390×844`, `720×760`, `860×760`, `861×760`, `1024×768`,
@@ -582,6 +612,18 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
   репрезентативные screenshots сохранены вне Git.
 - [x] LIVE HTTP/marker/function readback и mobile+desktop Action Bar smoke
   прошли на каждом из десяти stable alias. Реальный POST в Albato не выполнялся.
+
+Исторические числа выше (`100/100 + 50/50 + 6/6`) относятся к release десяти
+опубликованных Preview и сохраняются без пересчёта. Текущая локальная карта
+`2.4.0` с runner `1.1.0` дополнительно прошла:
+
+- [x] `110/110` основных ячеек;
+- [x] `55/55` breakpoint/landscape-ячеек;
+- [x] `8/8` large-desktop-ячеек;
+- [x] общий локальный результат `173/173`, включая `final-dev3` single `15/15`;
+- [x] pixel-equivalence `final-dev1 ↔ final-dev3` на `1293×724` и `390×844`;
+- [ ] LIVE PENDING для `final-dev3`; PASS десяти старых alias не переносить на
+  новый URL без deployment/readback.
 
 ## 14. GitHub и CI
 
@@ -682,14 +724,16 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 
 Отдельные решения по будущему финальному варианту:
 
-- [x] OWNER `2026-08-11`: для будущего отдельного `final-dev3` выбраны
+- [x] OWNER `2026-08-11`: для отдельного `final-dev3` выбраны
   Playfair Display + Onest.
-- [x] OWNER `2026-08-11`: база будущего `final-dev3` — `final-dev1`, а не
+- [x] OWNER `2026-08-11`: база `final-dev3` — `final-dev1`, а не
   экспериментальные Hero A/B.
 - [x] OWNER `2026-08-11`: сохранить текущие тексты, включая текущую композицию
   Hero H1/lede, и Action Bar `2.3.1`.
-- [ ] Handoff фиксирует только входы: `final-dev3` ещё не собран и не live;
-  реализация начинается после завершения handoff-refresh.
+- [x] LOCAL `final-dev3` собран и прошёл strict-clone/verifier/browser/pixel
+  гейты; marker `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
+- [ ] PENDING `final-dev3` ещё не live: требуется отдельный Cloudflare deploy и
+  readback без изменения старых Preview/production.
 - [ ] CLIENT Решить, нужна ли отсутствующая секция «Подготовка к консультации».
 - [ ] CLIENT Решить состав формы: topic вместо email, четвёртым полем или без
   topic.
@@ -708,8 +752,8 @@ auth/IP-состояния, `TRACKING-REQUIREMENTS.md` — частично ст
 
 ## 17. Финальная передача заказчику
 
-- [x] Клиентская карта содержит финальную версию, четыре шрифта, два Hero,
-  эталон панели и текст с номерами.
+- [x] Клиентская карта `2.4.0` содержит `final-dev3`, прежние финальные версии,
+  четыре шрифта, два Hero, эталон панели и текст с номерами.
 - [x] На каждой версии показана одинаковая мобильная нижняя панель.
 - [x] Краткое описание конверсионного пути находится в карте Preview.
 - [ ] Перед отправкой явно пометить, что Albato delivery и аналитика ещё не
@@ -734,8 +778,9 @@ auth/IP-состояния, `TRACKING-REQUIREMENTS.md` — частично ст
 ## Related
 
 - [Журнал ошибок](ERRORS.md)
-- [Карта десяти Preview и URL](boards/2026-08-06-versions-links.md)
+- [Карта одиннадцати Preview и URL](boards/2026-08-06-versions-links.md)
 - [Задание Final Dev 1](tasks/2026-08-10-final-dev1-desktop-hero.md)
+- [Задание Final Dev 3](tasks/2026-08-11-final-dev3-design-system.md)
 - [Полная browser/responsive-приёмка Preview](tasks/2026-08-10-all-previews-browser-qa.md)
 - [Задание на фото](tasks/2026-08-10-attorney-photos-mobile.md)
 - [Задание Action Bar](tasks/2026-08-10-action-bar-v2.md)

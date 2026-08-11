@@ -1,6 +1,6 @@
 # Карта источников текста
 
-**Версия:** `CONTENT-SOURCE-MAP v1.0.0`
+**Версия:** `CONTENT-SOURCE-MAP v1.1.0`
 
 **Дата:** `2026-08-11`
 
@@ -60,11 +60,13 @@
 | `2026-08-10` | Блок Юлии Саакян | Блок и его текущие фактические формулировки подтверждены владельцем; не считать несанкционированным текстом | `docs/CONTENT-EXTRA.md`; `docs/FINAL-QA-CHECKLIST.md` |
 | `2026-08-10` | Только `final-dev1`, desktop Hero | «Или позвоните сразу», номер, «Срочный вопрос? Позвоните напрямую»; три преимущества «Семейное право во всех аспектах», «Конфиденциальность и защита интересов», «Индивидуальный подход к каждому делу»; длинное пояснение остаётся ниже иконок | `docs/tasks/2026-08-10-final-dev1-desktop-hero.md`; `scripts/build-hero-variants.py` |
 | `2026-08-10` | Только `final-dev1`, desktop header | Удалить дублирующий номер справа; Hero-телефон и звонок в mobile drawer оставить | `docs/tasks/2026-08-10-final-dev1-desktop-hero.md`; `scripts/build-hero-variants.py` |
-| `2026-08-10` | Все десять Preview, Action Bar | Вс–чт `09:00–18:00` по `Asia/Jerusalem`: три действия; вне часов: «Записаться» и «Написать в WhatsApp»; доступен Preview demo-switch | `docs/tasks/2026-08-10-action-bar-v2.md`; `site-addons/action-bar/action-bar.js`/`.html` |
+| `2026-08-10` | Все Preview из исполняемой карты, Action Bar | Вс–чт `09:00–18:00` по `Asia/Jerusalem`: три действия; вне часов: «Записаться» и «Написать в WhatsApp»; доступен Preview demo-switch | `docs/tasks/2026-08-10-action-bar-v2.md`; `site-addons/action-bar/action-bar.js`/`.html` |
 | `2026-08-11` | Только `final-dev1`, прецедент | «ВПЕРВЫЕ»; «СОЗДАН ПРЕЦЕДЕНТ В МЕЖДУНАРОДНОЙ СУДЕБНОЙ ПРАКТИКЕ»; «Добились возвращения похищенного ребёнка, несмотря на отсутствие официально зарегистрированных родительских прав» | `docs/tasks/2026-08-10-final-dev1-desktop-hero.md`; `scripts/final_dev1_contract.py` |
-| `2026-08-11` | Все десять Preview, demo-switch | Верхняя подпись и нижний состав используют одно состояние: `Рабочее время` = три действия, `Нерабочее время` = два | `docs/tasks/2026-08-10-action-bar-v2.md`; `site-addons/action-bar/action-bar.js`/`.html` |
+| `2026-08-11` | Все Preview из исполняемой карты, demo-switch | Верхняя подпись и нижний состав используют одно состояние: `Рабочее время` = три действия, `Нерабочее время` = два | `docs/tasks/2026-08-10-action-bar-v2.md`; `site-addons/action-bar/action-bar.js`/`.html` |
+| `2026-08-11` | Только технический кандидат `final-dev3` | Побайтно сохранить текущие тексты `final-dev1`, включая его owner-overrides; это выбор состава кандидата, а не закрытие `OPEN-01`–`OPEN-08` заказчиком | `docs/tasks/2026-08-11-final-dev3-design-system.md`; `scripts/verify-client-previews.py` |
 
-Override `final-dev1` не распространяется на production, `final-dev`, шрифтовые
+Override `final-dev1` распространяется на `final-dev3` только по отдельному
+решению выше. Он не распространяется на production, `final-dev`, шрифтовые
 варианты, Hero A/B или `review-numbered` без нового явного решения.
 
 ## SYSTEM-UI

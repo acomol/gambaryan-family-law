@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.0.2 | 2026-08-11
+"""PREVIEW-BROWSER-QA-RUNNER v1.1.0 | 2026-08-11
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -10,8 +10,8 @@ Install and run::
     python scripts/qa-browser-matrix.py http://127.0.0.1:8000/
 
 The default command checks one locally served Preview at the exact 10 main and
-5 breakpoint/landscape viewports. To reproduce the recorded ``100/100 + 50/50
-+ 6/6`` aggregate, serve the repository root and add ``--all-previews``::
+5 breakpoint/landscape viewports. The eleven-target aggregate is ``110/110 +
+55/55 + 8/8``; serve the repository root and add ``--all-previews``::
 
     python scripts/qa-browser-matrix.py http://127.0.0.1:8000/ --all-previews
 
@@ -47,8 +47,13 @@ from urllib.parse import quote, urljoin, urlparse, urlunparse
 
 from playwright.sync_api import Browser, Page, sync_playwright
 
+from final_dev3_contract import (
+    BODY_CLASS as FINAL_DEV3_BODY_CLASS,
+    MARKER as FINAL_DEV3_MARKER,
+)
 
-RUNNER_VERSION = "1.0.2"
+
+RUNNER_VERSION = "1.1.0"
 ACTION_BAR_VERSION = "2.3.1"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.0.0"
 
@@ -85,6 +90,7 @@ class Target:
 PREVIEWS = (
     Target("final-dev", "build/variants/action-bar", True),
     Target("final-dev1", "build/variants/final-dev1"),
+    Target("final-dev3", "build/variants/final-dev3", True),
     Target("v1-playfair-onest", "build/font-variants/v1-playfair-onest"),
     Target("v2-lora-inter", "build/font-variants/v2-lora-inter"),
     Target("v3-literata-manrope", "build/font-variants/v3-literata-manrope"),
@@ -237,7 +243,7 @@ def platform_font_metrics(page: Page) -> list[dict[str, Any]]:
 
 def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[str, Any]:
     return page.evaluate(
-        """async ({ shortPortrait, actionVersion, mobileVersion, timeoutMs }) => {
+        """async ({ shortPortrait, actionVersion, mobileVersion, finalDev3Marker, finalDev3BodyClass, timeoutMs }) => {
           const boundedWait = (promise) => Promise.race([
             promise,
             new Promise((resolve) => setTimeout(resolve, timeoutMs)),
@@ -349,6 +355,7 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               clientPreviewMobile: clientPreviewCss.includes(
                 `CLIENT-PREVIEW-MOBILE v${mobileVersion}`
               ),
+              finalDev3: source.includes(finalDev3Marker),
             },
             actionBar: bar ? {
               present: true,
@@ -363,6 +370,7 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
             reviewNumbers: [...document.querySelectorAll('[data-rvn]')].map((node) => node.dataset.rvn),
             variant: {
               finalDev1: Boolean(document.querySelector('.hero--final-dev1')),
+              finalDev3: Boolean(document.body?.classList.contains(finalDev3BodyClass)),
               actionsFirst: Boolean(document.querySelector('.hero--actions-first')),
               callFirst: Boolean(document.querySelector('.hero--call-first')),
             },
@@ -372,6 +380,8 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
             "shortPortrait": short_portrait,
             "actionVersion": ACTION_BAR_VERSION,
             "mobileVersion": CLIENT_PREVIEW_MOBILE_VERSION,
+            "finalDev3Marker": FINAL_DEV3_MARKER,
+            "finalDev3BodyClass": FINAL_DEV3_BODY_CLASS,
             "timeoutMs": timeout_ms,
         },
     )
@@ -486,6 +496,13 @@ def validate_metrics(
 
     if target.name == "final-dev1" and not metrics["variant"]["finalDev1"]:
         failures.append("final-dev1-marker-missing")
+    if target.name == "final-dev3":
+        if not metrics["variant"]["finalDev1"]:
+            failures.append("final-dev3-inherited-final-dev1-class-missing")
+        if not metrics["markers"]["finalDev3"]:
+            failures.append("final-dev3-design-marker-missing")
+        if not metrics["variant"]["finalDev3"]:
+            failures.append("final-dev3-body-class-missing")
     if target.name == "hero-a-actions-first" and not metrics["variant"]["actionsFirst"]:
         failures.append("hero-a-marker-missing")
     if target.name == "hero-b-call-first" and not metrics["variant"]["callFirst"]:
@@ -591,7 +608,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--all-previews",
         action="store_true",
-        help="run 10 Preview targets plus the 6-cell large-desktop subset",
+        help="run 11 Preview targets plus the 8-cell large-desktop subset",
     )
     parser.add_argument(
         "--target-name",

@@ -1,6 +1,6 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v1.0.0`
+**Версия:** `HANDOFF-RESUME v1.1.0`
 
 **Обновлено:** `2026-08-11`
 
@@ -64,11 +64,14 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
   --commit-dirty=true
 ```
 
-## Живые адреса и версии контрактов
+## Адреса и версии контрактов
 
-Все десять Preview ниже опубликованы из commit `98374c1`, имеют Action Bar
+Первые десять Preview ниже — исторический опубликованный release из commit
+`98374c1`: они имеют Action Bar
 `2.3.1` и `CLIENT-PREVIEW-MOBILE v1.0.0`. У `final-dev1` дополнительно
-подтверждён Hero `1.3.0` и Precedent Copy `1.0.0`.
+подтверждён Hero `1.3.0` и Precedent Copy `1.0.0`. Одиннадцатый alias
+`final-dev3` уже входит в Preview-карту `2.4.0`, но его live deployment ещё не
+выполнен; URL нельзя передавать как опубликованный до отдельного readback.
 
 | Контур | URL | Deployment | Контракты |
 |---|---|---:|---|
@@ -82,6 +85,7 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 | `hero-b-call-first` | https://hero-b-call-first.gambarian-landing.pages.dev/ | `b4e3c1de-b801-4c97-a70c-0d5903eed5b0` | Hero B; Action Bar `2.3.1`; mobile `1.0.0` |
 | `action-bar` | https://action-bar.gambarian-landing.pages.dev/ | `f5b76f77-4212-4754-b590-b0d9387df083` | эталон Action Bar `2.3.1`; mobile `1.0.0` |
 | `review-numbered` | https://review-numbered.gambarian-landing.pages.dev/ | `aaa2e734-486f-4433-82b3-34fdadb3a683` | 102 подписи; Action Bar `2.3.1`; mobile `1.0.0` |
+| `final-dev3` | https://final-dev3.gambarian-landing.pages.dev/ | **PENDING** | strict clone `final-dev1`; Playfair Display + Onest; текущие тексты; Action Bar `2.3.1`; marker `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11` |
 | Production | https://gambarian-landing.pages.dev/ | `af10299b-1257-4f65-b66d-4b1e3041bf74` | commit `cb9135c`; `noindex`; Action Bar/client-preview markers отсутствуют |
 
 Production HTML до и после Preview release имел SHA-256
@@ -91,7 +95,7 @@ Production HTML до и после Preview release имел SHA-256
 ## Чистая установка и пересборка
 
 Инструменты закреплены как `BUILD-TOOLS v1.1.1 | 2026-08-11`; browser-runner —
-`PREVIEW-BROWSER-QA-RUNNER v1.0.2 | 2026-08-11`.
+`PREVIEW-BROWSER-QA-RUNNER v1.1.0 | 2026-08-11`.
 
 ```powershell
 python -m venv .venv-handoff
@@ -99,7 +103,7 @@ python -m venv .venv-handoff
 $env:PYTHONUTF8='1'
 python -m pip install -r requirements-build.txt
 python -m playwright install chromium
-python -B scripts/build-hero-variants.py dev1
+python -B scripts/build-hero-variants.py dev1 dev3
 python -B scripts/build-font-variants.py
 ```
 
@@ -109,7 +113,7 @@ binaries не коммитить.
 
 ## Статические и browser-гейты
 
-После сборки **всех десяти** каталогов выполнить:
+После сборки **всех одиннадцати** каталогов выполнить:
 
 ```powershell
 python -B scripts/verify-client-previews.py
@@ -119,9 +123,12 @@ npm run check
 git diff --check
 ```
 
-`verify-client-previews.py` требует присутствия всех десяти каталогов из
-`scripts/client-preview-map.json`; частичная сборка закономерно завершится
-ошибкой. `verify-lead-hook.mjs` проверяет контракт без реального POST в Albato.
+`verify-client-previews.py` требует присутствия всех одиннадцати каталогов из
+`scripts/client-preview-map.json` v2.4.0; частичная сборка закономерно
+завершится ошибкой. Для `final-dev3` verifier дополнительно доказывает
+нормализованное равенство HTML/CSS с `final-dev1` и идентичность общих
+assets/scripts/fonts. `verify-lead-hook.mjs` проверяет контракт без реального
+POST в Albato.
 
 Responsive/browser matrix для одного локального или живого варианта:
 
@@ -136,8 +143,10 @@ python scripts/qa-browser-matrix.py http://127.0.0.1:<port>/ --all-previews
 ```
 
 Без `--all-previews` счёт runner относится только к переданному URL. Полный
-режим использует десять путей и дополнительные группы из
-`docs/FINAL-QA-CHECKLIST.md`, чтобы воспроизвести `100/100 + 50/50 + 6/6`.
+режим использует одиннадцать путей и дополнительные группы из
+`docs/FINAL-QA-CHECKLIST.md`, чтобы воспроизвести текущий локальный результат
+`110/110 + 55/55 + 8/8 = 173/173`. Исторический опубликованный release десяти
+Preview сохраняет отдельный результат `100/100 + 50/50 + 6/6`.
 
 ## Ловушка Cloudflare soft-404
 
@@ -148,10 +157,16 @@ fallback HTML с `content-type: text/html`. Поэтому наличие CSS/JS
 
 ## Решения владельца и незакрытые внешние шаги
 
-Подтверждено владельцем `2026-08-11`: будущий отдельный `final-dev3` должен
-соединить базу `final-dev1`, Playfair Display + Onest, текущие тексты и Action
-Bar `2.3.1`. Входы зафиксированы; вариант ещё не собран и не опубликован.
-Разработка начинается только после завершения этого handoff.
+Подтверждено владельцем `2026-08-11`: отдельный `final-dev3` собран как strict
+clone `final-dev1` с Playfair Display + Onest, текущими текстами и Action Bar
+`2.3.1`. Marker: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`. Локально прошли
+одиночный прогон `15/15`, полная карта `173/173` и pixel-сравнение
+`final-dev1 ↔ final-dev3` на `1293×724` и `390×844`. Cloudflare deployment и
+live-readback `final-dev3` остаются **PENDING**.
+
+Strict clone намеренно сохраняет известный дефект `final-dev1` при browser zoom
+`200%`: desktop proof/call-help скрываются mobile-правилом. Пункт остаётся
+OPEN; полный WCAG AA PASS для `final-dev1` и `final-dev3` заявлять нельзя.
 
 До production-ready остаются решения/действия владельца:
 
@@ -182,4 +197,5 @@ Automation Log и readback конечной записи.
 - [Клиентский handoff](CLIENT-PREVIEW-HANDOFF.md)
 - [Локальный browser QA](reviews/2026-08-11-client-preview-local-qa.md)
 - [Задание handoff-refresh](tasks/2026-08-11-handoff-refresh.md)
+- [Задание Final Dev 3](tasks/2026-08-11-final-dev3-design-system.md)
 - [Контракт lead webhook](LEAD-WEBHOOK-CONTRACT.md)

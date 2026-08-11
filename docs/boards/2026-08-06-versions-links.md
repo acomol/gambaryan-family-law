@@ -1,6 +1,6 @@
-# Десять Cloudflare Preview-версий для заказчика
+# Одиннадцать Cloudflare Preview-версий для заказчика
 
-**Версия карты:** `2.3.0`
+**Версия карты:** `2.4.0`
 
 **Обновлено:** `2026-08-11`
 
@@ -10,8 +10,8 @@
 сборке содержимое обновляется, ссылка остаётся прежней. Production
 `gambarian-landing.pages.dev` в клиентскую выборку не входит.
 
-Все десять опубликованных Preview используют **одну и ту же Action Bar
-v2.3.1** из единственного источника `site-addons/action-bar/`. Версии
+Все Preview используют **одну и ту же Action Bar v2.3.1** из единственного
+источника `site-addons/action-bar/`. Версии
 различаются только заявленным вариантом — шрифтами, Hero или подписанными
 номерами. Production при публикации не изменился.
 
@@ -21,6 +21,7 @@ v2.3.1** из единственного источника `site-addons/action-
 |---|---|---|
 | `final-dev` | Итоговая базовая версия + Action Bar | https://final-dev.gambarian-landing.pages.dev/ |
 | `final-dev1` | Новый Hero без дубля телефона; плотный mobile-кадр пары, читаемый desktop proof-блок, обновлённый текст прецедента, обе CTA на коротком mobile + Action Bar | https://final-dev1.gambarian-landing.pages.dev/ |
+| `final-dev3` | Выбранный кандидат: byte-equivalent `final-dev1`, Playfair Display + Onest, текущие тексты и Action Bar 2.3.1 | https://final-dev3.gambarian-landing.pages.dev/ |
 | `v1-playfair-onest` | Playfair Display + Onest + Action Bar | https://v1-playfair-onest.gambarian-landing.pages.dev/ |
 | `v2-lora-inter` | Lora + Inter + Action Bar | https://v2-lora-inter.gambarian-landing.pages.dev/ |
 | `v3-literata-manrope` | Literata + Manrope + Action Bar | https://v3-literata-manrope.gambarian-landing.pages.dev/ |
@@ -30,13 +31,16 @@ v2.3.1** из единственного источника `site-addons/action-
 | `action-bar` | Эталонная версия мобильной Action Bar | https://action-bar.gambarian-landing.pages.dev/ |
 | `review-numbered` | Копия текста со 102 подписанными номерами + Action Bar | https://review-numbered.gambarian-landing.pages.dev/ |
 
+Контракт выбранного кандидата: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
+
 ## Статус полной browser-приёмки
 
 | Preview | Полная visual/responsive-приёмка |
 |---|---|
 | Все десять Preview | `LIVE PASS`: commit `98374c1`; local `100/100` + `50/50` + `6/6`, live HTTP/browser `10/10` по `PREVIEW-BROWSER-QA v1.0.1` |
+| `final-dev3` | `LOCAL PASS / LIVE PENDING`: single `15/15`, полный прогон `173/173`, pixel-identical `final-dev1` на desktop/mobile; отдельный deployment ещё не выполнен |
 
-Action Bar smoke уже выполнен на всех десяти URL, но он не заменяет полный
+Action Bar smoke уже выполнен на прежних десяти URL, но он не заменяет полный
 rendered-прогон каждого варианта. `final-dev` и `action-bar` используют общий
 артефакт, но матрица и live-readback выполняются на каждом из двух URL.
 
@@ -50,16 +54,17 @@ rendered-прогон каждого варианта. `final-dev` и `action-ba
 | Mobile-адаптация клиентских Preview | `1.0.0` | 2026-08-11 |
 | Desktop Hero `final-dev1` | `1.3.0` | 2026-08-10 |
 | Текст прецедента `final-dev1` | `1.0.0` | 2026-08-11 |
+| Финальный кандидат `final-dev3` | `1.0.0` | 2026-08-11 |
 | Lead hook / форма | `1.1.0` | 2026-08-10 |
-| Карта клиентских preview | `2.3.0` | 2026-08-11 |
-| Browser QA клиентских Preview | `1.0.1` | 2026-08-11 |
+| Карта клиентских preview | `2.4.0` | 2026-08-11 |
+| Browser QA клиентских Preview | `1.1.0` | 2026-08-11 |
 
 ## Как работает конверсионный путь
 
 - Hero сразу объясняет специализацию и ведёт к форме либо звонку. На мобильном
   фото занимает полную ширину экрана без бокового смещения; CTA остаются
   крупными и доступны без точного попадания.
-- Action Bar одинаково работает во всех десяти Preview: скрыта на Hero, видна
+- Action Bar одинаково работает во всех Preview из карты: скрыта на Hero, видна
   при чтении, снова скрывается у формы, при открытом меню и при фокусе в поле.
   По времени Израиля в воскресенье–четверг с 09:00 включительно до 18:00
   исключительно доступны звонок, запись и WhatsApp. В остальное время телефон
@@ -86,17 +91,18 @@ rendered-прогон каждого варианта. `final-dev` и `action-ba
 
 | Группа | Источник | Производные |
 |---|---|---|
-| База | `site/` | исходник для десяти производных; production не изменяется |
-| Нижняя панель — single source | `site-addons/action-bar/` | центральный этап сборки добавляет Action Bar во все десять Preview |
+| База | `site/` | исходник для одиннадцати производных; production не изменяется |
+| Нижняя панель — single source | `site-addons/action-bar/` | центральный этап сборки добавляет Action Bar во все Preview из карты |
 | Итоговая Dev | `scripts/build-action-bar.py` | `final-dev` использует тот же канонический `build/variants/action-bar`, что и эталон панели |
 | Итоговая Dev 1 | `scripts/build-hero-variants.py dev1` | отдельный `build/variants/final-dev1`; desktop Hero не меняет `site/` и `final-dev` |
+| Итоговая Dev 3 | `scripts/build-hero-variants.py dev3` | отдельный `build/variants/final-dev3`; визуально и по copy повторяет выбранный `final-dev1` |
 | Шрифты | `scripts/build-font-variants.py` + центральный этап Action Bar | четыре `build/font-variants/*` |
 | Hero | `scripts/build-hero-variants.py` + центральный этап Action Bar | два `build/variants/hero-*` |
 | Эталон панели | `scripts/build-action-bar.py` | `build/variants/action-bar` |
 | Номера текста | `scripts/build-review-numbered.py` + центральный этап Action Bar | `build/variants/review-numbered` |
 
 Копии CSS, HTML или JS панели внутри отдельных генераторов не допускаются:
-изменение `site-addons/action-bar/` должно попадать во все десять Preview при
+изменение `site-addons/action-bar/` должно попадать во все Preview из карты при
 одной пересборке.
 
 Исполняемая карта `branch → build directory`, версия Wrangler и дата хранятся в

@@ -35,16 +35,30 @@ from final_dev1_contract import (
     TASK_PATH,
     VERSION as FINAL_DEV1_VERSION,
 )
+from final_dev3_contract import (
+    BOARD_PATH as FINAL_DEV3_BOARD_PATH,
+    BODY_CLASS as FINAL_DEV3_BODY_CLASS,
+    CSS_COMMENT as FINAL_DEV3_CSS_COMMENT,
+    DATE as FINAL_DEV3_DATE,
+    HTML_COMMENT as FINAL_DEV3_HTML_COMMENT,
+    MARKER as FINAL_DEV3_MARKER,
+    MARKER_RE as FINAL_DEV3_MARKER_RE,
+    TASK_PATH as FINAL_DEV3_TASK_PATH,
+    VERSION as FINAL_DEV3_VERSION,
+    normalize_css as normalize_final_dev3_css,
+    normalize_html as normalize_final_dev3_html,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
-MAP_VERSION = "2.3.0"
+MAP_VERSION = "2.4.0"
 MAP_DATE = "2026-08-11"
 
 EXPECTED_PREVIEWS = {
     "final-dev": "build/variants/action-bar",
     "final-dev1": "build/variants/final-dev1",
+    "final-dev3": "build/variants/final-dev3",
     "v1-playfair-onest": "build/font-variants/v1-playfair-onest",
     "v2-lora-inter": "build/font-variants/v2-lora-inter",
     "v3-literata-manrope": "build/font-variants/v3-literata-manrope",
@@ -54,6 +68,8 @@ EXPECTED_PREVIEWS = {
     "action-bar": "build/variants/action-bar",
     "review-numbered": "build/variants/review-numbered",
 }
+
+FINAL_DEV3_MARKED_FILES = {"index.html", "styles.css"}
 
 
 def verify_final_dev1(dest: Path) -> list[str]:
@@ -173,6 +189,64 @@ def verify_final_dev1_sources() -> list[str]:
     return problems
 
 
+def verify_final_dev3_sources() -> list[str]:
+    """Связывает marker final-dev3 с task и картой клиентских версий."""
+
+    problems: list[str] = []
+    for path, label in (
+        (ROOT / FINAL_DEV3_TASK_PATH, "task"),
+        (ROOT / FINAL_DEV3_BOARD_PATH, "карта Preview"),
+    ):
+        text = path.read_text(encoding="utf-8") if path.exists() else ""
+        if FINAL_DEV3_MARKER not in text:
+            problems.append(f"{label} не содержит текущий marker final-dev3")
+    return problems
+
+
+def verify_final_dev3(dest: Path, baseline: Path) -> list[str]:
+    """Доказывает, что final-dev3 отличается от final-dev1 только контрактом."""
+
+    problems: list[str] = []
+    html = (dest / "index.html").read_text(encoding="utf-8")
+    css = (dest / "styles.css").read_text(encoding="utf-8")
+    baseline_html = (baseline / "index.html").read_text(encoding="utf-8")
+    baseline_css = (baseline / "styles.css").read_text(encoding="utf-8")
+    expected_marker = (FINAL_DEV3_VERSION, FINAL_DEV3_DATE)
+
+    if html.count(FINAL_DEV3_HTML_COMMENT) != 1:
+        problems.append("HTML marker FINAL-DEV3-DESIGN должен встречаться ровно один раз")
+    if css.count(FINAL_DEV3_CSS_COMMENT) != 1:
+        problems.append("CSS marker FINAL-DEV3-DESIGN должен встречаться ровно один раз")
+    if html.count(f'<body class="{FINAL_DEV3_BODY_CLASS}">') != 1:
+        problems.append("отсутствует отдельный scoped body class final-dev3")
+    if FINAL_DEV3_MARKER_RE.findall(html) != [expected_marker]:
+        problems.append("HTML version/date final-dev3 расходятся с контрактом")
+    if FINAL_DEV3_MARKER_RE.findall(css) != [expected_marker]:
+        problems.append("CSS version/date final-dev3 расходятся с контрактом")
+    if normalize_final_dev3_html(html) != baseline_html:
+        problems.append("нормализованный index.html final-dev3 отличается от final-dev1")
+    if normalize_final_dev3_css(css) != baseline_css:
+        problems.append("нормализованный styles.css final-dev3 отличается от final-dev1")
+
+    candidate_files = {
+        path.relative_to(dest).as_posix(): path
+        for path in dest.rglob("*")
+        if path.is_file() and path.relative_to(dest).as_posix() not in FINAL_DEV3_MARKED_FILES
+    }
+    baseline_files = {
+        path.relative_to(baseline).as_posix(): path
+        for path in baseline.rglob("*")
+        if path.is_file() and path.relative_to(baseline).as_posix() not in FINAL_DEV3_MARKED_FILES
+    }
+    if candidate_files.keys() != baseline_files.keys():
+        problems.append("полный набор файлов final-dev3 отличается от final-dev1")
+    else:
+        for relative, candidate_path in candidate_files.items():
+            if candidate_path.read_bytes() != baseline_files[relative].read_bytes():
+                problems.append(f"файл {relative} отличается от final-dev1")
+    return problems
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -183,6 +257,7 @@ def main() -> int:
     problems: list[str] = []
     previews = manifest.get("previews", [])
     problems.extend(verify_final_dev1_sources())
+    problems.extend(verify_final_dev3_sources())
 
     if manifest.get("version") != MAP_VERSION:
         problems.append(f"ожидалась Preview-карта v{MAP_VERSION}")
@@ -234,8 +309,17 @@ def main() -> int:
                 problems.append(f"{branch}: ожидалось 102 уникальных номера")
             if "REVIEW-NUMBERED v1.0.0 | 2026-08-11" not in styles:
                 problems.append(f"{branch}: нет versioned mobile overflow-fix")
-        if branch == "final-dev1":
+        if branch in {"final-dev1", "final-dev3"}:
             problems.extend(f"{branch}: {problem}" for problem in verify_final_dev1(dest))
+        if branch == "final-dev3":
+            baseline = ROOT / EXPECTED_PREVIEWS["final-dev1"]
+            if not (baseline / "index.html").is_file():
+                problems.append("final-dev3: не собран baseline final-dev1")
+            else:
+                problems.extend(
+                    f"{branch}: {problem}"
+                    for problem in verify_final_dev3(dest, baseline)
+                )
 
     if problems:
         print("ПРОВЕРКА НЕ ПРОЙДЕНА:")

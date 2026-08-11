@@ -6,11 +6,12 @@
 которая служит точкой отсчёта.
 
 Варианты a/b отличаются только первым экраном. `dev1` дополнительно может
-содержать явно versioned и проверяемые owner-overrides; общий `site/` при этом
-остаётся неизменным.
+содержать явно versioned и проверяемые owner-overrides. `dev3` является
+отдельным маркированным клоном `dev1`; общий `site/` при этом остаётся
+неизменным.
 
     python scripts/build-hero-variants.py             # все
-    python scripts/build-hero-variants.py a b dev1    # выборочно
+    python scripts/build-hero-variants.py a b dev1 dev3    # выборочно
 """
 
 from __future__ import annotations
@@ -31,6 +32,16 @@ from final_dev1_contract import (
     PRECEDENT_COPY_MARKER,
     PRECEDENT_COPY_SNIPPETS,
     VERSION as FINAL_DEV1_VERSION,
+)
+from final_dev3_contract import (
+    BODY_CLASS as FINAL_DEV3_BODY_CLASS,
+    CSS_COMMENT as FINAL_DEV3_CSS_COMMENT,
+    DATE as FINAL_DEV3_DATE,
+    HTML_COMMENT as FINAL_DEV3_HTML_COMMENT,
+    MARKER_RE as FINAL_DEV3_MARKER_RE,
+    VERSION as FINAL_DEV3_VERSION,
+    apply_css_contract as apply_final_dev3_css_contract,
+    apply_html_contract as apply_final_dev3_html_contract,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -412,10 +423,21 @@ def variant_final_dev1(html: str) -> tuple[str, str]:
     return html, css
 
 
+def variant_final_dev3(html: str) -> tuple[str, str]:
+    """Создаёт отдельный маркированный клон актуального final-dev1."""
+
+    html, css = variant_final_dev1(html)
+    return (
+        apply_final_dev3_html_contract(html),
+        apply_final_dev3_css_contract(css),
+    )
+
+
 VARIANTS = {
     "a": ("hero-a-actions-first", "Действия перед фотографией", variant_a),
     "b": ("hero-b-call-first", "Звонок — главное действие", variant_b),
     "dev1": ("final-dev1", "Desktop Hero с расширенной конверсией", variant_final_dev1),
+    "dev3": ("final-dev3", "Desktop Hero с расширенной конверсией", variant_final_dev3),
 }
 
 
@@ -468,7 +490,7 @@ def verify(dest: Path, key: str) -> list[str]:
     if key == "b" and 'class="hero hero--call-first"' not in hero:
         problems.append("Hero B не имеет изолирующего класса")
 
-    if key == "dev1":
+    if key in {"dev1", "dev3"}:
         styles = (dest / "styles.css").read_text(encoding="utf-8")
         marker_text = f"/* FINAL-DEV1-HERO v{FINAL_DEV1_VERSION} | {FINAL_DEV1_DATE}"
         variant_css_position = styles.rfind(marker_text)
@@ -535,6 +557,19 @@ def verify(dest: Path, key: str) -> list[str]:
             )
         ):
             problems.append("mobile crop, fallback или desktop readability final-dev1 неполны")
+    if key == "dev3":
+        styles = (dest / "styles.css").read_text(encoding="utf-8")
+        expected_marker = (FINAL_DEV3_VERSION, FINAL_DEV3_DATE)
+        html_markers = FINAL_DEV3_MARKER_RE.findall(html)
+        css_markers = FINAL_DEV3_MARKER_RE.findall(styles)
+        if html_markers != [expected_marker] or css_markers != [expected_marker]:
+            problems.append("FINAL-DEV3-DESIGN version/date должны совпадать в HTML и CSS")
+        if html.count(FINAL_DEV3_HTML_COMMENT) != 1:
+            problems.append("final-dev3 HTML marker должен встречаться ровно один раз")
+        if styles.count(FINAL_DEV3_CSS_COMMENT) != 1:
+            problems.append("final-dev3 CSS marker должен встречаться ровно один раз")
+        if html.count(f'<body class="{FINAL_DEV3_BODY_CLASS}">') != 1:
+            problems.append("final-dev3 должен иметь отдельный scoped body class")
     problems.extend(verify_action_bar_install(dest))
     return problems
 

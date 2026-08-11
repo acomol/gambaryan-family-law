@@ -3,7 +3,7 @@
 
 # Gambarian Family Law Landing Page
 
-**Версия правил:** `PROJECT-AGENT-RULES v1.0.0`
+**Версия правил:** `PROJECT-AGENT-RULES v1.1.0`
 
 **Обновлено:** `2026-08-11`
 
@@ -11,8 +11,9 @@
 
 Статичный лендинг адвокатского бюро «Гамбарян и партнёры». Боевой источник
 находится в `site/`; клиентские варианты всегда генерируются из него скриптами,
-а не редактируются внутри `build/` вручную. Production и десять Preview
-публикуются в существующий Cloudflare Pages project `gambarian-landing`.
+а не редактируются внутри `build/` вручную. Production и Preview aliases из
+исполняемой карты публикуются в существующий Cloudflare Pages project
+`gambarian-landing`.
 
 ## Tech Stack
 
@@ -42,8 +43,8 @@
   artifact (`final-dev` и `action-bar` используют один каталог).
 - `python -B scripts/build-review-numbered.py` — собрать вариант с нумерацией
   клиентских текстов.
-- `python -B scripts/verify-client-previews.py` — проверить карту всех десяти
-  уже собранных Preview.
+- `python -B scripts/verify-client-previews.py` — проверить все собранные
+  Preview из исполняемой карты.
 - `node scripts/verify-lead-hook.mjs` — проверить browser/Function contract
   формы без реальной отправки в Albato.
 - `python scripts/qa-browser-matrix.py <base-url>` — прогнать responsive/browser

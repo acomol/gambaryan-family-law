@@ -1,16 +1,16 @@
 # Полная browser/responsive-приёмка клиентских Preview
 
-**Версия:** `PREVIEW-BROWSER-QA v1.0.1`
+**Версия:** `PREVIEW-BROWSER-QA v1.1.0`
 
 **Дата:** `2026-08-11`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Статус:** `PASS LOCAL + LIVE`
+**Статус:** `PASS LOCAL 11/11; LIVE PASS 10/10 HISTORICAL; final-dev3 LIVE PENDING`
 
 ## Цель
 
-Проверить все десять стабильных Cloudflare Preview: реальный рендер в Chrome,
+Проверить все одиннадцать Preview из карты `2.4.0`: реальный рендер в Chrome,
 измерения геометрии, визуальную проверку и live-readback каждого URL.
 Статический verifier, HTTP 200 или общий smoke Action Bar сами по себе эту
 приёмку не закрывают. Специфические стили, proof-блок, количество и порядок CTA
@@ -31,15 +31,22 @@
 - `hero-b-call-first`;
 - `action-bar`;
 - `review-numbered`.
+- `final-dev3`.
 
 `final-dev` и `action-bar` публикуются из одного каталога, но по прямому решению
-владельца полная browser-матрица выполняется на каждом из десяти URL. Их
+владельца полная browser-матрица выполняется на каждом URL. Их
 byte-identical состояние проверяется как дополнительный инвариант, а не как
 основание пропустить один из URL.
 
+`final-dev3` — отдельный strict clone `final-dev1`: Playfair Display + Onest,
+текущие тексты и Action Bar `2.3.1`. Допустимы только служебные marker/body
+class `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`; нормализованные HTML/CSS,
+общие assets/scripts/fonts и rendered-композиция должны совпадать с
+`final-dev1`.
+
 ## Матрица viewport
 
-Для каждого из десяти Preview URL:
+Для каждого из одиннадцати Preview URL:
 
 | Класс | Viewport |
 |---|---|
@@ -50,9 +57,9 @@ byte-identical состояние проверяется как дополнит
 
 Дополнительно:
 
-- `1920×1080` и `2560×1440` — базовый Hero, Hero A и Hero B;
+- `1920×1080` и `2560×1440` — базовый Hero, Hero A, Hero B и `final-dev3`;
 - `960×760`, `961×760`, `960×400`, `960×401` — канонический Action Bar;
-- на каждом из десяти live alias — mobile smoke и
+- на каждом опубликованном live alias — mobile smoke и
   readback URL.
 
 ## Универсальная приёмка
@@ -82,9 +89,9 @@ screenshots обязательны для репрезентативных mobil
 - [x] `#contact`, `tel:+972545490623` и WhatsApp ведут по назначению; форма
   сохраняет autocomplete, inline-ошибки и focus первого невалидного поля.
 - [x] Console `error` и `warning` равны нулю.
-- [ ] Live URL возвращает 200 и правильный marker варианта;
+- [ ] PENDING `final-dev3` live URL возвращает 200 и правильный marker варианта;
   `/lead-contract.js` содержит `1.1.0`, `GET /api/lead` возвращает 405 и
-  `Allow: POST`.
+  `Allow: POST`. Для десяти исторических alias этот live-гейт уже закрыт.
 
 ## Проверки по назначению варианта
 
@@ -95,6 +102,7 @@ screenshots обязательны для репрезентативных mobil
 | `hero-a-actions-first` | Сохраняется объявленный порядок с действиями до фотографии и основной записью |
 | `hero-b-call-first` | Сохраняется объявленный порядок с доминирующим звонком; `tel:` и `#contact` не перепутаны |
 | `review-numbered` | Ровно 102 уникальных `data-rvn`; бейджи читаемы и не закрывают исходный текст |
+| `final-dev3` | Strict clone `final-dev1`: marker `v1.0.0`, Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`; pixel-identical на `1293×724` и `390×844` |
 
 Исходные точки, закрытые в локальном кандидате:
 
@@ -125,7 +133,9 @@ alias. Исправление вносится в source/generator, а не вр
 владельца. Если общий source влияет на `final-dev1`, его regression-smoke
 обязателен. Реальный POST в Albato в этом прогоне не выполняется.
 
-## Локальный результат `2026-08-11`
+## Результаты `2026-08-11`
+
+### Исторический release десяти Preview
 
 - [x] `100/100` основных ячеек прошли на всех десяти Preview.
 - [x] `50/50` breakpoint/landscape-ячеек прошли.
@@ -143,6 +153,24 @@ alias. Исправление вносится в source/generator, а не вр
 - [x] LIVE Readback десяти alias после публикации Action Bar `2.3.1` и Client
   Preview Mobile `1.0.0` прошёл; commit `98374c1`, HTTP/assets/Functions и
   browser smoke `10/10`.
+
+Эти числа относятся к опубликованному release десяти URL и не переписываются
+результатами добавленного позже `final-dev3`.
+
+### Текущая локальная карта `2.4.0`
+
+- [x] Browser-runner `PREVIEW-BROWSER-QA-RUNNER v1.1.0 | 2026-08-11`.
+- [x] `110/110` основных ячеек: одиннадцать Preview × десять viewport.
+- [x] `55/55` breakpoint/landscape-ячеек.
+- [x] `8/8` large-desktop ячеек; общий результат `173/173`.
+- [x] Одиночный прогон `final-dev3` прошёл `15/15`.
+- [x] Скриншоты `final-dev1 ↔ final-dev3` pixel-identical на `1293×724` и
+  `390×844`; статический verifier подтвердил нормализованное равенство
+  HTML/CSS и идентичность общих assets/scripts/fonts.
+- [ ] OPEN Strict clone наследует дефект `final-dev1` при browser zoom `200%`:
+  proof/call-help скрываются mobile-правилом. Полный WCAG AA PASS не заявлять.
+- [ ] PENDING Cloudflare deployment и live-readback `final-dev3`; исторический
+  live PASS десяти alias не переносить на новый URL.
 
 ## Related
 
