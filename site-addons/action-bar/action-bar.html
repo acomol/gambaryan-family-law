@@ -1,4 +1,4 @@
-<!-- ACTION-BAR-SPEC v2.3.0 | 2026-08-10
+<!-- ACTION-BAR-SPEC v2.3.1 | 2026-08-11
      Мобильная панель действий. Вставляется последней в body, вне секций.
      Иконки взяты из уже используемого на лендинге набора (Lucide, viewBox 24,
      stroke currentColor, толщина 2). В рабочее время: звонок, главная запись
@@ -8,7 +8,7 @@
 <button class="mobile-bar-demo" type="button" role="switch" aria-checked="false" aria-label="Рабочее время" title="Перезагрузка страницы вернёт автоматический режим" data-business-demo data-demo-mode="auto" hidden>
   <span class="mobile-bar-demo__track" aria-hidden="true"></span>
   <span data-business-demo-status>Авто</span>
-  <span aria-hidden="true">· Рабочее время</span>
+  <span aria-hidden="true">· <span data-business-demo-state>Рабочее время</span></span>
 </button>
 <nav class="mobile-bar is-hidden" aria-label="Быстрые действия" data-business-state="pending" inert>
   <a class="mobile-bar__item" href="tel:+972545490623" data-action="phone_click" data-method="phone" data-business-action="phone">

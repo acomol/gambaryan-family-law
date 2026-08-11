@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.1.9`
+**Версия:** `1.2.0`
 
 **Обновлено:** `2026-08-11`
 
@@ -35,8 +35,8 @@
 
 | Контур | Статус на `2026-08-11` |
 |---|---|
-| Десять Preview | **PARTIAL:** Action Bar `2.3.0`, часы Израиля, demo-switch, assets и Function readback LIVE PASS на всех alias; полная visual/responsive-приёмка закрыта только для `final-dev1` |
-| `final-dev1` | **LIVE PASS:** Hero `1.3.0`, Precedent Copy `1.0.0`, плотный mobile-кадр пары, обе CTA от `360×600`, читаемый desktop proof-блок и Action Bar `2.3.0` опубликованы и проверены |
+| Десять Preview | **LOCAL PASS / LIVE PENDING:** кандидат Action Bar `2.3.1` + Client Preview Mobile `1.0.0`; 100/100 основных viewport-ячеек и 50/50 breakpoint/landscape-ячеек прошли; публичные alias пока отдают baseline `2.3.0` |
+| `final-dev1` | **LIVE BASELINE PASS / RELEASE REGRESSION PASS:** Hero `1.3.0`, Precedent Copy `1.0.0` и исходные assets не изменены; новый общий Preview-слой не содержит `FINAL-DEV1-DESIGN` |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -58,7 +58,7 @@
 | Фото адвокатов | На mobile обе рамки `16/15`; для Александра разрешён `object-position: center 16%`, чтобы макушки были на одном уровне | Первоначальное «object-position не менять» в задаче на фото; последующее прямое требование владельца о симметрии имеет приоритет |
 | Desktop-фото | Сохраняется `4/5`; desktop не меняется | Полная desktop-симметрия потребовала бы новых перекадрированных исходников и вышла бы за приёмку |
 | Hero | Два разных действия: запись и звонок; WhatsApp вынесен из Hero | Раннюю композиционную запись о паре «форма + мессенджер» |
-| Action Bar | Зонная модель плюс расписание `Asia/Jerusalem`: вс–чт `[09:00, 18:00)` — 3 действия, остальное время — запись и WhatsApp; Preview demo-switch показывает оба состояния; одна версия `2.3.0` во всех клиентских Preview | Первую реализацию с порогом/направлением, постоянный состав из трёх действий и прежнее ограничение только отдельным вариантом `action-bar` |
+| Action Bar | Зонная модель плюс расписание `Asia/Jerusalem`: вс–чт `[09:00, 18:00)` — 3 действия, остальное время — запись и WhatsApp; Preview demo-switch показывает оба состояния; версия `2.3.1` синхронно меняет верхнюю подпись и нижний состав | Первую реализацию с порогом/направлением, постоянный состав из трёх действий и прежнее ограничение только отдельным вариантом `action-bar` |
 | Production | Action Bar не внедряется в `site/index.html`; production не изменяется при сборке Preview | Желание показать панель клиенту реализуется через производные Preview, а не через боевой источник |
 | `final-dev` | Использует тот же канонический артефакт, что `action-bar`, но публикуется отдельным alias | Создание второго идентичного build-каталога |
 | `final-dev1` | Отдельный desktop Hero без дублирующего телефона в шапке; на mobile фото увеличено `1.15×` и сдвинуто на `7%` влево, интервалы сохраняют обе CTA от `360×600`; desktop proof/note увеличены до читаемых `12/13px` и `13/14px` | Перезапись `final-dev`, production или общего action-bar artifact |
@@ -100,15 +100,17 @@
 |---|---:|---:|---|
 | Social preview | `1.0.2` | `2026-08-10` | `docs/SOCIAL-PREVIEW.md`, meta-комментарий и versioned PNG |
 | Mobile Hero | `1.0.1` | `2026-08-10` | карта Preview и marker `HERO-MOBILE` в source/derived CSS |
-| Action Bar | `2.3.0` | `2026-08-10` | HTML/CSS/JS addon, task, manifest, verifier |
+| Action Bar | `2.3.1` | `2026-08-11` | HTML/CSS/JS addon, task, manifest, verifier |
+| Client Preview Mobile | `1.0.0` | `2026-08-11` | `client-preview.css`, manifest и verifier |
 | Desktop Hero `final-dev1` | `1.3.0` | `2026-08-10` | builder, HTML/CSS marker, task, reference PNG |
 | Текст прецедента `final-dev1` | `1.0.0` | `2026-08-11` | builder, HTML marker, task, browser readback |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
-| Карта Preview | `2.2.0` | `2026-08-10` | board и `scripts/client-preview-map.json` |
-| Browser QA клиентских Preview | `1.0.0` | `2026-08-10` | задача, композиционная спецификация и этот чек-лист |
-| Этот чек-лист | `1.1.9` | `2026-08-11` | текущий файл |
+| Карта Preview | `2.3.0` | `2026-08-11` | board и `scripts/client-preview-map.json` |
+| Browser QA клиентских Preview | `1.0.1` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
+| Этот чек-лист | `1.2.0` | `2026-08-11` | текущий файл |
 
-- [x] Все marker Action Bar синхронизированы на `2.3.0`.
+- [x] Все локальные marker Action Bar синхронизированы на `2.3.1`; live-readback
+  этой версии выполняется только после Preview deploy.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
 - [x] Все social meta указывают на PNG `v1.0.2`.
 - [ ] При следующем изменении требований одновременно увеличить версию,
@@ -205,7 +207,7 @@
 - [ ] OPEN Статус в `docs/FONT-VARIANTS.md` устарел: документ всё ещё говорит,
   что варианты 2–4 не опубликованы, хотя четыре Preview уже live.
 
-## 7. Action Bar v2.3.0
+## 7. Action Bar: baseline v2.3.0 / release-candidate v2.3.1
 
 ### Состав и single source
 
@@ -253,13 +255,14 @@
 - [x] Состояние обновляется на следующей минуте, `pageshow`, возврате вкладки и
   фокусе окна; при ошибке `Intl` выбирается безопасное нерабочее состояние.
 - [x] LIVE Проверены `08:59:59/09:00:00/17:59:59/18:00:00`, пятница/суббота и
-  DST на каноническом Preview после публикации `2.3.0`.
+  DST на каноническом baseline Preview `2.3.0`; кандидат `2.3.1` не меняет
+  расчёт времени и повторно прошёл локальную deterministic-проверку.
 - [x] LIVE На всех десяти Preview проверен open/closed smoke на 360/390/768px:
   3/2 focusable action, высота 60px, равные колонки, панель без собственного
   overflow.
-- [ ] OPEN Отдельно от Action Bar исправить старый overflow контента:
-  `v2-lora-inter` +3px на 360px; `review-numbered` +48px на 360px и +18px
-  на 390px. Сама панель совпадает с шириной viewport и overflow не создаёт.
+- [x] LOCAL Старый overflow устранён в source/generator: `v2-lora-inter` и
+  `review-numbered` имеют `scrollWidth === clientWidth` на 360/390 px; у
+  `review-numbered` сохранены 102 уникальных номера.
 
 ### Preview demo-switch
 
@@ -269,12 +272,14 @@
   переключает open/closed, повторный клик возвращает второе состояние.
 - [x] Перезагрузка сбрасывает ручной выбор и снова применяет `Asia/Jerusalem`.
 - [x] `role=switch` имеет стабильное имя «Рабочее время»;
-  `aria-checked=true` означает рабочее состояние, а видимый `Авто/Демо`
-  отражает режим. Скрытие зоны удаляет control из Tab-порядка.
+  `aria-checked=true` означает рабочее состояние, а видимые `Авто/Демо` и
+  `Рабочее/Нерабочее время` синхронно отражают режим и состояние. Скрытие зоны
+  удаляет control из Tab-порядка.
 - [x] Переключение не меняет URL, ссылки/методы и не отправляет аналитику.
-- [x] LIVE Переключение `3 ↔ 2` опубликовано и asset/readback проверен на каждом
-  из десяти Preview; интерактивный browser-smoke дополнительно выполнен на
-  `final-dev1`.
+- [x] LOCAL Action Bar `2.3.1`: на всех десяти Preview переключение проверено
+  как `Авто/Демо · Рабочее время ↔ Авто/Демо · Нерабочее время` вместе с
+  `3 ↔ 2`, `aria-checked`, focus, неизменным URL и нулём analytics events.
+- [ ] LIVE Опубликовать `2.3.1` и повторить этот readback на всех десяти alias.
 
 ### Доступность и ложные клики
 
@@ -389,11 +394,11 @@
 - [x] Визуал повторяет логотип: белый wordmark, золотой `&`, линия и подпись
   «АДВОКАТЫ» на фоне `#101214`.
 - [x] OG и Twitter имеют абсолютные HTTPS image URL, width/height/type/alt.
-- [x] Все девять Preview получили одинаковые metadata и изображение.
+- [x] Все десять Preview получили одинаковые metadata и изображение.
 - [x] Standalone сохраняет обычный absolute social image URL и не вшивает его
   в `data:` URI.
 - [ ] OPEN Текущий production был сохранён на более раннем deployment; новый
-  social preview подтверждён для девяти клиентских Preview, но не для
+  social preview подтверждён для десяти клиентских Preview, но не для
   production URL.
 - [ ] MANUAL Во всех Preview `og:url` пока указывает production URL. Только
   проверка реального мессенджера/debugger докажет, что scraper не
@@ -478,7 +483,7 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
   --commit-dirty=true
 ```
 
-### Десять Preview — Action Bar v2.3.0
+### Десять Preview — опубликованный baseline Action Bar v2.3.0
 
 | Preview | URL | Baseline status |
 |---|---|---|
@@ -504,6 +509,10 @@ scroll-listener, расписание `Asia/Jerusalem`, demo-switch, lead contra
 860 px, desktop proof/note увеличены, `.nav-call` отсутствует, horizontal
 overflow и console errors — 0; Action Bar прошла Hero → чтение → форма.
 
+Следующий Preview-only release: Action Bar `2.3.1`, Client Preview Mobile
+`1.0.0`, карта `2.3.0`. До нового live-readback таблица выше остаётся честным
+историческим baseline и не переименовывается в `2.3.1`.
+
 - [x] Последний deployment `final-dev1` имеет commit `51e9b82`; остальные
   девять Preview остаются на `8ccc820`. Все имеют status `success` по
   Cloudflare API.
@@ -518,48 +527,59 @@ overflow и console errors — 0; Action Bar прошла Hero → чтение 
 
 ### Полная browser/responsive-приёмка всех Preview
 
-Контракт: `PREVIEW-BROWSER-QA v1.0.0 | 2026-08-10`.
+Контракт: `PREVIEW-BROWSER-QA v1.0.1 | 2026-08-11`.
 
-| Preview | Статус полного прогона |
-|---|---|
-| `final-dev1` | `[x] PASS` по `FINAL-DEV1-HERO v1.3.0`; вне scope нового прогона девяти URL |
-| `final-dev` | `[ ] REQUIRED` |
-| `v1-playfair-onest` | `[ ] REQUIRED` |
-| `v2-lora-inter` | `[ ] REQUIRED`; известен overflow `+3px` на 360px |
-| `v3-literata-manrope` | `[ ] REQUIRED` |
-| `v4-ptserif-golos` | `[ ] REQUIRED`; OPEN по отсутствующему PT Serif 500 |
-| `hero-a-actions-first` | `[ ] REQUIRED` |
-| `hero-b-call-first` | `[ ] REQUIRED` |
-| `action-bar` | `[ ] REQUIRED` |
-| `review-numbered` | `[ ] REQUIRED`; известен overflow `+48px` на 360px и `+18px` на 390px |
+| Preview | Локальный кандидат | Live после публикации |
+|---|---|---|
+| `final-dev` | `[x] PASS` | `[ ] PENDING` |
+| `final-dev1` | `[x] PASS`; Hero `1.3.0`, Precedent Copy `1.0.0`, design leak отсутствует | `[ ] PENDING` |
+| `v1-playfair-onest` | `[x] PASS`; Playfair Display + Onest | `[ ] PENDING` |
+| `v2-lora-inter` | `[x] PASS`; Lora + Inter, прежний overflow `+3px` закрыт | `[ ] PENDING` |
+| `v3-literata-manrope` | `[x] PASS`; Literata + Manrope | `[ ] PENDING` |
+| `v4-ptserif-golos` | `[x] PASS`; PT Serif + Golos Text; выбор веса 500 остаётся OPEN | `[ ] PENDING` |
+| `hero-a-actions-first` | `[x] PASS`; действия до фотографии | `[ ] PENDING` |
+| `hero-b-call-first` | `[x] PASS`; звонок — главное действие | `[ ] PENDING` |
+| `action-bar` | `[x] PASS`; byte-identical с `final-dev` | `[ ] PENDING` |
+| `review-numbered` | `[x] PASS`; 102 уникальных номера, прежний overflow закрыт | `[ ] PENDING` |
 
-- [ ] BLOCKER для заявления «все десять Preview полностью приняты»: прогнать
-  остальные девять URL по матрице `360×600`, `360×668`, `390×724`, `390×844`,
-  `720×760`, `860×760`, `861×760`, `1024×768`, `1280×720`, `1440×900`.
-- [ ] Для каждой ячейки сохранить screenshot, `innerWidth/scrollWidth`,
-  bounding boxes Hero-фото/CTA, computed fonts, DOM snapshot и console output.
-- [ ] Проверить общий контракт: нет overflow/clipping/intersections; лица и
-  фото сбалансированы; на трёх коротких mobile viewport все Hero CTA варианта
-  входят целиком с нижним запасом ≥8px; Action Bar проходит Hero → чтение →
-  форма и demo `3 ↔ 2`; console errors/warnings `0`.
-- [ ] Проверить назначение варианта: реальные семейства в четырёх font Preview,
-  порядок Hero A/B и 102 уникальных номера в `review-numbered`.
-- [ ] На обоих byte-identical alias `final-dev`/`action-bar` выполнить полную
-  матрицу и отдельный live-readback; общий каталог не отменяет проверку URL.
-- [ ] Статический verifier, HTTP 200 и Action Bar smoke не закрывают этот gate.
-  Проверяются все CTA конкретного варианта; нельзя молча копировать количество,
-  порядок или стили CTA из `final-dev1` в другую утверждённую Hero-композицию.
+- [x] Выполнено `100/100` ячеек: десять Preview × `360×600`, `360×668`,
+  `390×724`, `390×844`, `720×760`, `860×760`, `861×760`, `1024×768`,
+  `1280×720`, `1440×900`.
+- [x] Во всех ячейках `scrollWidth === clientWidth`, загружены заявленные
+  семейства шрифтов, marker версий совпадают, console errors/warnings `0`.
+- [x] На коротких portrait viewport все Hero CTA входят целиком; минимальный
+  нижний запас `8.7px`, для `review-numbered` — `14.7px`.
+- [x] Дополнительная граница/landscape `50/50`: `960×760`, `961×760`,
+  `960×400`, `960×401`, `844×390`; статический/фиксированный режим панели и
+  breakpoint `960/961` работают без overflow.
+- [x] Дополнительный large-desktop прогон `6/6`: базовый Hero, Hero A и Hero B
+  на `1920×1080`/`2560×1440`, overflow и console errors/warnings `0`.
+- [x] Проверены зоны Action Bar на `final-dev` и `final-dev1`: Hero, чтение,
+  меню, focus поля, форма и возврат; отдельно прошли reduced-motion anchor и
+  fallback без `IntersectionObserver`.
+- [x] Проверены autofill `name/tel/email`, focus первого невалидного поля,
+  inline-сообщения и визуальное summary ошибки.
+- [x] Геометрия и DOM-состояние проверены для каждой ячейки; агрегат, матрица,
+  thresholds и окружение записаны в versioned local-QA отчёте,
+  репрезентативные screenshots сохранены вне Git.
+- [ ] LIVE После публикации повторить HTTP/marker/function readback и mobile
+  Action Bar smoke на каждом из десяти стабильных alias. Реальный POST в Albato
+  не выполнять.
 
 ## 14. GitHub и CI
 
+- [x] Локальный release-candidate: `npm run check` завершён с exit `0`;
+  lint без errors, TypeScript и Next build прошли.
 - [x] GitHub Actions run `31433776655` для `51e9b82` завершён `success`;
   lint, typecheck и Next build прошли.
 - [x] GitHub Actions run `31394432909` для `dd6af2d` завершён `success`.
 - [x] GitHub Actions run `31389047603` завершён `success`; lint, typecheck и
   Next build прошли.
 - [x] В PR нет review submissions и unresolved review threads.
-- [ ] OPEN В CI остаются 6 lint warnings: пять unused catch variables и один
-  Next custom-font warning.
+- [ ] OPEN В чистом CI ожидаются 8 lint warnings: семь unused catch variables
+  в Pages/Action Bar клиентском коде и один Next custom-font warning. Локальный
+  рабочий каталог дополнительно содержит ignored `.wrangler/`/`temp/`, поэтому
+  их производные warnings не считать source-регрессией.
 - [ ] OPEN Next build предупреждает об отсутствующем `metadataBase`.
 - [ ] OPEN `npm audit --omit=dev`: 15 уязвимостей — 10 high, 3 moderate,
   2 low; прямая `next@16.2.1`, доступен non-major update `16.3.0`.
@@ -600,7 +620,7 @@ overflow и console errors — 0; Action Bar прошла Hero → чтение 
 | Скрытая панель получала Tab/click | Только transform/opacity | visibility + pointer none + inert + Tab test |
 | Instant anchor оставлял панель hidden | IO не сообщил о прыжке nonintersecting→nonintersecting | reduced-motion anchor browser test |
 | Fix instant anchor сломал no-IO fallback | Geometry handlers работали без IO | Отдельный тест без `IntersectionObserver` |
-| Все варианты разошлись по Action Bar | Панель инжектилась только одним builder | single-source installer + 9-entry manifest/verifier |
+| Все варианты разошлись по Action Bar | Панель инжектилась только одним builder | single-source installer + 10-entry manifest/verifier |
 | Windows verifier падал после PASS | stdout cp1252 не печатал кириллицу | Внутренняя UTF-8 reconfigure + cp1252 test |
 | Lead body limit срабатывал после full buffer | `request.text()` читался до проверки | bounded stream reader + oversized chunk test |
 | Ошибка формы была непонятна | Общий generic error без привязки к полям | inline message, visual state, summary, focus first invalid |

@@ -53,5 +53,14 @@ __pycache__/
 .claude/skills/customize/
 .claude/skills/release/
 
+# nodumbmode is installed project-locally, but upstream has no redistribution
+# license. Keep the local copy out of Git; reproduce it with the documented
+# npx command after cloning.
+.agents/skills/ask-nodumb/
+.agents/skills/changelog-discipline/
+.agents/skills/nodumb/
+.agents/skills/system-feedback/
+skills-lock.json
+
 # Local temp files
 temp/

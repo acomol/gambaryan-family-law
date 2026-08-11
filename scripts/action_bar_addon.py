@@ -16,8 +16,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ADDON = ROOT / "site-addons" / "action-bar"
-SPEC_VERSION = "2.3.0"
-SPEC_DATE = "2026-08-10"
+CLIENT_PREVIEW_ADDON = ROOT / "site-addons" / "client-preview"
+SPEC_VERSION = "2.3.1"
+SPEC_DATE = "2026-08-11"
+CLIENT_PREVIEW_VERSION = "1.0.0"
+CLIENT_PREVIEW_DATE = "2026-08-11"
 SPEC_MARKER_RE = re.compile(
     r"ACTION-BAR-SPEC\s+(v\d+\.\d+\.\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})"
 )
@@ -33,6 +36,7 @@ def install_action_bar(dest: Path) -> None:
 
     for name in ("action-bar.css", "action-bar.js"):
         shutil.copy(ADDON / name, dest / name)
+    shutil.copy(CLIENT_PREVIEW_ADDON / "client-preview.css", dest / "client-preview.css")
 
     markup = (ADDON / "action-bar.html").read_text(encoding="utf-8").strip()
     stylesheet = '<link rel="stylesheet" href="styles.css">'
@@ -40,9 +44,19 @@ def install_action_bar(dest: Path) -> None:
         raise SystemExit(f"{dest}: ожидалась одна ссылка на styles.css")
     html = html.replace(
         stylesheet,
-        stylesheet + '\n<link rel="stylesheet" href="action-bar.css">',
+        stylesheet
+        + '\n<link rel="stylesheet" href="client-preview.css">'
+        + '\n<link rel="stylesheet" href="action-bar.css">',
         1,
     )
+
+    if 'rel="icon"' not in html:
+        html = html.replace(
+            stylesheet,
+            '<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%23101214%27/%3E%3Cpath d=%27M12 32h40M32 12v40%27 stroke=%27%23f0ae1f%27 stroke-width=%276%27/%3E%3C/svg%3E">\n'
+            + stylesheet,
+            1,
+        )
 
     viewport = 'content="width=device-width, initial-scale=1"'
     if html.count(viewport) != 1:
@@ -79,6 +93,22 @@ def verify_action_bar_install(dest: Path) -> list[str]:
             problems.append(f"{name} расходится с единым источником Action Bar")
         if html.count(f'href="{name}"') + html.count(f'src="{name}"') != 1:
             problems.append(f"{name} должен быть подключён ровно один раз")
+
+    preview_css_path = dest / "client-preview.css"
+    if not preview_css_path.exists():
+        problems.append("client-preview.css не скопирован в клиентскую сборку")
+    else:
+        preview_css = preview_css_path.read_text(encoding="utf-8")
+        if preview_css_path.read_bytes() != (CLIENT_PREVIEW_ADDON / "client-preview.css").read_bytes():
+            problems.append("client-preview.css расходится с единым источником")
+        preview_marker = f"CLIENT-PREVIEW-MOBILE v{CLIENT_PREVIEW_VERSION} | {CLIENT_PREVIEW_DATE}"
+        if preview_marker not in preview_css:
+            problems.append(f"в client-preview.css нет маркера {preview_marker}")
+        if html.count('href="client-preview.css"') != 1:
+            problems.append("client-preview.css должен быть подключён ровно один раз")
+
+    if html.count('rel="icon"') != 1:
+        problems.append("в клиентском Preview должен быть один favicon")
 
     if len(re.findall(r'<nav\s+class="[^"]*\bmobile-bar\b[^"]*"', html)) != 1:
         problems.append("Action Bar должен быть в разметке ровно один раз")
@@ -124,11 +154,16 @@ def verify_action_bar_install(dest: Path) -> list[str]:
         problems.append("demo-switch должен иметь стабильное доступное имя")
     if html.count("data-business-demo-status") != 1:
         problems.append("не найден видимый статус Авто/Демо")
+    if html.count("data-business-demo-state") != 1:
+        problems.append("не найден видимый статус рабочего/нерабочего времени")
     if "Написать в WhatsApp" not in js:
         problems.append("нет точного нерабочего label «Написать в WhatsApp»")
     demo_tokens = (
         "var demoBusinessState = null",
         "demoBusinessState ||",
+        "demoLabel: 'Рабочее время'",
+        "demoLabel: 'Нерабочее время'",
+        "demoStateLabel.textContent = businessState.demoLabel",
         "demoToggle.addEventListener('click'",
         "demoToggle.setAttribute('aria-checked'",
         "demoToggle.hidden = hidden",

@@ -72,9 +72,34 @@ VARIANTS = {
     },
 }
 
+V2_MOBILE_LAYOUT_VERSION = "1.0.0"
+V2_MOBILE_LAYOUT_UPDATED = "2026-08-11"
+V2_MOBILE_LAYOUT_CSS = f"""
+
+/* FONT-VARIANT-V2-MOBILE v{V2_MOBILE_LAYOUT_VERSION} | {V2_MOBILE_LAYOUT_UPDATED}
+   Lora/Inter: длинные русские строки не должны расширять страницу на 360px. */
+@media (max-width: 380px) {{
+  .precedent-card__text,
+  .precedent-card__actions {{
+    min-width: 0;
+    width: 100%;
+  }}
+
+  .precedent-card__title {{ overflow-wrap: anywhere; }}
+
+  .precedent-card__actions .btn {{
+    min-width: 0;
+    max-width: 100%;
+    padding-inline: 16px;
+    text-align: center;
+  }}
+}}
+"""
+
 
 def fetch(url: str) -> bytes:
-    out = subprocess.run(["curl", "-sS", "--max-time", "60", "-A", UA, url],
+    out = subprocess.run(["curl", "-fsS", "--max-time", "60", "--retry", "3",
+                          "--retry-delay", "1", "--retry-all-errors", "-A", UA, url],
                          capture_output=True, check=True)
     return out.stdout
 
@@ -198,6 +223,8 @@ def build(n: int) -> dict:
     styles = re.sub(r'--font-body:[^;]+;',
                     f'--font-body: "{spec["body"]["family"]}", Helvetica, Arial, sans-serif;',
                     styles, count=1)
+    if n == 2:
+        styles += V2_MOBILE_LAYOUT_CSS
     (dest / "styles.css").write_text(styles, encoding="utf-8")
 
     # подмена preload-ссылок
@@ -257,6 +284,11 @@ def verify(report: dict) -> list[str]:
     for old in ("Onest", "Playfair Display"):
         if report["variant"] != 1 and f"'{old}'" in css:
             problems.append(f"в наборе остался старый шрифт {old}")
+
+    if report["variant"] == 2:
+        marker = f"FONT-VARIANT-V2-MOBILE v{V2_MOBILE_LAYOUT_VERSION} | {V2_MOBILE_LAYOUT_UPDATED}"
+        if marker not in styles:
+            problems.append(f"в styles.css нет маркера {marker}")
 
     # preload ведёт на существующий файл
     for m in re.finditer(r'rel="preload" href="(fonts/[^"]+)"', html):

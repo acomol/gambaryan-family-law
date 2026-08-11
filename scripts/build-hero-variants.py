@@ -96,6 +96,11 @@ def variant_a(html: str) -> tuple[str, str]:
     # Порядок сборки: слот media идёт первым в разметке, поэтому туда кладём
     # всю новую последовательность.
     html = assemble(html, ["actions", "phone", "note", "media"], b)
+    html = html.replace(
+        '<section class="hero" id="top">',
+        '<section class="hero hero--actions-first" id="top">',
+        1,
+    )
     css = """
 /* === Вариант A: действия перед фотографией ================================
    Кадр в hero высокий: на 390px он занимает больше половины первого экрана,
@@ -128,6 +133,11 @@ def variant_b(html: str) -> tuple[str, str]:
         'data-action="form_anchor_click">Или оставьте заявку — ответим в рабочее время</a></p>\n'
     )
     html = assemble(b["_html"], ["media", "actions", "phone", "note"], b)
+    html = html.replace(
+        '<section class="hero" id="top">',
+        '<section class="hero hero--call-first" id="top">',
+        1,
+    )
     css = """
 /* === Вариант B: звонок — главное действие =================================
    Приоритет обратный текущему: цель практики — телефонный звонок, поэтому
@@ -452,6 +462,11 @@ def verify(dest: Path, key: str) -> list[str]:
     for must in ("Адвокат по семейному праву в Израиле", "054-549-0623"):
         if must not in hero:
             problems.append(f"пропал текст «{must}»")
+
+    if key == "a" and 'class="hero hero--actions-first"' not in hero:
+        problems.append("Hero A не имеет изолирующего класса")
+    if key == "b" and 'class="hero hero--call-first"' not in hero:
+        problems.append("Hero B не имеет изолирующего класса")
 
     if key == "dev1":
         styles = (dest / "styles.css").read_text(encoding="utf-8")

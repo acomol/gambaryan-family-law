@@ -6,7 +6,8 @@
 >
 > | Что | Где |
 > |---|---|
-> | **Живое превью** — открывается с телефона | https://claude.ai/code/artifact/f6f44336-a84c-4122-a74b-65c47e53b0c0 |
+> | **Клиентские Preview** — 10 стабильных Cloudflare URL | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
+> | Исторический Claude artifact | https://claude.ai/code/artifact/f6f44336-a84c-4122-a74b-65c47e53b0c0 |
 > | **Боевой адрес** — пока отдаёт версию до правок | https://gambarian-landing.pages.dev/ |
 > | Исходники страницы | [`site/`](site/) — `index.html`, `styles.css`, `fonts.css`, `app.js`, `assets/`, `fonts/` |
 > | Вся страница одним файлом (3.87 МБ, внешних запросов 0) | [`site/gambarian-standalone.html`](site/gambarian-standalone.html) |
@@ -14,6 +15,9 @@
 > | Композиция экранов и критерии приёмки | [`docs/SCREEN-COMPOSITION.md`](docs/SCREEN-COMPOSITION.md) |
 > | Журнал ошибок и разборов | [`docs/ERRORS.md`](docs/ERRORS.md) |
 > | Финальный чек-лист: решения, регрессии и production-блокеры | [`docs/FINAL-QA-CHECKLIST.md`](docs/FINAL-QA-CHECKLIST.md) |
+> | Пакет из 10 Preview для согласования | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
+> | Карта источников утверждённого текста | [`docs/CONTENT-SOURCE-MAP.md`](docs/CONTENT-SOURCE-MAP.md) |
+> | План отдельного `final-dev3` — заморожен до согласования | [`docs/tasks/2026-08-11-final-dev3-design-system.md`](docs/tasks/2026-08-11-final-dev3-design-system.md) |
 >
 > Пересобрать файл-одностраничник:
 >

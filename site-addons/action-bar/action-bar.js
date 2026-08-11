@@ -1,4 +1,4 @@
-/* ACTION-BAR-SPEC v2.3.0 | 2026-08-10
+/* ACTION-BAR-SPEC v2.3.1 | 2026-08-11
    ========================================================================
    Мобильная панель действий: зонная модель.
 
@@ -30,8 +30,8 @@
     closeMinute: 18 * 60
   };
   var BUSINESS_STATES = {
-    open: { phoneVisible: true, whatsappLabel: 'WhatsApp' },
-    closed: { phoneVisible: false, whatsappLabel: 'Написать в WhatsApp' }
+    open: { phoneVisible: true, whatsappLabel: 'WhatsApp', demoLabel: 'Рабочее время' },
+    closed: { phoneVisible: false, whatsappLabel: 'Написать в WhatsApp', demoLabel: 'Нерабочее время' }
   };
 
   var bar = document.querySelector('.mobile-bar');
@@ -45,6 +45,7 @@
   var whatsappLabel = bar.querySelector('[data-business-label="whatsapp"]');
   var demoToggle = document.querySelector('[data-business-demo]');
   var demoStatus = demoToggle && demoToggle.querySelector('[data-business-demo-status]');
+  var demoStateLabel = demoToggle && demoToggle.querySelector('[data-business-demo-state]');
   var hasIntersectionObserver = 'IntersectionObserver' in window;
   var businessClock = null;
   var businessTimer = null;
@@ -117,6 +118,7 @@
       demoToggle.setAttribute('aria-checked', String(stateName === 'open'));
       demoToggle.setAttribute('data-demo-mode', demoBusinessState ? 'manual' : 'auto');
       if (demoStatus) demoStatus.textContent = demoBusinessState ? 'Демо' : 'Авто';
+      if (demoStateLabel) demoStateLabel.textContent = businessState.demoLabel;
     }
   }
 

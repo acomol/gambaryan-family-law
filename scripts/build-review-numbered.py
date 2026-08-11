@@ -24,6 +24,8 @@ from action_bar_addon import install_action_bar, verify_action_bar_install
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 DEST = ROOT / "build" / "variants" / "review-numbered"
+REVIEW_NUMBERED_VERSION = "1.0.0"
+REVIEW_NUMBERED_UPDATED = "2026-08-11"
 
 
 def badge(n: str) -> str:
@@ -339,6 +341,7 @@ REPLACEMENTS: list[tuple[int, int, str, str]] = [
 ]
 
 BANNER = """
+<!-- REVIEW-NUMBERED v1.0.0 | 2026-08-11 -->
 <div class="rvn-banner">
   <p><strong>Копия для правок.</strong> У каждого текстового блока — номер слева.
   Присылайте правки со ссылкой на номер: «3.11 — заменить заголовок на …».</p>
@@ -350,6 +353,7 @@ BANNER = """
 
 BADGE_CSS = """
 /* ==========================================================================
+   REVIEW-NUMBERED v1.0.0 | 2026-08-11
    Номера для клиентской копии — только в этой сборке, в боевой версии их нет.
    Бейдж самодостаточен по контрасту (тёмный фон + золотая рамка), поэтому
    читается одинаково на светлых секциях (факты, адвокаты) и тёмных
@@ -400,6 +404,44 @@ h1 .rvn, h2 .rvn, h3 .rvn { vertical-align: 0.28em; }
 .rvn-banner p:last-child { margin-bottom: 0; }
 .rvn-banner strong { color: #f0ae1f; }
 .rvn-banner__note { color: rgba(255, 255, 255, 0.6); font-size: 12.5px; }
+
+@media (max-width: 480px) {
+  /* Длинные служебные подписи должны переноситься внутри карточки, а не
+     расширять страницу. Исходный текст и нумерация при этом сохраняются. */
+  .rvn {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    min-height: 20px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+
+  .rvn:not([data-rvn*="("]) {
+    flex: none;
+    min-width: 30px;
+    white-space: nowrap;
+  }
+
+  .svc-media__label,
+  .svc-media__person > div,
+  .precedent-card__text,
+  .precedent-card__actions {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .precedent-card__actions { width: 100%; }
+
+  .precedent-card__actions .btn {
+    min-width: 0;
+    max-width: 100%;
+    padding-inline: 16px;
+    text-align: center;
+  }
+}
 """
 
 
@@ -421,7 +463,16 @@ def build() -> Path:
         raise SystemExit("Сборка остановлена — разметка разошлась с ожиданием:\n  " +
                           "\n  ".join(problems))
 
-    html = html.replace("<body>\n", "<body>\n" + BANNER, 1)
+    if html.count("<body>") != 1:
+        raise SystemExit("Сборка остановлена — ожидался один <body>")
+    html = html.replace("<body>", '<body class="page--review-numbered">', 1)
+
+    hero_start = html.find('<section class="hero" id="top">')
+    hero_end = html.find("</section>", hero_start)
+    if hero_start < 0 or hero_end < 0:
+        raise SystemExit("Сборка остановлена — Hero для вставки инструкции не найден")
+    hero_end += len("</section>")
+    html = html[:hero_end] + "\n" + BANNER + html[hero_end:]
     html = html.replace("<!-- вариант", "<!-- клиентская копия с номерами -->\n<!-- вариант", 1)
     if "<!-- вариант" not in html:
         html = html.replace("<title>", "<!-- клиентская копия с номерами -->\n<title>", 1)
@@ -445,8 +496,15 @@ def verify(dest: Path) -> list[str]:
 
     if ".rvn {" not in css:
         problems.append("стили бейджей не подключены")
+    marker = f"REVIEW-NUMBERED v{REVIEW_NUMBERED_VERSION} | {REVIEW_NUMBERED_UPDATED}"
+    if marker not in css:
+        problems.append(f"в styles.css нет маркера {marker}")
+    if html.count(f"<!-- {marker} -->") != 1:
+        problems.append(f"в index.html нет единственного маркера {marker}")
     if "rvn-banner" not in html:
         problems.append("баннер с инструкцией не вставлен")
+    if html.count('class="page--review-numbered"') != 1:
+        problems.append("review-numbered не имеет изолирующего body-класса")
     if 'name="robots" content="noindex"' not in html:
         problems.append("noindex пропал — эта копия не должна индексироваться")
 

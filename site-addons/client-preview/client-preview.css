@@ -1,0 +1,70 @@
+/* CLIENT-PREVIEW-MOBILE v1.0.0 | 2026-08-11
+   Общая мобильная композиция только для клиентских Preview. Production site/
+   этот файл не подключает. Цель: сохранить текст и лица, но показать все Hero
+   CTA на коротких portrait-экранах от 360x600. */
+
+@media (max-width: 860px) and (min-height: 600px) and (max-height: 724px) {
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero__body {
+    padding-top: 4px;
+  }
+
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero__title {
+    margin-bottom: 8px;
+    padding: 8px 0 10px;
+  }
+
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero__lede {
+    margin-bottom: 6px;
+  }
+
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero-media {
+    margin-bottom: 10px;
+  }
+
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero-photo {
+    display: block;
+    max-height: calc(100vh - 432px);
+    max-height: calc(100dvh - 432px);
+  }
+
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero__actions {
+    margin-bottom: 10px;
+  }
+
+  .hero--call-first .hero__call-btn {
+    min-height: 52px;
+    padding: 10px 12px;
+    font-size: 16px;
+    line-height: 1.25;
+  }
+
+  .hero--call-first .hero__form-link {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 10px 8px;
+    margin: -10px -8px;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  /* Служебные номера внутри Hero добавляют высоту строкам. Компенсируем
+     только в review-numbered, не меняя размер текста или самих бейджей. */
+  .page--review-numbered .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero-photo {
+    max-height: calc(100vh - 463px);
+    max-height: calc(100dvh - 463px);
+  }
+}
+
+@media (min-width: 420px) and (max-width: 659px) and (min-height: 600px) and (max-height: 724px) {
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero-photo {
+    max-height: calc(100vh - 396px);
+    max-height: calc(100dvh - 396px);
+  }
+}
+
+@media (min-width: 660px) and (max-width: 860px) and (min-height: 600px) and (max-height: 724px) {
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero-photo {
+    max-height: calc(100vh - 374px);
+    max-height: calc(100dvh - 374px);
+  }
+}

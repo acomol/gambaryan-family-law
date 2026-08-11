@@ -10,7 +10,13 @@ import struct
 import sys
 from pathlib import Path
 
-from action_bar_addon import SPEC_DATE, SPEC_VERSION, verify_action_bar_install
+from action_bar_addon import (
+    CLIENT_PREVIEW_DATE,
+    CLIENT_PREVIEW_VERSION,
+    SPEC_DATE,
+    SPEC_VERSION,
+    verify_action_bar_install,
+)
 from final_dev1_contract import (
     BOARD_PATH,
     DATE as FINAL_DEV1_DATE,
@@ -33,8 +39,8 @@ from final_dev1_contract import (
 
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
-MAP_VERSION = "2.2.0"
-MAP_DATE = "2026-08-10"
+MAP_VERSION = "2.3.0"
+MAP_DATE = "2026-08-11"
 
 EXPECTED_PREVIEWS = {
     "final-dev": "build/variants/action-bar",
@@ -186,6 +192,10 @@ def main() -> int:
         problems.append("версия Action Bar в Preview-карте расходится с addon")
     if manifest.get("action_bar_updated") != SPEC_DATE:
         problems.append("дата Action Bar в Preview-карте расходится с addon")
+    if manifest.get("client_preview_mobile_version") != CLIENT_PREVIEW_VERSION:
+        problems.append("версия mobile-композиции расходится с addon")
+    if manifest.get("client_preview_mobile_updated") != CLIENT_PREVIEW_DATE:
+        problems.append("дата mobile-композиции расходится с addon")
     if len(previews) != len(EXPECTED_PREVIEWS):
         problems.append(
             f"в карте должно быть {len(EXPECTED_PREVIEWS)} Preview, найдено {len(previews)}"
@@ -210,6 +220,20 @@ def main() -> int:
         problems.extend(
             f"{branch}: {problem}" for problem in verify_action_bar_install(dest)
         )
+        html = (dest / "index.html").read_text(encoding="utf-8")
+        styles = (dest / "styles.css").read_text(encoding="utf-8")
+        if branch == "hero-a-actions-first" and 'class="hero hero--actions-first"' not in html:
+            problems.append(f"{branch}: нет изолирующего класса Hero A")
+        if branch == "hero-b-call-first" and 'class="hero hero--call-first"' not in html:
+            problems.append(f"{branch}: нет изолирующего класса Hero B")
+        if branch == "v2-lora-inter" and "FONT-VARIANT-V2-MOBILE v1.0.0 | 2026-08-11" not in styles:
+            problems.append(f"{branch}: нет mobile overflow-fix")
+        if branch == "review-numbered":
+            labels = re.findall(r'data-rvn="([^"]+)"', html)
+            if len(labels) != 102 or len(set(labels)) != 102:
+                problems.append(f"{branch}: ожидалось 102 уникальных номера")
+            if "REVIEW-NUMBERED v1.0.0 | 2026-08-11" not in styles:
+                problems.append(f"{branch}: нет versioned mobile overflow-fix")
         if branch == "final-dev1":
             problems.extend(f"{branch}: {problem}" for problem in verify_final_dev1(dest))
 
@@ -221,7 +245,8 @@ def main() -> int:
 
     print(
         f"PASS: Preview-карта v{MAP_VERSION} | {MAP_DATE}; Action Bar "
-        f"v{SPEC_VERSION} | {SPEC_DATE} присутствует во всех "
+        f"v{SPEC_VERSION} | {SPEC_DATE}; Client Preview Mobile "
+        f"v{CLIENT_PREVIEW_VERSION} | {CLIENT_PREVIEW_DATE} присутствуют во всех "
         f"{len(EXPECTED_PREVIEWS)} клиентских Preview-артефактах."
     )
     return 0
