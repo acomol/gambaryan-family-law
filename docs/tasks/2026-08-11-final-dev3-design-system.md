@@ -1,10 +1,10 @@
 # Задание: отдельный `final-dev3` после утверждения Preview
 
-**Версия:** `FINAL-DEV3-PLAN v1.1.0`
+**Версия:** `FINAL-DEV3-PLAN v1.2.0`
 
 **Дата:** `2026-08-11`
 
-**Статус:** `LOCAL PASS — Cloudflare Preview deployment pending`
+**Статус:** `COMPLETE — LIVE PASS`
 
 ## Цель
 
@@ -61,9 +61,11 @@ Hero, текстов и нижней панели. Ни один из десят
 - [x] текущий текст побайтно унаследован от `final-dev1`;
 - [x] Hero/CTA pixel-identical `final-dev1` на `1293×724` и `390×844`;
 - [x] Action Bar, автозаполнение и визуальные ошибки полей не регрессируют;
-- [ ] PENDING: отдельные commit, push, Preview deploy и live-readback;
-- [ ] PENDING: доказать по live baseline, что production и прежние десять Preview
-  не изменились.
+- [x] Commit `78f429d`, push, Preview deploy и live-readback выполнены;
+- [x] Deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`; stable URL прошёл
+  browser `15/15`, asset/Function readback;
+- [x] Cloudflare API и HTTP SHA подтвердили: production и прежние десять
+  Preview не изменились.
 
 ## Related
 
@@ -72,3 +74,4 @@ Hero, текстов и нижней панели. Ни один из десят
 - [GAM-DESIGN](../GAMBARIAN-DESIGN-RULES.md)
 - [Аудит upstream](../research/AI-DESIGN-SKILLS-AUDIT.md)
 - [Финальный QA-чек-лист](../FINAL-QA-CHECKLIST.md)
+- [Live release final-dev3](../reviews/2026-08-11-final-dev3-live-release.md)

@@ -1,12 +1,12 @@
 # Полная browser/responsive-приёмка клиентских Preview
 
-**Версия:** `PREVIEW-BROWSER-QA v1.1.0`
+**Версия:** `PREVIEW-BROWSER-QA v1.1.1`
 
 **Дата:** `2026-08-11`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Статус:** `PASS LOCAL 11/11; LIVE PASS 10/10 HISTORICAL; final-dev3 LIVE PENDING`
+**Статус:** `PASS LOCAL 11/11; LIVE PASS 11/11`
 
 ## Цель
 
@@ -89,7 +89,7 @@ screenshots обязательны для репрезентативных mobil
 - [x] `#contact`, `tel:+972545490623` и WhatsApp ведут по назначению; форма
   сохраняет autocomplete, inline-ошибки и focus первого невалидного поля.
 - [x] Console `error` и `warning` равны нулю.
-- [ ] PENDING `final-dev3` live URL возвращает 200 и правильный marker варианта;
+- [x] `final-dev3` live URL возвращает 200 и правильный marker варианта;
   `/lead-contract.js` содержит `1.1.0`, `GET /api/lead` возвращает 405 и
   `Allow: POST`. Для десяти исторических alias этот live-гейт уже закрыт.
 
@@ -157,7 +157,7 @@ alias. Исправление вносится в source/generator, а не вр
 Эти числа относятся к опубликованному release десяти URL и не переписываются
 результатами добавленного позже `final-dev3`.
 
-### Текущая локальная карта `2.4.0`
+### Текущая карта `2.4.0`
 
 - [x] Browser-runner `PREVIEW-BROWSER-QA-RUNNER v1.1.0 | 2026-08-11`.
 - [x] `110/110` основных ячеек: одиннадцать Preview × десять viewport.
@@ -169,8 +169,8 @@ alias. Исправление вносится в source/generator, а не вр
   HTML/CSS и идентичность общих assets/scripts/fonts.
 - [ ] OPEN Strict clone наследует дефект `final-dev1` при browser zoom `200%`:
   proof/call-help скрываются mobile-правилом. Полный WCAG AA PASS не заявлять.
-- [ ] PENDING Cloudflare deployment и live-readback `final-dev3`; исторический
-  live PASS десяти alias не переносить на новый URL.
+- [x] Cloudflare deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05` и live
+  readback `final-dev3` прошли; прежние десять alias и production не изменились.
 
 ## Related
 
@@ -178,5 +178,6 @@ alias. Исправление вносится в source/generator, а не вр
 - [Композиция экранов](../SCREEN-COMPOSITION.md)
 - [Итоговый QA-чек-лист](../FINAL-QA-CHECKLIST.md)
 - [Локальный QA-отчёт](../reviews/2026-08-11-client-preview-local-qa.md)
+- [Live release final-dev3](../reviews/2026-08-11-final-dev3-live-release.md)
 - [Live release-отчёт](../reviews/2026-08-11-client-preview-live-release.md)
 - [Принятый Final Dev 1](2026-08-10-final-dev1-desktop-hero.md)

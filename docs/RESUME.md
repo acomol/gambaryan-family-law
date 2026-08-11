@@ -1,6 +1,6 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v1.1.0`
+**Версия:** `HANDOFF-RESUME v1.1.1`
 
 **Обновлено:** `2026-08-11`
 
@@ -15,6 +15,8 @@
   статус `draft`. Тело PR обновляет ведущий агент после появления финального SHA.
 - Клиентский Preview release: `98374c133f91a7c47112561f86debbcec2129f6c`;
   документационный HEAD не означает новый Cloudflare deployment.
+- `final-dev3` release: `78f429db90e20554af03693978cd89e8bd10f984`;
+  deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`, CI `31482179779` success.
 - `site/`, `functions/` и `site-addons/` не менять в рамках handoff-refresh.
   Production не обновлялся вместе с последним Preview release.
 
@@ -70,8 +72,7 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 `98374c1`: они имеют Action Bar
 `2.3.1` и `CLIENT-PREVIEW-MOBILE v1.0.0`. У `final-dev1` дополнительно
 подтверждён Hero `1.3.0` и Precedent Copy `1.0.0`. Одиннадцатый alias
-`final-dev3` уже входит в Preview-карту `2.4.0`, но его live deployment ещё не
-выполнен; URL нельзя передавать как опубликованный до отдельного readback.
+`final-dev3` опубликован отдельно из commit `78f429d` и прошёл live-readback.
 
 | Контур | URL | Deployment | Контракты |
 |---|---|---:|---|
@@ -85,7 +86,7 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
 | `hero-b-call-first` | https://hero-b-call-first.gambarian-landing.pages.dev/ | `b4e3c1de-b801-4c97-a70c-0d5903eed5b0` | Hero B; Action Bar `2.3.1`; mobile `1.0.0` |
 | `action-bar` | https://action-bar.gambarian-landing.pages.dev/ | `f5b76f77-4212-4754-b590-b0d9387df083` | эталон Action Bar `2.3.1`; mobile `1.0.0` |
 | `review-numbered` | https://review-numbered.gambarian-landing.pages.dev/ | `aaa2e734-486f-4433-82b3-34fdadb3a683` | 102 подписи; Action Bar `2.3.1`; mobile `1.0.0` |
-| `final-dev3` | https://final-dev3.gambarian-landing.pages.dev/ | **PENDING** | strict clone `final-dev1`; Playfair Display + Onest; текущие тексты; Action Bar `2.3.1`; marker `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11` |
+| `final-dev3` | https://final-dev3.gambarian-landing.pages.dev/ | `2f20dc33-714f-4b3a-86ea-b51880e33f05` | commit `78f429d`; strict clone `final-dev1`; Playfair Display + Onest; текущие тексты; Action Bar `2.3.1`; live `15/15` |
 | Production | https://gambarian-landing.pages.dev/ | `af10299b-1257-4f65-b66d-4b1e3041bf74` | commit `cb9135c`; `noindex`; Action Bar/client-preview markers отсутствуют |
 
 Production HTML до и после Preview release имел SHA-256
@@ -161,8 +162,9 @@ fallback HTML с `content-type: text/html`. Поэтому наличие CSS/JS
 clone `final-dev1` с Playfair Display + Onest, текущими текстами и Action Bar
 `2.3.1`. Marker: `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`. Локально прошли
 одиночный прогон `15/15`, полная карта `173/173` и pixel-сравнение
-`final-dev1 ↔ final-dev3` на `1293×724` и `390×844`. Cloudflare deployment и
-live-readback `final-dev3` остаются **PENDING**.
+`final-dev1 ↔ final-dev3` на `1293×724` и `390×844`. Cloudflare deployment
+`2f20dc33-714f-4b3a-86ea-b51880e33f05`, live `15/15`, asset/Function readback
+и изоляция production/прежних десяти Preview прошли.
 
 Strict clone намеренно сохраняет известный дефект `final-dev1` при browser zoom
 `200%`: desktop proof/call-help скрываются mobile-правилом. Пункт остаётся
@@ -191,6 +193,8 @@ Automation Log и readback конечной записи.
   token/IP traps и обязательный readback.
 - [Live release report](reviews/2026-08-11-client-preview-live-release.md) —
   deployment IDs, contracts, browser smoke и production isolation.
+- [Live release final-dev3](reviews/2026-08-11-final-dev3-live-release.md) —
+  отдельный deployment, live QA и изоляция прежних URL.
 
 ## Related
 

@@ -38,7 +38,7 @@
 | Preview | Полная visual/responsive-приёмка |
 |---|---|
 | Все десять Preview | `LIVE PASS`: commit `98374c1`; local `100/100` + `50/50` + `6/6`, live HTTP/browser `10/10` по `PREVIEW-BROWSER-QA v1.0.1` |
-| `final-dev3` | `LOCAL PASS / LIVE PENDING`: single `15/15`, полный прогон `173/173`, pixel-identical `final-dev1` на desktop/mobile; отдельный deployment ещё не выполнен |
+| `final-dev3` | `LIVE PASS`: commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`; live `15/15`, полный локальный прогон `173/173`, strict-clone/readback/isolation PASS |
 
 Action Bar smoke уже выполнен на прежних десяти URL, но он не заменяет полный
 rendered-прогон каждого варианта. `final-dev` и `action-bar` используют общий
@@ -57,7 +57,7 @@ rendered-прогон каждого варианта. `final-dev` и `action-ba
 | Финальный кандидат `final-dev3` | `1.0.0` | 2026-08-11 |
 | Lead hook / форма | `1.1.0` | 2026-08-10 |
 | Карта клиентских preview | `2.4.0` | 2026-08-11 |
-| Browser QA клиентских Preview | `1.1.0` | 2026-08-11 |
+| Browser QA клиентских Preview | `1.1.1` | 2026-08-11 |
 
 ## Как работает конверсионный путь
 
@@ -128,3 +128,4 @@ rendered-прогон каждого варианта. `final-dev` и `action-ba
 - [Карточка ссылки](../SOCIAL-PREVIEW.md)
 - [Требования аналитики](../TRACKING-REQUIREMENTS.md)
 - [Полная browser/responsive-приёмка Preview](../tasks/2026-08-10-all-previews-browser-qa.md)
+- [Live release final-dev3](../reviews/2026-08-11-final-dev3-live-release.md)

@@ -1,6 +1,6 @@
 > ## Лендинг «Гамбарян и Партнёры»
 >
-> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v1.1.0 | 2026-08-11`
+> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v1.1.1 | 2026-08-11`
 >
 > Рабочий сайт живёт в папке [`site/`](site/). Шаблон-клонировщик, описанный
 > ниже, — исходная заготовка репозитория; к самому лендингу он отношения не
@@ -8,7 +8,7 @@
 >
 > | Что | Где |
 > |---|---|
-> | **Клиентские Preview** — 11 стабильных Cloudflare URL; `final-dev3` пока `LIVE PENDING` | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
+> | **Клиентские Preview** — 11 стабильных Cloudflare URL, включая `final-dev3` | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
 > | Исторический Claude artifact | https://claude.ai/code/artifact/f6f44336-a84c-4122-a74b-65c47e53b0c0 |
 > | **Боевой адрес** — пока отдаёт версию до правок | https://gambarian-landing.pages.dev/ |
 > | Исходники страницы | [`site/`](site/) — `index.html`, `styles.css`, `fonts.css`, `app.js`, `assets/`, `fonts/` |
@@ -20,7 +20,7 @@
 > | Пакет из 11 Preview для согласования | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
 > | Live release: commit, deployment ID и readback | [`docs/reviews/2026-08-11-client-preview-live-release.md`](docs/reviews/2026-08-11-client-preview-live-release.md) |
 > | Карта источников утверждённого текста | [`docs/CONTENT-SOURCE-MAP.md`](docs/CONTENT-SOURCE-MAP.md) |
-> | `final-dev3` — `LOCAL PASS`, отдельный Cloudflare Preview ещё не опубликован | [`docs/tasks/2026-08-11-final-dev3-design-system.md`](docs/tasks/2026-08-11-final-dev3-design-system.md) |
+> | `final-dev3` — `LIVE PASS` | [`docs/reviews/2026-08-11-final-dev3-live-release.md`](docs/reviews/2026-08-11-final-dev3-live-release.md) |
 >
 > Пересобрать файл-одностраничник:
 >

@@ -1,14 +1,13 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v1.2.0`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v1.2.1`
 
 **Дата:** `2026-08-11`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Область:** десять исторически опубликованных Cloudflare Pages Preview и
-одиннадцатый кандидат `final-dev3`, который прошёл локальную приёмку, но ещё не
-опубликован. Production в этот пакет не входит и не изменяется.
+**Область:** одиннадцать опубликованных Cloudflare Pages Preview. Production в
+этот пакет не входит и не изменяется.
 
 ## Что открыть
 
@@ -28,13 +27,13 @@
 | 8 | `hero-b-call-first` | Hero B: звонок является главным действием, запись — вторым | [Открыть Hero B](https://hero-b-call-first.gambarian-landing.pages.dev/) |
 | 9 | `action-bar` | Эталон поведения мобильной нижней панели | [Открыть Action Bar](https://action-bar.gambarian-landing.pages.dev/) |
 | 10 | `review-numbered` | Служебная версия со 102 номерами для точного согласования текста; не кандидат на финальный дизайн | [Открыть подписанный текст](https://review-numbered.gambarian-landing.pages.dev/) |
-| 11 | `final-dev3` | Выбранная сборка: strict clone `final-dev1`, Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`; **LIVE PENDING — заказчику пока не отправлять** | [Будущий стабильный URL final-dev3](https://final-dev3.gambarian-landing.pages.dev/) |
+| 11 | `final-dev3` | Выбранная сборка: strict clone `final-dev1`, Playfair Display + Onest, текущие тексты и Action Bar `2.3.1`; **LIVE PASS** | [Открыть final-dev3](https://final-dev3.gambarian-landing.pages.dev/) |
 
 `final-dev` и `action-bar` намеренно публикуются из одного канонического
 артефакта. Их два URL оставлены, чтобы один использовать как общий вариант, а
 второй — как отдельный эталон панели.
 
-## Что одинаково во всех десяти опубликованных версиях
+## Что одинаково во всех одиннадцати опубликованных версиях
 
 - Мобильная Action Bar — `ACTION-BAR-SPEC v2.3.1 | 2026-08-11`.
 - Адаптация коротких мобильных экранов —
@@ -58,8 +57,8 @@
 - Известный унаследованный дефект при browser zoom `200%` остаётся OPEN:
   proof/call-help скрываются mobile-правилом. Поэтому полный WCAG AA PASS для
   `final-dev1` и `final-dev3` не заявляется.
-- Cloudflare deployment, live HTTP/asset/Function readback и live browser smoke
-  `final-dev3` ещё не выполнены.
+- Cloudflare deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`, live
+  HTTP/asset/Function readback и browser `15/15` прошли.
 
 ## Как работает конверсионный путь
 
@@ -173,7 +172,7 @@ webhook, а не создание записи в CRM/таблице.
 
 ## Перед отправкой заказчику
 
-- [x] Все десять URL открываются и содержат текущий release marker.
+- [x] Все одиннадцать URL открываются и содержат свой текущий release marker.
 - [x] На mobile проверены оба состояния Action Bar и синхронная верхняя
   подпись.
 - [x] На desktop Action Bar отсутствует.
@@ -183,8 +182,8 @@ webhook, а не создание записи в CRM/таблице.
 - [x] Production до и после публикации Preview не изменился.
 - [x] `final-dev3` локально прошёл `15/15` и полный прогон `173/173`; две
   контрольные геометрии pixel-identical с `final-dev1`.
-- [ ] PENDING Опубликовать только branch `final-dev3`, затем выполнить live
-  HTTP/assets/Function/browser readback. До этого URL №11 заказчику не отправлять.
+- [x] Branch `final-dev3` опубликован отдельно; live
+  HTTP/assets/Function/browser readback и изоляция прежних URL прошли.
 
 ## Источники проверки
 
@@ -211,4 +210,5 @@ webhook, а не создание записи в CRM/таблице.
 - [Полная browser-приёмка](tasks/2026-08-10-all-previews-browser-qa.md)
 - [Локальный QA-отчёт](reviews/2026-08-11-client-preview-local-qa.md)
 - [Live release-отчёт](reviews/2026-08-11-client-preview-live-release.md)
+- [Live release final-dev3](reviews/2026-08-11-final-dev3-live-release.md)
 - [Задание Final Dev 3](tasks/2026-08-11-final-dev3-design-system.md)

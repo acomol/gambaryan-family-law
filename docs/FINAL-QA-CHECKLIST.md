@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.3.0`
+**Версия:** `1.3.1`
 
 **Обновлено:** `2026-08-11`
 
@@ -13,6 +13,8 @@
 **Независимая приёмка baseline:** `51e9b8241fae3acdf693c569156e21c50a71ac50`
 
 **Клиентский Preview release:** `98374c133f91a7c47112561f86debbcec2129f6c`
+
+**Preview release `final-dev3`:** `78f429db90e20554af03693978cd89e8bd10f984`
 
 **Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
@@ -41,7 +43,7 @@
 |---|---|
 | Десять Preview | **LIVE PASS:** commit `98374c1`, Action Bar `2.3.1`, Client Preview Mobile `1.0.0`; локальные 100/100 + 50/50 + 6/6 и live HTTP/browser readback 10/10 прошли |
 | `final-dev1` | **LIVE PASS:** Hero `1.3.0`, Precedent Copy `1.0.0` и исходные assets сохранены; marker `FINAL-DEV1-DESIGN` отсутствует |
-| `final-dev3` | **LOCAL PASS / LIVE PENDING:** strict clone `final-dev1`, Playfair Display + Onest, текущие тексты, Action Bar `2.3.1`; single `15/15`, карта `173/173`, pixel-identical на `1293×724` и `390×844` |
+| `final-dev3` | **LIVE PASS:** commit `78f429d`, deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`; strict clone `final-dev1`, live `15/15`, локальная карта `173/173` |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -115,13 +117,13 @@
 | Дизайн-кандидат `final-dev3` | `1.0.0` | `2026-08-11` | контракт, builder, HTML/CSS marker, verifier, task |
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.4.0` | `2026-08-11` | board и `scripts/client-preview-map.json` |
-| Browser QA клиентских Preview | `1.1.0` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
+| Browser QA клиентских Preview | `1.1.1` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
 | Build tools | `1.1.1` | `2026-08-11` | `requirements-build.txt` |
 | Browser QA runner | `1.1.0` | `2026-08-11` | `scripts/qa-browser-matrix.py` |
-| Этот чек-лист | `1.3.0` | `2026-08-11` | текущий файл |
+| Этот чек-лист | `1.3.1` | `2026-08-11` | текущий файл |
 
-- [x] Все локальные marker Action Bar синхронизированы на `2.3.1`; для
-  `final-dev3` live-readback этой версии выполняется только после Preview deploy.
+- [x] Все локальные и live marker Action Bar синхронизированы на `2.3.1`;
+  `final-dev3` прошёл отдельный Preview readback.
 - [x] Lead browser/Function используют единую карту `1.1.0`.
 - [x] Все social meta указывают на PNG `v1.0.2`.
 - [ ] При следующем изменении требований одновременно увеличить версию,
@@ -558,23 +560,23 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 - [ ] MANUAL Перед отправкой заказчику открыть все десять ссылок в обычном
   мобильном браузере, исключив кеш/авторизацию/anti-bot экран.
 
-### `final-dev3` — локальный кандидат, live PENDING
+### `final-dev3` — LIVE PASS
 
 | Preview | Стабильный URL | Deployment | Контракты |
 |---|---|---:|---|
-| Финальная Dev 3 | https://final-dev3.gambarian-landing.pages.dev/ | **PENDING** | `FINAL-DEV3-DESIGN v1.0.0`; Playfair Display + Onest; текущие тексты; Action Bar `2.3.1`; mobile `1.0.0` |
+| Финальная Dev 3 | https://final-dev3.gambarian-landing.pages.dev/ | `2f20dc33-714f-4b3a-86ea-b51880e33f05` | commit `78f429d`; `FINAL-DEV3-DESIGN v1.0.0`; Playfair Display + Onest; текущие тексты; Action Bar `2.3.1`; mobile `1.0.0` |
 
 - [x] LOCAL Каталог входит в Preview-карту `2.4.0` и воспроизводимо собирается
   из `final-dev1`.
-- [ ] PENDING Опубликовать только branch `final-dev3`, записать deployment UUID
-  и functional SHA, затем проверить HTTP 200, `noindex`, content-type/assets,
-  markers, `/lead-contract.js`, Function GET=405/Allow POST и browser smoke.
-- [ ] PENDING После публикации доказать, что десять исторических Preview и
-  production не изменились. До этого URL `final-dev3` заказчику не передавать.
+- [x] Branch `final-dev3` опубликован отдельно; HTTP 200, `noindex`, MIME/assets,
+  markers, `/lead-contract.js`, Function GET=405/Allow POST и browser `15/15`
+  прошли.
+- [x] Cloudflare API и HTTP SHA подтвердили: десять исторических Preview и
+  production не изменились.
 
 ### Полная browser/responsive-приёмка всех Preview
 
-Контракт: `PREVIEW-BROWSER-QA v1.1.0 | 2026-08-11`.
+Контракт: `PREVIEW-BROWSER-QA v1.1.1 | 2026-08-11`.
 
 | Preview | Локальный кандидат | Live после публикации |
 |---|---|---|
@@ -588,7 +590,7 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 | `hero-b-call-first` | `[x] PASS`; звонок — главное действие | `[x] PASS` |
 | `action-bar` | `[x] PASS`; byte-identical с `final-dev` | `[x] PASS` |
 | `review-numbered` | `[x] PASS`; 102 уникальных номера, прежний overflow закрыт | `[x] PASS` |
-| `final-dev3` | `[x] PASS`; strict clone `final-dev1`, single `15/15`, pixel-identical на двух контрольных viewport | `[ ] PENDING` |
+| `final-dev3` | `[x] PASS`; strict clone `final-dev1`, single `15/15`, pixel-identical на двух контрольных viewport | `[x] PASS` |
 
 - [x] Выполнено `100/100` ячеек: десять Preview × `360×600`, `360×668`,
   `390×724`, `390×844`, `720×760`, `860×760`, `861×760`, `1024×768`,
@@ -622,8 +624,8 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
 - [x] `8/8` large-desktop-ячеек;
 - [x] общий локальный результат `173/173`, включая `final-dev3` single `15/15`;
 - [x] pixel-equivalence `final-dev1 ↔ final-dev3` на `1293×724` и `390×844`;
-- [ ] LIVE PENDING для `final-dev3`; PASS десяти старых alias не переносить на
-  новый URL без deployment/readback.
+- [x] LIVE `final-dev3` прошёл `15/15`, asset/Function readback и проверку
+  изоляции десяти старых alias/production.
 
 ## 14. GitHub и CI
 
@@ -631,6 +633,8 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
   `origin/claude/website-development-kb0fu0` до Preview deploy.
 - [x] GitHub Actions CI run `31469797937` для `98374c1` завершён `success`.
 - [x] GitHub Actions CI run `31473373506` для handoff task/base `e48bd08`
+  завершён `success`.
+- [x] GitHub Actions CI run `31482179779` для `final-dev3` commit `78f429d`
   завершён `success`.
 - [x] Локальный release-candidate: `npm run check` завершён с exit `0`;
   lint без errors, TypeScript и Next build прошли.
@@ -732,8 +736,8 @@ POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полны
   Hero H1/lede, и Action Bar `2.3.1`.
 - [x] LOCAL `final-dev3` собран и прошёл strict-clone/verifier/browser/pixel
   гейты; marker `FINAL-DEV3-DESIGN v1.0.0 | 2026-08-11`.
-- [ ] PENDING `final-dev3` ещё не live: требуется отдельный Cloudflare deploy и
-  readback без изменения старых Preview/production.
+- [x] LIVE `final-dev3`: deployment `2f20dc33-714f-4b3a-86ea-b51880e33f05`;
+  readback прошёл без изменения старых Preview/production.
 - [ ] CLIENT Решить, нужна ли отсутствующая секция «Подготовка к консультации».
 - [ ] CLIENT Решить состав формы: topic вместо email, четвёртым полем или без
   topic.
@@ -781,6 +785,7 @@ auth/IP-состояния, `TRACKING-REQUIREMENTS.md` — частично ст
 - [Карта одиннадцати Preview и URL](boards/2026-08-06-versions-links.md)
 - [Задание Final Dev 1](tasks/2026-08-10-final-dev1-desktop-hero.md)
 - [Задание Final Dev 3](tasks/2026-08-11-final-dev3-design-system.md)
+- [Live release final-dev3](reviews/2026-08-11-final-dev3-live-release.md)
 - [Полная browser/responsive-приёмка Preview](tasks/2026-08-10-all-previews-browser-qa.md)
 - [Задание на фото](tasks/2026-08-10-attorney-photos-mobile.md)
 - [Задание Action Bar](tasks/2026-08-10-action-bar-v2.md)
