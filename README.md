@@ -16,6 +16,7 @@
 > | Журнал ошибок и разборов | [`docs/ERRORS.md`](docs/ERRORS.md) |
 > | Финальный чек-лист: решения, регрессии и production-блокеры | [`docs/FINAL-QA-CHECKLIST.md`](docs/FINAL-QA-CHECKLIST.md) |
 > | Пакет из 10 Preview для согласования | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
+> | Live release: commit, deployment ID и readback | [`docs/reviews/2026-08-11-client-preview-live-release.md`](docs/reviews/2026-08-11-client-preview-live-release.md) |
 > | Карта источников утверждённого текста | [`docs/CONTENT-SOURCE-MAP.md`](docs/CONTENT-SOURCE-MAP.md) |
 > | План отдельного `final-dev3` — заморожен до согласования | [`docs/tasks/2026-08-11-final-dev3-design-system.md`](docs/tasks/2026-08-11-final-dev3-design-system.md) |
 >

@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.2.0`
+**Версия:** `1.2.1`
 
 **Обновлено:** `2026-08-11`
 
@@ -11,6 +11,8 @@
 **Функциональный baseline `final-dev1`:** `51e9b8241fae3acdf693c569156e21c50a71ac50`
 
 **Независимая приёмка baseline:** `51e9b8241fae3acdf693c569156e21c50a71ac50`
+
+**Клиентский Preview release:** `98374c133f91a7c47112561f86debbcec2129f6c`
 
 Этот документ объединяет принятые владельцем решения, ошибки проекта,
 регрессионные проверки и незакрытые production-пункты. Он предназначен для
@@ -35,8 +37,8 @@
 
 | Контур | Статус на `2026-08-11` |
 |---|---|
-| Десять Preview | **LOCAL PASS / LIVE PENDING:** кандидат Action Bar `2.3.1` + Client Preview Mobile `1.0.0`; 100/100 основных viewport-ячеек и 50/50 breakpoint/landscape-ячеек прошли; публичные alias пока отдают baseline `2.3.0` |
-| `final-dev1` | **LIVE BASELINE PASS / RELEASE REGRESSION PASS:** Hero `1.3.0`, Precedent Copy `1.0.0` и исходные assets не изменены; новый общий Preview-слой не содержит `FINAL-DEV1-DESIGN` |
+| Десять Preview | **LIVE PASS:** commit `98374c1`, Action Bar `2.3.1`, Client Preview Mobile `1.0.0`; локальные 100/100 + 50/50 + 6/6 и live HTTP/browser readback 10/10 прошли |
+| `final-dev1` | **LIVE PASS:** Hero `1.3.0`, Precedent Copy `1.0.0` и исходные assets сохранены; marker `FINAL-DEV1-DESIGN` отсутствует |
 | Production | **Не обновлён финальными Preview-функциями намеренно:** нет live lead hook/логотипа, `og:image` относительный |
 | Albato | **BLOCKED:** secret, Catch, destination dedup и конечный readback не выполнены |
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
@@ -107,7 +109,7 @@
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.3.0` | `2026-08-11` | board и `scripts/client-preview-map.json` |
 | Browser QA клиентских Preview | `1.0.1` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
-| Этот чек-лист | `1.2.0` | `2026-08-11` | текущий файл |
+| Этот чек-лист | `1.2.1` | `2026-08-11` | текущий файл |
 
 - [x] Все локальные marker Action Bar синхронизированы на `2.3.1`; live-readback
   этой версии выполняется только после Preview deploy.
@@ -207,7 +209,7 @@
 - [ ] OPEN Статус в `docs/FONT-VARIANTS.md` устарел: документ всё ещё говорит,
   что варианты 2–4 не опубликованы, хотя четыре Preview уже live.
 
-## 7. Action Bar: baseline v2.3.0 / release-candidate v2.3.1
+## 7. Action Bar: historical baseline v2.3.0 / current Preview v2.3.1
 
 ### Состав и single source
 
@@ -279,7 +281,8 @@
 - [x] LOCAL Action Bar `2.3.1`: на всех десяти Preview переключение проверено
   как `Авто/Демо · Рабочее время ↔ Авто/Демо · Нерабочее время` вместе с
   `3 ↔ 2`, `aria-checked`, focus, неизменным URL и нулём analytics events.
-- [ ] LIVE Опубликовать `2.3.1` и повторить этот readback на всех десяти alias.
+- [x] LIVE Action Bar `2.3.1` опубликована и интерактивно проверена на всех
+  десяти alias: верхняя подпись, `3 ↔ 2`, focus, URL и analytics согласованы.
 
 ### Доступность и ложные клики
 
@@ -509,13 +512,27 @@ scroll-listener, расписание `Asia/Jerusalem`, demo-switch, lead contra
 860 px, desktop proof/note увеличены, `.nav-call` отсутствует, horizontal
 overflow и console errors — 0; Action Bar прошла Hero → чтение → форма.
 
-Следующий Preview-only release: Action Bar `2.3.1`, Client Preview Mobile
-`1.0.0`, карта `2.3.0`. До нового live-readback таблица выше остаётся честным
-историческим baseline и не переименовывается в `2.3.1`.
+### Текущий клиентский release `98374c1`
 
-- [x] Последний deployment `final-dev1` имеет commit `51e9b82`; остальные
-  девять Preview остаются на `8ccc820`. Все имеют status `success` по
-  Cloudflare API.
+| Preview | Deployment |
+|---|---:|
+| `final-dev` | `76d3778a` |
+| `final-dev1` | `69fa4640` |
+| `v1-playfair-onest` | `d402e2ca` |
+| `v2-lora-inter` | `308cad66` |
+| `v3-literata-manrope` | `8a182caa` |
+| `v4-ptserif-golos` | `80ba9adf` |
+| `hero-a-actions-first` | `930f558c` |
+| `hero-b-call-first` | `b4e3c1de` |
+| `action-bar` | `f5b76f77` |
+| `review-numbered` | `aaa2e734` |
+
+Все status `success`, commit `98374c1`. HTTP/assets/Functions и live browser
+smoke прошли 10/10; полный отчёт:
+`docs/reviews/2026-08-11-client-preview-live-release.md`.
+
+- [x] HISTORICAL До release `98374c1` deployment `final-dev1` имел commit
+  `51e9b82`, остальные девять Preview — `8ccc820`.
 - [x] Production `https://gambarian-landing.pages.dev/` не обновлялся вместе с
   этими Preview: HTML SHA-256 до/после совпал
   `656cbcd0635952899e79b847d5c262724979d21f548ca66e13fe3a7d2ec13e22`;
@@ -531,16 +548,16 @@ overflow и console errors — 0; Action Bar прошла Hero → чтение 
 
 | Preview | Локальный кандидат | Live после публикации |
 |---|---|---|
-| `final-dev` | `[x] PASS` | `[ ] PENDING` |
-| `final-dev1` | `[x] PASS`; Hero `1.3.0`, Precedent Copy `1.0.0`, design leak отсутствует | `[ ] PENDING` |
-| `v1-playfair-onest` | `[x] PASS`; Playfair Display + Onest | `[ ] PENDING` |
-| `v2-lora-inter` | `[x] PASS`; Lora + Inter, прежний overflow `+3px` закрыт | `[ ] PENDING` |
-| `v3-literata-manrope` | `[x] PASS`; Literata + Manrope | `[ ] PENDING` |
-| `v4-ptserif-golos` | `[x] PASS`; PT Serif + Golos Text; выбор веса 500 остаётся OPEN | `[ ] PENDING` |
-| `hero-a-actions-first` | `[x] PASS`; действия до фотографии | `[ ] PENDING` |
-| `hero-b-call-first` | `[x] PASS`; звонок — главное действие | `[ ] PENDING` |
-| `action-bar` | `[x] PASS`; byte-identical с `final-dev` | `[ ] PENDING` |
-| `review-numbered` | `[x] PASS`; 102 уникальных номера, прежний overflow закрыт | `[ ] PENDING` |
+| `final-dev` | `[x] PASS` | `[x] PASS` |
+| `final-dev1` | `[x] PASS`; Hero `1.3.0`, Precedent Copy `1.0.0`, design leak отсутствует | `[x] PASS` |
+| `v1-playfair-onest` | `[x] PASS`; Playfair Display + Onest | `[x] PASS` |
+| `v2-lora-inter` | `[x] PASS`; Lora + Inter, прежний overflow `+3px` закрыт | `[x] PASS` |
+| `v3-literata-manrope` | `[x] PASS`; Literata + Manrope | `[x] PASS` |
+| `v4-ptserif-golos` | `[x] PASS`; PT Serif + Golos Text; выбор веса 500 остаётся OPEN | `[x] PASS` |
+| `hero-a-actions-first` | `[x] PASS`; действия до фотографии | `[x] PASS` |
+| `hero-b-call-first` | `[x] PASS`; звонок — главное действие | `[x] PASS` |
+| `action-bar` | `[x] PASS`; byte-identical с `final-dev` | `[x] PASS` |
+| `review-numbered` | `[x] PASS`; 102 уникальных номера, прежний overflow закрыт | `[x] PASS` |
 
 - [x] Выполнено `100/100` ячеек: десять Preview × `360×600`, `360×668`,
   `390×724`, `390×844`, `720×760`, `860×760`, `861×760`, `1024×768`,
@@ -562,12 +579,14 @@ overflow и console errors — 0; Action Bar прошла Hero → чтение 
 - [x] Геометрия и DOM-состояние проверены для каждой ячейки; агрегат, матрица,
   thresholds и окружение записаны в versioned local-QA отчёте,
   репрезентативные screenshots сохранены вне Git.
-- [ ] LIVE После публикации повторить HTTP/marker/function readback и mobile
-  Action Bar smoke на каждом из десяти стабильных alias. Реальный POST в Albato
-  не выполнять.
+- [x] LIVE HTTP/marker/function readback и mobile+desktop Action Bar smoke
+  прошли на каждом из десяти stable alias. Реальный POST в Albato не выполнялся.
 
 ## 14. GitHub и CI
 
+- [x] Release commit `98374c1` запушен в
+  `origin/claude/website-development-kb0fu0` до Preview deploy.
+- [x] GitHub Actions CI run `31469797937` для `98374c1` завершён `success`.
 - [x] Локальный release-candidate: `npm run check` завершён с exit `0`;
   lint без errors, TypeScript и Next build прошли.
 - [x] GitHub Actions run `31433776655` для `51e9b82` завершён `success`;

@@ -1,6 +1,6 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v1.0.1`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v1.1.0`
 
 **Дата:** `2026-08-11`
 
@@ -33,10 +33,9 @@
 артефакта. Их два URL оставлены, чтобы один использовать как общий вариант, а
 второй — как отдельный эталон панели.
 
-## Что одинаково в release-candidate всех десяти версий
+## Что одинаково во всех десяти опубликованных версиях
 
-- После Preview-публикации мобильная Action Bar —
-  `ACTION-BAR-SPEC v2.3.1 | 2026-08-11`; до неё live URL остаются на `2.3.0`.
+- Мобильная Action Bar — `ACTION-BAR-SPEC v2.3.1 | 2026-08-11`.
 - Адаптация коротких мобильных экранов —
   `CLIENT-PREVIEW-MOBILE v1.0.0 | 2026-08-11`.
 - Форма и lead payload — `1.1.0 | 2026-08-10`.
@@ -158,13 +157,13 @@ webhook, а не создание записи в CRM/таблице.
 
 ## Перед отправкой заказчику
 
-- [ ] Все десять URL открываются и содержат текущий release marker.
-- [ ] На mobile проверены оба состояния Action Bar и синхронная верхняя
+- [x] Все десять URL открываются и содержат текущий release marker.
+- [x] На mobile проверены оба состояния Action Bar и синхронная верхняя
   подпись.
-- [ ] На desktop Action Bar отсутствует.
+- [x] На desktop Action Bar отсутствует.
 - [x] Локальный кандидат прошёл `100/100` основных viewport-ячеек и `50/50`
   breakpoint/landscape-ячеек; шрифты загружены, fallback и overflow не найдены.
-- [ ] Production до и после публикации Preview не изменился.
+- [x] Production до и после публикации Preview не изменился.
 
 ## Источники проверки
 
@@ -190,3 +189,4 @@ webhook, а не создание записи в CRM/таблице.
 - [Контракт Action Bar](tasks/2026-08-10-action-bar-v2.md)
 - [Полная browser-приёмка](tasks/2026-08-10-all-previews-browser-qa.md)
 - [Локальный QA-отчёт](reviews/2026-08-11-client-preview-local-qa.md)
+- [Live release-отчёт](reviews/2026-08-11-client-preview-live-release.md)

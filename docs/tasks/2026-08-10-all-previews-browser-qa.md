@@ -6,7 +6,7 @@
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Статус:** `LOCAL PASS / LIVE PENDING`
+**Статус:** `PASS LOCAL + LIVE`
 
 ## Цель
 
@@ -140,8 +140,9 @@ alias. Исправление вносится в source/generator, а не вр
 - [x] Агрегат, окружение, thresholds и команды записаны в
   `docs/reviews/2026-08-11-client-preview-local-qa.md`; raw per-cell JSON не
   коммитился.
-- [ ] LIVE Повторить readback десяти alias после публикации Action Bar
-  `2.3.1` и Client Preview Mobile `1.0.0`.
+- [x] LIVE Readback десяти alias после публикации Action Bar `2.3.1` и Client
+  Preview Mobile `1.0.0` прошёл; commit `98374c1`, HTTP/assets/Functions и
+  browser smoke `10/10`.
 
 ## Related
 
@@ -149,4 +150,5 @@ alias. Исправление вносится в source/generator, а не вр
 - [Композиция экранов](../SCREEN-COMPOSITION.md)
 - [Итоговый QA-чек-лист](../FINAL-QA-CHECKLIST.md)
 - [Локальный QA-отчёт](../reviews/2026-08-11-client-preview-local-qa.md)
+- [Live release-отчёт](../reviews/2026-08-11-client-preview-live-release.md)
 - [Принятый Final Dev 1](2026-08-10-final-dev1-desktop-hero.md)

@@ -96,3 +96,4 @@ git diff --exit-code -- site functions
 - [Клиентский handoff](../CLIENT-PREVIEW-HANDOFF.md)
 - [Browser QA contract](../tasks/2026-08-10-all-previews-browser-qa.md)
 - [Итоговый чек-лист](../FINAL-QA-CHECKLIST.md)
+- [Live release-отчёт](2026-08-11-client-preview-live-release.md)

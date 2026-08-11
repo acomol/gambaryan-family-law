@@ -10,11 +10,10 @@
 сборке содержимое обновляется, ссылка остаётся прежней. Production
 `gambarian-landing.pages.dev` в клиентскую выборку не входит.
 
-Локальный release-candidate всех десяти Preview использует **одну и ту же
-Action Bar v2.3.1** из единственного источника `site-addons/action-bar/`.
-Публичные URL до нового deploy остаются на baseline `2.3.0`. Версии различаются
-только заявленным вариантом — шрифтами, Hero или подписанными номерами.
-Production при такой пересборке не изменяется.
+Все десять опубликованных Preview используют **одну и ту же Action Bar
+v2.3.1** из единственного источника `site-addons/action-bar/`. Версии
+различаются только заявленным вариантом — шрифтами, Hero или подписанными
+номерами. Production при публикации не изменился.
 
 ## Ссылки
 
@@ -35,7 +34,7 @@ Production при такой пересборке не изменяется.
 
 | Preview | Полная visual/responsive-приёмка |
 |---|---|
-| Все десять Preview | `LOCAL PASS`: `100/100` основных и `50/50` breakpoint/landscape-ячеек по `PREVIEW-BROWSER-QA v1.0.1`; `LIVE PENDING` до публикации кандидата |
+| Все десять Preview | `LIVE PASS`: commit `98374c1`; local `100/100` + `50/50` + `6/6`, live HTTP/browser `10/10` по `PREVIEW-BROWSER-QA v1.0.1` |
 
 Action Bar smoke уже выполнен на всех десяти URL, но он не заменяет полный
 rendered-прогон каждого варианта. `final-dev` и `action-bar` используют общий
