@@ -93,11 +93,14 @@ Cloudflare Pages `gambarian-landing`, десять Preview, Action Bar addon,
 до сих пор: `build-font-variants.py` (fontTools), QA-прогоны (playwright).
 
 ```
-# BUILD-TOOLS v1.1.0 | 2026-08-11
+# BUILD-TOOLS v1.1.1 | 2026-08-11
 fonttools==4.59.2
 playwright==1.58.0
-brotli==1.1.0
+brotli==1.2.0
 ```
+
+`brotli` поднят до `1.2.0`: версия `1.1.0` затронута
+[GHSA-2qfp-q593-8484](https://github.com/advisories/GHSA-2qfp-q593-8484).
 
 Плюс строка установки в RESUME.md (см. п.4). Проверить, что после
 `pip install -r` на чистом окружении собирается `build-hero-variants.py dev1`

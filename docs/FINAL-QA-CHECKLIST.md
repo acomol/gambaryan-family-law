@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `1.2.1`
+**Версия:** `1.2.3`
 
 **Обновлено:** `2026-08-11`
 
@@ -13,6 +13,8 @@
 **Независимая приёмка baseline:** `51e9b8241fae3acdf693c569156e21c50a71ac50`
 
 **Клиентский Preview release:** `98374c133f91a7c47112561f86debbcec2129f6c`
+
+**Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
 Этот документ объединяет принятые владельцем решения, ошибки проекта,
 регрессионные проверки и незакрытые production-пункты. Он предназначен для
@@ -44,7 +46,7 @@
 | Privacy | **BLOCKED:** утверждённого notice/policy рядом с формой нет |
 | Аналитика | **OPEN:** GTM/GA4 не подключены; конфликт события form anchor не решён |
 | Реальные устройства | **MANUAL:** iPhone safe-area, WhatsApp/Telegram preview и GTM mobile clicks |
-| Инженерный долг | Font docs/weight, Python manifests, CI coverage, PR metadata и npm audit |
+| Инженерный долг | Font docs/weight, CI coverage, PR metadata и npm audit |
 
 ## Приоритет требований и принятые исключения
 
@@ -73,12 +75,14 @@
 - [x] Работа ведётся в `acomol/gambaryan-family-law`, ветка
   `claude/website-development-kb0fu0`, не в `main`.
 - [x] Функциональные commits запушены в
-  `origin/claude/website-development-kb0fu0`: девять Preview остаются на
-  `8ccc820`, отдельный `final-dev1` опубликован из `51e9b82`.
+  `origin/claude/website-development-kb0fu0`: все десять Preview опубликованы
+  из клиентского release `98374c1`.
 - [x] После docs-only commit различать новый PR head и deployed functional SHA:
   документационный commit сам по себе не означает новый deployment.
-- [x] После итогового docs commit ветка опережает `origin/main` на 75 коммитов
-  и не отстаёт от него.
+- [x] На handoff task/base `e48bd08` ветка опережает `origin/main` на 79
+  коммитов и не отстаёт от него (`git rev-list --left-right --count` = `0 79`).
+  Перед итоговым commit/push ведущий агент обязательно пересчитывает значение;
+  прогноз не считать доказательством, потому что `origin/main` может измениться.
 - [x] Рабочее дерево после push было чистым.
 - [x] `.dev.vars*`, `.wrangler/`, Python cache и локальные credentials не
   коммитятся.
@@ -109,7 +113,9 @@
 | Lead hook | `1.1.0` | `2026-08-10` | `site/lead-contract.js`, Function, документация |
 | Карта Preview | `2.3.0` | `2026-08-11` | board и `scripts/client-preview-map.json` |
 | Browser QA клиентских Preview | `1.0.1` | `2026-08-11` | задача, композиционная спецификация и этот чек-лист |
-| Этот чек-лист | `1.2.1` | `2026-08-11` | текущий файл |
+| Build tools | `1.1.1` | `2026-08-11` | `requirements-build.txt` |
+| Browser QA runner | `1.0.2` | `2026-08-11` | `scripts/qa-browser-matrix.py` |
+| Этот чек-лист | `1.2.3` | `2026-08-11` | текущий файл |
 
 - [x] Все локальные marker Action Bar синхронизированы на `2.3.1`; live-readback
   этой версии выполняется только после Preview deploy.
@@ -204,8 +210,8 @@
 - [ ] OPEN PT Serif имеет только 400/700, тогда как сайт запрашивает 500;
   браузер подбирает 400. До выбора варианта 4 либо добавить подходящий face/
   изменить токен, либо явно принять визуальный результат.
-- [ ] OPEN Python-зависимость `fontTools` нужна builder, но не закреплена
-  manifest-файлом репозитория; clean environment может не пересобрать варианты.
+- [x] Python-зависимости генераторов закреплены в `requirements-build.txt`;
+  чистая установка и контрольная сборка описаны в `docs/RESUME.md`.
 - [ ] OPEN Статус в `docs/FONT-VARIANTS.md` устарел: документ всё ещё говорит,
   что варианты 2–4 не опубликованы, хотя четыре Preview уже live.
 
@@ -422,6 +428,8 @@
 Запускать из корня репозитория в таком порядке:
 
 ```powershell
+python -m pip install -r requirements-build.txt
+python -m playwright install chromium
 python scripts/build-preview.py site/gambarian-standalone.html --standalone
 python scripts/build-font-variants.py
 python scripts/build-hero-variants.py
@@ -446,8 +454,11 @@ git diff --check
 - [x] `final-dev` и `action-bar` намеренно используют один build directory.
 - [ ] После любой правки `site/`, addon, metadata или standalone повторить все
   зависимые builders; старый `build/` не считать доказательством.
-- [ ] OPEN `build-action-bar.py` требует Python Playwright и Chrome, но Python-
-  dependency manifest отсутствует; чистая машина может не выполнить замер.
+- [x] `requirements-build.txt` закрепляет `fonttools`, `playwright` и `brotli`;
+  после установки manifest отдельно устанавливается Playwright Chromium.
+- [x] Воспроизводимый browser runner сохранён как
+  `scripts/qa-browser-matrix.py`: принимает base URL и выдаёт машинный PASS/FAIL
+  по каждой ячейке и итоговый счёт.
 - [ ] OPEN `verify-fact-cards.mjs` требует не объявленный `playwright-core` и
   сейчас не является воспроизводимым gate.
 
@@ -486,49 +497,26 @@ npx --yes wrangler@4.120.0 pages deploy "<directory>" `
   --commit-dirty=true
 ```
 
-### Десять Preview — опубликованный baseline Action Bar v2.3.0
+### Десять Preview — текущий клиентский release `98374c1`
 
-| Preview | URL | Baseline status |
-|---|---|---|
-| Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `[x]` deployment `bead8ade`, commit `8ccc820` |
-| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `[x]` deployment `8c91b32e`, commit `51e9b82` |
-| Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `[x]` deployment `5f06866b`, commit `8ccc820` |
-| Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `[x]` deployment `be04a85e`, commit `8ccc820` |
-| Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `[x]` deployment `0161c006`, commit `8ccc820` |
-| PT Serif + Golos Text | https://v4-ptserif-golos.gambarian-landing.pages.dev/ | `[x]` deployment `6e1a212a`, commit `8ccc820` |
-| Hero A | https://hero-a-actions-first.gambarian-landing.pages.dev/ | `[x]` deployment `8432480e`, commit `8ccc820` |
-| Hero B | https://hero-b-call-first.gambarian-landing.pages.dev/ | `[x]` deployment `e6cbf220`, commit `8ccc820` |
-| Action Bar | https://action-bar.gambarian-landing.pages.dev/ | `[x]` deployment `d989985a`, commit `8ccc820` |
-| Текст с номерами | https://review-numbered.gambarian-landing.pages.dev/ | `[x]` deployment `d1a64e77`, commit `8ccc820` |
+| Preview | URL | Deployment | Контракты |
+|---|---|---:|---|
+| Финальная Dev | https://final-dev.gambarian-landing.pages.dev/ | `76d3778a-46b9-4996-ba2d-7d3c4f7d95ec` | Action Bar `2.3.1`; mobile `1.0.0` |
+| Финальная Dev 1 | https://final-dev1.gambarian-landing.pages.dev/ | `69fa4640-c137-4cf9-afd8-37bfd4462c5d` | Hero `1.3.0`; Precedent Copy `1.0.0`; Action Bar `2.3.1`; mobile `1.0.0` |
+| Playfair + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ | `d402e2ca-cc8c-485d-ae04-653d9b77bc95` | Action Bar `2.3.1`; mobile `1.0.0` |
+| Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ | `308cad66-555e-4b94-af50-89469b6061bd` | Action Bar `2.3.1`; mobile `1.0.0` |
+| Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ | `8a182caa-e22c-41f9-9a67-6005a68eb344` | Action Bar `2.3.1`; mobile `1.0.0` |
+| PT Serif + Golos Text | https://v4-ptserif-golos.gambarian-landing.pages.dev/ | `80ba9adf-b5e8-4c4f-9277-8502acaf1d88` | Action Bar `2.3.1`; mobile `1.0.0` |
+| Hero A | https://hero-a-actions-first.gambarian-landing.pages.dev/ | `930f558c-0755-4dfb-a3d9-9f73feee2056` | Action Bar `2.3.1`; mobile `1.0.0` |
+| Hero B | https://hero-b-call-first.gambarian-landing.pages.dev/ | `b4e3c1de-b801-4c97-a70c-0d5903eed5b0` | Action Bar `2.3.1`; mobile `1.0.0` |
+| Action Bar | https://action-bar.gambarian-landing.pages.dev/ | `f5b76f77-4212-4754-b590-b0d9387df083` | Action Bar `2.3.1`; mobile `1.0.0` |
+| Текст с номерами | https://review-numbered.gambarian-landing.pages.dev/ | `aaa2e734-486f-4433-82b3-34fdadb3a683` | Action Bar `2.3.1`; mobile `1.0.0` |
 
-Для каждого URL на baseline подтверждено: HTTP 200, Action Bar `2.3.0`, одна
-панель, `viewport-fit=cover`, CSS height 60, два IntersectionObserver, отсутствие
-scroll-listener, расписание `Asia/Jerusalem`, demo-switch, lead contract `1.1.0`
-и Function GET=405/Allow POST. Локальный Action Bar smoke прошёл 10×360/390/768;
-это не означает полную visual/responsive-приёмку каждого варианта. Живой
-`final-dev1` v1.3.0 дополнительно проверен на 360×600, 390×724,
-390×844, 860×760, 861×760, 1024×768, 1280×720 и 1440×900: обе Hero CTA
-целиком на целевом portrait/mobile диапазоне, новый кадр активен только до
-860 px, desktop proof/note увеличены, `.nav-call` отсутствует, horizontal
-overflow и console errors — 0; Action Bar прошла Hero → чтение → форма.
-
-### Текущий клиентский release `98374c1`
-
-| Preview | Deployment |
-|---|---:|
-| `final-dev` | `76d3778a` |
-| `final-dev1` | `69fa4640` |
-| `v1-playfair-onest` | `d402e2ca` |
-| `v2-lora-inter` | `308cad66` |
-| `v3-literata-manrope` | `8a182caa` |
-| `v4-ptserif-golos` | `80ba9adf` |
-| `hero-a-actions-first` | `930f558c` |
-| `hero-b-call-first` | `b4e3c1de` |
-| `action-bar` | `f5b76f77` |
-| `review-numbered` | `aaa2e734` |
-
-Все status `success`, commit `98374c1`. HTTP/assets/Functions и live browser
-smoke прошли 10/10; полный отчёт:
+Все deployment status `success`, commit `98374c1`. Для каждого URL
+подтверждены HTTP 200, `noindex`, Action Bar `2.3.1`, Client Preview Mobile
+`1.0.0`, одна панель, `viewport-fit=cover`, высота 60px, расписание
+`Asia/Jerusalem`, demo-switch, lead contract `1.1.0` и Function GET=405/Allow
+POST. HTTP/assets/Functions и live browser smoke прошли 10/10; полный отчёт:
 `docs/reviews/2026-08-11-client-preview-live-release.md`.
 
 - [x] HISTORICAL До release `98374c1` deployment `final-dev1` имел commit
@@ -587,6 +575,8 @@ smoke прошли 10/10; полный отчёт:
 - [x] Release commit `98374c1` запушен в
   `origin/claude/website-development-kb0fu0` до Preview deploy.
 - [x] GitHub Actions CI run `31469797937` для `98374c1` завершён `success`.
+- [x] GitHub Actions CI run `31473373506` для handoff task/base `e48bd08`
+  завершён `success`.
 - [x] Локальный release-candidate: `npm run check` завершён с exit `0`;
   lint без errors, TypeScript и Next build прошли.
 - [x] GitHub Actions run `31433776655` для `51e9b82` завершён `success`;
@@ -677,13 +667,16 @@ smoke прошли 10/10; полный отчёт:
 | C7 | OPEN | Placeholder `--ink-4` → доступный цвет |
 | C8 | OPEN | SVG `stroke=#F0AE1F` → `currentColor` + container color |
 
-Отдельные решения, без которых нельзя объявить один вариант финальным:
+Отдельные решения по будущему финальному варианту:
 
-- [ ] CLIENT Выбрать один набор шрифтов из четырёх; вариант 4 сначала закрыть
-  по несовпадению requested weight 500.
-- [ ] CLIENT Выбрать Hero A или Hero B.
-- [ ] CLIENT Выбрать Hero H1/lede: утверждённая длинная версия или текущая
-  сокращённая композиция.
+- [x] OWNER `2026-08-11`: для будущего отдельного `final-dev3` выбраны
+  Playfair Display + Onest.
+- [x] OWNER `2026-08-11`: база будущего `final-dev3` — `final-dev1`, а не
+  экспериментальные Hero A/B.
+- [x] OWNER `2026-08-11`: сохранить текущие тексты, включая текущую композицию
+  Hero H1/lede, и Action Bar `2.3.1`.
+- [ ] Handoff фиксирует только входы: `final-dev3` ещё не собран и не live;
+  реализация начинается после завершения handoff-refresh.
 - [ ] CLIENT Решить, нужна ли отсутствующая секция «Подготовка к консультации».
 - [ ] CLIENT Решить состав формы: topic вместо email, четвёртым полем или без
   topic.

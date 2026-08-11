@@ -1,60 +1,90 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Gambarian Family Law Landing Page
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+**Версия правил:** `PROJECT-AGENT-RULES v1.0.0`
 
-# Website Reverse-Engineer Template
+**Обновлено:** `2026-08-11`
 
 ## What This Is
-A reusable template for reverse-engineering any website into a clean, modern Next.js codebase using AI coding agents. The Next.js + shadcn/ui + Tailwind v4 base is pre-scaffolded — just run `/clone-website <url1> [<url2> ...]`.
+
+Статичный лендинг адвокатского бюро «Гамбарян и партнёры». Боевой источник
+находится в `site/`; клиентские варианты всегда генерируются из него скриптами,
+а не редактируются внутри `build/` вручную. Production и десять Preview
+публикуются в существующий Cloudflare Pages project `gambarian-landing`.
 
 ## Tech Stack
-- **Framework:** Next.js 16 (App Router, React 19, TypeScript strict)
-- **UI:** shadcn/ui (Radix primitives, Tailwind CSS v4, `cn()` utility)
-- **Icons:** Lucide React (default — will be replaced/supplemented by extracted SVGs)
-- **Styling:** Tailwind CSS v4 with oklch design tokens
-- **Deployment:** Vercel
+
+- **Runtime:** статичные HTML/CSS/JavaScript в `site/`.
+- **Preview builders:** Python; производные попадают в `build/variants/*` и
+  `build/font-variants/*`.
+- **Общая мобильная панель:** versioned addon в `site-addons/action-bar/`,
+  который каждый builder устанавливает из единственного источника.
+- **Lead API:** Cloudflare Pages Function `functions/api/lead.js`; webhook URL
+  читается только из encrypted secret `ALBATO_WEBHOOK_URL`.
+- **Deployment:** Cloudflare Pages project `gambarian-landing`; для production
+  используется явный `--branch=main`, для Preview — явный branch alias.
+
+В репозитории сохранён унаследованный Next.js 16 / React 19 / Tailwind каркас.
+Он проходит `npm run check`, но не является production-сборкой лендинга и не
+публикуется в Cloudflare Pages.
 
 ## Commands
-- `npm run dev` — Start dev server
-- `npm run build` — Production build
-- `npm run lint` — ESLint check
-- `npm run typecheck` — TypeScript check
-- `npm run check` — Run lint + typecheck + build
+
+- `python -m pip install -r requirements-build.txt` — установить зависимости
+  генераторов и browser QA.
+- `python -m playwright install chromium` — установить Chromium для Playwright.
+- `python -B scripts/build-hero-variants.py` — собрать Hero-варианты, включая
+  отдельный `final-dev1`.
+- `python -B scripts/build-font-variants.py` — собрать четыре шрифтовых Preview.
+- `python -B scripts/build-action-bar.py` — собрать канонический Action Bar
+  artifact (`final-dev` и `action-bar` используют один каталог).
+- `python -B scripts/build-review-numbered.py` — собрать вариант с нумерацией
+  клиентских текстов.
+- `python -B scripts/verify-client-previews.py` — проверить карту всех десяти
+  уже собранных Preview.
+- `node scripts/verify-lead-hook.mjs` — проверить browser/Function contract
+  формы без реальной отправки в Albato.
+- `python scripts/qa-browser-matrix.py <base-url>` — прогнать responsive/browser
+  матрицу по локальному или живому URL.
+- `npm run check` — проверить унаследованный Next.js-каркас (lint, typecheck,
+  build); это CI-gate, а не production build.
+- `powershell -ExecutionPolicy Bypass -File scripts/deploy-pages.ps1` — ручной
+  production deploy `site/ + functions/`; запускать только после решения
+  владельца и readback по `docs/DEPLOY.md`.
 
 ## Code Style
-- TypeScript strict mode, no `any`
-- Named exports, PascalCase components, camelCase utils
-- Tailwind utility classes, no inline styles
-- 2-space indentation
-- Responsive: mobile-first
+
+- Менять канонические файлы в `site/`, `site-addons/` и `functions/`, затем
+  пересобирать производные; не исправлять копии в `build/`.
+- Сохранять существующие HTML/CSS/JavaScript и Python conventions; не
+  рефакторить соседний код без требования задачи.
+- Любое изменение versioned-контракта сопровождается новой SemVer, датой и
+  синхронизацией marker во всех его источниках.
+- Responsive-проверки включают обе стороны границы `960/961px`, короткий
+  portrait и desktop; отсутствие horizontal overflow обязательно.
 
 ## Design Principles
-- **Pixel-perfect emulation** — match the target's spacing, colors, typography exactly
-- **No personal aesthetic changes during emulation phase** — match 1:1 first, customize later
-- **Real content** — use actual text and assets from the target site, not placeholders
-- **Beauty-first** — every pixel matters
+
+- **Утверждённый контент** — клиентские тексты и факты не переписывать по
+  предположению; явные поздние правки владельца имеют приоритет.
+- **Production isolation** — Preview builders и deploy не должны молча менять
+  `site/` или production alias.
+- **Mobile conversion** — CTA, Action Bar, форма, ошибки и autofill должны быть
+  читаемыми, доступными и полностью помещаться на целевых viewport.
+- **Проверяемость** — завершение подтверждается статическими гейтами, browser
+  matrix и live readback, соответствующими реальному контуру изменения.
 
 ## Project Structure
 ```
-src/
-  app/              # Next.js routes
-  components/       # React components
-    ui/             # shadcn/ui primitives
-    icons.tsx       # Extracted SVG icons as React components
-  lib/
-    utils.ts        # cn() utility (shadcn)
-  types/            # TypeScript interfaces
-  hooks/            # Custom React hooks
-public/
-  images/           # Downloaded images from target site
-  videos/           # Downloaded videos from target site
-  seo/              # Favicons, OG images, webmanifest
-docs/
-  research/         # Inspection output (design tokens, components, layout)
-  design-references/ # Screenshots and visual references
-scripts/            # Asset download scripts
+site/                       # канонический production source
+site-addons/action-bar/     # единственный источник мобильной Action Bar
+functions/api/lead.js       # Cloudflare Pages lead endpoint
+scripts/build-*.py          # генераторы клиентских вариантов
+scripts/client-preview-map.json
+                            # branch -> build directory + версии контрактов
+build/variants/             # производные Hero/Action Bar/review (не править)
+build/font-variants/        # производные шрифтовые Preview (не править)
+docs/                       # задания, контракты, QA, deploy и handoff
+src/                        # унаследованный Next.js-каркас, не production
 ```
 
 ## Что обязательно сохранять в репозиторий
@@ -92,8 +122,11 @@ scripts/            # Asset download scripts
    связанные документы.
 
 ## MOST IMPORTANT NOTES
+- Before changing code or documentation, read `docs/RESUME.md` and the relevant
+  task's `Приёмка` section. Treat older handoff files as history.
 - When launching Claude Code agent teams, ALWAYS have each teammate work in their own worktree branch and merge everyone's work at the end, resolving any merge conflicts smartly since you are basically serving the orchestrator role and have full context to our goals, work given, work achieved, and desired outcomes.
 - After editing `AGENTS.md`, run `bash scripts/sync-agent-rules.sh` to regenerate platform-specific instruction files.
-- After editing `.claude/skills/clone-website/SKILL.md`, run `node scripts/sync-skills.mjs` to regenerate the skill for all platforms.
-
-@docs/research/INSPECTION_GUIDE.md
+- Do not edit generated files in `build/` by hand. Rebuild them from `site/`.
+- Do not deploy production or send a real Albato lead without explicit owner
+  approval. The generic `docs/research/INSPECTION_GUIDE.md` is historical
+  reference, not the workflow entry point for this project.
