@@ -96,7 +96,8 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 ### E. Git, публикация и передача
 
 - [x] Изменения только в feature branch; secrets отсутствуют.
-- [ ] `git diff --check`, commit, push и CI — PASS.
+- [x] `git diff --check`, functional commit `fdba4c2`, CI fix `d804450`, push и
+  GitHub Actions quality run `31512971589` — PASS; Draft PR №3 открыт.
 - [x] Production и live Preview не менялись во время финальной локальной
   приёмки после owner correction.
 - [ ] Preview deployment выполняется только после отдельного разрешения.

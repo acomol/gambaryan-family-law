@@ -57,7 +57,8 @@
    итоговая матрица — `173/173`.
 4. [x] Локальный visual QA голов/наложений и центрирования пройден; реальный
    iPhone safe-area остаётся внешним шагом.
-5. [ ] Зафиксировать результат в commit/push feature branch и получить CI PASS.
+5. [x] Functional commit `fdba4c2` и CI fix `d804450` отправлены в feature
+   branch; Draft PR №3 открыт, quality run `31512971589` — PASS.
 6. [ ] Получить явное решение владельца на Preview deploy.
 7. [ ] После deploy выполнить 11/11 served-content/live-readback.
 
