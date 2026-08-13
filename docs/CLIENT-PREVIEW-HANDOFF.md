@@ -1,19 +1,18 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v2.1.4`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v2.2.0`
 
 **Дата:** `2026-08-13`
 
-**Статус:** `LOCAL QA PASS / LIVE PENDING / DO NOT SEND / NO DEPLOY`
+**Статус:** `LOCAL + LIVE QA PASS 11/11 / READY FOR CLIENT PREVIEW / NOT SENT / PRODUCTION UNCHANGED`
 
 ## Важное перед отправкой
 
-Стабильные URL сейчас показывают исторический опубликованный release. Последняя
-коррекция владельца реализована локально: точный блок Юлии сохранён, поля
-«Тема обращения» и Email удалены. Текущий кандидат использует Action Bar
+Стабильные URL показывают проверенный release: точный блок Юлии сохранён, поля
+«Тема обращения» и Email удалены. Release использует Action Bar
 `2.3.4`, `final-dev3 2.0.2` и Browser runner `1.3.2`. Финальная матрица
-`177/177` и ручной visual QA пройдены локально. Клиенту ссылки не отправлять
-до deployment и live-readback исправленного кандидата.
+`177/177`, ручной visual QA и served-content readback 11/11 пройдены.
+Production не изменён.
 
 ## Что одинаково во всех одиннадцати кандидатах
 
@@ -72,11 +71,11 @@
   `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`;
 - [x] manual screenshots/visual inspection, включая V2/V3 `345×600/668`;
 - [x] функциональный кандидат `d3032b70d327d071ebc82b75b23a860fbba1e74c`
-  запушен в feature branch; GitHub Actions run `31691637548` завершён
-  `success`, включая Browser QA `177/177`;
-- [ ] явное разрешение владельца на Preview deploy получено;
-- [ ] 11/11 stable URL проверены по marker и served behavior;
-- [ ] production readback показывает отсутствие изменений.
+  и deployed source `75558d904d2d1d41ffc9af075f2ea363b15c0b91`
+  запушены; GitHub Actions run `31692242948` завершён `success`;
+- [x] явное разрешение владельца на Preview deploy получено;
+- [x] 11/11 stable URL проверены по marker и served behavior;
+- [x] production readback показывает отсутствие изменений.
 
 ## Исторические releases
 
@@ -86,8 +85,9 @@
 исправленного allowlist-кандидата. Прежние заявления `173/173` и manual PASS
 для текущего кандидата — `HISTORICAL / INVALIDATED` после независимого Claude
 review: они не покрывали stateless-scroll regression и четыре effective-width
-cells V2/V3 `345×600/668`. Новый кандидат прошёл локальную приёмку и остаётся
-`LIVE PENDING` до разрешённого deploy/readback.
+cells V2/V3 `345×600/668`. Новый release прошёл локальную приёмку и
+live-readback 11/11; полный отчёт —
+[`reviews/2026-08-13-client-preview-live-release.md`](reviews/2026-08-13-client-preview-live-release.md).
 
 ## Related
 

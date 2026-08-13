@@ -1,10 +1,10 @@
 # Задание: только утверждённый клиентом текст во всех Preview
 
-**Версия:** `CLIENT-APPROVED-COPY-ONLY v1.1.2`
+**Версия:** `CLIENT-APPROVED-COPY-ONLY v1.2.0`
 
 **Дата:** `2026-08-13`
 
-**Статус:** `LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+**Статус:** `LIVE PASS 11/11 / READY FOR CLIENT PREVIEW / PRODUCTION UNCHANGED`
 
 ## Цель
 
@@ -98,15 +98,15 @@
   visible → `320` visible → `0` reset → `320` hidden;
 - [x] ручной visual QA повторён для текущего кандидата, включая
   `v2-lora-inter` и `v3-literata-manrope` на `345×600/668`;
-- [x] production и текущие live Preview не изменены: deployment не выполнялся.
+- [x] Preview опубликованы после явного разрешения владельца; live `177/177`,
+  served-content 11/11 и API readback PASS; production не изменён.
 
 ## Публикация
 
-Ни Preview, ни production не деплоить в рамках этой задачи. Текущие live PASS
-сохраняются только как `HISTORICAL`. Прежние заявления `173/173` и manual PASS
-для текущего кандидата — `HISTORICAL / INVALIDATED` независимым Claude review.
-Новый локальный кандидат — `LOCAL QA PASS / LIVE PENDING` до явного разрешения
-владельца на deploy.
+После явного `go` владельца 11 Preview опубликованы из SHA
+`75558d904d2d1d41ffc9af075f2ea363b15c0b91`; live Browser QA `177/177` и
+served-content readback 11/11 прошли. Production не деплоился. Полный отчёт:
+[`../reviews/2026-08-13-client-preview-live-release.md`](../reviews/2026-08-13-client-preview-live-release.md).
 
 ## Related
 

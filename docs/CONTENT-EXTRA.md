@@ -1,10 +1,10 @@
 # Текст на сайте вне клиентского документа
 
-**Версия:** `CONTENT-EXTRA v2.1.0`
+**Версия:** `CONTENT-EXTRA v2.1.1`
 
 **Дата:** `2026-08-11`
 
-**Статус:** `OWNER-APPROVED + SYSTEM-UI VERIFIED / LOCAL PASS / LIVE PENDING`
+**Статус:** `OWNER-APPROVED + SYSTEM-UI VERIFIED / LIVE PASS 11/11`
 
 ## Допустимый текст вне 45 номерных блоков
 

@@ -1,14 +1,13 @@
 # Одиннадцать Cloudflare Preview-версий для заказчика
 
-**Версия карты:** `2.4.3`
+**Версия документа:** `2.5.0`; исполняемая Preview-карта — `2.4.0`
 
 **Обновлено:** `2026-08-13`
 
-**Статус:** `LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+**Статус:** `LIVE PASS 11/11 / READY FOR CLIENT PREVIEW / PRODUCTION UNCHANGED`
 
-Стабильные aliases ниже сейчас обслуживают предыдущий опубликованный release.
-Он сохранён как `HISTORICAL LIVE`; описание отличий в таблице относится к
-новому локальному кандидату и станет live только после отдельного деплоя.
+Стабильные aliases ниже обслуживают проверенный release из SHA
+`75558d904d2d1d41ffc9af075f2ea363b15c0b91`.
 
 ## Ссылки и различия
 
@@ -41,18 +40,18 @@
 
 ## Версии контрактов
 
-| Функционал | Локальный кандидат | Дата | Live до публикации |
+| Функционал | Текущий release | Дата | Live status |
 |---|---:|---:|---:|
-| Action Bar | `2.3.4` | 2026-08-13 | `2.3.1` `HISTORICAL` |
-| Client Preview Mobile | `1.1.0` | 2026-08-11 | `1.0.0` `HISTORICAL` |
-| Client Copy allowlist + Owner override | `1.0.0` | 2026-08-11 | текущего live нет; повторить в final full QA |
-| Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `1.3.0` `HISTORICAL` |
-| `final-dev3` | `2.0.2` | 2026-08-13 | `1.1.0` `HISTORICAL` |
-| Lead hook / форма (name + phone only) | `2.0.0` | 2026-08-11 | `1.1.0` `HISTORICAL` |
-| Review numbering | `2.0.0` | 2026-08-11 | прежние 102 подписи `HISTORICAL` |
-| Font Variant V2 Mobile | `1.1.0` | 2026-08-13 | прежний `1.0.0` `HISTORICAL` |
-| Font Variant V3 Mobile | `1.0.0` | 2026-08-13 | текущего live нет |
-| Browser QA runner | `1.3.2` | 2026-08-13 | `1.2.x` `HISTORICAL` |
+| Action Bar | `2.3.4` | 2026-08-13 | `LIVE PASS 11/11` |
+| Client Preview Mobile | `1.1.0` | 2026-08-11 | `LIVE PASS 11/11` |
+| Client Copy allowlist + Owner override | `1.0.0` | 2026-08-11 | `LIVE PASS 11/11` |
+| Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `LIVE PASS` |
+| `final-dev3` | `2.0.2` | 2026-08-13 | `LIVE PASS` |
+| Lead hook / форма (name + phone only) | `2.0.0` | 2026-08-11 | `LIVE PASS` |
+| Review numbering | `2.0.0` | 2026-08-11 | `LIVE PASS` |
+| Font Variant V2 Mobile | `1.1.0` | 2026-08-13 | `LIVE PASS` |
+| Font Variant V3 Mobile | `1.0.0` | 2026-08-13 | `LIVE PASS` |
+| Browser QA runner | `1.3.2` | 2026-08-13 | `LIVE PASS 177/177` |
 
 Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13`.
 
@@ -69,8 +68,8 @@ Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13`.
 текущего кандидата имеют статус `HISTORICAL / INVALIDATED` после независимого
 Claude review. Полный текущий gate —
 `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width` плюс ручной
-visual QA — пройдены локально. Deployment не выполнялся и запрещён до отдельного
-разрешения владельца.
+visual QA — пройдены локально и на live. Текущий release и полные UUID:
+[`../reviews/2026-08-13-client-preview-live-release.md`](../reviews/2026-08-13-client-preview-live-release.md).
 
 ## Карта пересборки
 

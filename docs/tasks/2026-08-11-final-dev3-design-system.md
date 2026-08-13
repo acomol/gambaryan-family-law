@@ -4,7 +4,7 @@
 
 **Дата:** `2026-08-13`
 
-**Статус:** `FINAL-DEV3-DESIGN v2.0.2 LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+**Статус:** `FINAL-DEV3-DESIGN v2.0.2 LIVE PASS / PRODUCTION UNCHANGED`
 
 ## Цель
 
@@ -49,15 +49,15 @@ Action Bar состояние и синхронно отражает рабоч�
   `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07` — `HISTORICAL LIVE PASS`;
 - их proof/precedent и другой неутверждённый copy не переносится в `v2.0.2`;
   точный прежний блок Юлии, напротив, сохраняется как `OWNER-APPROVED`;
-- stable alias пока обслуживает исторический live; новый кандидат не
-  опубликован.
+- stable alias обслуживает текущий `v2.0.2`; прежние UUID выше остаются
+  историческими.
 - Локальный `v2.0.1` со stateless-условием `scrollY > 1` —
   `HISTORICAL / INVALIDATED` независимым Claude review: он показывал панель до
   фактического прохода Hero.
 
 ## Приёмка `v2.0.2`
 
-- [ ] source/generator/build marker согласованы на `v2.0.2` после пересборки;
+- [x] source/generator/build/live marker согласованы на `v2.0.2`;
 - [x] каждый размещённый client/owner блок точен; missing client ID допустим,
   запрещённого текста нет;
 - [x] точный прежний блок Юлии присутствует без переформулировок;
@@ -70,12 +70,12 @@ Action Bar состояние и синхронно отражает рабоч�
 - [x] local single-preview и полная browser matrix runner `1.3.2` проходят;
   общий целевой итог —
   `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`;
-- [x] production и прежние live Preview не изменены: deployment не выполнялся;
-- [x] deployment отсутствует до отдельного разрешения владельца.
+- [x] Preview опубликован после отдельного разрешения владельца;
+- [x] live single/full matrix и served-content readback PASS; production не изменён.
 
 Прежние заявления `173/173` и manual PASS для текущего кандидата имеют статус
-`HISTORICAL / INVALIDATED`; новый прогон `177/177` и manual visual QA прошли,
-поэтому текущий статус — `LOCAL QA PASS / LIVE PENDING`.
+`HISTORICAL / INVALIDATED`; новый локальный и live прогон `177/177`, manual
+visual QA и served-content readback прошли.
 
 ## Related
 

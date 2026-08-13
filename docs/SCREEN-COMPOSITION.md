@@ -1,10 +1,10 @@
 # Композиция экранов — спецификация и критерии приёмки
 
-**Версия:** `SCREEN-COMPOSITION v2.1.2`
+**Версия:** `SCREEN-COMPOSITION v2.1.3`
 
 **Обновлено:** `2026-08-13`
 
-**Статус:** `ALLOWLIST + OWNER OVERRIDE / LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+**Статус:** `ALLOWLIST + OWNER OVERRIDE / LOCAL + LIVE QA PASS 11/11`
 
 ## Сквозные правила
 
@@ -138,8 +138,8 @@
 `0 → 2 → 50 → 100 → 320` hidden → pass Hero visible → `320` visible →
 `0` reset → `320` hidden. Прежние утверждения `173/173` и manual visual PASS
 для текущего кандидата — `HISTORICAL / INVALIDATED` независимым Claude review.
-Новый ручной visual inspection пройден локально; live-readback остаётся
-открытым гейтом до передачи клиенту.
+Новый ручной visual inspection пройден локально; live Browser QA `177/177` и
+served-content readback 11/11 также прошли.
 
 ## Исторические решения
 

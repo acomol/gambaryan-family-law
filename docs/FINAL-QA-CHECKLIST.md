@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.1.4`
+**Версия:** `2.2.0`
 
 **Обновлено:** `2026-08-13`
 
@@ -12,14 +12,17 @@
 
 **Независимая приёмка baseline:** `51e9b8241fae3acdf693c569156e21c50a71ac50`
 
-**Клиентский Preview release:** `98374c133f91a7c47112561f86debbcec2129f6c`
+**Исторический Preview release:** `98374c133f91a7c47112561f86debbcec2129f6c`
 
-**Preview release `final-dev3`:** `88efa2ce0fb9dc5903e1f435310b372383a20d09`
+**Исторический Preview release `final-dev3 v1.1.0`:** `88efa2ce0fb9dc5903e1f435310b372383a20d09`
 
-**Кандидат `final-dev3 v2.0.2`:** `LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+**Кандидат `final-dev3 v2.0.2`:** `LIVE PASS / READY FOR CLIENT PREVIEW`
 
 **Функциональный кандидат:** `d3032b70d327d071ebc82b75b23a860fbba1e74c`;
 GitHub Actions run `31691637548` — `success`
+
+**Текущий Preview release:** `75558d904d2d1d41ffc9af075f2ea363b15c0b91`;
+GitHub Actions run `31692242948` — `success`
 
 **Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
@@ -36,17 +39,17 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
-| Client Copy contract/verifier | `1.0.0` | LOCAL PASS: allowlist + owner override |
-| Action Bar | `2.3.4` | LOCAL QA PASS; live `2.3.1` historical |
-| Client Preview Mobile | `1.1.0` | UNCHANGED; live `1.0.0` historical |
-| `FINAL-DEV1-HERO` | `2.0.0` | UNCHANGED; live `1.3.0` historical |
-| `FINAL-DEV3-DESIGN` | `2.0.2` | LOCAL QA PASS; live `1.1.0` historical |
-| Lead contract | `2.0.0` | LOCAL PASS: name/phone only |
-| Review Numbered | `2.0.0` | LOCAL PASS: client/owner gate |
-| Font Variant V2 Mobile | `1.1.0` | LOCAL PASS: Lora H1 effective-width fix |
-| Font Variant V3 Mobile | `1.0.0` | LOCAL PASS: Manrope lede effective-width fix |
-| Browser QA runner | `1.3.2` | LOCAL PASS: `177/177` |
-| Этот чек-лист | `2.1.4` | active |
+| Client Copy contract/verifier | `1.0.0` | LIVE PASS: allowlist + owner override |
+| Action Bar | `2.3.4` | LIVE PASS 11/11 |
+| Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
+| `FINAL-DEV1-HERO` | `2.0.0` | LIVE PASS |
+| `FINAL-DEV3-DESIGN` | `2.0.2` | LIVE PASS |
+| Lead contract | `2.0.0` | LIVE readback: name/phone only |
+| Review Numbered | `2.0.0` | LIVE PASS: client/owner gate |
+| Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
+| Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
+| Browser QA runner | `1.3.2` | LIVE PASS: `177/177` |
+| Этот чек-лист | `2.2.0` | active |
 
 ### Исправление статуса после независимого review
 
@@ -129,12 +132,14 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
 - [x] После full QA выполнены `git diff --check`, commit/push функционального
   кандидата `d3032b70d327d071ebc82b75b23a860fbba1e74c`; GitHub Actions run
   `31691637548` завершён `success`, включая Browser QA `177/177`.
-- [x] Live Preview остаются историческими; production/Preview deploy текущего
-  кандидата не выполнялся.
-- [ ] Preview deployment выполняется только после отдельного разрешения.
-- [ ] После разрешения: 11/11 served markers/behavior, API `405`, production
-  readback и soft-404 exclusion.
-- [ ] Только после live-readback пакет можно передавать клиенту.
+- [x] Владелец дал явное разрешение на Preview deploy; production не разрешался.
+- [x] 11/11 Preview опубликованы из SHA
+  `75558d904d2d1d41ffc9af075f2ea363b15c0b91`.
+- [x] 11/11 served markers/behavior, API `405`, stable/immutable/local byte
+  equality и soft-404 exclusion подтверждены.
+- [x] Live Browser QA `177/177` и production readback PASS; пакет готов для
+  передачи клиенту. Полные UUID — в
+  [`reviews/2026-08-13-client-preview-live-release.md`](reviews/2026-08-13-client-preview-live-release.md).
 
 ## HISTORICAL AUDIT TRAIL — SUPERSEDED КАК ТЕКУЩАЯ ПРИЁМКА
 

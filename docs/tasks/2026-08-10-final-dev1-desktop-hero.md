@@ -4,7 +4,7 @@
 
 **Дата:** `2026-08-11`
 
-**Статус:** `LOCAL QA PASS / LIVE PENDING`
+**Статус:** `LIVE PASS / PRODUCTION UNCHANGED`
 
 **Preview alias:** https://final-dev1.gambarian-landing.pages.dev/
 
@@ -61,17 +61,17 @@ client ID необязательно. Builder не добавляет отдел
   размещённого смыслового текста client/owner allowlist;
 - [x] точный прежний блок Юлии присутствует; proof и другие неутверждённые
   owner-copy отсутствуют;
-- [ ] на `360×600`, `360×668`, `390×724`, `390×844`, `860×760` обе Hero CTA
+- [x] на `360×600`, `360×668`, `390×724`, `390×844`, `860×760` обе Hero CTA
   доступны, лица не обрезаны и overflow равен нулю;
-- [ ] на `961`, `1024`, `1280`, `1440` текст не пересекает фотографию;
-- [ ] desktop header не содержит дублирующий номер, mobile drawer рабочий;
-- [ ] Action Bar работает по зонам и business-hours;
-- [x] production и текущий live Preview не изменены: deployment не выполнялся.
+- [x] на `961`, `1024`, `1280`, `1440` текст не пересекает фотографию;
+- [x] desktop header не содержит дублирующий номер, mobile drawer рабочий;
+- [x] Action Bar работает по зонам и business-hours;
+- [x] Preview опубликован после разрешения; production не изменён.
 
 ## Публикация
 
-В рамках контентной миграции деплой запрещён. Текущий live `v1.3.0` —
-`HISTORICAL`; `v2.0.0` после owner correction — `LOCAL QA PASS / LIVE PENDING`.
+Live `v1.3.0` — `HISTORICAL`; текущий `v2.0.0` после owner correction
+опубликован и прошёл live-readback.
 
 ## Related
 

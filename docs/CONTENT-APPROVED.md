@@ -1,10 +1,10 @@
 # Утверждённый текст: client allowlist и owner-approved override
 
-**Версия:** `CONTENT-APPROVED v2.1.0`
+**Версия:** `CONTENT-APPROVED v2.1.1`
 
 **Дата:** `2026-08-11`
 
-**Статус:** `ALLOWLIST VERIFIED / COVERAGE OPTIONAL / LOCAL PASS / LIVE PENDING`
+**Статус:** `ALLOWLIST VERIFIED / COVERAGE OPTIONAL / LIVE PASS 11/11`
 
 **Источник владельца:** `D:\Копия LP - Короткая версия (1).txt`.
 **Frozen repo copy для handoff/CI:**
@@ -24,9 +24,8 @@
 | Дополнительный точный owner-approved блок | Юлия Саакян |
 
 Таблицы ниже — allowlist: колонка «Разрешён» означает, что строку можно
-использовать дословно, а не что её обязательно размещать. Опубликованные URL
-отражают предыдущие release и считаются `HISTORICAL LIVE`; исправленный
-кандидат прошёл локальную проверку, но ещё не опубликован.
+использовать дословно, а не что её обязательно размещать. Текущий release
+прошёл live-проверку на всех 11 Preview.
 
 ---
 

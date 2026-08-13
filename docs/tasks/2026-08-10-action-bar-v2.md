@@ -12,9 +12,8 @@
 
 **Дата:** `2026-08-13`
 
-**Статус:** `LOCAL QA PASS / LIVE PENDING / NO DEPLOY`;
-опубликованная `2.3.1` —
-`HISTORICAL LIVE PASS`.
+**Статус:** `LIVE PASS 11/11 / PRODUCTION UNCHANGED`;
+опубликованная ранее `2.3.1` — `HISTORICAL LIVE PASS`.
 
 Подтверждённое требование: одна и та же мобильная Action Bar должна работать во
 всех одиннадцати Cloudflare Dev Preview из
@@ -288,17 +287,16 @@ z-index-перекрытие demo-switch: оба элемента остаютс
 | Перезагрузить Preview после ручного выбора | снова применяется автоматическое состояние по времени Иерусалима |
 | 1280×900 и production source | demo-switch отсутствует из интерфейса; Action Bar addon не внёс дополнительных правок в `site/` |
 
-DoD кандидата: локальная сборка всех одиннадцати Dev Preview + readback каждой
+DoD release: локальная сборка всех одиннадцати Dev Preview + readback каждой
 сборки (маркеры: общая версия `2.3.4`, `Asia/Jerusalem`, `IntersectionObserver` и
 `demoBusinessState` в живом JS,
 `viewport-fit=cover` в HTML, `scroll-padding-bottom` в CSS) + подтверждение, что
-боевой `gambarian-landing.pages.dev` и live Preview не изменились. Деплой не
-выполнять до отдельного разрешения владельца.
+боевой `gambarian-landing.pages.dev` не изменился. Preview deploy выполнен после
+отдельного разрешения владельца.
 
 Full browser gate выполняется runner `1.3.2`; целевая арифметика —
 `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width` (V2/V3 по
-`345×600/668`). Локальный прогон подтверждён: `177/177 PASS`; live остаётся
-pending.
+`345×600/668`). Локальный и live прогоны подтверждены: `177/177 PASS`.
 
 Ручной пункт (не блокирует merge, фиксируется как «Не проверено»):
 жестовая полоса и ландшафтные инсеты на реальном iPhone.

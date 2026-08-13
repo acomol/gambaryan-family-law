@@ -1,10 +1,10 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v2.1.4`
+**Версия:** `HANDOFF-RESUME v2.2.0`
 
 **Обновлено:** `2026-08-13`
 
-**Текущий статус:** `LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+**Текущий статус:** `LOCAL + LIVE QA PASS 11/11 / READY FOR CLIENT PREVIEW / PRODUCTION UNCHANGED`
 
 ## Главное решение владельца
 
@@ -27,19 +27,19 @@
 
 | Контракт | Версия | Статус |
 |---|---:|---|
-| Client Copy contract/verifier | `1.0.0` | UNCHANGED; повторить в final full QA |
-| Action Bar | `2.3.4` | LOCAL QA PASS; live `2.3.1` historical |
-| Client Preview Mobile | `1.1.0` | UNCHANGED; live `1.0.0` historical |
-| `final-dev1` Hero | `2.0.0` | UNCHANGED; live `1.3.0` historical |
-| `final-dev3` Design | `2.0.2` | LOCAL QA PASS; live `1.1.0` historical |
-| Lead schema | `2.0.0` | UNCHANGED; повторить name/phone gate |
-| Review Numbered | `2.0.0` | UNCHANGED; повторить client/owner gate |
-| Font Variant V2 Mobile | `1.1.0` | LOCAL QA PASS: effective-width fix Lora H1 |
-| Font Variant V3 Mobile | `1.0.0` | LOCAL QA PASS: effective-width fix Manrope lede |
-| Browser QA runner | `1.3.2` | LOCAL PASS: `177/177` |
+| Client Copy contract/verifier | `1.0.0` | LIVE PASS 11/11 |
+| Action Bar | `2.3.4` | LIVE PASS 11/11 |
+| Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
+| `final-dev1` Hero | `2.0.0` | LIVE PASS |
+| `final-dev3` Design | `2.0.2` | LIVE PASS |
+| Lead schema | `2.0.0` | LIVE readback: name/phone only; GET `405` |
+| Review Numbered | `2.0.0` | LIVE PASS: client/owner gate |
+| Font Variant V2 Mobile | `1.1.0` | LIVE PASS: effective-width fix Lora H1 |
+| Font Variant V3 Mobile | `1.0.0` | LIVE PASS: effective-width fix Manrope lede |
+| Browser QA runner | `1.3.2` | LIVE PASS: `177/177` |
 
-Версии контракта датированы `2026-08-11` или `2026-08-13`. Live aliases пока обслуживают предыдущие
-контракты и считаются `HISTORICAL LIVE PASS`, а не текущим результатом.
+Версии контракта датированы `2026-08-11` или `2026-08-13`. Stable aliases
+обслуживают текущий проверенный release.
 
 ## Текущая regression-семантика
 
@@ -67,8 +67,7 @@
 - source of truth: `site/`, `site-addons/`, `functions/`, `scripts/`;
 - `build/` — только производные; вручную не редактировать;
 - production deploy и реальный Albato POST запрещены без отдельного разрешения;
-- в этой задаче Preview также не деплоить: сначала локальная приёмка и передача
-  на финальное подтверждение ведущего агента.
+- Preview опубликованы из SHA `75558d904d2d1d41ffc9af075f2ea363b15c0b91`.
 
 ## Локальная приёмка и следующий шаг
 
@@ -82,11 +81,12 @@
    `v2-lora-inter` и `v3-literata-manrope` на `345×600/668`; реальный iPhone
    safe-area остаётся внешним шагом.
 5. [x] Функциональный кандидат
-   `d3032b70d327d071ebc82b75b23a860fbba1e74c` запушен в feature branch;
-   GitHub Actions run `31691637548` завершён `success`, включая Browser QA
-   `177/177`.
-6. [ ] Получить явное решение владельца на Preview deploy.
-7. [ ] После deploy выполнить 11/11 served-content/live-readback.
+   `d3032b70d327d071ebc82b75b23a860fbba1e74c` и deployed source
+   `75558d904d2d1d41ffc9af075f2ea363b15c0b91` запушены; GitHub Actions run
+   `31692242948` завершён `success`.
+6. [x] Получено явное решение владельца на Preview deploy.
+7. [x] Выполнены deploy и 11/11 served-content/live-readback; live Browser QA
+   `177/177`, production SHA не изменился.
 
 ## Команды
 
@@ -101,6 +101,13 @@ node scripts/verify-lead-hook.mjs
 python scripts/qa-browser-matrix.py http://127.0.0.1:8098 --all-previews
 git diff --check
 ```
+
+## Текущий live-state
+
+Текущий release: SHA `75558d904d2d1d41ffc9af075f2ea363b15c0b91`,
+Action Bar `2.3.4`, `final-dev3 2.0.2`, 11/11 stable aliases и Browser QA
+`177/177` — PASS. Полные deployment UUID и readback:
+[`reviews/2026-08-13-client-preview-live-release.md`](reviews/2026-08-13-client-preview-live-release.md).
 
 ## Исторический live-state
 
@@ -122,10 +129,8 @@ git diff --check
 
 ## Незакрытые внешние шаги
 
-- финальный full QA и подтверждение ведущего агента;
-- решение владельца о публикации Preview;
 - Preview secrets, Albato Catch, дедупликация и readback реальной записи;
-- ручной visual QA голов/наложений и реальный iPhone safe-area;
+- реальный iPhone safe-area;
 - zoom 200% accessibility-дефект остаётся OPEN; полный WCAG AA PASS не заявлять.
 
 ## Related

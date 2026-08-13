@@ -1,7 +1,7 @@
 > **CURRENT ADDENDUM 2026-08-13.** Историческая приёмка ниже относится к
 > прежним `2.3.1`/`v1.1.0` и review со 102 номерами. Текущий кандидат — Action
 > Bar `2.3.4`, `final-dev3 2.0.2`, runner `1.3.2` — имеет статус
-> `LOCAL QA PASS / LIVE PENDING`. Прежние заявления `173/173` и manual PASS для него —
+> `LOCAL + LIVE QA PASS 11/11`. Прежние заявления `173/173` и manual PASS для него —
 > `HISTORICAL / INVALIDATED` независимым Claude review. Действующий allowlist
 > gate: [`2026-08-11-client-approved-copy-only.md`](2026-08-11-client-approved-copy-only.md),
 > точка входа: [`../RESUME.md`](../RESUME.md).
@@ -14,7 +14,7 @@
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Статус:** `HISTORICAL LIVE PASS 11/11 / CURRENT LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+**Статус:** `HISTORICAL BASELINE / CURRENT LIVE QA PASS 11/11 / PRODUCTION UNCHANGED`
 
 ## Текущий delta-gate `2026-08-13`
 
@@ -32,9 +32,8 @@
 - Regression `final-dev3`: `0 → 2 → 50 → 100 → 320` hidden → pass Hero visible
   → `320` visible → `0` reset → `320` hidden. Form/menu/focus скрывают
   bar/demo независимо от latch.
-- Полный автоматический прогон `177/177` и повторный manual visual QA пройдены.
-  Live aliases остаются историческими; deploy запрещён без
-  отдельного разрешения владельца.
+- Полный автоматический прогон `177/177` и повторный manual visual QA пройдены
+  локально и на live после разрешённого Preview deploy.
 
 ## Цель
 

@@ -1,10 +1,10 @@
 # Какие разрешённые блоки не используются
 
-**Версия:** `CONTENT-MISSING v2.1.1`
+**Версия:** `CONTENT-MISSING v2.1.2`
 
 **Дата:** `2026-08-13`
 
-**Статус:** `CURRENT COVERAGE REPORTED / LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+**Статус:** `CURRENT COVERAGE REPORTED / LIVE PASS 11/11`
 
 ## Итог
 
@@ -24,7 +24,7 @@ Frozen source
 - не размещать поле `Тема обращения` (`7.19`);
 - не размещать `Email`.
 
-Текущий локальный кандидат использует одинаковые `38/45` client ID во всех 24
+Текущий release использует одинаковые `38/45` client ID во всех 24
 HTML targets (source/standalone и 11 пар Preview). Не используются семь
 разрешённых ID: `1.8`, `1.12`, `6.6`, `6.9`, `6.12`, `7.7`, `7.19`. Последний
 исключён явным решением владельца; остальные не требуются контрактом.
@@ -34,9 +34,8 @@ allowlist-кандидат сохраняет coverage `38/45` и после и�
 verifier и browser matrix
 `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`. Прежние
 заявления `173/173` и manual PASS для текущего кандидата —
-`HISTORICAL / INVALIDATED` независимым Claude review. Stable URL остаются
-`HISTORICAL LIVE`; deploy запрещён до final full QA и отдельного разрешения
-владельца.
+`HISTORICAL / INVALIDATED` независимым Claude review. Новый release с coverage
+`38/45` прошёл live Browser QA `177/177` и served-content readback 11/11.
 
 ## Related
 
