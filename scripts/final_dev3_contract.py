@@ -5,8 +5,8 @@ from __future__ import annotations
 import re
 
 
-VERSION = "2.0.0"
-DATE = "2026-08-11"
+VERSION = "2.0.1"
+DATE = "2026-08-13"
 MARKER = f"FINAL-DEV3-DESIGN v{VERSION} | {DATE}"
 MARKER_RE = re.compile(
     r"FINAL-DEV3-DESIGN v(\d+\.\d+\.\d+) \| (\d{4}-\d{2}-\d{2})"
@@ -24,6 +24,10 @@ HERO_BUSINESS_SCRIPT = "hero-business-hours.js"
 ACTION_BAR_SCRIPT_TAG = '<script src="action-bar.js" defer></script>'
 HERO_BUSINESS_SCRIPT_TAG = f'<script src="{HERO_BUSINESS_SCRIPT}" defer></script>'
 HERO_BUSINESS_SCRIPT_SNIPPET = f"\n{HERO_BUSINESS_SCRIPT_TAG}"
+ACTION_BAR_TOP_VISIBILITY_TOKENS = (
+    "var finalDev3TopOnly = document.body.classList.contains('page--final-dev3');",
+    "if (finalDev3TopOnly) return window.scrollY > 1;",
+)
 
 
 def apply_html_contract(html: str) -> str:

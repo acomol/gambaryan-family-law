@@ -1,10 +1,10 @@
 # Задание: отдельный `final-dev3`
 
-**Версия:** `FINAL-DEV3-PLAN v2.0.0`
+**Версия:** `FINAL-DEV3-PLAN v2.0.1`
 
-**Дата:** `2026-08-11`
+**Дата:** `2026-08-13`
 
-**Статус:** `FINAL-DEV3-DESIGN v2.0.0 LOCAL QA PASS / LIVE PENDING`
+**Статус:** `FINAL-DEV3-DESIGN v2.0.1 LOCAL QA PASS / LIVE PENDING`
 
 ## Цель
 
@@ -13,15 +13,15 @@ Action Bar, но применить client + owner allowlist-контракт к
 `final-dev3` отличается поведением Hero-контакта: он использует уже вычисленное
 Action Bar состояние и синхронно отражает рабочее/нерабочее время.
 
-## Состав `v2.0.0`
+## Состав `v2.0.1`
 
 - база: `FINAL-DEV1-HERO v2.0.0`;
 - шрифты: Playfair Display + Onest;
 - текст: каждый размещённый смысловой блок входит в client allowlist или в
   точный `OWNER-APPROVED` блок Юлии; полный coverage 45 ID не требуется;
-- Action Bar: `2.3.2`, без неутверждённого WhatsApp prefill;
+- Action Bar: `2.3.3`, без неутверждённого WhatsApp prefill;
 - lead schema: `2.0.0`, только обязательные name/phone, без Email/topic;
-- marker: `FINAL-DEV3-DESIGN v2.0.0 | 2026-08-11`.
+- marker: `FINAL-DEV3-DESIGN v2.0.1 | 2026-08-13`.
 
 ## Business-hours
 
@@ -33,6 +33,9 @@ Action Bar состояние и синхронно отражает рабоч�
 - demo-switch синхронно меняет Hero и Action Bar;
 - в закрытом состоянии в Hero видна ровно одна WhatsApp-ссылка, без дубля;
 - вторые часы, timer или отдельная карта состояний запрещены.
+- только в `final-dev3` панель остаётся видимой при возврате вверх, пока
+  `scrollY > 1`; на точном верху страницы, у формы, в открытом меню и при
+  фокусе поля она скрыта. Правило живёт в единственном Action Bar owner.
 
 ## SUPERSEDED и исторические live
 
@@ -40,12 +43,12 @@ Action Bar состояние и синхронно отражает рабоч�
   `2f20dc33-714f-4b3a-86ea-b51880e33f05` — `HISTORICAL LIVE PASS`;
 - `FINAL-DEV3-DESIGN v1.1.0`, commit `88efa2c`, deployment
   `52a9addb-0166-4f78-8c7d-5f1b0ed2ad07` — `HISTORICAL LIVE PASS`;
-- их proof/precedent и другой неутверждённый copy не переносится в `v2.0.0`;
+- их proof/precedent и другой неутверждённый copy не переносится в `v2.0.1`;
   точный прежний блок Юлии, напротив, сохраняется как `OWNER-APPROVED`;
 - stable alias пока обслуживает исторический live; новый кандидат не
   опубликован.
 
-## Приёмка `v2.0.0`
+## Приёмка `v2.0.1`
 
 - [x] source/generator/marker согласованы;
 - [x] каждый размещённый client/owner блок точен; missing client ID допустим,
@@ -53,7 +56,7 @@ Action Bar состояние и синхронно отражает рабоч�
 - [x] точный прежний блок Юлии присутствует без переформулировок;
 - [x] открытое и закрытое Hero-состояния используют только утверждённые строки;
 - [x] один business-hours state и один timer;
-- [x] Playfair Display + Onest, Action Bar `2.3.2`, lead `2.0.0` name/phone-only
+- [x] Playfair Display + Onest, Action Bar `2.3.3`, lead `2.0.0` name/phone-only
   и визуальные ошибки полей не регрессируют;
 - [x] local single-preview и полная browser matrix проходят: общий итог
   `173/173`;

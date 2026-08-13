@@ -1,8 +1,8 @@
 # Одиннадцать Cloudflare Preview-версий для заказчика
 
-**Версия карты:** `2.4.0`
+**Версия карты:** `2.4.2`
 
-**Обновлено:** `2026-08-11`
+**Обновлено:** `2026-08-13`
 
 **Статус:** `LOCAL QA PASS / LIVE PENDING`
 
@@ -16,7 +16,7 @@
 |---:|---|---|---|
 | 1 | `final-dev` | Базовая композиция и эталон Action Bar | https://final-dev.gambarian-landing.pages.dev/ |
 | 2 | `final-dev1` | Без desktop-дубля телефона, плотный mobile crop и короткая mobile-композиция | https://final-dev1.gambarian-landing.pages.dev/ |
-| 3 | `final-dev3` | Те же композиция и Playfair/Onest, что в `final-dev1`; единственное отличие — Hero синхронен с business-hours Action Bar | https://final-dev3.gambarian-landing.pages.dev/ |
+| 3 | `final-dev3` | Те же композиция и Playfair/Onest, что в `final-dev1`; Hero синхронен с business-hours, а панель остаётся при возврате вверх до точного верха | https://final-dev3.gambarian-landing.pages.dev/ |
 | 4 | `v1-playfair-onest` | Playfair Display + Onest | https://v1-playfair-onest.gambarian-landing.pages.dev/ |
 | 5 | `v2-lora-inter` | Lora + Inter | https://v2-lora-inter.gambarian-landing.pages.dev/ |
 | 6 | `v3-literata-manrope` | Literata + Manrope | https://v3-literata-manrope.gambarian-landing.pages.dev/ |
@@ -33,7 +33,7 @@
 - вне client/owner allowlist разрешены только identity и `SYSTEM-UI`;
 - форма содержит только `Имя`/`Телефон`; Email, topic, proof-тексты и редакция
   «ВПЕРВЫЕ…» отсутствуют;
-- Action Bar `2.3.2` общий для всех вариантов и использует `wa.me` без
+- Action Bar `2.3.3` общий для всех вариантов и использует `wa.me` без
   неутверждённого `?text=` prefill;
 - production не меняется.
 
@@ -41,16 +41,16 @@
 
 | Функционал | Локальный кандидат | Дата | Live до публикации |
 |---|---:|---:|---:|
-| Action Bar | `2.3.2` | 2026-08-11 | `2.3.1` `HISTORICAL` |
+| Action Bar | `2.3.3` | 2026-08-13 | `2.3.1` `HISTORICAL` |
 | Client Preview Mobile | `1.1.0` | 2026-08-11 | `1.0.0` `HISTORICAL` |
 | Client Copy allowlist + Owner override | `1.0.0` | 2026-08-11 | LOCAL PASS; новый live отсутствует |
 | Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `1.3.0` `HISTORICAL` |
-| `final-dev3` | `2.0.0` | 2026-08-11 | `1.1.0` `HISTORICAL` |
+| `final-dev3` | `2.0.1` | 2026-08-13 | `1.1.0` `HISTORICAL` |
 | Lead hook / форма (name + phone only) | `2.0.0` | 2026-08-11 | `1.1.0` `HISTORICAL` |
 | Review numbering | `2.0.0` | 2026-08-11 | прежние 102 подписи `HISTORICAL` |
-| Browser QA runner | `1.3.0` | 2026-08-11 | `1.2.x` `HISTORICAL` |
+| Browser QA runner | `1.3.1` | 2026-08-13 | `1.2.x` `HISTORICAL` |
 
-Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.0 | 2026-08-11`.
+Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.1 | 2026-08-13`.
 
 ## Историческая live-приёмка
 

@@ -1,8 +1,8 @@
 # Задание: только утверждённый клиентом текст во всех Preview
 
-**Версия:** `CLIENT-APPROVED-COPY-ONLY v1.1.0`
+**Версия:** `CLIENT-APPROVED-COPY-ONLY v1.1.1`
 
-**Дата:** `2026-08-11`
+**Дата:** `2026-08-13`
 
 **Статус:** `LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
 
@@ -29,7 +29,7 @@
   запрещены явным решением владельца;
 - запрещены прежние proof-тексты и редакция «ВПЕРВЫЕ…».
 - design baseline не меняется: сохраняются утверждённые композиции, исходные
-  Hero assets/crop, шрифты вариантов и Action Bar `2.3.2`.
+  Hero assets/crop, шрифты вариантов и Action Bar `2.3.3`.
 
 ## Архитектура
 
@@ -49,13 +49,13 @@
 | Контракт | Версия |
 |---|---|
 | `FINAL-DEV1-HERO` | `2.0.0 | 2026-08-11` |
-| `FINAL-DEV3-DESIGN` | `2.0.0 | 2026-08-11` |
-| `ACTION-BAR-SPEC` | `2.3.2 | 2026-08-11` |
+| `FINAL-DEV3-DESIGN` | `2.0.1 | 2026-08-13` |
+| `ACTION-BAR-SPEC` | `2.3.3 | 2026-08-13` |
 | `CLIENT-PREVIEW-MOBILE` | `1.1.0 | 2026-08-11` |
 | `LEAD-CONTRACT` | `2.0.0 | 2026-08-11` |
 | `REVIEW-NUMBERED` | `2.0.0 | 2026-08-11` |
 | `CLIENT-COPY-CONTRACT/VERIFIER` | `1.0.0 | 2026-08-11` |
-| `PREVIEW-BROWSER-QA-RUNNER` | `1.3.0 | 2026-08-11` |
+| `PREVIEW-BROWSER-QA-RUNNER` | `1.3.1 | 2026-08-13` |
 
 ## Сборка и проверка
 
@@ -67,7 +67,8 @@
 4. Прогнать статический preview verifier, lead tests и browser matrix на обеих
    сторонах `960/961px`, коротком mobile и desktop.
 5. Проверить Action Bar и `final-dev3`: Hero меняется по той же карте рабочего
-   времени, без второго timer; WhatsApp использует `wa.me` без `?text=`.
+   времени, без второго timer; WhatsApp использует `wa.me` без `?text=`;
+   после возврата вверх при `scrollY > 1` панель остаётся видимой.
 
 ## Приёмка
 
@@ -78,7 +79,7 @@
 - [x] смыслового текста вне client/owner allowlist нет;
 - [x] `SYSTEM-UI` не добавляет новых фактов/обещаний;
 - [x] `Email`, `topic`, proof-тексты и «ВПЕРВЫЕ…» отсутствуют;
-- [x] неутверждённый WhatsApp prefill отсутствует; Action Bar `2.3.2`;
+- [x] неутверждённый WhatsApp prefill отсутствует; Action Bar `2.3.3`;
 - [x] source/build markers и версии согласованы;
 - [x] browser matrix и overflow gates проходят: `173/173`;
 - [x] production и текущие live Preview не изменены: deployment не выполнялся.

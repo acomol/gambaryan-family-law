@@ -1,8 +1,8 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v2.1.0`
+**Версия:** `HANDOFF-RESUME v2.1.2`
 
-**Обновлено:** `2026-08-11`
+**Обновлено:** `2026-08-13`
 
 **Текущий статус:** `LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
 
@@ -21,22 +21,22 @@
 - `Email`, «Тема обращения»/`topic`, proof и «ВПЕРВЫЕ…» отменены;
 - WhatsApp prefill отменён; Action Bar использует `wa.me` без `?text=`.
 - owner correction меняет только copy/form contract: утверждённые композиции,
-  Hero assets/crop, Playfair/Onest и Action Bar `2.3.2` сохраняются.
+  Hero assets/crop, Playfair/Onest и Action Bar `2.3.3` сохраняются.
 
 ## Текущие локальные контракты
 
 | Контракт | Версия | Статус |
 |---|---:|---|
 | Client Copy contract/verifier | `1.0.0` | LOCAL PASS: allowlist + owner override |
-| Action Bar | `2.3.2` | LOCAL PASS; live `2.3.1` historical |
+| Action Bar | `2.3.3` | LOCAL PASS; live `2.3.1` historical |
 | Client Preview Mobile | `1.1.0` | LOCAL PASS; live `1.0.0` historical |
 | `final-dev1` Hero | `2.0.0` | LOCAL PASS; live `1.3.0` historical |
-| `final-dev3` Design | `2.0.0` | LOCAL PASS; live `1.1.0` historical |
+| `final-dev3` Design | `2.0.1` | LOCAL PASS; live `1.1.0` historical |
 | Lead schema | `2.0.0` | LOCAL PASS: только name/phone |
 | Review Numbered | `2.0.0` | LOCAL PASS: реально используемые client/owner ID |
-| Browser QA runner | `1.3.0` | LOCAL PASS `173/173` |
+| Browser QA runner | `1.3.1` | LOCAL PASS: `173/173` |
 
-Все версии датированы `2026-08-11`. Live aliases пока обслуживают предыдущие
+Версии контракта датированы `2026-08-11` или `2026-08-13`. Live aliases пока обслуживают предыдущие
 контракты и считаются `HISTORICAL LIVE PASS`, а не текущим результатом.
 
 ## Git и границы
@@ -53,8 +53,8 @@
 1. [x] Frozen source, client/owner allowlist, форма name/phone-only и отсутствие
    WhatsApp prefill проверены.
 2. [x] Standalone и все одиннадцать Preview пересобраны.
-3. [x] Copy verifier, preview verifier, lead tests и browser matrix прошли;
-   итоговая матрица — `173/173`.
+3. [x] Copy verifier, preview verifier, lead tests и browser matrix повторно
+   прошли после scoped visibility-fix final-dev3 (`173/173`).
 4. [x] Локальный visual QA голов/наложений и центрирования пройден; реальный
    iPhone safe-area остаётся внешним шагом.
 5. [x] Functional commit `fdba4c2` и CI fix `d804450` отправлены в feature

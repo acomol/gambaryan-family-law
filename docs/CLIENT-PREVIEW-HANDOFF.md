@@ -1,8 +1,8 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v2.1.0`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v2.1.2`
 
-**Дата:** `2026-08-11`
+**Дата:** `2026-08-13`
 
 **Статус:** `LOCAL QA PASS / DO NOT SEND / LIVE PENDING`
 
@@ -18,7 +18,7 @@
 
 - каждый размещённый смысловой текст входит в client allowlist или в точный
   `OWNER-APPROVED` блок Юлии; использовать все 45 client ID необязательно;
-- общий Action Bar `2.3.2` с business-hours и demo-switch;
+- общий Action Bar `2.3.3` с business-hours и demo-switch;
 - общий mobile-слой `CLIENT-PREVIEW-MOBILE v1.1.0`;
 - WhatsApp `wa.me/972545490623` без неутверждённого prefill;
 - форма содержит только обязательные имя и телефон, без Email и topic;
@@ -32,7 +32,7 @@
 |---|---|
 | https://final-dev.gambarian-landing.pages.dev/ | Базовый визуальный вариант и эталон Action Bar |
 | https://final-dev1.gambarian-landing.pages.dev/ | Без desktop-дубля телефона, плотнее mobile-фото, CTA входят на коротком экране |
-| https://final-dev3.gambarian-landing.pages.dev/ | Те же композиция и Playfair/Onest, что в `final-dev1`; единственное отличие — Hero синхронен с business-hours панели |
+| https://final-dev3.gambarian-landing.pages.dev/ | Те же композиция и Playfair/Onest, что в `final-dev1`; Hero синхронен с business-hours, а панель остаётся при возврате вверх до точного верха |
 | https://v1-playfair-onest.gambarian-landing.pages.dev/ | Playfair Display + Onest |
 | https://v2-lora-inter.gambarian-landing.pages.dev/ | Lora + Inter |
 | https://v3-literata-manrope.gambarian-landing.pages.dev/ | Literata + Manrope |
@@ -63,7 +63,7 @@
 - [x] `CLIENT-COPY-VERIFIER v1.0.0` — каждый размещённый смысловой блок входит в
   client/owner allowlist на всех 11; coverage `45/45` не требуется;
 - [x] lead tests `2.0.0` после удаления Email/topic — PASS;
-- [x] full browser matrix `PREVIEW-BROWSER-QA-RUNNER v1.3.0` — `173/173` PASS;
+- [x] full browser matrix `PREVIEW-BROWSER-QA-RUNNER v1.3.1` — `173/173` PASS;
 - [ ] manual screenshots/visual inspection — PASS;
 - [ ] commit/push feature branch и CI — PASS;
 - [ ] явное разрешение владельца на Preview deploy получено;

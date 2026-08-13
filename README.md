@@ -1,6 +1,6 @@
 > ## Лендинг «Гамбарян и Партнёры»
 >
-> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v2.0.0 | 2026-08-11`
+> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v2.0.1 | 2026-08-13`
 >
 > **Текущий статус:** `LOCAL QA PASS / LIVE PENDING / NOT SENT`.
 > Стабильные Preview URL пока обслуживают предыдущий опубликованный release и

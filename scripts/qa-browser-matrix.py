@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.3.0 | 2026-08-11
+"""PREVIEW-BROWSER-QA-RUNNER v1.3.1 | 2026-08-13
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -55,8 +55,8 @@ from final_dev3_contract import (
 )
 
 
-RUNNER_VERSION = "1.3.0"
-ACTION_BAR_VERSION = "2.3.2"
+RUNNER_VERSION = "1.3.1"
+ACTION_BAR_VERSION = "2.3.3"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.1.0"
 
 MAIN_VIEWPORTS = (
@@ -451,6 +451,56 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
     )
 
 
+def final_dev3_bar_visibility_metrics(page: Page) -> dict[str, Any]:
+    """Проверяет scoped правило Action Bar при возврате вверх в Hero."""
+
+    return page.evaluate(
+        """async () => {
+          const bar = document.querySelector('.mobile-bar');
+          const demo = document.querySelector('[data-business-demo]');
+          const form = document.getElementById('contact');
+          const heroPhone = document.querySelector('.hero__phone');
+          const read = () => ({
+            scrollY: window.scrollY,
+            barHidden: bar.classList.contains('is-hidden'),
+            barVisible: getComputedStyle(bar).visibility === 'visible' &&
+              getComputedStyle(bar).opacity === '1',
+            demoHidden: Boolean(demo && demo.hidden),
+            heroPhoneInViewport: Boolean(heroPhone && (() => {
+              const rect = heroPhone.getBoundingClientRect();
+              return rect.bottom > 0 && rect.top < innerHeight;
+            })()),
+          });
+          const settle = async () => {
+            document.dispatchEvent(new Event('scrollend'));
+            await new Promise((resolve) => requestAnimationFrame(() =>
+              requestAnimationFrame(resolve)
+            ));
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          };
+          const scrollTo = async (top) => {
+            window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+            await settle();
+          };
+
+          await scrollTo(0);
+          const top = read();
+
+          const maxScroll = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+          await scrollTo(Math.min(900, maxScroll));
+          await scrollTo(Math.min(320, maxScroll));
+          const returnedToHero = read();
+
+          const formTop = form ? window.scrollY + form.getBoundingClientRect().top : 0;
+          await scrollTo(Math.min(formTop, maxScroll));
+          const formVisible = read();
+
+          await scrollTo(0);
+          return { top, returnedToHero, formVisible, heroPhonePresent: Boolean(heroPhone) };
+        }"""
+    )
+
+
 def validate_metrics(
     target: Target,
     width: int,
@@ -564,6 +614,30 @@ def validate_metrics(
                         failures.append("final-dev3-hero-closed-phone-copy-visible")
                     if not snapshot["iconMatchesWhatsApp"]:
                         failures.append("final-dev3-hero-closed-icon-not-whatsapp")
+        visibility = metrics.get("finalDev3BarVisibility")
+        if width <= 960 and height > 400:
+            if not visibility or not visibility["heroPhonePresent"]:
+                failures.append("final-dev3-action-bar-visibility-metrics-missing")
+            else:
+                if (
+                    visibility["top"]["scrollY"] > 1
+                    or not visibility["top"]["barHidden"]
+                    or not visibility["top"]["demoHidden"]
+                ):
+                    failures.append("final-dev3-action-bar-must-hide-only-at-page-top")
+                if (
+                    visibility["returnedToHero"]["scrollY"] <= 1
+                    or visibility["returnedToHero"]["barHidden"]
+                    or not visibility["returnedToHero"]["barVisible"]
+                    or visibility["returnedToHero"]["demoHidden"]
+                    or not visibility["returnedToHero"]["heroPhoneInViewport"]
+                ):
+                    failures.append("final-dev3-action-bar-must-stay-visible-on-return-up")
+                if (
+                    not visibility["formVisible"]["barHidden"]
+                    or not visibility["formVisible"]["demoHidden"]
+                ):
+                    failures.append("final-dev3-action-bar-must-hide-at-form")
 
     if not metrics["markers"]["actionBar"]:
         failures.append(f"missing-action-bar-marker-v{ACTION_BAR_VERSION}")
@@ -705,6 +779,8 @@ def run_cell(
             metrics = browser_metrics(
                 page, (width, height) in SHORT_PORTRAIT_VIEWPORTS, timeout_ms
             )
+            if target.name == "final-dev3" and width <= 960 and height > 400:
+                metrics["finalDev3BarVisibility"] = final_dev3_bar_visibility_metrics(page)
             metrics["platformFonts"] = platform_font_metrics(page)
             failures = validate_metrics(
                 target,

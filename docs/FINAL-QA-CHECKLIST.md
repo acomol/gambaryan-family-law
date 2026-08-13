@@ -1,8 +1,8 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.1.0`
+**Версия:** `2.1.2`
 
-**Обновлено:** `2026-08-11`
+**Обновлено:** `2026-08-13`
 
 **Ветка:** `codex/client-approved-copy-only`
 
@@ -16,7 +16,7 @@
 
 **Preview release `final-dev3`:** `88efa2ce0fb9dc5903e1f435310b372383a20d09`
 
-**Кандидат `final-dev3 v2.0.0`:** `LOCAL QA PASS / LIVE PENDING`
+**Кандидат `final-dev3 v2.0.1`:** `LOCAL QA PASS / LIVE PENDING`
 
 **Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
@@ -34,14 +34,14 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
 | Client Copy contract/verifier | `1.0.0` | LOCAL PASS: allowlist + owner override |
-| Action Bar | `2.3.2` | LOCAL PASS; live `2.3.1` historical |
+| Action Bar | `2.3.3` | LOCAL PASS; live `2.3.1` historical |
 | Client Preview Mobile | `1.1.0` | LOCAL PASS; live `1.0.0` historical |
 | `FINAL-DEV1-HERO` | `2.0.0` | LOCAL PASS; live `1.3.0` historical |
-| `FINAL-DEV3-DESIGN` | `2.0.0` | LOCAL PASS; live `1.1.0` historical |
+| `FINAL-DEV3-DESIGN` | `2.0.1` | LOCAL PASS; live `1.1.0` historical |
 | Lead contract | `2.0.0` | LOCAL PASS: name/phone only; live `1.1.0` historical |
 | Review Numbered | `2.0.0` | LOCAL PASS: 38 used client ID + owner block; прежние 102 historical |
-| Browser QA runner | `1.3.0` | LOCAL PASS `173/173` |
-| Этот чек-лист | `2.1.0` | active |
+| Browser QA runner | `1.3.1` | LOCAL PASS: `173/173` |
+| Этот чек-лист | `2.1.2` | active |
 
 ### A. Источник и copy
 
@@ -62,13 +62,16 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 
 ### B. Action Bar и WhatsApp
 
-- [x] Marker/source/manifest/verifier согласованы на `2.3.2 | 2026-08-11`.
+- [x] Marker/source/manifest/verifier согласованы на `2.3.3 | 2026-08-13`.
 - [x] Все WhatsApp Action Bar href равны `https://wa.me/972545490623` без
   query `?text=` и без неутверждённого prefill.
 - [x] Open/closed расписание: `Asia/Jerusalem`, вс–чт `[09:00,18:00)`.
 - [x] Demo-switch меняет видимую подпись, панель и `final-dev3` Hero синхронно.
 - [x] Hero не создаёт второй timer/карту состояния.
 - [x] Панель скрыта на Hero, у формы, при menu open и focus in form.
+- [x] Только в `final-dev3`: после прокрутки вниз и возврата вверх при
+  `scrollY > 1` панель и demo-switch остаются видимыми; на `scrollY = 0` и у
+  формы оба скрыты.
 
 ### C. Форма и lead `2.0.0`
 
@@ -79,12 +82,12 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 
 ### D. Сборка и browser QA
 
-- [x] После owner correction все builders завершаются с кодом `0`; `build/` не
-  правился вручную.
-- [x] После owner correction `verify-client-copy`, `verify-client-previews`,
+- [x] После scoped visibility-fix все builders завершаются с кодом `0`; `build/`
+  не правился вручную.
+- [x] После scoped visibility-fix `verify-client-copy`, `verify-client-previews`,
   lead tests — PASS.
-- [x] После owner correction Browser runner `1.3.0` проходит все одиннадцать
-  Preview: `173/173`.
+- [x] После scoped visibility-fix Browser runner `1.3.1` проходит все
+  одиннадцать Preview: `173/173`.
 - [x] Проверены `360×600`, `390×724`, `960×760`, `961×760`, `1024×768`,
   `1280×720`, `1440×900`; horizontal overflow `0`.
 - [x] LOCAL manual visual: головы/волосы, текст поверх фото, CTA и форма по

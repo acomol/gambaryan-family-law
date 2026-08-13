@@ -32,6 +32,7 @@ from final_dev1_contract import (
 )
 from client_copy_contract import APPROVED_COPY
 from final_dev3_contract import (
+    ACTION_BAR_TOP_VISIBILITY_TOKENS as FINAL_DEV3_ACTION_BAR_TOP_VISIBILITY_TOKENS,
     ACTION_BAR_SCRIPT_TAG as FINAL_DEV3_ACTION_BAR_SCRIPT_TAG,
     BOARD_PATH as FINAL_DEV3_BOARD_PATH,
     BODY_CLASS as FINAL_DEV3_BODY_CLASS,
@@ -52,7 +53,7 @@ from final_dev3_contract import (
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
 MAP_VERSION = "2.4.0"
-MAP_DATE = "2026-08-11"
+MAP_DATE = "2026-08-13"
 
 EXPECTED_PREVIEWS = {
     "final-dev": "build/variants/action-bar",
@@ -213,6 +214,10 @@ def verify_final_dev3_sources() -> list[str]:
             problems.append("единый источник final-dev3 Hero adapter неполон")
         if any(token in script for token in FINAL_DEV3_SCRIPT_FORBIDDEN_TOKENS):
             problems.append("final-dev3 Hero adapter содержит второй источник состояния")
+    action_bar_path = ROOT / "site-addons" / "action-bar" / "action-bar.js"
+    action_bar = action_bar_path.read_text(encoding="utf-8") if action_bar_path.exists() else ""
+    if any(token not in action_bar for token in FINAL_DEV3_ACTION_BAR_TOP_VISIBILITY_TOKENS):
+        problems.append("Action Bar не содержит scoped visibility-правило final-dev3")
     return problems
 
 

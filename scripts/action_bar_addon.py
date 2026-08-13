@@ -17,8 +17,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ADDON = ROOT / "site-addons" / "action-bar"
 CLIENT_PREVIEW_ADDON = ROOT / "site-addons" / "client-preview"
-SPEC_VERSION = "2.3.2"
-SPEC_DATE = "2026-08-11"
+SPEC_VERSION = "2.3.3"
+SPEC_DATE = "2026-08-13"
 CLIENT_PREVIEW_VERSION = "1.1.0"
 CLIENT_PREVIEW_DATE = "2026-08-11"
 SPEC_MARKER_RE = re.compile(
