@@ -46,7 +46,7 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 | Font Variant V2 Mobile | `1.1.0` | LOCAL PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LOCAL PASS: Manrope lede effective-width fix |
 | Browser QA runner | `1.3.2` | LOCAL PASS: `177/177` |
-| Этот чек-лист | `2.1.3` | active |
+| Этот чек-лист | `2.1.4` | active |
 
 ### Исправление статуса после независимого review
 
