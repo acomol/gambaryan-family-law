@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.4.0 | 2026-08-13
+"""PREVIEW-BROWSER-QA-RUNNER v1.4.1 | 2026-08-13
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -56,9 +56,10 @@ from final_dev3_contract import (
     BODY_CLASS as FINAL_DEV3_BODY_CLASS,
     MARKER as FINAL_DEV3_MARKER,
 )
+from review_numbered_contract import OWNER_REVIEW_IDS
 
 
-RUNNER_VERSION = "1.4.0"
+RUNNER_VERSION = "1.4.1"
 ACTION_BAR_VERSION = "2.3.4"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.1.0"
 KNOWN_BENIGN_HERO_PRELOAD_WARNING = "was preloaded using link preload but not used within a few seconds"
@@ -86,12 +87,13 @@ BREAKPOINT_VIEWPORTS = (
 )
 LARGE_VIEWPORTS = ((1920, 1080), (2560, 1440))
 SHORT_PORTRAIT_VIEWPORTS = {(360, 600), (360, 668), (390, 724)}
-SOURCE_COPY_IDS = tuple(
-    re.findall(
-        r'data-copy-id="([^"]+)"',
-        (Path(__file__).resolve().parent.parent / "site" / "index.html").read_text(
-            encoding="utf-8"
-        ),
+SOURCE_HTML = (
+    Path(__file__).resolve().parent.parent / "site" / "index.html"
+).read_text(encoding="utf-8")
+SOURCE_REVIEW_IDS = tuple(
+    value if kind == "copy" else OWNER_REVIEW_IDS[value]
+    for kind, value in re.findall(
+        r'data-(copy|owner-copy)-id="([^"]+)"', SOURCE_HTML
     )
 )
 
@@ -529,8 +531,11 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               visibleItemCount: visibleBarItems.length,
               itemWidths: barItemWidths,
             } : { present: false },
-            reviewNumbers: [...document.querySelectorAll('[data-copy-id]')].map(
-              (node) => node.dataset.copyId
+            reviewNumbers: [...document.querySelectorAll('[data-copy-id], [data-review-id]')].map(
+              (node) => node.dataset.copyId || node.dataset.reviewId
+            ),
+            reviewBadgeContents: [...document.querySelectorAll('[data-copy-id], [data-review-id]')].map(
+              (node) => getComputedStyle(node, '::before').content
             ),
             variant: {
               finalDev1: Boolean(document.querySelector('.hero--final-dev1')),
@@ -1038,11 +1043,14 @@ def validate_metrics(
         failures.append("hero-b-marker-missing")
     if target.name == "review-numbered":
         numbers = metrics["reviewNumbers"]
-        if numbers != list(SOURCE_COPY_IDS):
+        if numbers != list(SOURCE_REVIEW_IDS):
             failures.append(
                 f"review-numbers={len(numbers)}/{len(set(numbers))} "
-                f"expected-source={len(SOURCE_COPY_IDS)}"
+                f"expected-source={len(SOURCE_REVIEW_IDS)}"
             )
+        expected_badges = [f'"{number}"' for number in SOURCE_REVIEW_IDS]
+        if metrics["reviewBadgeContents"] != expected_badges:
+            failures.append("review-number-badges-not-rendered")
 
     failures.extend(
         f"console-{message['type']}:{message['text']}"

@@ -17,13 +17,15 @@ from pathlib import Path
 
 from action_bar_addon import install_action_bar, verify_action_bar_install
 from client_copy_contract import APPROVED_COPY
+from review_numbered_contract import (
+    OWNER_REVIEW_IDS,
+    REVIEW_NUMBERED_UPDATED,
+    REVIEW_NUMBERED_VERSION,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 DEST = ROOT / "build" / "variants" / "review-numbered"
-REVIEW_NUMBERED_VERSION = "2.0.0"
-REVIEW_NUMBERED_UPDATED = "2026-08-11"
-
 # Эти строки относились к отменённым редакциям и не должны возвращаться в
 # клиентскую копию. Проверка выполняется по HTML после установки Action Bar.
 FORBIDDEN_TEXT = (
@@ -52,6 +54,7 @@ FORBIDDEN_TEXT = (
 BODY_RE = re.compile(r"<body\b[^>]*>", re.IGNORECASE)
 CLASS_RE = re.compile(r"\bclass=(?P<quote>['\"])(?P<value>[^'\"]*)(?P=quote)", re.IGNORECASE)
 COPY_ID_RE = re.compile(r"\bdata-copy-id=(?P<quote>['\"])(?P<value>[^'\"]+)(?P=quote)")
+REVIEW_ID_RE = re.compile(r"\bdata-review-id=(?P<quote>['\"])(?P<value>[^'\"]+)(?P=quote)")
 
 BANNER = f"""
 <!-- REVIEW-NUMBERED v{REVIEW_NUMBERED_VERSION} | {REVIEW_NUMBERED_UPDATED} -->
@@ -68,8 +71,8 @@ BADGE_CSS = f"""
    REVIEW-NUMBERED v{REVIEW_NUMBERED_VERSION} | {REVIEW_NUMBERED_UPDATED}
    Служебные номера существуют только в клиентской копии.
    ========================================================================== */
-.page--review-numbered [data-copy-id]::before {{
-  content: attr(data-copy-id);
+.page--review-numbered [data-copy-id]::before,
+.page--review-numbered [data-review-id]::before {{
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -92,6 +95,9 @@ BADGE_CSS = f"""
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
 }}
+
+.page--review-numbered [data-copy-id]::before {{ content: attr(data-copy-id); }}
+.page--review-numbered [data-review-id]::before {{ content: attr(data-review-id); }}
 
 .rvn-banner {{
   max-width: 720px;
@@ -168,6 +174,32 @@ def _insert_banner(html: str) -> str:
     return html[:hero_end] + "\n" + BANNER + html[hero_end:]
 
 
+def _add_owner_review_ids(html: str) -> str:
+    fact_token = 'data-owner-copy-id="fact-900-v1"'
+    fact_label = '<span class="fact-card__unit">Автор</span>'
+    fact_start = html.find(fact_token)
+    fact_label_start = html.find(fact_label, fact_start)
+    if fact_start < 0 or fact_label_start < 0:
+        raise SystemExit("Сборка остановлена — OWNER-карточка fact-900-v1 не уникальна")
+    fact_replacement = (
+        '<span class="fact-card__unit" '
+        f'data-review-id="{OWNER_REVIEW_IDS["fact-900-v1"]}">Автор</span>'
+    )
+    html = html[:fact_label_start] + fact_replacement + html[fact_label_start + len(fact_label) :]
+
+    yulia_token = 'data-owner-copy-id="yulia-card-v1"'
+    yulia_name = '<h3 class="attorney-card__name">Юлия Саакян</h3>'
+    yulia_start = html.find(yulia_token)
+    yulia_name_start = html.find(yulia_name, yulia_start)
+    if yulia_start < 0 or yulia_name_start < 0:
+        raise SystemExit("Сборка остановлена — OWNER-блок Юлии не найден")
+    replacement = (
+        '<h3 class="attorney-card__name" '
+        f'data-review-id="{OWNER_REVIEW_IDS["yulia-card-v1"]}">Юлия Саакян</h3>'
+    )
+    return html[:yulia_name_start] + replacement + html[yulia_name_start + len(yulia_name) :]
+
+
 def build() -> Path:
     if DEST.exists():
         shutil.rmtree(DEST)
@@ -177,6 +209,7 @@ def build() -> Path:
     index_path = DEST / "index.html"
     html = index_path.read_text(encoding="utf-8")
     html = _add_body_class(html)
+    html = _add_owner_review_ids(html)
     html = _insert_banner(html)
     index_path.write_text(html, encoding="utf-8")
 
@@ -194,6 +227,7 @@ def verify(dest: Path) -> list[str]:
     css = (dest / "styles.css").read_text(encoding="utf-8")
 
     copy_ids = [match.group("value") for match in COPY_ID_RE.finditer(html)]
+    review_ids = [match.group("value") for match in REVIEW_ID_RE.finditer(html)]
     counts = Counter(copy_ids)
     duplicates = sorted(copy_id for copy_id, count in counts.items() if count > 1)
     actual = set(copy_ids)
@@ -212,14 +246,26 @@ def verify(dest: Path) -> list[str]:
         problems.append("не найдены data-copy-id: " + ", ".join(missing))
     if unexpected:
         problems.append("неожиданные data-copy-id: " + ", ".join(unexpected))
+    expected_review_ids = list(OWNER_REVIEW_IDS.values())
+    if review_ids != expected_review_ids:
+        problems.append(
+            "OWNER review ID должны быть "
+            + ", ".join(expected_review_ids)
+            + f"; получено: {review_ids}"
+        )
 
     marker = f"REVIEW-NUMBERED v{REVIEW_NUMBERED_VERSION} | {REVIEW_NUMBERED_UPDATED}"
     if html.count(f"<!-- {marker} -->") != 1:
         problems.append(f"в index.html нет единственного маркера {marker}")
     if marker not in css:
         problems.append(f"в styles.css нет маркера {marker}")
-    if "[data-copy-id]::before" not in css or "content: attr(data-copy-id)" not in css:
-        problems.append("CSS-бейджи data-copy-id не подключены")
+    if (
+        "[data-copy-id]::before" not in css
+        or "content: attr(data-copy-id)" not in css
+        or "[data-review-id]::before" not in css
+        or "content: attr(data-review-id)" not in css
+    ):
+        problems.append("CSS-бейджи client/owner review ID не подключены")
     if html.count('class="rvn-banner"') != 1:
         problems.append("служебный баннер с инструкцией не вставлен")
     body_matches = list(BODY_RE.finditer(html))
@@ -249,15 +295,19 @@ def main() -> int:
     dest = build()
     problems = verify(dest)
     copy_id_count = len(_source_copy_ids())
+    owner_id_count = len(OWNER_REVIEW_IDS)
     print(f"Собрано: {dest.relative_to(ROOT)}")
-    print(f"Использованных утверждённых data-copy-id: {copy_id_count}")
+    print(
+        "Использованных утверждённых номеров: "
+        f"client={copy_id_count}, owner={owner_id_count}"
+    )
     if problems:
         print("ПРОВЕРКА НЕ ПРОЙДЕНА:")
         for problem in problems:
             print("  ✗", problem)
         return 1
     print(
-        f"Проверка пройдена: {copy_id_count} уникальных номеров, "
+        f"Проверка пройдена: {copy_id_count + owner_id_count} уникальных номеров, "
         "noindex и Action Bar сохранены."
     )
     return 0

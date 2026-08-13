@@ -17,6 +17,11 @@ from action_bar_addon import (
     SPEC_VERSION,
     verify_action_bar_install,
 )
+from review_numbered_contract import (
+    OWNER_REVIEW_IDS,
+    REVIEW_NUMBERED_UPDATED,
+    REVIEW_NUMBERED_VERSION,
+)
 from final_dev1_contract import (
     BOARD_PATH,
     DATE as FINAL_DEV1_DATE,
@@ -297,6 +302,12 @@ def main() -> int:
     previews = manifest.get("previews", [])
     source_html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     source_copy_ids = re.findall(r'data-copy-id="([^"]+)"', source_html)
+    source_review_ids = [
+        value if kind == "copy" else OWNER_REVIEW_IDS[value]
+        for kind, value in re.findall(
+            r'data-(copy|owner-copy)-id="([^"]+)"', source_html
+        )
+    ]
     if len(source_copy_ids) != len(set(source_copy_ids)):
         problems.append("site/index.html содержит повторяющиеся data-copy-id")
     unknown_source_ids = sorted(set(source_copy_ids) - set(APPROVED_COPY))
@@ -360,7 +371,22 @@ def main() -> int:
                 problems.append(
                     f"{branch}: client-copy ID должны точно повторять текущий source"
                 )
-            if "REVIEW-NUMBERED v2.0.0 | 2026-08-11" not in styles:
+            review_labels = re.findall(r'data-review-id="([^"]+)"', html)
+            if review_labels != list(OWNER_REVIEW_IDS.values()):
+                problems.append(f"{branch}: отсутствуют номера OWNER-APPROVED блоков")
+            ordered_labels = [
+                value
+                for _, value in re.findall(
+                    r'data-(copy|review)-id="([^"]+)"', html
+                )
+            ]
+            if ordered_labels != source_review_ids:
+                problems.append(f"{branch}: порядок client/owner номеров расходится с source")
+            marker = (
+                f"REVIEW-NUMBERED v{REVIEW_NUMBERED_VERSION} | "
+                f"{REVIEW_NUMBERED_UPDATED}"
+            )
+            if marker not in styles or f"<!-- {marker} -->" not in html:
                 problems.append(f"{branch}: нет versioned client-copy overlay")
         if branch in {"final-dev1", "final-dev3"}:
             problems.extend(f"{branch}: {problem}" for problem in verify_final_dev1(dest))
