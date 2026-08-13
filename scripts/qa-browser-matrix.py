@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.3.1 | 2026-08-13
+"""PREVIEW-BROWSER-QA-RUNNER v1.3.2 | 2026-08-13
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -10,8 +10,10 @@ Install and run::
     python scripts/qa-browser-matrix.py http://127.0.0.1:8000/
 
 The default command checks one locally served Preview at the exact 10 main and
-5 breakpoint/landscape viewports. The eleven-target aggregate is ``110/110 +
-55/55 + 8/8``; serve the repository root and add ``--all-previews``::
+5 breakpoint/landscape viewports. The Lora/Inter and Literata/Manrope targets
+add two effective-width cells each for a nominal 360px viewport with a classic
+scrollbar. The eleven-target aggregate is ``110/110 + 55/55 + 8/8 + 4/4``; serve the
+repository root and add ``--all-previews``::
 
     python scripts/qa-browser-matrix.py http://127.0.0.1:8000/ --all-previews
 
@@ -22,7 +24,7 @@ For live aliases, use a URL template (PowerShell users should quote it)::
 Stdout is JSON Lines: every ``cell`` record is one target/viewport PASS or
 FAIL, followed by one ``summary`` record with per-suite and total counts. A
 PASS means the page loaded with the expected Preview markers, no horizontal
-overflow, browser console/page errors or failed requests; Hero/photo, the real
+overflow, unexpected browser console/page errors or failed requests; Hero/photo, the real
 Chromium platform font used for title/body/CTA glyphs, and Action Bar breakpoint
 geometry also passed. Font coverage includes title, italic service heading,
 body and CTA text. Short portrait cells additionally require all Hero
@@ -30,8 +32,8 @@ actions to end at least 8px above the viewport bottom. The process exits 0 only
 when every emitted cell passes.
 
 This machine runner does not replace visual review of heads/hair, text/photo
-overlaps or microtext readability, and it does not execute the separate form
-interaction smoke. It does toggle both business states for the final-dev3 Hero;
+overlaps or microtext readability, and it does not submit the lead form. For
+final-dev3 it covers both business states plus menu/focus/form visibility;
 the remaining manual/browser interaction gates stay required by
 ``docs/tasks/2026-08-10-all-previews-browser-qa.md``.
 """
@@ -55,9 +57,10 @@ from final_dev3_contract import (
 )
 
 
-RUNNER_VERSION = "1.3.1"
-ACTION_BAR_VERSION = "2.3.3"
+RUNNER_VERSION = "1.3.2"
+ACTION_BAR_VERSION = "2.3.4"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.1.0"
+KNOWN_BENIGN_HERO_PRELOAD_WARNING = "was preloaded using link preload but not used within a few seconds"
 
 MAIN_VIEWPORTS = (
     (360, 600),
@@ -71,6 +74,8 @@ MAIN_VIEWPORTS = (
     (1280, 720),
     (1440, 900),
 )
+CLASSIC_SCROLLBAR_VIEWPORTS = ((345, 600), (345, 668))
+CLASSIC_SCROLLBAR_TARGETS = {"v2-lora-inter", "v3-literata-manrope"}
 BREAKPOINT_VIEWPORTS = (
     (960, 760),
     (961, 760),
@@ -200,6 +205,10 @@ def iter_cells(
     for target, url in target_list:
         for width, height in BREAKPOINT_VIEWPORTS:
             yield target, url, "breakpoint", width, height
+    for target, url in target_list:
+        if target.name in CLASSIC_SCROLLBAR_TARGETS:
+            for width, height in CLASSIC_SCROLLBAR_VIEWPORTS:
+                yield target, url, "effective-width", width, height
     if include_large:
         for target, url in target_list:
             if target.large_desktop:
@@ -396,6 +405,22 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               photoComplete: Boolean(heroPhoto && heroPhoto.complete && heroPhoto.naturalWidth > 0),
               photoWidth: heroPhoto ? heroPhoto.getBoundingClientRect().width : 0,
               photoHeight: heroPhoto ? heroPhoto.getBoundingClientRect().height : 0,
+              photoCurrentSrc: heroPhoto?.currentSrc || null,
+              photoObjectFit: heroPhoto ? getComputedStyle(heroPhoto).objectFit : null,
+              photoObjectPosition: heroPhoto ? getComputedStyle(heroPhoto).objectPosition : null,
+              titleLineCount: (() => {
+                const title = document.querySelector('.hero__title');
+                if (!title) return 0;
+                const style = getComputedStyle(title);
+                return Math.round(title.getBoundingClientRect().height / parseFloat(style.lineHeight));
+              })(),
+              ledeText: (document.querySelector('.hero__lede')?.textContent || '').replace(/\\s+/g, ' ').trim(),
+              ledeLineCount: (() => {
+                const lede = document.querySelector('.hero__lede');
+                if (!lede) return 0;
+                const style = getComputedStyle(lede);
+                return Math.round(lede.getBoundingClientRect().height / parseFloat(style.lineHeight));
+              })(),
               actionCount: actionRects.length,
               lastActionBottom,
               shortPortrait,
@@ -452,7 +477,7 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
 
 
 def final_dev3_bar_visibility_metrics(page: Page) -> dict[str, Any]:
-    """Проверяет scoped правило Action Bar при возврате вверх в Hero."""
+    """Проверяет первый спуск, возврат в Hero и сброс scoped latch."""
 
     return page.evaluate(
         """async () => {
@@ -460,17 +485,30 @@ def final_dev3_bar_visibility_metrics(page: Page) -> dict[str, Any]:
           const demo = document.querySelector('[data-business-demo]');
           const form = document.getElementById('contact');
           const heroPhone = document.querySelector('.hero__phone');
-          const read = () => ({
-            scrollY: window.scrollY,
-            barHidden: bar.classList.contains('is-hidden'),
-            barVisible: getComputedStyle(bar).visibility === 'visible' &&
-              getComputedStyle(bar).opacity === '1',
-            demoHidden: Boolean(demo && demo.hidden),
-            heroPhoneInViewport: Boolean(heroPhone && (() => {
-              const rect = heroPhone.getBoundingClientRect();
-              return rect.bottom > 0 && rect.top < innerHeight;
-            })()),
-          });
+          const drawer = document.getElementById('nav-drawer');
+          const firstInput = document.querySelector('#contact input, #contact textarea, #contact select');
+          const read = () => {
+            const barRect = bar.getBoundingClientRect();
+            const demoRect = demo?.getBoundingClientRect();
+            const overlapWidth = demoRect
+              ? Math.max(0, Math.min(barRect.right, demoRect.right) - Math.max(barRect.left, demoRect.left))
+              : 0;
+            const overlapHeight = demoRect
+              ? Math.max(0, Math.min(barRect.bottom, demoRect.bottom) - Math.max(barRect.top, demoRect.top))
+              : 0;
+            return {
+              scrollY: window.scrollY,
+              barHidden: bar.classList.contains('is-hidden'),
+              barVisible: getComputedStyle(bar).visibility === 'visible' &&
+                getComputedStyle(bar).opacity === '1',
+              demoHidden: Boolean(demo && demo.hidden),
+              heroPhoneInViewport: Boolean(heroPhone && (() => {
+                const rect = heroPhone.getBoundingClientRect();
+                return rect.bottom > 0 && rect.top < innerHeight;
+              })()),
+              barDemoOverlapArea: overlapWidth * overlapHeight,
+            };
+          };
           const settle = async () => {
             document.dispatchEvent(new Event('scrollend'));
             await new Promise((resolve) => requestAnimationFrame(() =>
@@ -487,16 +525,59 @@ def final_dev3_bar_visibility_metrics(page: Page) -> dict[str, Any]:
           const top = read();
 
           const maxScroll = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+          const initialDown = [];
+          for (const position of [2, 50, 100, 320]) {
+            await scrollTo(Math.min(position, maxScroll));
+            initialDown.push(read());
+          }
+
           await scrollTo(Math.min(900, maxScroll));
+          const passedHero = read();
           await scrollTo(Math.min(320, maxScroll));
           const returnedToHero = read();
+
+          if (drawer) drawer.hidden = false;
+          await settle();
+          const menuOpen = read();
+          if (drawer) drawer.hidden = true;
+          await settle();
+          const menuClosed = read();
+
+          if (firstInput) firstInput.focus({ preventScroll: true });
+          await settle();
+          const inputFocused = read();
+          if (firstInput) firstInput.blur();
+          await settle();
+          const inputBlurred = read();
 
           const formTop = form ? window.scrollY + form.getBoundingClientRect().top : 0;
           await scrollTo(Math.min(formTop, maxScroll));
           const formVisible = read();
 
           await scrollTo(0);
-          return { top, returnedToHero, formVisible, heroPhonePresent: Boolean(heroPhone) };
+          const resetTop = read();
+          const afterResetDown = [];
+          for (const position of [2, 50, 100, 320]) {
+            await scrollTo(Math.min(position, maxScroll));
+            afterResetDown.push(read());
+          }
+          await scrollTo(0);
+          return {
+            top,
+            initialDown,
+            passedHero,
+            returnedToHero,
+            menuOpen,
+            menuClosed,
+            inputFocused,
+            inputBlurred,
+            formVisible,
+            resetTop,
+            afterResetDown,
+            heroPhonePresent: Boolean(heroPhone),
+            drawerPresent: Boolean(drawer),
+            inputPresent: Boolean(firstInput),
+          };
         }"""
     )
 
@@ -538,6 +619,28 @@ def validate_metrics(
         bottom = hero["lastActionBottom"]
         if bottom is None or bottom > height - 8:
             failures.append(f"hero-action-bottom={bottom} required<={height - 8}")
+    if target.name == "v2-lora-inter" and (width, height) in CLASSIC_SCROLLBAR_VIEWPORTS:
+        if hero["titleLineCount"] != 4:
+            failures.append(f"v2-effective-width-title-lines={hero['titleLineCount']} expected=4")
+        if hero["photoObjectFit"] != "cover":
+            failures.append(f"v2-effective-width-object-fit={hero['photoObjectFit']} expected=cover")
+        if hero["photoObjectPosition"] != "50% 22%":
+            failures.append(
+                f"v2-effective-width-object-position={hero['photoObjectPosition']} expected=50% 22%"
+            )
+        if not hero["photoCurrentSrc"]:
+            failures.append("v2-effective-width-photo-current-src-missing")
+    if target.name == "v3-literata-manrope" and (width, height) in CLASSIC_SCROLLBAR_VIEWPORTS:
+        if hero["ledeLineCount"] != 3:
+            failures.append(f"v3-effective-width-lede-lines={hero['ledeLineCount']} expected=3")
+        if hero["photoObjectFit"] != "cover":
+            failures.append(f"v3-effective-width-object-fit={hero['photoObjectFit']} expected=cover")
+        if hero["photoObjectPosition"] != "50% 22%":
+            failures.append(
+                f"v3-effective-width-object-position={hero['photoObjectPosition']} expected=50% 22%"
+            )
+        if not hero["photoCurrentSrc"]:
+            failures.append("v3-effective-width-photo-current-src-missing")
 
     if target.name == "final-dev3":
         if width <= 860:
@@ -624,20 +727,72 @@ def validate_metrics(
                     or not visibility["top"]["barHidden"]
                     or not visibility["top"]["demoHidden"]
                 ):
-                    failures.append("final-dev3-action-bar-must-hide-only-at-page-top")
+                    failures.append("final-dev3-action-bar-must-hide-at-page-top")
+                initial_down = visibility["initialDown"]
+                if (
+                    [snapshot["scrollY"] for snapshot in initial_down] != [2, 50, 100, 320]
+                    or any(
+                        not snapshot["barHidden"] or not snapshot["demoHidden"]
+                        for snapshot in initial_down
+                    )
+                ):
+                    failures.append("final-dev3-action-bar-must-stay-hidden-on-first-hero-scroll")
+                if (
+                    visibility["passedHero"]["scrollY"] != 900
+                    or visibility["passedHero"]["barHidden"]
+                    or not visibility["passedHero"]["barVisible"]
+                    or visibility["passedHero"]["demoHidden"]
+                    or visibility["passedHero"]["heroPhoneInViewport"]
+                    or visibility["passedHero"]["barDemoOverlapArea"] != 0
+                ):
+                    failures.append("final-dev3-action-bar-must-show-after-hero")
                 if (
                     visibility["returnedToHero"]["scrollY"] <= 1
                     or visibility["returnedToHero"]["barHidden"]
                     or not visibility["returnedToHero"]["barVisible"]
                     or visibility["returnedToHero"]["demoHidden"]
                     or not visibility["returnedToHero"]["heroPhoneInViewport"]
+                    or visibility["returnedToHero"]["barDemoOverlapArea"] != 0
                 ):
                     failures.append("final-dev3-action-bar-must-stay-visible-on-return-up")
+                if (
+                    not visibility["drawerPresent"]
+                    or not visibility["menuOpen"]["barHidden"]
+                    or not visibility["menuOpen"]["demoHidden"]
+                    or visibility["menuClosed"]["barHidden"]
+                    or not visibility["menuClosed"]["barVisible"]
+                    or visibility["menuClosed"]["demoHidden"]
+                ):
+                    failures.append("final-dev3-action-bar-menu-hide-restore-failed")
+                if (
+                    not visibility["inputPresent"]
+                    or not visibility["inputFocused"]["barHidden"]
+                    or not visibility["inputFocused"]["demoHidden"]
+                    or visibility["inputBlurred"]["barHidden"]
+                    or not visibility["inputBlurred"]["barVisible"]
+                    or visibility["inputBlurred"]["demoHidden"]
+                ):
+                    failures.append("final-dev3-action-bar-focus-hide-restore-failed")
                 if (
                     not visibility["formVisible"]["barHidden"]
                     or not visibility["formVisible"]["demoHidden"]
                 ):
                     failures.append("final-dev3-action-bar-must-hide-at-form")
+                if (
+                    visibility["resetTop"]["scrollY"] > 1
+                    or not visibility["resetTop"]["barHidden"]
+                    or not visibility["resetTop"]["demoHidden"]
+                ):
+                    failures.append("final-dev3-action-bar-latch-must-reset-at-top")
+                after_reset_down = visibility["afterResetDown"]
+                if (
+                    [snapshot["scrollY"] for snapshot in after_reset_down] != [2, 50, 100, 320]
+                    or any(
+                        not snapshot["barHidden"] or not snapshot["demoHidden"]
+                        for snapshot in after_reset_down
+                    )
+                ):
+                    failures.append("final-dev3-action-bar-reset-must-restore-first-scroll")
 
     if not metrics["markers"]["actionBar"]:
         failures.append(f"missing-action-bar-marker-v{ACTION_BAR_VERSION}")
@@ -730,7 +885,15 @@ def validate_metrics(
                 f"expected-source={len(SOURCE_COPY_IDS)}"
             )
 
-    failures.extend(f"console-{message['type']}:{message['text']}" for message in console_messages)
+    failures.extend(
+        f"console-{message['type']}:{message['text']}"
+        for message in console_messages
+        if not (
+            message["type"] == "warning"
+            and KNOWN_BENIGN_HERO_PRELOAD_WARNING in message["text"]
+            and "hero-duo-air-" in message["text"]
+        )
+    )
     failures.extend(f"page-error:{message}" for message in page_errors)
     failures.extend(f"request-failed:{url}" for url in failed_requests)
     return failures
@@ -777,7 +940,10 @@ def run_cell(
         else:
             page.locator(".hero").wait_for(state="attached", timeout=timeout_ms)
             metrics = browser_metrics(
-                page, (width, height) in SHORT_PORTRAIT_VIEWPORTS, timeout_ms
+                page,
+                (width, height) in SHORT_PORTRAIT_VIEWPORTS
+                or (target.name in CLASSIC_SCROLLBAR_TARGETS and (width, height) in CLASSIC_SCROLLBAR_VIEWPORTS),
+                timeout_ms,
             )
             if target.name == "final-dev3" and width <= 960 and height > 400:
                 metrics["finalDev3BarVisibility"] = final_dev3_bar_visibility_metrics(page)
@@ -894,7 +1060,8 @@ def main(argv: list[str] | None = None) -> int:
             "targets": len(targets),
             "limitations": [
                 "visual review is still required for heads/hair, overlaps, and microtext",
-                "general Action Bar and form interaction smoke is not included beyond final-dev3 Hero state sync",
+                "lead-form submission and broader click interaction smoke remain separate gates",
+                "the known unused hero-duo-air preload timing warning is excluded",
             ],
             "suites": suites,
             "totals": {"pass": passed, "fail": failed, "total": len(results)},

@@ -350,8 +350,10 @@ def main() -> int:
             problems.append(f"{branch}: нет изолирующего класса Hero A")
         if branch == "hero-b-call-first" and 'class="hero hero--call-first"' not in html:
             problems.append(f"{branch}: нет изолирующего класса Hero B")
-        if branch == "v2-lora-inter" and "FONT-VARIANT-V2-MOBILE v1.0.0 | 2026-08-11" not in styles:
+        if branch == "v2-lora-inter" and "FONT-VARIANT-V2-MOBILE v1.1.0 | 2026-08-13" not in styles:
             problems.append(f"{branch}: нет mobile overflow-fix")
+        if branch == "v3-literata-manrope" and "FONT-VARIANT-V3-MOBILE v1.0.0 | 2026-08-13" not in styles:
+            problems.append(f"{branch}: нет effective-width CTA-fix")
         if branch == "review-numbered":
             labels = re.findall(r'data-copy-id="([^"]+)"', html)
             if labels != source_copy_ids:

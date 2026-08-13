@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 DATE = "2026-08-13"
 MARKER = f"FINAL-DEV3-DESIGN v{VERSION} | {DATE}"
 MARKER_RE = re.compile(
@@ -26,7 +26,12 @@ HERO_BUSINESS_SCRIPT_TAG = f'<script src="{HERO_BUSINESS_SCRIPT}" defer></script
 HERO_BUSINESS_SCRIPT_SNIPPET = f"\n{HERO_BUSINESS_SCRIPT_TAG}"
 ACTION_BAR_TOP_VISIBILITY_TOKENS = (
     "var finalDev3TopOnly = document.body.classList.contains('page--final-dev3');",
-    "if (finalDev3TopOnly) return window.scrollY > 1;",
+    "var finalDev3HeroPassed = false;",
+    "if (window.scrollY <= 1) {",
+    "finalDev3HeroPassed = false;",
+    "if (!isIntersecting && rect.top < 0) finalDev3HeroPassed = true;",
+    "finalDev3HeroPassed = true;",
+    "return finalDev3HeroPassed;",
 )
 
 

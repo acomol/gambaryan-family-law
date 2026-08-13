@@ -72,12 +72,14 @@ VARIANTS = {
     },
 }
 
-V2_MOBILE_LAYOUT_VERSION = "1.0.0"
-V2_MOBILE_LAYOUT_UPDATED = "2026-08-11"
+V2_MOBILE_LAYOUT_VERSION = "1.1.0"
+V2_MOBILE_LAYOUT_UPDATED = "2026-08-13"
 V2_MOBILE_LAYOUT_CSS = f"""
 
 /* FONT-VARIANT-V2-MOBILE v{V2_MOBILE_LAYOUT_VERSION} | {V2_MOBILE_LAYOUT_UPDATED}
-   Lora/Inter: длинные русские строки не должны расширять страницу на 360px. */
+   Lora/Inter: длинные русские строки не должны расширять страницу на 360px.
+   На коротком экране с classic scrollbar заголовок получает 12px бокового
+   воздуха и сохраняет четыре строки без изменения кегля или отступов. */
 @media (max-width: 380px) {{
   .precedent-card__text,
   .precedent-card__actions {{
@@ -94,6 +96,33 @@ V2_MOBILE_LAYOUT_CSS = f"""
     text-align: center;
   }}
 }}
+
+@media (max-width: 360px) and (min-height: 600px) and (max-height: 668px) {{
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero__title {{
+    width: calc(100% + 12px);
+    max-width: none;
+    margin-inline: -6px;
+  }}
+}}
+"""
+
+V3_MOBILE_LAYOUT_VERSION = "1.0.0"
+V3_MOBILE_LAYOUT_UPDATED = "2026-08-13"
+V3_MOBILE_LAYOUT_CSS = f"""
+
+/* FONT-VARIANT-V3-MOBILE v{V3_MOBILE_LAYOUT_VERSION} | {V3_MOBILE_LAYOUT_UPDATED}
+   Literata/Manrope: classic 15px scrollbar может сузить nominal 360px до
+   345px и перенести лид на четвёртую строку. На двух коротких экранах даём
+   лиду 12px из бокового воздуха; размеры, межблочные отступы, фото и crop
+   остаются без изменений. */
+@media (max-width: 360px) and (min-height: 600px) and (max-height: 668px) {{
+  .hero:not(.hero--final-dev1):not(.hero--actions-first) .hero__lede {{
+    width: calc(100% + 12px);
+    max-width: none;
+    margin-inline: -6px;
+  }}
+}}
+
 """
 
 
@@ -225,6 +254,8 @@ def build(n: int) -> dict:
                     styles, count=1)
     if n == 2:
         styles += V2_MOBILE_LAYOUT_CSS
+    if n == 3:
+        styles += V3_MOBILE_LAYOUT_CSS
     (dest / "styles.css").write_text(styles, encoding="utf-8")
 
     # подмена preload-ссылок
@@ -287,6 +318,10 @@ def verify(report: dict) -> list[str]:
 
     if report["variant"] == 2:
         marker = f"FONT-VARIANT-V2-MOBILE v{V2_MOBILE_LAYOUT_VERSION} | {V2_MOBILE_LAYOUT_UPDATED}"
+        if marker not in styles:
+            problems.append(f"в styles.css нет маркера {marker}")
+    if report["variant"] == 3:
+        marker = f"FONT-VARIANT-V3-MOBILE v{V3_MOBILE_LAYOUT_VERSION} | {V3_MOBILE_LAYOUT_UPDATED}"
         if marker not in styles:
             problems.append(f"в styles.css нет маркера {marker}")
 

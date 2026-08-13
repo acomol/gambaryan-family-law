@@ -1,5 +1,5 @@
 > **HISTORICAL / SUPERSEDED AS CURRENT 2026-08-11.** Этот отчёт подтверждает
-> только `final-dev3 v1.1.0`; локальный `v2.0.0` с клиентским copy-контрактом
+> только `final-dev3 v1.1.0`; локальный `v2.0.2` с клиентским copy-контрактом
 > пока не опубликован. Актуальные входы: [`../RESUME.md`](../RESUME.md) и
 > [`../tasks/2026-08-11-client-approved-copy-only.md`](../tasks/2026-08-11-client-approved-copy-only.md).
 

@@ -1,10 +1,10 @@
 # Какие разрешённые блоки не используются
 
-**Версия:** `CONTENT-MISSING v2.1.0`
+**Версия:** `CONTENT-MISSING v2.1.1`
 
-**Дата:** `2026-08-11`
+**Дата:** `2026-08-13`
 
-**Статус:** `CURRENT COVERAGE REPORTED / LOCAL PASS / LIVE PENDING`
+**Статус:** `CURRENT COVERAGE REPORTED / LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
 
 ## Итог
 
@@ -30,8 +30,13 @@ HTML targets (source/standalone и 11 пар Preview). Не используют
 исключён явным решением владельца; остальные не требуются контрактом.
 
 Предыдущий результат `45/45` относится к отменённой промежуточной сборке. Новый
-allowlist-кандидат прошёл локальный verifier и browser matrix `173/173`, но
-stable URL остаются `HISTORICAL LIVE`; новый кандидат — `LIVE PENDING`.
+allowlist-кандидат сохраняет coverage `38/45` и после изменений повторно прошёл
+verifier и browser matrix
+`177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`. Прежние
+заявления `173/173` и manual PASS для текущего кандидата —
+`HISTORICAL / INVALIDATED` независимым Claude review. Stable URL остаются
+`HISTORICAL LIVE`; deploy запрещён до final full QA и отдельного разрешения
+владельца.
 
 ## Related
 

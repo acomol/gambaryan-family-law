@@ -1,6 +1,6 @@
 # Задание: только утверждённый клиентом текст во всех Preview
 
-**Версия:** `CLIENT-APPROVED-COPY-ONLY v1.1.1`
+**Версия:** `CLIENT-APPROVED-COPY-ONLY v1.1.2`
 
 **Дата:** `2026-08-13`
 
@@ -29,7 +29,10 @@
   запрещены явным решением владельца;
 - запрещены прежние proof-тексты и редакция «ВПЕРВЫЕ…».
 - design baseline не меняется: сохраняются утверждённые композиции, исходные
-  Hero assets/crop, шрифты вариантов и Action Bar `2.3.3`.
+  Hero assets/crop и шрифты вариантов; Action Bar обновлён до `2.3.4`. На
+  effective-width `345×600/668` разрешены только variant-only ширина Lora H1
+  `+12px` в V2 и Manrope-lede `+12px` в V3; дизайн и межблочные отступы не
+  меняются.
 
 ## Архитектура
 
@@ -49,13 +52,15 @@
 | Контракт | Версия |
 |---|---|
 | `FINAL-DEV1-HERO` | `2.0.0 | 2026-08-11` |
-| `FINAL-DEV3-DESIGN` | `2.0.1 | 2026-08-13` |
-| `ACTION-BAR-SPEC` | `2.3.3 | 2026-08-13` |
+| `FINAL-DEV3-DESIGN` | `2.0.2 | 2026-08-13` |
+| `ACTION-BAR-SPEC` | `2.3.4 | 2026-08-13` |
 | `CLIENT-PREVIEW-MOBILE` | `1.1.0 | 2026-08-11` |
 | `LEAD-CONTRACT` | `2.0.0 | 2026-08-11` |
 | `REVIEW-NUMBERED` | `2.0.0 | 2026-08-11` |
 | `CLIENT-COPY-CONTRACT/VERIFIER` | `1.0.0 | 2026-08-11` |
-| `PREVIEW-BROWSER-QA-RUNNER` | `1.3.1 | 2026-08-13` |
+| `FONT-VARIANT-V2-MOBILE` | `1.1.0 | 2026-08-13` |
+| `FONT-VARIANT-V3-MOBILE` | `1.0.0 | 2026-08-13` |
+| `PREVIEW-BROWSER-QA-RUNNER` | `1.3.2 | 2026-08-13` |
 
 ## Сборка и проверка
 
@@ -68,7 +73,12 @@
    сторонах `960/961px`, коротком mobile и desktop.
 5. Проверить Action Bar и `final-dev3`: Hero меняется по той же карте рабочего
    времени, без второго timer; WhatsApp использует `wa.me` без `?text=`;
-   после возврата вверх при `scrollY > 1` панель остаётся видимой.
+   первый downscroll остаётся hidden до геометрического прохода `.hero__phone`,
+   после прохода возврат на `scrollY > 1` остаётся visible, а `scrollY <= 1`
+   скрывает панель/demo и сбрасывает latch.
+6. Для `v2-lora-inter` и `v3-literata-manrope` проверить `345×600/668`,
+   моделирующие nominal `360px` с classic scrollbar `15px`: Lora H1 `5→4`
+   строки, Manrope-lede `4→3`; без изменений шрифтов/crop/отступов.
 
 ## Приёмка
 
@@ -79,16 +89,24 @@
 - [x] смыслового текста вне client/owner allowlist нет;
 - [x] `SYSTEM-UI` не добавляет новых фактов/обещаний;
 - [x] `Email`, `topic`, proof-тексты и «ВПЕРВЫЕ…» отсутствуют;
-- [x] неутверждённый WhatsApp prefill отсутствует; Action Bar `2.3.3`;
-- [x] source/build markers и версии согласованы;
-- [x] browser matrix и overflow gates проходят: `173/173`;
+- [x] неутверждённый WhatsApp prefill отсутствует; markers Action Bar `2.3.4`
+  повторно подтверждены в source и всех builds;
+- [x] source/build markers и версии согласованы после полной пересборки;
+- [x] browser matrix и overflow gates: итог
+  `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`;
+- [x] regression `final-dev3`: `0 → 2 → 50 → 100 → 320` hidden → pass Hero
+  visible → `320` visible → `0` reset → `320` hidden;
+- [x] ручной visual QA повторён для текущего кандидата, включая
+  `v2-lora-inter` и `v3-literata-manrope` на `345×600/668`;
 - [x] production и текущие live Preview не изменены: deployment не выполнялся.
 
 ## Публикация
 
 Ни Preview, ни production не деплоить в рамках этой задачи. Текущие live PASS
-сохраняются только как `HISTORICAL`; новый локальный кандидат — `PENDING LIVE`
-до явного разрешения владельца.
+сохраняются только как `HISTORICAL`. Прежние заявления `173/173` и manual PASS
+для текущего кандидата — `HISTORICAL / INVALIDATED` независимым Claude review.
+Новый локальный кандидат — `LOCAL QA PASS / LIVE PENDING` до явного разрешения
+владельца на deploy.
 
 ## Related
 

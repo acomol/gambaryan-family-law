@@ -1,17 +1,40 @@
-> **HISTORICAL / SUPERSEDED AS CURRENT 2026-08-11.** Приёмка ниже относится к
-> прежним `2.3.1`/`v1.1.0` и review со 102 номерами. Текущий allowlist-gate:
-> [`2026-08-11-client-approved-copy-only.md`](2026-08-11-client-approved-copy-only.md),
+> **CURRENT ADDENDUM 2026-08-13.** Историческая приёмка ниже относится к
+> прежним `2.3.1`/`v1.1.0` и review со 102 номерами. Текущий кандидат — Action
+> Bar `2.3.4`, `final-dev3 2.0.2`, runner `1.3.2` — имеет статус
+> `LOCAL QA PASS / LIVE PENDING`. Прежние заявления `173/173` и manual PASS для него —
+> `HISTORICAL / INVALIDATED` независимым Claude review. Действующий allowlist
+> gate: [`2026-08-11-client-approved-copy-only.md`](2026-08-11-client-approved-copy-only.md),
 > точка входа: [`../RESUME.md`](../RESUME.md).
 
 # Полная browser/responsive-приёмка клиентских Preview — HISTORICAL
 
-**Версия:** `PREVIEW-BROWSER-QA v1.2.1`
+**Версия:** `PREVIEW-BROWSER-QA v1.2.2`
 
-**Дата:** `2026-08-11`
+**Дата:** `2026-08-13`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Статус:** `HISTORICAL LIVE PASS 11/11 / SUPERSEDED AS CURRENT`
+**Статус:** `HISTORICAL LIVE PASS 11/11 / CURRENT LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+
+## Текущий delta-gate `2026-08-13`
+
+- Полный run runner `1.3.2` должен дать
+  `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`.
+- Четыре новые cells — `345×600` и `345×668` для `v2-lora-inter` и
+  `v3-literata-manrope`: effective width nominal `360px` при classic scrollbar
+  `15px`.
+- V2: `FONT-VARIANT-V2-MOBILE v1.1.0 | 2026-08-13`, только Lora H1 width
+  `+12px`, ожидаемый перенос `5→4` строки.
+- V3: `FONT-VARIANT-V3-MOBILE v1.0.0 | 2026-08-13`, только Manrope lede width
+  `+12px`, ожидаемый перенос `4→3` строки.
+- В обоих вариантах дизайн, семейства/размеры шрифтов, photo source/crop и
+  межблочные отступы не меняются.
+- Regression `final-dev3`: `0 → 2 → 50 → 100 → 320` hidden → pass Hero visible
+  → `320` visible → `0` reset → `320` hidden. Form/menu/focus скрывают
+  bar/demo независимо от latch.
+- Полный автоматический прогон `177/177` и повторный manual visual QA пройдены.
+  Live aliases остаются историческими; deploy запрещён без
+  отдельного разрешения владельца.
 
 ## Цель
 

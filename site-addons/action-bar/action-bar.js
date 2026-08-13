@@ -1,4 +1,4 @@
-/* ACTION-BAR-SPEC v2.3.3 | 2026-08-13
+/* ACTION-BAR-SPEC v2.3.4 | 2026-08-13
    ========================================================================
    Мобильная панель действий: зонная модель.
 
@@ -48,6 +48,7 @@
   var demoStateLabel = demoToggle && demoToggle.querySelector('[data-business-demo-state]');
   var hasIntersectionObserver = 'IntersectionObserver' in window;
   var finalDev3TopOnly = document.body.classList.contains('page--final-dev3');
+  var finalDev3HeroPassed = false;
   var businessClock = null;
   var businessTimer = null;
   var demoBusinessState = null;
@@ -132,7 +133,14 @@
   }
 
   function isPastHero(rect, isIntersecting) {
-    if (finalDev3TopOnly) return window.scrollY > 1;
+    if (finalDev3TopOnly) {
+      if (window.scrollY <= 1) {
+        finalDev3HeroPassed = false;
+        return false;
+      }
+      if (!isIntersecting && rect.top < 0) finalDev3HeroPassed = true;
+      return finalDev3HeroPassed;
+    }
     return !isIntersecting && rect.top < 0;
   }
 

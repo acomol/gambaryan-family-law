@@ -1,6 +1,6 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v2.1.2`
+**Версия:** `HANDOFF-RESUME v2.1.3`
 
 **Обновлено:** `2026-08-13`
 
@@ -21,23 +21,45 @@
 - `Email`, «Тема обращения»/`topic`, proof и «ВПЕРВЫЕ…» отменены;
 - WhatsApp prefill отменён; Action Bar использует `wa.me` без `?text=`.
 - owner correction меняет только copy/form contract: утверждённые композиции,
-  Hero assets/crop, Playfair/Onest и Action Bar `2.3.3` сохраняются.
+  Hero assets/crop и Playfair/Onest сохраняются; текущий Action Bar — `2.3.4`.
 
 ## Текущие локальные контракты
 
 | Контракт | Версия | Статус |
 |---|---:|---|
-| Client Copy contract/verifier | `1.0.0` | LOCAL PASS: allowlist + owner override |
-| Action Bar | `2.3.3` | LOCAL PASS; live `2.3.1` historical |
-| Client Preview Mobile | `1.1.0` | LOCAL PASS; live `1.0.0` historical |
-| `final-dev1` Hero | `2.0.0` | LOCAL PASS; live `1.3.0` historical |
-| `final-dev3` Design | `2.0.1` | LOCAL PASS; live `1.1.0` historical |
-| Lead schema | `2.0.0` | LOCAL PASS: только name/phone |
-| Review Numbered | `2.0.0` | LOCAL PASS: реально используемые client/owner ID |
-| Browser QA runner | `1.3.1` | LOCAL PASS: `173/173` |
+| Client Copy contract/verifier | `1.0.0` | UNCHANGED; повторить в final full QA |
+| Action Bar | `2.3.4` | LOCAL QA PASS; live `2.3.1` historical |
+| Client Preview Mobile | `1.1.0` | UNCHANGED; live `1.0.0` historical |
+| `final-dev1` Hero | `2.0.0` | UNCHANGED; live `1.3.0` historical |
+| `final-dev3` Design | `2.0.2` | LOCAL QA PASS; live `1.1.0` historical |
+| Lead schema | `2.0.0` | UNCHANGED; повторить name/phone gate |
+| Review Numbered | `2.0.0` | UNCHANGED; повторить client/owner gate |
+| Font Variant V2 Mobile | `1.1.0` | LOCAL QA PASS: effective-width fix Lora H1 |
+| Font Variant V3 Mobile | `1.0.0` | LOCAL QA PASS: effective-width fix Manrope lede |
+| Browser QA runner | `1.3.2` | LOCAL PASS: `177/177` |
 
 Версии контракта датированы `2026-08-11` или `2026-08-13`. Live aliases пока обслуживают предыдущие
 контракты и считаются `HISTORICAL LIVE PASS`, а не текущим результатом.
+
+## Текущая regression-семантика
+
+- Только в `final-dev3` Action Bar и demo-switch скрыты до первого
+  геометрического прохода `.hero__phone` вверх за viewport.
+- После прохода latch остаётся armed: при возврате внутрь Hero и `scrollY > 1`
+  Action Bar/demo остаются видимыми.
+- `scrollY <= 1` скрывает оба элемента и сбрасывает latch; форма, открытое меню
+  и фокус поля скрывают их независимо от latch.
+- Обязательная последовательность: `0 → 2 → 50 → 100 → 320` — hidden;
+  проход Hero — visible; возврат на `320` — visible; `0` — reset; повторный
+  `320` — hidden.
+- Для `v2-lora-inter` и `v3-literata-manrope` добавлены effective-width cells
+  `345×600` и `345×668`, моделирующие nominal `360px` с classic scrollbar
+  `15px` — четыре cells суммарно.
+- `FONT-VARIANT-V2-MOBILE v1.1.0 | 2026-08-13`: только variant-only ширина
+  Lora H1 `+12px`, чтобы сохранить `4` строки вместо `5`.
+- `FONT-VARIANT-V3-MOBILE v1.0.0 | 2026-08-13`: только variant-only ширина
+  Manrope-lede `+12px`, чтобы сохранить `3` строки вместо `4`.
+- В обоих вариантах дизайн, шрифты, crop и межблочные отступы не меняются.
 
 ## Git и границы
 
@@ -46,19 +68,22 @@
 - `build/` — только производные; вручную не редактировать;
 - production deploy и реальный Albato POST запрещены без отдельного разрешения;
 - в этой задаче Preview также не деплоить: сначала локальная приёмка и передача
-  на независимое review.
+  на финальное подтверждение ведущего агента.
 
 ## Локальная приёмка и следующий шаг
 
-1. [x] Frozen source, client/owner allowlist, форма name/phone-only и отсутствие
-   WhatsApp prefill проверены.
-2. [x] Standalone и все одиннадцать Preview пересобраны.
-3. [x] Copy verifier, preview verifier, lead tests и browser matrix повторно
-   прошли после scoped visibility-fix final-dev3 (`173/173`).
-4. [x] Локальный visual QA голов/наложений и центрирования пройден; реальный
-   iPhone safe-area остаётся внешним шагом.
-5. [x] Functional commit `fdba4c2` и CI fix `d804450` отправлены в feature
-   branch; Draft PR №3 открыт, quality run `31512971589` — PASS.
+1. [ ] После пересборки повторить frozen-source, client/owner allowlist,
+   name/phone-only и отсутствие WhatsApp prefill во всех Preview.
+2. [ ] Пересобрать Standalone и все одиннадцать Preview с Action Bar `2.3.4`
+   и `final-dev3 2.0.2`.
+3. [x] Повторить copy/preview verifiers, lead tests и полную browser matrix
+   `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`.
+4. [x] Повторить ручной visual QA голов/наложений/центрирования, включая
+   `v2-lora-inter` и `v3-literata-manrope` на `345×600/668`; реальный iPhone
+   safe-area остаётся внешним шагом.
+5. [ ] После финальной приёмки зафиксировать текущий кандидат в feature branch
+   и получить новый CI result. Коммиты `fdba4c2`/`d804450` и run `31512971589`
+   относятся к предыдущему состоянию.
 6. [ ] Получить явное решение владельца на Preview deploy.
 7. [ ] После deploy выполнить 11/11 served-content/live-readback.
 
@@ -72,7 +97,7 @@ python -B scripts/build-review-numbered.py
 python -B scripts/verify-client-copy.py
 python -B scripts/verify-client-previews.py
 node scripts/verify-lead-hook.mjs
-python scripts/qa-browser-matrix.py http://127.0.0.1:8098
+python scripts/qa-browser-matrix.py http://127.0.0.1:8098 --all-previews
 git diff --check
 ```
 
@@ -89,9 +114,14 @@ git diff --check
 подтверждают финальный allowlist-контракт. Soft-404
 исключается только проверкой served markers/body class, а не одним HTTP 200.
 
+Прежние утверждения о `173/173` и ручном visual PASS именно для текущего
+кандидата имеют статус `HISTORICAL / INVALIDATED`: независимый Claude review
+нашёл stateless `scrollY > 1` regression и отсутствующие effective-width cells.
+Они не закрывают новую матрицу `177/177` и ручную перепроверку.
+
 ## Незакрытые внешние шаги
 
-- независимый review агента;
+- финальный full QA и подтверждение ведущего агента;
 - решение владельца о публикации Preview;
 - Preview secrets, Albato Catch, дедупликация и readback реальной записи;
 - ручной visual QA голов/наложений и реальный iPhone safe-area;

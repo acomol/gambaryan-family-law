@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.1.2`
+**Версия:** `2.1.3`
 
 **Обновлено:** `2026-08-13`
 
@@ -16,7 +16,7 @@
 
 **Preview release `final-dev3`:** `88efa2ce0fb9dc5903e1f435310b372383a20d09`
 
-**Кандидат `final-dev3 v2.0.1`:** `LOCAL QA PASS / LIVE PENDING`
+**Кандидат `final-dev3 v2.0.2`:** `LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
 
 **Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
@@ -34,14 +34,24 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
 | Client Copy contract/verifier | `1.0.0` | LOCAL PASS: allowlist + owner override |
-| Action Bar | `2.3.3` | LOCAL PASS; live `2.3.1` historical |
-| Client Preview Mobile | `1.1.0` | LOCAL PASS; live `1.0.0` historical |
-| `FINAL-DEV1-HERO` | `2.0.0` | LOCAL PASS; live `1.3.0` historical |
-| `FINAL-DEV3-DESIGN` | `2.0.1` | LOCAL PASS; live `1.1.0` historical |
-| Lead contract | `2.0.0` | LOCAL PASS: name/phone only; live `1.1.0` historical |
-| Review Numbered | `2.0.0` | LOCAL PASS: 38 used client ID + owner block; прежние 102 historical |
-| Browser QA runner | `1.3.1` | LOCAL PASS: `173/173` |
-| Этот чек-лист | `2.1.2` | active |
+| Action Bar | `2.3.4` | LOCAL QA PASS; live `2.3.1` historical |
+| Client Preview Mobile | `1.1.0` | UNCHANGED; live `1.0.0` historical |
+| `FINAL-DEV1-HERO` | `2.0.0` | UNCHANGED; live `1.3.0` historical |
+| `FINAL-DEV3-DESIGN` | `2.0.2` | LOCAL QA PASS; live `1.1.0` historical |
+| Lead contract | `2.0.0` | LOCAL PASS: name/phone only |
+| Review Numbered | `2.0.0` | LOCAL PASS: client/owner gate |
+| Font Variant V2 Mobile | `1.1.0` | LOCAL PASS: Lora H1 effective-width fix |
+| Font Variant V3 Mobile | `1.0.0` | LOCAL PASS: Manrope lede effective-width fix |
+| Browser QA runner | `1.3.2` | LOCAL PASS: `177/177` |
+| Этот чек-лист | `2.1.3` | active |
+
+### Исправление статуса после независимого review
+
+Прежние заявления `173/173` и manual visual PASS именно для текущего кандидата
+имеют статус `HISTORICAL / INVALIDATED` после независимого Claude review.
+Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3, а scoped
+`scrollY > 1` допускал показ Action Bar до первого прохода Hero. Эти результаты
+не закрывают ни автоматическую матрицу `177/177`, ни повторный ручной visual QA.
 
 ### A. Источник и copy
 
@@ -62,16 +72,21 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 
 ### B. Action Bar и WhatsApp
 
-- [x] Marker/source/manifest/verifier согласованы на `2.3.3 | 2026-08-13`.
+- [x] FINAL FULL QA: marker/source/manifest/build согласованы на
+  `2.3.4 | 2026-08-13`.
 - [x] Все WhatsApp Action Bar href равны `https://wa.me/972545490623` без
   query `?text=` и без неутверждённого prefill.
 - [x] Open/closed расписание: `Asia/Jerusalem`, вс–чт `[09:00,18:00)`.
 - [x] Demo-switch меняет видимую подпись, панель и `final-dev3` Hero синхронно.
 - [x] Hero не создаёт второй timer/карту состояния.
-- [x] Панель скрыта на Hero, у формы, при menu open и focus in form.
-- [x] Только в `final-dev3`: после прокрутки вниз и возврата вверх при
-  `scrollY > 1` панель и demo-switch остаются видимыми; на `scrollY = 0` и у
-  формы оба скрыты.
+- [x] FINAL FULL QA: на десяти базовых вариантах панель скрыта на Hero; на всех
+  вариантах она скрыта у формы, при menu open и focus in form.
+- [x] FINAL FULL QA: только в `final-dev3` первый downscroll остаётся hidden до
+  геометрического прохода `.hero__phone`; после прохода latch сохраняет
+  видимость при возврате внутрь Hero и `scrollY > 1`; `scrollY <= 1` скрывает
+  bar/demo и сбрасывает latch; форма/menu/focus скрывают независимо от latch.
+- [x] Regression sequence: `0 → 2 → 50 → 100 → 320` hidden → pass Hero visible
+  → `320` visible → `0` reset → `320` hidden; bar/demo overlap area `0`.
 
 ### C. Форма и lead `2.0.0`
 
@@ -82,16 +97,25 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 
 ### D. Сборка и browser QA
 
-- [x] После scoped visibility-fix все builders завершаются с кодом `0`; `build/`
-  не правился вручную.
-- [x] После scoped visibility-fix `verify-client-copy`, `verify-client-previews`,
-  lead tests — PASS.
-- [x] После scoped visibility-fix Browser runner `1.3.1` проходит все
-  одиннадцать Preview: `173/173`.
-- [x] Проверены `360×600`, `390×724`, `960×760`, `961×760`, `1024×768`,
-  `1280×720`, `1440×900`; horizontal overflow `0`.
-- [x] LOCAL manual visual: головы/волосы, текст поверх фото, CTA и форма по
-  центру проверены на `360×600`, `390×844` и `1440×900`; реальный iPhone
+- [x] FINAL FULL QA: все builders завершаются с кодом `0`; `build/` не правился
+  вручную.
+- [x] FINAL FULL QA: `verify-client-copy`, `verify-client-previews` и lead tests
+  повторно проходят после пересборки.
+- [x] FINAL FULL QA: Browser runner `1.3.2` проходит все одиннадцать Preview:
+  `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`.
+- [x] Проверены `360×600`, `360×668`, `390×724`, `960×760`, `961×760`, `1024×768`,
+  `1280×720`, `1440×900`, а также V2/V3 на `345×600/668`; horizontal overflow
+  `0`.
+- [x] `FONT-VARIANT-V2-MOBILE v1.1.0 | 2026-08-13`: effective-width fix
+  ограничен шириной Lora H1 `+12px`; H1 занимает `4` строки вместо `5`, CTA
+  сохраняет bottom-safe `≥8px`.
+- [x] `FONT-VARIANT-V3-MOBILE v1.0.0 | 2026-08-13`: effective-width fix
+  ограничен шириной Manrope-lede `+12px`; lede занимает `3` строки вместо `4`,
+  CTA сохраняет bottom-safe `≥8px`.
+- [x] В V2/V3 дизайн, семейства/размеры шрифтов, photo source/crop и
+  межблочные отступы не изменены.
+- [x] Повторить manual visual: головы/волосы, текст поверх фото, CTA и форма по
+  центру на репрезентативных viewport и V2/V3 `345×600/668`; реальный iPhone
   safe-area остаётся отдельным внешним шагом.
 - [x] KNOWN OPEN: Zoom 200% defect остаётся OPEN; полный WCAG AA PASS не
   заявляется.
@@ -99,10 +123,12 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 ### E. Git, публикация и передача
 
 - [x] Изменения только в feature branch; secrets отсутствуют.
-- [x] `git diff --check`, functional commit `fdba4c2`, CI fix `d804450`, push и
-  GitHub Actions quality run `31512971589` — PASS; Draft PR №3 открыт.
-- [x] Production и live Preview не менялись во время финальной локальной
-  приёмки после owner correction.
+- [ ] После full QA выполнить `git diff --check`, commit/push текущего кандидата
+  и получить новый CI result. `fdba4c2`, `d804450` и run `31512971589`
+  относятся к предыдущему состоянию; Draft PR №3 остаётся историческим
+  контекстом ветки.
+- [x] Live Preview остаются историческими; production/Preview deploy текущего
+  кандидата не выполнялся.
 - [ ] Preview deployment выполняется только после отдельного разрешения.
 - [ ] После разрешения: 11/11 served markers/behavior, API `405`, production
   readback и soft-404 exclusion.
@@ -115,8 +141,10 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 1.1.0`, Action Bar `2.3.1`, Client Preview Mobile `1.0.0`, lead `1.1.0`, review
 со 102 номерами) и не закрывают действующий gate выше. Промежуточный PASS
 `45/45` и сопровождавший его старый прогон `173/173` получены до финальных
-решений вернуть Юлию и убрать topic. Текущий отдельный прогон после коррекции —
-`173/173 LOCAL PASS` — зафиксирован в действующем gate выше.
+решений вернуть Юлию и убрать topic. Позднейшие заявления `173/173` и manual
+visual PASS для текущего кандидата также `HISTORICAL / INVALIDATED` независимым
+Claude review; действующий gate выше требует новый `177/177` и ручную
+перепроверку.
 Упоминания Email, topic, proof и «ВПЕРВЫЕ…» — история отменённых решений; точный
 блок Юлии, напротив, остаётся действующим `OWNER-APPROVED` override.
 

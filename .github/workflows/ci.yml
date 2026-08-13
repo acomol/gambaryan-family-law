@@ -53,6 +53,18 @@ jobs:
           python -B scripts/verify-client-previews.py
           node scripts/verify-lead-hook.mjs
 
+      - name: Browser QA matrix
+        run: |
+          python -m http.server 8098 > /tmp/gambarian-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:8098/ >/dev/null && break
+            sleep 0.25
+          done
+          curl -fsS http://127.0.0.1:8098/ >/dev/null
+          python scripts/qa-browser-matrix.py http://127.0.0.1:8098/ --all-previews
+
       - name: Lint
         run: npm run lint
 
