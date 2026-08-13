@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.1.3`
+**Версия:** `2.1.4`
 
 **Обновлено:** `2026-08-13`
 
@@ -17,6 +17,9 @@
 **Preview release `final-dev3`:** `88efa2ce0fb9dc5903e1f435310b372383a20d09`
 
 **Кандидат `final-dev3 v2.0.2`:** `LOCAL QA PASS / LIVE PENDING / NO DEPLOY`
+
+**Функциональный кандидат:** `d3032b70d327d071ebc82b75b23a860fbba1e74c`;
+GitHub Actions run `31691637548` — `success`
 
 **Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
@@ -123,10 +126,9 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
 ### E. Git, публикация и передача
 
 - [x] Изменения только в feature branch; secrets отсутствуют.
-- [ ] После full QA выполнить `git diff --check`, commit/push текущего кандидата
-  и получить новый CI result. `fdba4c2`, `d804450` и run `31512971589`
-  относятся к предыдущему состоянию; Draft PR №3 остаётся историческим
-  контекстом ветки.
+- [x] После full QA выполнены `git diff --check`, commit/push функционального
+  кандидата `d3032b70d327d071ebc82b75b23a860fbba1e74c`; GitHub Actions run
+  `31691637548` завершён `success`, включая Browser QA `177/177`.
 - [x] Live Preview остаются историческими; production/Preview deploy текущего
   кандидата не выполнялся.
 - [ ] Preview deployment выполняется только после отдельного разрешения.

@@ -1,6 +1,6 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v2.1.3`
+**Версия:** `HANDOFF-RESUME v2.1.4`
 
 **Обновлено:** `2026-08-13`
 
@@ -72,18 +72,19 @@
 
 ## Локальная приёмка и следующий шаг
 
-1. [ ] После пересборки повторить frozen-source, client/owner allowlist,
+1. [x] После пересборки повторить frozen-source, client/owner allowlist,
    name/phone-only и отсутствие WhatsApp prefill во всех Preview.
-2. [ ] Пересобрать Standalone и все одиннадцать Preview с Action Bar `2.3.4`
+2. [x] Пересобрать Standalone и все одиннадцать Preview с Action Bar `2.3.4`
    и `final-dev3 2.0.2`.
 3. [x] Повторить copy/preview verifiers, lead tests и полную browser matrix
    `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`.
 4. [x] Повторить ручной visual QA голов/наложений/центрирования, включая
    `v2-lora-inter` и `v3-literata-manrope` на `345×600/668`; реальный iPhone
    safe-area остаётся внешним шагом.
-5. [ ] После финальной приёмки зафиксировать текущий кандидат в feature branch
-   и получить новый CI result. Коммиты `fdba4c2`/`d804450` и run `31512971589`
-   относятся к предыдущему состоянию.
+5. [x] Функциональный кандидат
+   `d3032b70d327d071ebc82b75b23a860fbba1e74c` запушен в feature branch;
+   GitHub Actions run `31691637548` завершён `success`, включая Browser QA
+   `177/177`.
 6. [ ] Получить явное решение владельца на Preview deploy.
 7. [ ] После deploy выполнить 11/11 served-content/live-readback.
 

@@ -1,6 +1,6 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v2.1.3`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v2.1.4`
 
 **Дата:** `2026-08-13`
 
@@ -71,7 +71,9 @@
 - [x] full browser matrix `PREVIEW-BROWSER-QA-RUNNER v1.3.2` — итог
   `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`;
 - [x] manual screenshots/visual inspection, включая V2/V3 `345×600/668`;
-- [ ] commit/push feature branch и новый CI result;
+- [x] функциональный кандидат `d3032b70d327d071ebc82b75b23a860fbba1e74c`
+  запушен в feature branch; GitHub Actions run `31691637548` завершён
+  `success`, включая Browser QA `177/177`;
 - [ ] явное разрешение владельца на Preview deploy получено;
 - [ ] 11/11 stable URL проверены по marker и served behavior;
 - [ ] production readback показывает отсутствие изменений.
