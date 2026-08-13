@@ -1,10 +1,10 @@
 # Задание: тёмные карточки фактов и owner-текст «более 900»
 
-**Версия:** `DARK-FACT-CARDS v1.0.0`
+**Версия:** `DARK-FACT-CARDS v1.0.1`
 
 **Дата:** `2026-08-13`
 
-**Статус:** `LOCAL PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
+**Статус:** `LOCAL + CI PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
 
 ## Решение владельца
 
@@ -88,7 +88,8 @@
 - [x] DOMRect-контроль пройден на desktop `1024/1280/1440/1920` и mobile
   `390/360` в обоих состояниях аккордеона;
 - [x] все одиннадцать Preview пересобраны из общего source;
-- [ ] CI на новом commit — PENDING;
+- [x] commit `3fd80dfe9af9710d29a8b6e632c341477e0ccabc` запушен;
+  GitHub Actions run `31701536955` завершён `success`;
 - [ ] deploy нового кандидата — только после отдельного разрешения владельца;
 - [ ] после deploy: live-readback минимум трёх Preview и production untouched.
 

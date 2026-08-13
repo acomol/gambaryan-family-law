@@ -1,11 +1,12 @@
 > ## Лендинг «Гамбарян и Партнёры»
 >
-> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v2.2.0 | 2026-08-13`
+> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v2.2.1 | 2026-08-13`
 >
-> **Текущий статус:** `LOCAL CANDIDATE PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`.
+> **Текущий статус:** `LOCAL + CI PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`.
 > Новый кандидат использует три тёмные карточки фактов, owner-текст
 > `fact-900-v1`, copy contract `1.1.0` и Browser runner `1.4.0`; локальная
-> матрица `177/177` прошла. Стабильные Preview URL всё ещё отдают release
+> матрица `177/177` и CI run `31701536955` на commit `3fd80df` прошли.
+> Стабильные Preview URL всё ещё отдают release
 > `75558d9`, где подтверждён desktop-клиппинг слова «прецедента» в карточке
 > `2.10`, поэтому прежний статус `READY FOR CLIENT` отменён. Production не
 > изменён; новый deploy требует отдельного разрешения владельца.

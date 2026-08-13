@@ -1,15 +1,16 @@
 # Одиннадцать Cloudflare Preview-версий для заказчика
 
-**Версия документа:** `2.6.0`; исполняемая Preview-карта — `2.4.0`
+**Версия документа:** `2.6.1`; исполняемая Preview-карта — `2.4.0`
 
 **Обновлено:** `2026-08-13`
 
-**Статус:** `LOCAL CANDIDATE PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
+**Статус:** `LOCAL + CI PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
 
 Стабильные aliases ниже обслуживают release из SHA
 `75558d904d2d1d41ffc9af075f2ea363b15c0b91`, где после публикации подтверждён
 desktop-клиппинг слова «прецедента» в общей карточке `2.10`. Эти URL пока не
 отдают новый dark-facts кандидат и не должны передаваться клиенту.
+Функциональный кандидат `3fd80df` прошёл GitHub Actions run `31701536955`.
 
 ## Ссылки и различия
 

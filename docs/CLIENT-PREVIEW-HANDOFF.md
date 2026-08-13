@@ -1,10 +1,10 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v2.3.0`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v2.3.1`
 
 **Дата:** `2026-08-13`
 
-**Статус:** `LOCAL CANDIDATE PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
+**Статус:** `LOCAL + CI PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
 
 ## Важное перед отправкой
 
@@ -17,6 +17,8 @@ served-content readback. Production не изменён.
 Локальный кандидат исправляет клиппинг, делает все три карточки тёмными и
 вводит owner-текст `fact-900-v1`. Copy contract `1.1.0`, неизменный verifier
 `1.0.0` и Browser runner `1.4.0` проходят; локальная матрица — `177/177`.
+Функциональный commit `3fd80dfe9af9710d29a8b6e632c341477e0ccabc` запушен;
+GitHub Actions run `31701536955` завершён `success`.
 
 ## Что одинаково во всех одиннадцати кандидатах
 

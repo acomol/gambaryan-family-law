@@ -1,10 +1,10 @@
 # Задание: только утверждённый клиентом текст во всех Preview
 
-**Версия:** `CLIENT-APPROVED-COPY-ONLY v1.3.0`
+**Версия:** `CLIENT-APPROVED-COPY-ONLY v1.3.1`
 
 **Дата:** `2026-08-13`
 
-**Статус:** `LOCAL PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
+**Статус:** `LOCAL + CI PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
 
 ## Цель
 

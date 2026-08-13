@@ -1,10 +1,10 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v2.3.0`
+**Версия:** `HANDOFF-RESUME v2.3.1`
 
 **Обновлено:** `2026-08-13`
 
-**Текущий статус:** `LOCAL CANDIDATE PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
+**Текущий статус:** `LOCAL + CI PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
 
 ## Главное решение владельца
 
@@ -74,7 +74,9 @@
 - production deploy и реальный Albato POST запрещены без отдельного разрешения;
 - Preview опубликованы из SHA `75558d904d2d1d41ffc9af075f2ea363b15c0b91`;
   у него подтверждён desktop-клиппинг `2.10`, поэтому ссылки не отправлять;
-- новый кандидат пока локальный; deploy не разрешён.
+- функциональный кандидат `3fd80dfe9af9710d29a8b6e632c341477e0ccabc`
+  закоммичен и запушен; GitHub Actions run `31701536955` — `success`;
+- Preview deploy нового кандидата не разрешён.
 
 ## Локальная приёмка dark-facts и следующий шаг
 
@@ -89,7 +91,8 @@
    fact-card и обоих состояний mobile-аккордеона; локально `177/177`.
 5. [x] Сохранить эталонные screenshots `1440`, `390 collapsed` и
    `390 expanded` в `docs/design-references/`.
-6. [ ] Commit/push и зелёный CI на новом HEAD.
+6. [x] Commit/push функционального кандидата `3fd80df`; GitHub Actions run
+   `31701536955` завершён `success`.
 7. [ ] Получить отдельное разрешение владельца на новый Preview deploy.
 8. [ ] После deploy повторить live-readback минимум трёх Preview и production
    isolation; только затем снять `DO NOT SEND`.

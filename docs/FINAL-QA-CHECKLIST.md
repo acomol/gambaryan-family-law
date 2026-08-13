@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.0`
+**Версия:** `2.3.1`
 
 **Обновлено:** `2026-08-13`
 
@@ -21,7 +21,9 @@
 **Предыдущий функциональный кандидат:** `d3032b70d327d071ebc82b75b23a860fbba1e74c`;
 GitHub Actions run `31691637548` — `success`
 
-**Новый dark-facts кандидат:** `LOCAL PASS / COMMIT + CI PENDING`
+**Новый dark-facts кандидат:** `LOCAL + CI PASS / LIVE PENDING / DO NOT SEND`;
+commit `3fd80dfe9af9710d29a8b6e632c341477e0ccabc`, GitHub Actions run
+`31701536955` — `success`
 
 **Опубликованный Preview release:** `75558d904d2d1d41ffc9af075f2ea363b15c0b91`;
 GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-за
@@ -54,7 +56,7 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
 | Browser QA runner | `1.4.0` | LOCAL PASS: `177/177`, fact-card clipping guard |
-| Этот чек-лист | `2.3.0` | active |
+| Этот чек-лист | `2.3.1` | active |
 
 ### Исправление статуса после независимого review
 
@@ -166,7 +168,9 @@ URL остаются `DO NOT SEND` до нового deploy/readback.
 - [x] Live Browser QA `177/177` и production readback для release `75558d9`
   прошли; полные UUID и последующий erratum — в
   [`reviews/2026-08-13-client-preview-live-release.md`](reviews/2026-08-13-client-preview-live-release.md).
-- [ ] Новый dark-facts кандидат закоммичен/запушен, CI зелёный.
+- [x] Новый dark-facts кандидат закоммичен/запушен: commit
+  `3fd80dfe9af9710d29a8b6e632c341477e0ccabc`; GitHub Actions run
+  `31701536955` завершён `success`.
 - [ ] Получено отдельное разрешение владельца на новый Preview deploy.
 - [ ] После deploy новые bytes и dark-facts поведение подтверждены минимум на
   трёх из одиннадцати; production повторно подтверждён неизменным.
