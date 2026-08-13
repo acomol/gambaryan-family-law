@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.3.2 | 2026-08-13
+"""PREVIEW-BROWSER-QA-RUNNER v1.4.0 | 2026-08-13
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -24,7 +24,8 @@ For live aliases, use a URL template (PowerShell users should quote it)::
 Stdout is JSON Lines: every ``cell`` record is one target/viewport PASS or
 FAIL, followed by one ``summary`` record with per-suite and total counts. A
 PASS means the page loaded with the expected Preview markers, no horizontal
-overflow, unexpected browser console/page errors or failed requests; Hero/photo, the real
+overflow, clipped fact-card content (including collapsed and expanded mobile
+accordion states), unexpected browser console/page errors or failed requests; Hero/photo, the real
 Chromium platform font used for title/body/CTA glyphs, and Action Bar breakpoint
 geometry also passed. Font coverage includes title, italic service heading,
 body and CTA text. Short portrait cells additionally require all Hero
@@ -57,7 +58,7 @@ from final_dev3_contract import (
 )
 
 
-RUNNER_VERSION = "1.3.2"
+RUNNER_VERSION = "1.4.0"
 ACTION_BAR_VERSION = "2.3.4"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.1.0"
 KNOWN_BENIGN_HERO_PRELOAD_WARNING = "was preloaded using link preload but not used within a few seconds"
@@ -390,6 +391,78 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               )
             : [];
           const barItemWidths = visibleBarItems.map((item) => item.getBoundingClientRect().width);
+          const factCards = [...document.querySelectorAll('.fact-card')];
+          const bounds = (rects) => rects.length ? {
+            left: Math.min(...rects.map((rect) => rect.left)),
+            right: Math.max(...rects.map((rect) => rect.right)),
+          } : { left: null, right: null };
+          const measureFactCards = () => factCards.map((card, index) => {
+            const cardRect = card.getBoundingClientRect();
+            const head = card.querySelector('.fact-card__head');
+            const headRect = head?.getBoundingClientRect() || null;
+            const childRects = [...card.querySelectorAll('*')]
+              .map((child) => child.getBoundingClientRect())
+              .filter((rect) => rect.width > 0 && rect.height > 0);
+            const textRects = [];
+            const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) {
+              const node = walker.currentNode;
+              if (!(node.nodeValue || '').trim()) continue;
+              const range = document.createRange();
+              range.selectNodeContents(node);
+              textRects.push(...[...range.getClientRects()].filter(
+                (rect) => rect.width > 0 && rect.height > 0
+              ));
+            }
+            const childBounds = bounds(childRects);
+            const textBounds = bounds(textRects);
+            const contentBounds = bounds([...childRects, ...textRects]);
+            const toggle = card.querySelector('.fact-card__toggle');
+            return {
+              index,
+              copyId: card.dataset.copyId || card.dataset.ownerCopyId || null,
+              text: (head?.textContent || '').replace(/\\s+/g, ' ').trim(),
+              cardClientWidth: card.clientWidth,
+              cardScrollWidth: card.scrollWidth,
+              cardOverflow: card.scrollWidth - card.clientWidth,
+              headClientWidth: head?.clientWidth ?? null,
+              headScrollWidth: head?.scrollWidth ?? null,
+              headOverflow: head ? head.scrollWidth - head.clientWidth : null,
+              cardLeft: cardRect.left,
+              cardRight: cardRect.right,
+              headLeft: headRect?.left ?? null,
+              headRight: headRect?.right ?? null,
+              childLeft: childBounds.left,
+              childRight: childBounds.right,
+              textLeft: textBounds.left,
+              textRight: textBounds.right,
+              contentLeft: contentBounds.left,
+              contentRight: contentBounds.right,
+              hasExpandableContent: Boolean(card.querySelector('p')),
+              togglePresent: Boolean(toggle),
+              ariaExpanded: toggle?.getAttribute('aria-expanded') ?? null,
+              isOpen: card.classList.contains('is-open'),
+            };
+          });
+          const setFactCardsExpanded = async (expanded) => {
+            factCards.forEach((card) => {
+              const toggle = card.querySelector('.fact-card__toggle');
+              if (!toggle) return;
+              const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+              if (isExpanded !== expanded) toggle.click();
+            });
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          };
+          let factCardAccordion = null;
+          if (innerWidth === 360 || innerWidth === 390) {
+            await setFactCardsExpanded(false);
+            const collapsed = measureFactCards();
+            await setFactCardsExpanded(true);
+            const expanded = measureFactCards();
+            await setFactCardsExpanded(false);
+            factCardAccordion = { collapsed, expanded };
+          }
+          const factCardMetrics = measureFactCards();
 
           return {
             viewport: { width: innerWidth, height: innerHeight },
@@ -398,6 +471,8 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               scrollWidth: root.scrollWidth,
               overflow: root.scrollWidth - root.clientWidth,
             },
+            factCards: factCardMetrics,
+            factCardAccordion,
             hero: {
               present: Boolean(hero),
               width: hero ? hero.getBoundingClientRect().width : 0,
@@ -602,6 +677,90 @@ def validate_metrics(
         failures.append(
             f"horizontal-overflow scroll={layout['scrollWidth']} client={layout['clientWidth']} expected={width}"
         )
+    def validate_fact_cards(cards: list[dict[str, Any]], state: str) -> None:
+        for card in cards:
+            card_scroll = card["cardScrollWidth"] > card["cardClientWidth"]
+            outside_left = (
+                card["contentLeft"] is not None
+                and card["contentLeft"] < card["cardLeft"]
+            )
+            outside_right = (
+                card["contentRight"] is not None
+                and card["contentRight"] > card["cardRight"]
+            )
+            head_scroll = (
+                card["headScrollWidth"] is not None
+                and card["headClientWidth"] is not None
+                and card["headScrollWidth"] > card["headClientWidth"]
+            )
+            reasons = [
+                reason
+                for reason, failed in (
+                    ("card-scroll-overflow", card_scroll),
+                    ("content-left-of-card", outside_left),
+                    ("content-right-of-card", outside_right),
+                    ("head-scroll-overflow", head_scroll),
+                )
+                if failed
+            ]
+            if reasons:
+                failures.append(
+                    "fact-card-horizontal-clipping "
+                    f"state={state} reasons={','.join(reasons)} "
+                    f"copy-id={card['copyId']} index={card['index']} "
+                    f"card-scroll={card['cardScrollWidth']} "
+                    f"card-client={card['cardClientWidth']} "
+                    f"card-overflow={card['cardOverflow']} "
+                    f"head-scroll={card['headScrollWidth']} "
+                    f"head-client={card['headClientWidth']} "
+                    f"head-overflow={card['headOverflow']} "
+                    f"card=[{card['cardLeft']},{card['cardRight']}] "
+                    f"head=[{card['headLeft']},{card['headRight']}] "
+                    f"child=[{card['childLeft']},{card['childRight']}] "
+                    f"text-bounds=[{card['textLeft']},{card['textRight']}] "
+                    f"content=[{card['contentLeft']},{card['contentRight']}] "
+                    f"text={card['text']!r}"
+                )
+
+    fact_cards = metrics["factCards"]
+    if not fact_cards:
+        failures.append("fact-cards-missing")
+    if width in {360, 390}:
+        accordion = metrics.get("factCardAccordion")
+        if not accordion:
+            failures.append("fact-card-mobile-accordion-metrics-missing")
+            validate_fact_cards(fact_cards, "restored-collapsed")
+        else:
+            expected_ids = [card["copyId"] for card in fact_cards]
+            for state, expected_expanded in (("collapsed", False), ("expanded", True)):
+                cards = accordion.get(state, [])
+                actual_ids = [card["copyId"] for card in cards]
+                if actual_ids != expected_ids:
+                    failures.append(
+                        f"fact-card-mobile-accordion-{state}-coverage="
+                        f"{actual_ids} expected={expected_ids}"
+                    )
+                validate_fact_cards(cards, state)
+                for card in cards:
+                    if card["hasExpandableContent"] and not card["togglePresent"]:
+                        failures.append(
+                            f"fact-card-mobile-accordion-{state}-toggle-missing "
+                            f"copy-id={card['copyId']}"
+                        )
+                    if not card["togglePresent"]:
+                        continue
+                    expected_aria = "true" if expected_expanded else "false"
+                    if (
+                        card["ariaExpanded"] != expected_aria
+                        or card["isOpen"] is not expected_expanded
+                    ):
+                        failures.append(
+                            f"fact-card-mobile-accordion-{state}-state "
+                            f"copy-id={card['copyId']} aria-expanded={card['ariaExpanded']} "
+                            f"is-open={card['isOpen']} expected={expected_aria}"
+                        )
+    else:
+        validate_fact_cards(fact_cards, "initial")
     if not hero["present"] or hero["width"] <= 0 or hero["height"] <= 0:
         failures.append("hero-missing-or-empty")
     if not hero["photoComplete"] or hero["photoWidth"] <= 0 or hero["photoHeight"] <= 0:

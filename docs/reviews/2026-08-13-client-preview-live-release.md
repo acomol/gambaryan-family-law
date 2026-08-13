@@ -1,8 +1,32 @@
 # Client Preview live release — 2026-08-13
 
-**Версия:** `CLIENT-PREVIEW-LIVE-RELEASE v1.0.0`
+**Версия:** `CLIENT-PREVIEW-LIVE-RELEASE v1.0.1`
 
-**Статус:** `LIVE PASS 11/11 / READY FOR CLIENT / PRODUCTION UNCHANGED`
+**Статус:** `HISTORICAL LIVE PASS 11/11 / SUPERSEDED FOR HANDOFF / DO NOT SEND / PRODUCTION UNCHANGED`
+
+## CURRENT ERRATUM — `2026-08-13`
+
+Этот отчёт точно фиксирует выполненный deploy/readback SHA `75558d9`, но его
+прежний вывод `READY FOR CLIENT` отменён. Последующая точечная DOMRect/visual
+проверка обнаружила desktop-клиппинг слова «прецедента» в общей карточке
+`2.10`; Browser runner `1.3.2` проверял overflow страницы, но не обрезание
+внутри `.fact-card__head`.
+
+Новый локальный кандидат:
+
+- делает все три fact-card тёмными и оставляет золотую рамку только у `2.10`;
+- размещает «Создание»/«прецедента» без клиппинга;
+- центрирует крупное `30+` только на desktop;
+- использует owner override `fact-900-v1` вместо фактического client-блока
+  `2.14`;
+- проходит copy contract `1.1.0` через verifier `1.0.0` (`24 targets / 22
+  unique`, `45` client + `2` owner; фактически `37` client ID) и локальный
+  Browser runner `1.4.0` (`177/177`).
+
+Новый кандидат не опубликован. Стабильные URL ниже не отправлять клиенту до
+отдельного разрешения владельца, нового deploy и served-content readback.
+Production остаётся неизменным. Действующее задание:
+[`../tasks/2026-08-13-dark-fact-cards.md`](../tasks/2026-08-13-dark-fact-cards.md).
 
 ## Release
 
@@ -58,3 +82,9 @@ Production не деплоился и не изменился.
 - полный WCAG AA PASS не заявляется: zoom 200% остаётся OPEN;
 - safe-area на физическом iPhone остаётся ручной проверкой;
 - реальный Albato POST/Catch/readback не выполнялся.
+
+## Related
+
+- [Dark fact cards](../tasks/2026-08-13-dark-fact-cards.md)
+- [Client Preview handoff](../CLIENT-PREVIEW-HANDOFF.md)
+- [Final QA checklist](../FINAL-QA-CHECKLIST.md)

@@ -68,6 +68,22 @@ class ClientCopyVerifierTests(unittest.TestCase):
         problems = self.verify_temp_html(html)
         self.assertTrue(any("owner:yulia-card-v1" in item for item in problems))
 
+    def test_owner_approved_fact_900_drift_fails(self) -> None:
+        html = self.source_html.replace("экспертных статей", "экспертные статьи", 1)
+        problems = self.verify_temp_html(html)
+        self.assertTrue(any("owner:fact-900-v1" in item for item in problems))
+
+    def test_frozen_client_block_2_14_remains_unchanged(self) -> None:
+        self.assertEqual(
+            verifier.APPROVED_COPY["2.14"],
+            (
+                "Автор более 900 опубликованных материалов, включая экспертные статьи "
+                "в области уголовного, семейного и миграционного права, аналитические "
+                "обзоры судебной практики и прецедентов, а также цикл юридических эссе, "
+                "основанных  на многолетнем опыте адвокатской деятельности"
+            ),
+        )
+
     def test_owner_approved_yulia_structure_fails(self) -> None:
         mutations = (
             (

@@ -1,13 +1,14 @@
 > ## Лендинг «Гамбарян и Партнёры»
 >
-> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v2.1.0 | 2026-08-13`
+> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v2.2.0 | 2026-08-13`
 >
-> **Текущий статус:** `LOCAL + LIVE QA PASS 11/11 / READY FOR CLIENT PREVIEW / NOT SENT / PRODUCTION UNCHANGED`.
-> Стабильные Preview URL обслуживают проверенный release — Action Bar `2.3.4`,
-> `final-dev3 2.0.2`, Browser runner `1.3.2`; новая матрица `177/177` и
-> повторный manual visual QA пройдены. Прежние заявления `173/173` и manual
-> PASS для этого кандидата имеют статус `HISTORICAL / INVALIDATED` после
-> независимого Claude review. Production не изменён.
+> **Текущий статус:** `LOCAL CANDIDATE PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`.
+> Новый кандидат использует три тёмные карточки фактов, owner-текст
+> `fact-900-v1`, copy contract `1.1.0` и Browser runner `1.4.0`; локальная
+> матрица `177/177` прошла. Стабильные Preview URL всё ещё отдают release
+> `75558d9`, где подтверждён desktop-клиппинг слова «прецедента» в карточке
+> `2.10`, поэтому прежний статус `READY FOR CLIENT` отменён. Production не
+> изменён; новый deploy требует отдельного разрешения владельца.
 >
 > Рабочий сайт живёт в папке [`site/`](site/). Шаблон-клонировщик, описанный
 > ниже, — исходная заготовка репозитория; к самому лендингу он отношения не
@@ -16,8 +17,9 @@
 > | Что | Где |
 > |---|---|
 > | **Начать/продолжить работу** | [`docs/RESUME.md`](docs/RESUME.md) |
-> | **Действующее задание** — только утверждённый клиентом текст | [`docs/tasks/2026-08-11-client-approved-copy-only.md`](docs/tasks/2026-08-11-client-approved-copy-only.md) |
-> | **Клиентские Preview** — 11 проверенных Cloudflare URL | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
+> | **Действующее задание** — тёмные карточки фактов | [`docs/tasks/2026-08-13-dark-fact-cards.md`](docs/tasks/2026-08-13-dark-fact-cards.md) |
+> | Контракт утверждённых текстов | [`docs/tasks/2026-08-11-client-approved-copy-only.md`](docs/tasks/2026-08-11-client-approved-copy-only.md) |
+> | **Клиентские Preview** — 11 URL, пока не отправлять | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
 > | Frozen source утверждённого текста | [`docs/sources/client-copy-short-v1.0.0.txt`](docs/sources/client-copy-short-v1.0.0.txt) |
 > | Исторический Claude artifact | https://claude.ai/code/artifact/f6f44336-a84c-4122-a74b-65c47e53b0c0 |
 > | **Боевой адрес** — пока отдаёт версию до правок | https://gambarian-landing.pages.dev/ |

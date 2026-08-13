@@ -612,7 +612,7 @@
   // на страницу не добавляется.
 
   var factCards = document.querySelectorAll(".fact-card");
-  var factsMq = window.matchMedia("(max-width: 720px)");
+  var factsMq = window.matchMedia("(max-width: 860px)");
 
   function buildToggle(card, index) {
     var text = card.querySelector("p");

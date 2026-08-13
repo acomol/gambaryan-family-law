@@ -1,6 +1,6 @@
 """Точный контракт утверждённого клиентом текста лендинга.
 
-CLIENT-COPY-CONTRACT v1.0.0 | 2026-08-11
+CLIENT-COPY-CONTRACT v1.1.0 | 2026-08-13
 """
 
 from __future__ import annotations
@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import Final
 
 
-CONTRACT_VERSION: Final = "1.0.0"
-CONTRACT_DATE: Final = "2026-08-11"
+CONTRACT_VERSION: Final = "1.1.0"
+CONTRACT_DATE: Final = "2026-08-13"
 SOURCE_FILENAME: Final = "Копия LP - Короткая версия (1).txt"
 SOURCE_REPO_PATH: Final = "docs/sources/client-copy-short-v1.0.0.txt"
 SOURCE_BYTES: Final = 14_895
@@ -365,6 +365,11 @@ APPROVED_COPY_ITEMS: Final[tuple[tuple[str, str], ...]] = (
 APPROVED_COPY: Final[dict[str, str]] = dict(APPROVED_COPY_ITEMS)
 
 OWNER_APPROVED_COPY: Final[dict[str, str]] = {
+    "fact-900-v1": (
+        "Автор более 900 экспертных статей в области уголовного, семейного и "
+        "миграционного права, основанных на многолетнем опыте адвокатской "
+        "деятельности"
+    ),
     "yulia-card-v1": (
         "Юлия Саакян Адвокат-партнёр · миграционное и семейное право "
         "Более 17 лет в юриспруденции — защита прав людей и правовые решения "

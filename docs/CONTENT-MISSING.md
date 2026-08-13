@@ -1,10 +1,10 @@
 # Какие разрешённые блоки не используются
 
-**Версия:** `CONTENT-MISSING v2.1.2`
+**Версия:** `CONTENT-MISSING v2.2.0`
 
 **Дата:** `2026-08-13`
 
-**Статус:** `CURRENT COVERAGE REPORTED / LIVE PASS 11/11`
+**Статус:** `CURRENT LOCAL COVERAGE REPORTED / LIVE PENDING`
 
 ## Итог
 
@@ -24,22 +24,27 @@ Frozen source
 - не размещать поле `Тема обращения` (`7.19`);
 - не размещать `Email`.
 
-Текущий release использует одинаковые `38/45` client ID во всех 24
-HTML targets (source/standalone и 11 пар Preview). Не используются семь
-разрешённых ID: `1.8`, `1.12`, `6.6`, `6.9`, `6.12`, `7.7`, `7.19`. Последний
-исключён явным решением владельца; остальные не требуются контрактом.
+Новый локальный кандидат использует одинаковые `37/45` client ID во всех 24
+HTML targets (source/standalone и 11 пар Preview). Не используются восемь
+разрешённых ID: `1.8`, `1.12`, `2.14`, `6.6`, `6.9`, `6.12`, `7.7`, `7.19`.
+`2.14` заменён только в фактической карточке отдельным owner override
+`fact-900-v1`, но сохранён в 45-строчном allowlist. `7.19` исключён явным
+решением владельца; остальные не требуются контрактом.
 
 Предыдущий результат `45/45` относится к отменённой промежуточной сборке. Новый
-allowlist-кандидат сохраняет coverage `38/45` и после изменений повторно прошёл
-verifier и browser matrix
+allowlist-кандидат после owner-правки имеет coverage `37/45` и повторно прошёл
+contract `1.1.0` через verifier `1.0.0` (`24 targets / 22 unique`, `45` client
+и `2` owner) и локальную browser matrix
 `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`. Прежние
 заявления `173/173` и manual PASS для текущего кандидата —
-`HISTORICAL / INVALIDATED` независимым Claude review. Новый release с coverage
-`38/45` прошёл live Browser QA `177/177` и served-content readback 11/11.
+`HISTORICAL / INVALIDATED` независимым Claude review. Стабильные URL всё ещё
+отдают release `75558d9` с прежним coverage `38/45`; новый `37/45` кандидат
+пока не опубликован.
 
 ## Related
 
 - [Карта источников](CONTENT-SOURCE-MAP.md)
 - [Утверждённые 45 блоков](CONTENT-APPROVED.md)
 - [Допустимый служебный текст](CONTENT-EXTRA.md)
+- [Правки владельца](CONTENT-OWNER-EDITS.md)
 - [Задание](tasks/2026-08-11-client-approved-copy-only.md)

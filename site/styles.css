@@ -552,12 +552,15 @@ picture { display: block; }
 .fact-card {
   position: relative;
   overflow: hidden;
-  background: var(--bg-card);
-  border: 1px solid rgba(20, 25, 31, 0.07);
+  background: #101214;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 34px 32px 30px;
   display: flex;
   flex-direction: column;
+}
+.fact-card[data-copy-id="2.10"] {
+  border-color: rgba(240, 174, 31, 0.5);
 }
 .fact-card::before {
   content: "";
@@ -577,7 +580,7 @@ picture { display: block; }
   font-weight: 500;
   font-size: clamp(44px, 4.6vw, 60px);
   line-height: 0.95;
-  color: var(--ink);
+  color: #fff;
   letter-spacing: -0.02em;
 }
 .fact-card__unit {
@@ -585,22 +588,71 @@ picture { display: block; }
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.18em;
-  color: var(--wine);
+  color: var(--gold);
   text-transform: uppercase;
 }
 .fact-card__sub {
   font-size: 15px;
   font-weight: 600;
-  color: var(--ink);
+  color: rgba(255, 255, 255, 0.85);
   margin-bottom: 14px;
 }
-.fact-card .notch { margin-bottom: 14px; }
+.fact-card .notch {
+  margin-bottom: 14px;
+  background: rgba(240, 174, 31, 0.85);
+}
 .fact-card p {
   margin: 0;
   font-size: 13.5px;
   line-height: 1.65;
-  color: var(--ink-3);
+  color: rgba(255, 255, 255, 0.78);
   text-wrap: pretty;
+}
+
+@media (min-width: 861px) {
+  .fact-card[data-copy-id="2.6"] {
+    justify-content: center;
+  }
+  .fact-card[data-copy-id="2.6"] .fact-card__num {
+    font-size: clamp(64px, 6vw, 84px);
+  }
+  .fact-card[data-copy-id="2.6"] .fact-card__sub {
+    font-size: 16px;
+  }
+
+  .fact-card[data-copy-id="2.10"] .fact-card__head {
+    display: block;
+  }
+  .fact-card[data-copy-id="2.10"] .fact-card__num,
+  .fact-card[data-copy-id="2.10"] .fact-card__unit {
+    display: block;
+    font-family: var(--font-serif);
+    font-size: clamp(28px, 2.4vw, 36px);
+    font-weight: 500;
+    line-height: 1.12;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .fact-card[data-copy-id="2.10"] .fact-card__sub {
+    margin-top: 10px;
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .fact-card[data-copy-id="2.14"] .fact-card__head,
+  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .fact-card[data-copy-id="2.14"] .fact-card__num,
+  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
+    font-size: clamp(40px, 3.4vw, 52px);
+    white-space: nowrap;
+  }
 }
 
 .facts-bar {
@@ -1473,7 +1525,9 @@ picture { display: block; }
 
 @media (max-width: 720px) {
   .hero__lede { font-size: 15px; }
+}
 
+@media (max-width: 860px) {
   /* Карточки фактов: на мобильном вертикальная анатомия (цифра над
      текстом) давала секцию в 1466px — два экрана на три цифры.
      Цифра уходит в левую колонку, текст в правую: та же информация,
@@ -1501,6 +1555,36 @@ picture { display: block; }
   .fact-card .notch { grid-column: 2; }
   .fact-card__sub { margin-bottom: 8px; align-self: center; }
   .fact-card .notch { margin-bottom: 0; }
+
+  .fact-card[data-copy-id="2.10"] .fact-card__head,
+  .fact-card[data-copy-id="2.14"] .fact-card__head,
+  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    margin-bottom: 8px;
+  }
+  .fact-card[data-copy-id="2.10"] .fact-card__num,
+  .fact-card[data-copy-id="2.10"] .fact-card__unit {
+    display: block;
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .fact-card[data-copy-id="2.10"] .fact-card__sub {
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .fact-card[data-copy-id="2.14"] .fact-card__num,
+  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
+    font-size: 34px;
+    white-space: nowrap;
+  }
   /* Длинным абзацам («900+ публикаций») узкая колонка противопоказана —
      они уходят вниз на всю ширину карточки */
   .fact-card p { grid-column: 1 / -1; margin-top: 12px; line-height: 1.55; }
@@ -1540,6 +1624,7 @@ picture { display: block; }
     padding: 0;
     border: 0;
     background: none;
+    color: var(--gold);
     cursor: pointer;
   }
   .fact-card__toggle::before {

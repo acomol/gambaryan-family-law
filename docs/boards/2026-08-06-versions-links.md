@@ -1,13 +1,15 @@
 # Одиннадцать Cloudflare Preview-версий для заказчика
 
-**Версия документа:** `2.5.0`; исполняемая Preview-карта — `2.4.0`
+**Версия документа:** `2.6.0`; исполняемая Preview-карта — `2.4.0`
 
 **Обновлено:** `2026-08-13`
 
-**Статус:** `LIVE PASS 11/11 / READY FOR CLIENT PREVIEW / PRODUCTION UNCHANGED`
+**Статус:** `LOCAL CANDIDATE PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
 
-Стабильные aliases ниже обслуживают проверенный release из SHA
-`75558d904d2d1d41ffc9af075f2ea363b15c0b91`.
+Стабильные aliases ниже обслуживают release из SHA
+`75558d904d2d1d41ffc9af075f2ea363b15c0b91`, где после публикации подтверждён
+desktop-клиппинг слова «прецедента» в общей карточке `2.10`. Эти URL пока не
+отдают новый dark-facts кандидат и не должны передаваться клиенту.
 
 ## Ссылки и различия
 
@@ -28,7 +30,10 @@
 ## Общее для нового кандидата
 
 - каждый размещённый смысловой блок входит в client allowlist или в точный
-  `OWNER-APPROVED` блок Юлии; полный coverage 45 client ID не требуется;
+  `OWNER-APPROVED` блок Юлии/`fact-900-v1`; фактически используются `37/45`
+  client ID;
+- все три карточки фактов тёмные; `2.10` имеет единственную золотую рамку,
+  `30+` центрировано только на desktop, `Автор / более 900` не переносится;
 - вне client/owner allowlist разрешены только identity и `SYSTEM-UI`;
 - форма содержит только `Имя`/`Телефон`; Email, topic, proof-тексты и редакция
   «ВПЕРВЫЕ…» отсутствуют;
@@ -40,18 +45,19 @@
 
 ## Версии контрактов
 
-| Функционал | Текущий release | Дата | Live status |
+| Функционал | Версия кандидата | Дата | Статус контракта |
 |---|---:|---:|---:|
 | Action Bar | `2.3.4` | 2026-08-13 | `LIVE PASS 11/11` |
 | Client Preview Mobile | `1.1.0` | 2026-08-11 | `LIVE PASS 11/11` |
-| Client Copy allowlist + Owner override | `1.0.0` | 2026-08-11 | `LIVE PASS 11/11` |
+| Client Copy contract: 45 allowlist + 2 Owner overrides | `1.1.0` | 2026-08-13 | `LOCAL PASS` |
+| Client Copy verifier | `1.0.0` | 2026-08-11 | `LOCAL PASS 24 targets / 22 unique` |
 | Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `LIVE PASS` |
 | `final-dev3` | `2.0.2` | 2026-08-13 | `LIVE PASS` |
 | Lead hook / форма (name + phone only) | `2.0.0` | 2026-08-11 | `LIVE PASS` |
 | Review numbering | `2.0.0` | 2026-08-11 | `LIVE PASS` |
 | Font Variant V2 Mobile | `1.1.0` | 2026-08-13 | `LIVE PASS` |
 | Font Variant V3 Mobile | `1.0.0` | 2026-08-13 | `LIVE PASS` |
-| Browser QA runner | `1.3.2` | 2026-08-13 | `LIVE PASS 177/177` |
+| Browser QA runner | `1.4.0` | 2026-08-13 | `LOCAL PASS 177/177` |
 
 Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13`.
 
@@ -68,7 +74,9 @@ Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13`.
 текущего кандидата имеют статус `HISTORICAL / INVALIDATED` после независимого
 Claude review. Полный текущий gate —
 `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width` плюс ручной
-visual QA — пройдены локально и на live. Текущий release и полные UUID:
+visual QA — были пройдены локально и на live до обнаружения внутрикардового
+клиппинга. Текущий локальный runner `1.4.0` закрывает этот пробел; новый deploy
+ещё не выполнен. Полные UUID release `75558d9` и erratum:
 [`../reviews/2026-08-13-client-preview-live-release.md`](../reviews/2026-08-13-client-preview-live-release.md).
 
 ## Карта пересборки
@@ -76,11 +84,11 @@ visual QA — пройдены локально и на live. Текущий rel
 | Группа | Источник | Производные |
 |---|---|---|
 | База | `site/` | все одиннадцать Preview |
-| Copy | frozen `docs/sources/client-copy-short-v1.0.0.txt` + `scripts/client_copy_contract.py` | client allowlist, owner override и статический gate source + builds |
+| Copy | frozen `docs/sources/client-copy-short-v1.0.0.txt` + `scripts/client_copy_contract.py` | 45 client allowlist, owner overrides Юлии/`fact-900-v1` и статический gate source + builds |
 | Action Bar | `site-addons/action-bar/` | общий addon во всех Preview |
 | Hero | `scripts/build-hero-variants.py` | `final-dev1`, `final-dev3`, Hero A/B |
 | Шрифты | `scripts/build-font-variants.py` | четыре font Preview |
-| Review | `scripts/build-review-numbered.py` | `review-numbered`, 38 используемых client ID + owner block |
+| Review | `scripts/build-review-numbered.py` | `review-numbered`, 37 используемых client ID + 2 owner blocks |
 
 ## Ограничения
 
@@ -91,6 +99,7 @@ visual QA — пройдены локально и на live. Текущий rel
 ## Related
 
 - [Строгий клиентский copy](../tasks/2026-08-11-client-approved-copy-only.md)
+- [Dark fact cards](../tasks/2026-08-13-dark-fact-cards.md)
 - [Пакет для заказчика](../CLIENT-PREVIEW-HANDOFF.md)
 - [Финальный QA](../FINAL-QA-CHECKLIST.md)
 - [Deploy runbook](../DEPLOY.md)

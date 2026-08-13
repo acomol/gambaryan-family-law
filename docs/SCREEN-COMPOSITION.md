@@ -1,15 +1,16 @@
 # Композиция экранов — спецификация и критерии приёмки
 
-**Версия:** `SCREEN-COMPOSITION v2.1.3`
+**Версия:** `SCREEN-COMPOSITION v2.2.0`
 
 **Обновлено:** `2026-08-13`
 
-**Статус:** `ALLOWLIST + OWNER OVERRIDE / LOCAL + LIVE QA PASS 11/11`
+**Статус:** `DARK FACTS LOCAL PASS / LIVE PENDING / DO NOT SEND`
 
 ## Сквозные правила
 
 - Каждый размещённый смысловой текст входит в 45-строчный client allowlist или
-  в точный `OWNER-APPROVED` блок Юлии; полный coverage 45 ID не требуется.
+  в один из двух точных `OWNER-APPROVED` блоков: Юлия и `fact-900-v1`; полный
+  coverage 45 ID не требуется.
 - Варианты могут менять шрифт, порядок Hero, crop и поведение Action Bar, но
   не слова.
 - Identity/`SYSTEM-UI` не конкурирует с содержательным текстом и не добавляет
@@ -44,9 +45,34 @@
 
 ## Экран 3 — факты
 
-Если факты используются, допустимы только `2.6`, `2.10`, `2.14`. Нельзя
-заменять их сокращениями «1 прецедент» или «900+ публикаций». Карточки могут
-менять сетку, но сохраняют полный текст выбранных блоков.
+Карточки `2.6` и `2.10` воспроизводят клиентские блоки дословно. Третья карточка
+использует утверждённый владельцем override `fact-900-v1`: `Автор`, `более 900`
+и «экспертных статей в области уголовного, семейного и миграционного права,
+основанных на многолетнем опыте адвокатской деятельности». Исходный `2.14`
+остаётся в allowlist, но в кандидате не размещается.
+
+Все три карточки имеют фон `#101214` и рамку
+`rgba(255,255,255,.08)`; только `2.10` выделена рамкой
+`rgba(240,174,31,.5)`. Белый основной текст с alpha `.78` и `.85` имеет на
+этом фоне соответственно `11.55:1` и `13.57:1`, что выше AA/AAA для обычного
+текста.
+
+Desktop `≥861px`:
+
+- `2.6`: вертикальное центрирование, число `clamp(64px,6vw,84px)`, sub `16px`;
+- `2.10`: «Создание»/«прецедента» блочно, serif `500`,
+  `clamp(28px,2.4vw,36px)/1.12`; sub — золотые капители `12px`;
+- `fact-900-v1`: `Автор` сверху, `более 900` —
+  `clamp(40px,3.4vw,52px)` без переноса.
+
+Mobile `≤860px`: head `2.10` и `fact-900-v1` занимает всю ширину сетки;
+`2.10` использует serif `26px/1.15`, `более 900` — `34px nowrap`. Компактная
+сетка `2.6` не меняется. Оба состояния аккордеона обязаны проходить clipping и
+DOMRect guard.
+
+Эталоны: [`1440`](design-references/facts-dark-1440-v1.0.0.png),
+[`390 collapsed`](design-references/facts-dark-390-collapsed-v1.0.0.png),
+[`390 expanded`](design-references/facts-dark-390-expanded-v1.0.0.png).
 
 ## Экран 4 — услуги
 
@@ -132,14 +158,18 @@
 `FONT-VARIANT-V3-MOBILE v1.0.0 | 2026-08-13`). Дизайн, шрифты, crop и
 межблочные отступы не меняются.
 
-Текущая матрица на `PREVIEW-BROWSER-QA-RUNNER v1.3.2` прошла
+Текущая локальная матрица на `PREVIEW-BROWSER-QA-RUNNER v1.4.0` прошла
 `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`.
+Runner дополнительно проверяет `scrollWidth <= clientWidth` для `.fact-card` и
+`.fact-card__head`, границы всего содержимого и collapsed/expanded mobile
+accordion на `360/390px`.
 Обязательная regression-последовательность `final-dev3`:
 `0 → 2 → 50 → 100 → 320` hidden → pass Hero visible → `320` visible →
 `0` reset → `320` hidden. Прежние утверждения `173/173` и manual visual PASS
 для текущего кандидата — `HISTORICAL / INVALIDATED` независимым Claude review.
-Новый ручной visual inspection пройден локально; live Browser QA `177/177` и
-served-content readback 11/11 также прошли.
+Dark-facts visual inspection пройден локально на эталонах `1440`, `390
+collapsed` и `390 expanded`. Live release `75558d9` не содержит этого
+исправления и остаётся `DO NOT SEND` до нового deploy/readback.
 
 ## Исторические решения
 
@@ -149,7 +179,9 @@ served-content readback 11/11 также прошли.
 
 ## Related
 
-- [Действующее задание](tasks/2026-08-11-client-approved-copy-only.md)
+- [Действующее задание: dark fact cards](tasks/2026-08-13-dark-fact-cards.md)
+- [Copy contract](tasks/2026-08-11-client-approved-copy-only.md)
+- [Owner edits](CONTENT-OWNER-EDITS.md)
 - [Карта источников](CONTENT-SOURCE-MAP.md)
 - [Финальный QA](FINAL-QA-CHECKLIST.md)
 - [Карта Preview](boards/2026-08-06-versions-links.md)

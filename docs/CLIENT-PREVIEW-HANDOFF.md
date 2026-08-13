@@ -1,23 +1,32 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v2.2.0`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v2.3.0`
 
 **Дата:** `2026-08-13`
 
-**Статус:** `LOCAL + LIVE QA PASS 11/11 / READY FOR CLIENT PREVIEW / NOT SENT / PRODUCTION UNCHANGED`
+**Статус:** `LOCAL CANDIDATE PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
 
 ## Важное перед отправкой
 
-Стабильные URL показывают проверенный release: точный блок Юлии сохранён, поля
-«Тема обращения» и Email удалены. Release использует Action Bar
-`2.3.4`, `final-dev3 2.0.2` и Browser runner `1.3.2`. Финальная матрица
-`177/177`, ручной visual QA и served-content readback 11/11 пройдены.
-Production не изменён.
+Стабильные URL пока показывают release `75558d9`, а не новый dark-facts
+кандидат. В этом live release подтверждён desktop-клиппинг слова «прецедента»
+в общей карточке `2.10`; прежний runner `1.3.2` не проверял внутрикардовое
+обрезание. Поэтому ссылки ниже **не отправлять клиенту** до отдельного deploy и
+served-content readback. Production не изменён.
+
+Локальный кандидат исправляет клиппинг, делает все три карточки тёмными и
+вводит owner-текст `fact-900-v1`. Copy contract `1.1.0`, неизменный verifier
+`1.0.0` и Browser runner `1.4.0` проходят; локальная матрица — `177/177`.
 
 ## Что одинаково во всех одиннадцати кандидатах
 
-- каждый размещённый смысловой текст входит в client allowlist или в точный
-  `OWNER-APPROVED` блок Юлии; использовать все 45 client ID необязательно;
+- каждый размещённый смысловой текст входит в client allowlist или в один из
+  двух точных `OWNER-APPROVED` блоков: Юлия и `fact-900-v1`; фактически
+  используются `37/45` client ID;
+- все три карточки фактов тёмные; только `2.10` имеет золотую рамку;
+- `30+` центрировано и увеличено только на desktop; `2.10` использует две
+  полноразмерные строки; карточка `fact-900-v1` показывает `Автор` и
+  `более 900` без прежней строки `опубликованных материалов,`;
 - общий Action Bar `2.3.4` с business-hours и demo-switch;
 - общий mobile-слой `CLIENT-PREVIEW-MOBILE v1.1.0`;
 - WhatsApp `wa.me/972545490623` без неутверждённого prefill;
@@ -63,18 +72,19 @@ Production не изменён.
 
 ## Перед отправкой заказчику
 
-- [x] повторить `CLIENT-COPY-VERIFIER v1.0.0` после полной пересборки: каждый
-  размещённый смысловой блок входит в client/owner allowlist на всех 11;
-  coverage `45/45` не требуется;
+- [x] повторить `CLIENT-COPY-CONTRACT v1.1.0` через
+  `CLIENT-COPY-VERIFIER v1.0.0` после полной пересборки: `24 targets / 22
+  unique`, `45` client allowlist + `2` owner blocks, фактически `37` client ID;
 - [x] повторить lead tests `2.0.0` после удаления Email/topic;
-- [x] full browser matrix `PREVIEW-BROWSER-QA-RUNNER v1.3.2` — итог
-  `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`;
-- [x] manual screenshots/visual inspection, включая V2/V3 `345×600/668`;
-- [x] функциональный кандидат `d3032b70d327d071ebc82b75b23a860fbba1e74c`
-  и deployed source `75558d904d2d1d41ffc9af075f2ea363b15c0b91`
-  запушены; GitHub Actions run `31692242948` завершён `success`;
-- [x] явное разрешение владельца на Preview deploy получено;
-- [x] 11/11 stable URL проверены по marker и served behavior;
+- [x] full browser matrix `PREVIEW-BROWSER-QA-RUNNER v1.4.0` — итог
+  `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`, включая
+  fact-card clipping/DOMRect и оба состояния mobile-аккордеона;
+- [x] эталоны `1440`, `390 collapsed`, `390 expanded` сохранены в
+  `design-references/`;
+- [ ] новый функциональный кандидат закоммичен, запушен и CI зелёный;
+- [ ] отдельное разрешение владельца на новый Preview deploy получено;
+- [ ] 11/11 stable URL отдают новый served content; минимум три варианта
+  проходят точечный dark-facts readback;
 - [x] production readback показывает отсутствие изменений.
 
 ## Исторические releases
@@ -85,14 +95,16 @@ Production не изменён.
 исправленного allowlist-кандидата. Прежние заявления `173/173` и manual PASS
 для текущего кандидата — `HISTORICAL / INVALIDATED` после независимого Claude
 review: они не покрывали stateless-scroll regression и четыре effective-width
-cells V2/V3 `345×600/668`. Новый release прошёл локальную приёмку и
-live-readback 11/11; полный отчёт —
+cells V2/V3 `345×600/668`. Release `75558d9` затем получил отдельный erratum по
+desktop-клиппингу `2.10`; полный отчёт —
 [`reviews/2026-08-13-client-preview-live-release.md`](reviews/2026-08-13-client-preview-live-release.md).
 
 ## Related
 
 - [Карта Preview](boards/2026-08-06-versions-links.md)
-- [Действующее задание](tasks/2026-08-11-client-approved-copy-only.md)
+- [Действующее задание: dark fact cards](tasks/2026-08-13-dark-fact-cards.md)
+- [Copy contract](tasks/2026-08-11-client-approved-copy-only.md)
+- [Owner edits](CONTENT-OWNER-EDITS.md)
 - [Карта источников](CONTENT-SOURCE-MAP.md)
 - [Frozen client source](sources/client-copy-short-v1.0.0.txt)
 - [Финальный QA](FINAL-QA-CHECKLIST.md)

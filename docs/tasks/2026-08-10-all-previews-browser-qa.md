@@ -1,25 +1,31 @@
 > **CURRENT ADDENDUM 2026-08-13.** Историческая приёмка ниже относится к
 > прежним `2.3.1`/`v1.1.0` и review со 102 номерами. Текущий кандидат — Action
-> Bar `2.3.4`, `final-dev3 2.0.2`, runner `1.3.2` — имеет статус
-> `LOCAL + LIVE QA PASS 11/11`. Прежние заявления `173/173` и manual PASS для него —
+> Bar `2.3.4`, `final-dev3 2.0.2`, runner `1.4.0` — имеет статус
+> `LOCAL PASS / LIVE PENDING / DO NOT SEND`. Runner `1.4.0` добавляет
+> внутрикардовый clipping/DOMRect guard и оба состояния mobile-аккордеона.
+> Опубликованный SHA `75558d9` остаётся на runner `1.3.2` и имеет подтверждённый
+> desktop-клиппинг `2.10`. Прежние заявления `173/173` и manual PASS для него —
 > `HISTORICAL / INVALIDATED` независимым Claude review. Действующий allowlist
 > gate: [`2026-08-11-client-approved-copy-only.md`](2026-08-11-client-approved-copy-only.md),
 > точка входа: [`../RESUME.md`](../RESUME.md).
 
 # Полная browser/responsive-приёмка клиентских Preview — HISTORICAL
 
-**Версия:** `PREVIEW-BROWSER-QA v1.2.2`
+**Версия:** `PREVIEW-BROWSER-QA v1.3.0`
 
 **Дата:** `2026-08-13`
 
 **Ветка:** `claude/website-development-kb0fu0`
 
-**Статус:** `HISTORICAL BASELINE / CURRENT LIVE QA PASS 11/11 / PRODUCTION UNCHANGED`
+**Статус:** `HISTORICAL BASELINE / CURRENT LOCAL PASS / LIVE PENDING / DO NOT SEND`
 
 ## Текущий delta-gate `2026-08-13`
 
-- Полный run runner `1.3.2` должен дать
+- Полный run runner `1.4.0` должен дать
   `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`.
+- В каждой ячейке runner проверяет отсутствие `scrollWidth > clientWidth` у
+  `.fact-card`/`.fact-card__head` и выход любого содержимого за DOMRect
+  карточки; на `360/390px` проверяет collapsed/expanded accordion.
 - Четыре новые cells — `345×600` и `345×668` для `v2-lora-inter` и
   `v3-literata-manrope`: effective width nominal `360px` при classic scrollbar
   `15px`.
@@ -32,8 +38,8 @@
 - Regression `final-dev3`: `0 → 2 → 50 → 100 → 320` hidden → pass Hero visible
   → `320` visible → `0` reset → `320` hidden. Form/menu/focus скрывают
   bar/demo независимо от latch.
-- Полный автоматический прогон `177/177` и повторный manual visual QA пройдены
-  локально и на live после разрешённого Preview deploy.
+- Полный автоматический прогон `177/177` и dark-facts visual QA пройдены
+  локально. Новый Preview deploy не разрешён и live-readback не выполнен.
 
 ## Цель
 
@@ -224,6 +230,7 @@ alias. Исправление вносится в source/generator, а не вр
 
 ## Related
 
+- [Dark fact cards](2026-08-13-dark-fact-cards.md)
 - [Карта клиентских Preview](../boards/2026-08-06-versions-links.md)
 - [Композиция экранов](../SCREEN-COMPOSITION.md)
 - [Итоговый QA-чек-лист](../FINAL-QA-CHECKLIST.md)

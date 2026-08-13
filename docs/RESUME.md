@@ -1,10 +1,10 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v2.2.0`
+**Версия:** `HANDOFF-RESUME v2.3.0`
 
 **Обновлено:** `2026-08-13`
 
-**Текущий статус:** `LOCAL + LIVE QA PASS 11/11 / READY FOR CLIENT PREVIEW / PRODUCTION UNCHANGED`
+**Текущий статус:** `LOCAL CANDIDATE PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
 
 ## Главное решение владельца
 
@@ -16,18 +16,23 @@
 - SHA-256 `5234CC5D9A3A4DF991827EF02E8DA46AE9C8B46D33C84CC33671E4B0465FA18E`;
 - размер `14 895 bytes`;
 - `45` номерных блоков — разрешённые формулировки, а не обязательный coverage;
-- точный прежний блок Юлии Саакян — отдельный `OWNER-APPROVED` override;
+- точный прежний блок Юлии Саакян и новый `fact-900-v1` — два отдельных
+  `OWNER-APPROVED` override;
 - вне client/owner allowlist допустим только identity/brand и `SYSTEM-UI`;
 - `Email`, «Тема обращения»/`topic`, proof и «ВПЕРВЫЕ…» отменены;
 - WhatsApp prefill отменён; Action Bar использует `wa.me` без `?text=`.
-- owner correction меняет только copy/form contract: утверждённые композиции,
-  Hero assets/crop и Playfair/Onest сохраняются; текущий Action Bar — `2.3.4`.
+- owner correction `fact-900-v1` заменяет фактическую карточку `2.14`, но не
+  удаляет исходный блок `2.14` из 45-строчного allowlist;
+- владелец отдельно утвердил три тёмные карточки фактов и desktop-центрирование
+  `30+`; остальные композиции, Hero assets/crop и Playfair/Onest сохраняются;
+  текущий Action Bar — `2.3.4`.
 
 ## Текущие локальные контракты
 
 | Контракт | Версия | Статус |
 |---|---:|---|
-| Client Copy contract/verifier | `1.0.0` | LIVE PASS 11/11 |
+| Client Copy contract | `1.1.0` | LOCAL PASS: 45 client + 2 owner blocks |
+| Client Copy verifier | `1.0.0` | LOCAL PASS: 24 targets / 22 unique |
 | Action Bar | `2.3.4` | LIVE PASS 11/11 |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `final-dev1` Hero | `2.0.0` | LIVE PASS |
@@ -36,10 +41,10 @@
 | Review Numbered | `2.0.0` | LIVE PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: effective-width fix Lora H1 |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: effective-width fix Manrope lede |
-| Browser QA runner | `1.3.2` | LIVE PASS: `177/177` |
+| Browser QA runner | `1.4.0` | LOCAL PASS: `177/177`, fact-card clip guard |
 
 Версии контракта датированы `2026-08-11` или `2026-08-13`. Stable aliases
-обслуживают текущий проверенный release.
+обслуживают прежний release `75558d9`, а не новый dark-facts кандидат.
 
 ## Текущая regression-семантика
 
@@ -67,26 +72,27 @@
 - source of truth: `site/`, `site-addons/`, `functions/`, `scripts/`;
 - `build/` — только производные; вручную не редактировать;
 - production deploy и реальный Albato POST запрещены без отдельного разрешения;
-- Preview опубликованы из SHA `75558d904d2d1d41ffc9af075f2ea363b15c0b91`.
+- Preview опубликованы из SHA `75558d904d2d1d41ffc9af075f2ea363b15c0b91`;
+  у него подтверждён desktop-клиппинг `2.10`, поэтому ссылки не отправлять;
+- новый кандидат пока локальный; deploy не разрешён.
 
-## Локальная приёмка и следующий шаг
+## Локальная приёмка dark-facts и следующий шаг
 
-1. [x] После пересборки повторить frozen-source, client/owner allowlist,
-   name/phone-only и отсутствие WhatsApp prefill во всех Preview.
-2. [x] Пересобрать Standalone и все одиннадцать Preview с Action Bar `2.3.4`
-   и `final-dev3 2.0.2`.
-3. [x] Повторить copy/preview verifiers, lead tests и полную browser matrix
-   `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`.
-4. [x] Повторить ручной visual QA голов/наложений/центрирования, включая
-   `v2-lora-inter` и `v3-literata-manrope` на `345×600/668`; реальный iPhone
-   safe-area остаётся внешним шагом.
-5. [x] Функциональный кандидат
-   `d3032b70d327d071ebc82b75b23a860fbba1e74c` и deployed source
-   `75558d904d2d1d41ffc9af075f2ea363b15c0b91` запушены; GitHub Actions run
-   `31692242948` завершён `success`.
-6. [x] Получено явное решение владельца на Preview deploy.
-7. [x] Выполнены deploy и 11/11 served-content/live-readback; live Browser QA
-   `177/177`, production SHA не изменился.
+1. [x] Зафиксировать owner override `fact-900-v1`; frozen 45-блочный источник
+   и исходный `2.14` не менять.
+2. [x] Пересобрать Standalone и все одиннадцать Preview с тремя тёмными
+   карточками фактов.
+3. [x] Copy contract `1.1.0` + verifier `1.0.0`: `24 targets / 22 unique`,
+   `45` client allowlist + `2` owner blocks; фактически используются `37`
+   client ID.
+4. [x] Browser runner `1.4.0`: DOMRect/scroll clipping guard для каждой
+   fact-card и обоих состояний mobile-аккордеона; локально `177/177`.
+5. [x] Сохранить эталонные screenshots `1440`, `390 collapsed` и
+   `390 expanded` в `docs/design-references/`.
+6. [ ] Commit/push и зелёный CI на новом HEAD.
+7. [ ] Получить отдельное разрешение владельца на новый Preview deploy.
+8. [ ] После deploy повторить live-readback минимум трёх Preview и production
+   isolation; только затем снять `DO NOT SEND`.
 
 ## Команды
 
@@ -102,11 +108,14 @@ python scripts/qa-browser-matrix.py http://127.0.0.1:8098 --all-previews
 git diff --check
 ```
 
-## Текущий live-state
+## Опубликованный live-state — superseded для передачи
 
-Текущий release: SHA `75558d904d2d1d41ffc9af075f2ea363b15c0b91`,
+Опубликованный release: SHA `75558d904d2d1d41ffc9af075f2ea363b15c0b91`,
 Action Bar `2.3.4`, `final-dev3 2.0.2`, 11/11 stable aliases и Browser QA
-`177/177` — PASS. Полные deployment UUID и readback:
+`177/177` — исторически PASS. Последующий точечный DOMRect/visual review
+подтвердил desktop-клиппинг слова «прецедента» в общей карточке `2.10`, который
+runner `1.3.2` не проверял. Поэтому live URLs — `DO NOT SEND`. Полные deployment
+UUID, прежний readback и erratum:
 [`reviews/2026-08-13-client-preview-live-release.md`](reviews/2026-08-13-client-preview-live-release.md).
 
 ## Исторический live-state
@@ -135,7 +144,9 @@ Action Bar `2.3.4`, `final-dev3 2.0.2`, 11/11 stable aliases и Browser QA
 
 ## Related
 
-- [Действующее задание](tasks/2026-08-11-client-approved-copy-only.md)
+- [Действующее задание: dark fact cards](tasks/2026-08-13-dark-fact-cards.md)
+- [Copy contract](tasks/2026-08-11-client-approved-copy-only.md)
+- [Owner edits](CONTENT-OWNER-EDITS.md)
 - [Карта источников](CONTENT-SOURCE-MAP.md)
 - [Карта Preview](boards/2026-08-06-versions-links.md)
 - [Пакет для заказчика](CLIENT-PREVIEW-HANDOFF.md)

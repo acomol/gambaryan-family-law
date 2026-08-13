@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.2.0`
+**Версия:** `2.3.0`
 
 **Обновлено:** `2026-08-13`
 
@@ -16,13 +16,16 @@
 
 **Исторический Preview release `final-dev3 v1.1.0`:** `88efa2ce0fb9dc5903e1f435310b372383a20d09`
 
-**Кандидат `final-dev3 v2.0.2`:** `LIVE PASS / READY FOR CLIENT PREVIEW`
+**Кандидат `final-dev3 v2.0.2`:** `LOCAL DARK-FACTS PASS / LIVE PENDING / DO NOT SEND`
 
-**Функциональный кандидат:** `d3032b70d327d071ebc82b75b23a860fbba1e74c`;
+**Предыдущий функциональный кандидат:** `d3032b70d327d071ebc82b75b23a860fbba1e74c`;
 GitHub Actions run `31691637548` — `success`
 
-**Текущий Preview release:** `75558d904d2d1d41ffc9af075f2ea363b15c0b91`;
-GitHub Actions run `31692242948` — `success`
+**Новый dark-facts кандидат:** `LOCAL PASS / COMMIT + CI PENDING`
+
+**Опубликованный Preview release:** `75558d904d2d1d41ffc9af075f2ea363b15c0b91`;
+GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-за
+подтверждённого desktop-клиппинга карточки `2.10`
 
 **Handoff task/base:** `e48bd08a66d5e38be7dae9105333f080d0e3c4d1`
 
@@ -34,12 +37,14 @@ GitHub Actions run `31692242948` — `success`
 
 Последние явные решения владельца задают allowlist, а не обязательный coverage:
 каждый размещённый смысловой текст должен входить в 45-строчный client allowlist
-или в точный `OWNER-APPROVED` блок Юлии. Вне них допустимы только существующая
-identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Телефон`, без Email/topic.
+или в один из двух точных `OWNER-APPROVED` блоков: Юлия и `fact-900-v1`. Вне них
+допустимы только существующая identity и `SYSTEM-UI`. Форма содержит только
+`Имя`/`Телефон`, без Email/topic.
 
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
-| Client Copy contract/verifier | `1.0.0` | LIVE PASS: allowlist + owner override |
+| Client Copy contract | `1.1.0` | LOCAL PASS: 45 client + 2 owner blocks |
+| Client Copy verifier | `1.0.0` | LOCAL PASS: 24 targets / 22 unique |
 | Action Bar | `2.3.4` | LIVE PASS 11/11 |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `FINAL-DEV1-HERO` | `2.0.0` | LIVE PASS |
@@ -48,8 +53,8 @@ identity и `SYSTEM-UI`. Форма содержит только `Имя`/`Те
 | Review Numbered | `2.0.0` | LIVE PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
-| Browser QA runner | `1.3.2` | LIVE PASS: `177/177` |
-| Этот чек-лист | `2.2.0` | active |
+| Browser QA runner | `1.4.0` | LOCAL PASS: `177/177`, fact-card clipping guard |
+| Этот чек-лист | `2.3.0` | active |
 
 ### Исправление статуса после независимого review
 
@@ -59,6 +64,15 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
 `scrollY > 1` допускал показ Action Bar до первого прохода Hero. Эти результаты
 не закрывают ни автоматическую матрицу `177/177`, ни повторный ручной visual QA.
 
+### CURRENT ERRATUM: карточка `2.10`
+
+После live release `75558d9` точечная проверка выявила внутрикардовый
+desktop-клиппинг слова «прецедента». Page overflow оставался `0`, поэтому
+runner `1.3.2` дал PASS. Новый runner `1.4.0` измеряет scrollWidth/DOMRect
+карточки, head, дочерних и текстовых rect, а на `360/390px` — collapsed и
+expanded accordion. Новый тёмный кандидат локально проходит этот gate; live
+URL остаются `DO NOT SEND` до нового deploy/readback.
+
 ### A. Источник и copy
 
 - [x] Frozen source `docs/sources/client-copy-short-v1.0.0.txt` имеет SHA-256
@@ -66,7 +80,8 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
   размер `14 895 bytes`.
 - [x] Каждый реально размещённый client-блок дословно входит в 45-строчный
   allowlist; missing разрешённых ID допустим и отражён в `CONTENT-MISSING.md`.
-- [x] Точный прежний блок Юлии присутствует как `OWNER-APPROVED` без изменений.
+- [x] Точный прежний блок Юлии и новый `fact-900-v1` присутствуют как два
+  `OWNER-APPROVED` блока без изменений.
 - [x] Все одиннадцать производных не содержат смыслового текста вне
   client/owner allowlist.
 - [x] Вне содержательных allowlist остаются только identity,
@@ -74,7 +89,10 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
   (`SYSTEM-UI`).
 - [x] `Email`, `topic`, proof-тексты, «Или позвоните сразу» и редакция
   «ВПЕРВЫЕ…» отсутствуют.
-- [x] Сокращённые факты/заголовки не заменяют клиентские формулировки.
+- [x] Client-блок `2.14` сохранён в 45-строчном allowlist, но фактическая
+  карточка заменена дословным owner override `fact-900-v1`.
+- [x] Copy contract `1.1.0` + verifier `1.0.0`: `24 targets / 22 unique`,
+  `45` client + `2` owner; фактически используются `37` client ID.
 
 ### B. Action Bar и WhatsApp
 
@@ -107,8 +125,14 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
   вручную.
 - [x] FINAL FULL QA: `verify-client-copy`, `verify-client-previews` и lead tests
   повторно проходят после пересборки.
-- [x] FINAL FULL QA: Browser runner `1.3.2` проходит все одиннадцать Preview:
+- [x] FINAL FULL QA: Browser runner `1.4.0` проходит все одиннадцать Preview:
   `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width`.
+- [x] В каждой cell проверены `.fact-card`/`.fact-card__head` scrollWidth,
+  DOMRect всего содержимого и оба состояния mobile-аккордеона на `360/390px`.
+- [x] DOMRect right-edge пройден на `1024/1280/1440/1920` и `390/360`,
+  horizontal page overflow `0`.
+- [x] Контраст на `#101214`: white alpha `.78` — `11.55:1`, `.85` —
+  `13.57:1`; оба выше AA/AAA для обычного текста.
 - [x] Проверены `360×600`, `360×668`, `390×724`, `960×760`, `961×760`, `1024×768`,
   `1280×720`, `1440×900`, а также V2/V3 на `345×600/668`; horizontal overflow
   `0`.
@@ -123,6 +147,8 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
 - [x] Повторить manual visual: головы/волосы, текст поверх фото, CTA и форма по
   центру на репрезентативных viewport и V2/V3 `345×600/668`; реальный iPhone
   safe-area остаётся отдельным внешним шагом.
+- [x] Dark-facts screenshots `1440`, `390 collapsed`, `390 expanded` сохранены
+  в `docs/design-references/`.
 - [x] KNOWN OPEN: Zoom 200% defect остаётся OPEN; полный WCAG AA PASS не
   заявляется.
 
@@ -132,14 +158,19 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
 - [x] После full QA выполнены `git diff --check`, commit/push функционального
   кандидата `d3032b70d327d071ebc82b75b23a860fbba1e74c`; GitHub Actions run
   `31691637548` завершён `success`, включая Browser QA `177/177`.
-- [x] Владелец дал явное разрешение на Preview deploy; production не разрешался.
+- [x] Прежний deploy был отдельно разрешён владельцем; production не разрешался.
 - [x] 11/11 Preview опубликованы из SHA
   `75558d904d2d1d41ffc9af075f2ea363b15c0b91`.
 - [x] 11/11 served markers/behavior, API `405`, stable/immutable/local byte
   equality и soft-404 exclusion подтверждены.
-- [x] Live Browser QA `177/177` и production readback PASS; пакет готов для
-  передачи клиенту. Полные UUID — в
+- [x] Live Browser QA `177/177` и production readback для release `75558d9`
+  прошли; полные UUID и последующий erratum — в
   [`reviews/2026-08-13-client-preview-live-release.md`](reviews/2026-08-13-client-preview-live-release.md).
+- [ ] Новый dark-facts кандидат закоммичен/запушен, CI зелёный.
+- [ ] Получено отдельное разрешение владельца на новый Preview deploy.
+- [ ] После deploy новые bytes и dark-facts поведение подтверждены минимум на
+  трёх из одиннадцати; production повторно подтверждён неизменным.
+- [ ] Только после этих трёх пунктов снять `DO NOT SEND` и передать URL клиенту.
 
 ## HISTORICAL AUDIT TRAIL — SUPERSEDED КАК ТЕКУЩАЯ ПРИЁМКА
 
@@ -952,6 +983,8 @@ auth/IP-состояния, `TRACKING-REQUIREMENTS.md` — частично ст
 ## Related
 
 - [Действующий client-approved copy task](tasks/2026-08-11-client-approved-copy-only.md)
+- [Dark fact cards](tasks/2026-08-13-dark-fact-cards.md)
+- [Owner edits](CONTENT-OWNER-EDITS.md)
 - [Карта источников текста](CONTENT-SOURCE-MAP.md)
 - [Журнал ошибок](ERRORS.md)
 - [Карта одиннадцати Preview и URL](boards/2026-08-06-versions-links.md)
