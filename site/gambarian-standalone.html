@@ -364,9 +364,16 @@ picture { display: block; }
   display: flex;
   align-items: center;
   gap: 26px;
-  font-size: 13.5px;
+  /* 14px вместо дробных 13.5px: дробный кегль давал нецелые метрики строки и
+     выпадал из шкалы проекта (12/13/14/16). Вертикальный padding доводит цель
+     клика с 23px до ≥24px — WCAG 2.2 SC 2.5.8. */
+  font-size: 14px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.75);
+}
+
+.nav-links a {
+  padding: 4px 0;
 }
 
 /* Место винной кнопки в шапке занял телефон.
@@ -772,6 +779,11 @@ picture { display: block; }
     font-weight: 500;
     line-height: 1.12;
     letter-spacing: 0;
+    /* Обе строки заголовка белые: акцент карточки несут золотая рамка и
+       подпись-капитель, выделять внутри заголовка ещё и слово — решение
+       владельца отклонено 2026-08-13. Базовое .fact-card__unit золотое,
+       поэтому цвет переопределяется здесь явно. */
+    color: #fff;
     text-transform: none;
   }
   .fact-card[data-copy-id="2.10"] .fact-card__sub {
@@ -1712,6 +1724,7 @@ picture { display: block; }
     font-weight: 500;
     line-height: 1.15;
     letter-spacing: 0;
+    color: #fff;
     text-transform: none;
   }
   .fact-card[data-copy-id="2.10"] .fact-card__sub {
