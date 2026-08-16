@@ -45,11 +45,18 @@ class ClientCopyVerifierTests(unittest.TestCase):
         self.assertTrue(any("неизвестный текст вне data-copy-id" in item for item in problems))
 
     def test_changed_approved_block_fails(self) -> None:
-        html = self.source_html.replace(
-            "Развод в Израиле? Адвокат по семейному праву — на русском языке</h1>",
-            "Гарантируем развод без суда</h1>",
-            1,
+        # Подмена идёт по разметке заголовка, а не по литеральному тексту:
+        # внутри h1 стоит &nbsp; перед тире (docs/TYPOGRAPHY-DASHES.md), и
+        # сверка по литералу молча превращалась бы в no-op — тест проходил бы,
+        # ничего не проверив.
+        html, count = re.subn(
+            r'(<h1\b[^>]*data-copy-id="1\.7"[^>]*>).*?(</h1>)',
+            r"\1Гарантируем развод без суда\2",
+            self.source_html,
+            count=1,
+            flags=re.DOTALL,
         )
+        self.assertEqual(count, 1, "заголовок 1.7 не найден в разметке")
         problems = self.verify_temp_html(html)
         self.assertTrue(any("data-copy-id='1.7'" in item for item in problems))
 
