@@ -340,12 +340,15 @@ def verify(dest: Path, key: str) -> list[str]:
     if html.count('id="contact"') != 1:
         problems.append("якорь формы повреждён")
     # Утверждённый клиентский текст не должен меняться между вариантами.
+    # Сверка идёт по тексту, а не по байтам разметки: перед тире стоит
+    # неразрывный пробел (&nbsp;), и сравнивать надо то, что видит читатель.
+    hero_text = hero.replace("&nbsp;", " ").replace(" ", " ")
     for must in (
         "Развод в Израиле? Адвокат по семейному праву — на русском языке",
         "Записаться на консультацию",
         "054-549-0623",
     ):
-        if must not in hero:
+        if must not in hero_text:
             problems.append(f"пропал текст «{must}»")
 
     if key == "a" and 'class="hero hero--actions-first"' not in hero:
