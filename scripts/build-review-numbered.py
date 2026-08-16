@@ -200,6 +200,28 @@ def _add_owner_review_ids(html: str) -> str:
     return html[:yulia_name_start] + replacement + html[yulia_name_start + len(yulia_name) :]
 
 
+def _relax_hero_title_nbsp(html: str) -> str:
+    """Снимает неразрывный пробел в H1 — только для этого варианта.
+
+    Нумерация клиентских блоков добавляет бейджи, которые сужают колонку
+    заголовка. С `&nbsp;` перед тире связка «праву&nbsp;—» перестаёт
+    разрываться, заголовок уходит на лишнюю строку и на 360x600 утягивает CTA
+    за первый экран: qa-browser-matrix даёт
+    `hero-action-bottom=616.36 required<=592`.
+
+    Дефект создан лесами ревью, а не вёрсткой, поэтому компромисс живёт здесь,
+    а не в каноническом `site/index.html`: на боевых Preview типографика
+    остаётся правильной. Плата — тире в H1 начинает строку на 7 ширинах из 57
+    в этом одном варианте; для служебного артефакта приёмки текста это
+    приемлемо. См. `docs/TYPOGRAPHY-DASHES.md` §7.
+    """
+
+    marker = "семейному праву&nbsp;— на русском языке</h1>"
+    if marker not in html:
+        raise SystemExit("не найден H1 с защищённым тире — проверить site/index.html")
+    return html.replace(marker, "семейному праву — на русском языке</h1>", 1)
+
+
 def build() -> Path:
     if DEST.exists():
         shutil.rmtree(DEST)
@@ -211,6 +233,7 @@ def build() -> Path:
     html = _add_body_class(html)
     html = _add_owner_review_ids(html)
     html = _insert_banner(html)
+    html = _relax_hero_title_nbsp(html)
     index_path.write_text(html, encoding="utf-8")
 
     styles_path = DEST / "styles.css"
