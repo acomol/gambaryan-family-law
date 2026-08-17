@@ -108,7 +108,11 @@ jobs:
           # аутентификации выглядел как проблема с аккаунтом. Это разные поломки.
           verify=$(curl -sS "https://api.cloudflare.com/client/v4/user/tokens/verify" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
-          if ! grep -q '"success":true' <<<"$verify"; then
+          # Разбираем JSON, а не ищем подстроку: Cloudflare отдаёт УСПЕШНЫЕ ответы
+          # с отступами ("success": true — с пробелом), а ошибки компактно
+          # ("success":false). grep по '"success":true' поэтому не находил успех
+          # никогда и объявлял отказом любой нормальный ответ (инцидент 2026-08-17).
+          if ! printf '%s' "$verify" | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("success") else 1)' 2>/dev/null; then
             echo "::error::Cloudflare отклонил токен: аутентификация не прошла."
             echo "::error::Причина не в аккаунте. Токен недействителен, отозван, истёк либо ограничен по Client IP."
             echo "Ответ Cloudflare:"
@@ -136,7 +140,7 @@ jobs:
           projects=$(curl -sS \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
-          if ! grep -q '"success":true' <<<"$projects"; then
+          if ! printf '%s' "$projects" | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("success") else 1)' 2>/dev/null; then
             echo "::error::Токен действителен, но обращение к указанному аккаунту отклонено."
             echo "Ответ Cloudflare:"
             echo "$projects" | head -c 300
@@ -175,7 +179,7 @@ jobs:
           fi
           # "active" != "нужный аккаунт": токен, валидный для чужого аккаунта,
           # заставит wrangler молча создать дубликат проекта (инцидент 2026-05-13).
-          if ! grep -q '"name":"gambarian-landing"' <<<"$projects"; then
+          if ! printf '%s' "$projects" | python3 -c 'import json,sys; sys.exit(0 if any(p.get("name")=="gambarian-landing" for p in (json.load(sys.stdin).get("result") or [])) else 1)' 2>/dev/null; then
             echo "::error::Аутентификация прошла, но в аккаунте $CLOUDFLARE_ACCOUNT_ID нет проекта gambarian-landing — токен от другого аккаунта."
             echo "$projects" | head -c 400
             exit 1
