@@ -1,4 +1,4 @@
-/* ACTION-BAR-SPEC v2.3.4 | 2026-08-13
+/* ACTION-BAR-SPEC v2.4.0 | 2026-08-17
    ========================================================================
    Карта layout: >960px — панель выключена; <=960px — fixed;
    при высоте <=400px — static, без компенсации страницы.
@@ -113,6 +113,10 @@
 }
 
 .mobile-bar-demo[hidden] { display: none; }
+
+/* Показывается на всех ширинах, а не только на mobile: состояние, которым он
+   управляет, на final-dev3 меняет действие в Hero, а Hero виден на desktop. */
+.mobile-bar-demo:not([hidden]) { display: flex; }
 
 .mobile-bar-demo__track {
   position: relative;
