@@ -89,13 +89,48 @@ jobs:
             echo "::error::Не заданы секреты CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID"
             exit 1
           fi
-          # "active" != "нужный аккаунт": токен, валидный для чужого аккаунта,
-          # заставит wrangler молча создать дубликат проекта (инцидент 2026-05-13).
+
+          # Секрет, записанный через конвейер (например `gh secret set NAME | ...`),
+          # уносит с собой завершающий перевод строки. Значение не печатаем — только
+          # длины, по ним расхождение видно сразу.
+          raw_len=${#CLOUDFLARE_API_TOKEN}
+          trimmed=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d ' \t\r\n')
+          trim_len=${#trimmed}
+          echo "Длина секрета: $raw_len; без пробелов и переводов строки: $trim_len"
+          if [ "$raw_len" -ne "$trim_len" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN содержит пробельные символы или перевод строки."
+            echo "::error::Записать заново значением, а не через конвейер: gh secret set CLOUDFLARE_API_TOKEN --body \$token"
+            exit 1
+          fi
+
+          # Шаг 1: принимает ли Cloudflare сам токен. Раньше здесь был один общий
+          # текст «токен от другого аккаунта» на любой неудачный ответ, и отказ в
+          # аутентификации выглядел как проблема с аккаунтом. Это разные поломки.
+          verify=$(curl -sS "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          if ! grep -q '"success":true' <<<"$verify"; then
+            echo "::error::Cloudflare отклонил токен: аутентификация не прошла."
+            echo "::error::Причина не в аккаунте. Токен недействителен, отозван, истёк либо ограничен по Client IP."
+            echo "Ответ Cloudflare:"
+            echo "$verify" | head -c 400
+            exit 1
+          fi
+          echo "Токен принят Cloudflare."
+
+          # Шаг 2: видит ли токен нужный аккаунт.
           projects=$(curl -sS \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          if ! grep -q '"success":true' <<<"$projects"; then
+            echo "::error::Токен действителен, но доступ к аккаунту $CLOUDFLARE_ACCOUNT_ID отклонён."
+            echo "::error::Проверить: право Account -> Cloudflare Pages -> Edit выдано именно на этот аккаунт."
+            echo "$projects" | head -c 400
+            exit 1
+          fi
+          # "active" != "нужный аккаунт": токен, валидный для чужого аккаунта,
+          # заставит wrangler молча создать дубликат проекта (инцидент 2026-05-13).
           if ! grep -q '"name":"gambarian-landing"' <<<"$projects"; then
-            echo "::error::В аккаунте $CLOUDFLARE_ACCOUNT_ID нет проекта gambarian-landing — токен от другого аккаунта."
+            echo "::error::Аутентификация прошла, но в аккаунте $CLOUDFLARE_ACCOUNT_ID нет проекта gambarian-landing — токен от другого аккаунта."
             echo "$projects" | head -c 400
             exit 1
           fi
