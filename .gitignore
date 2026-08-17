@@ -15,6 +15,7 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+.dev.vars*
 
 # Debug
 npm-debug.log*
@@ -35,8 +36,15 @@ Thumbs.db
 *.tsbuildinfo
 next-env.d.ts
 
+# Python
+__pycache__/
+*.py[cod]
+
 # Vercel
 .vercel
+
+# Cloudflare: локальный кэш wrangler (id аккаунта и проекта), у каждого свой
+.wrangler/
 
 # Local settings (not project config)
 .claude/settings.local.json
@@ -44,6 +52,15 @@ next-env.d.ts
 # User-specific skills (not part of the template)
 .claude/skills/customize/
 .claude/skills/release/
+
+# nodumbmode is installed project-locally, but upstream has no redistribution
+# license. Keep the local copy out of Git; reproduce it with the documented
+# npx command after cloning.
+.agents/skills/ask-nodumb/
+.agents/skills/changelog-discipline/
+.agents/skills/nodumb/
+.agents/skills/system-feedback/
+skills-lock.json
 
 # Local temp files
 temp/

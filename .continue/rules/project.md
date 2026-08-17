@@ -2,150 +2,172 @@
      Run `bash scripts/sync-agent-rules.sh` to regenerate. -->
 
 ---
-description: Project conventions for AI Website Clone Template
+description: Project conventions for the Gambarian Family Law landing
 alwaysApply: true
 ---
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Gambarian Family Law Landing Page
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+**Версия правил:** `PROJECT-AGENT-RULES v1.2.0`
 
-# Website Reverse-Engineer Template
+**Обновлено:** `2026-08-11`
 
 ## What This Is
-A reusable template for reverse-engineering any website into a clean, modern Next.js codebase using AI coding agents. The Next.js + shadcn/ui + Tailwind v4 base is pre-scaffolded — just run `/clone-website <url1> [<url2> ...]`.
+
+Статичный лендинг адвокатского бюро «Гамбарян и партнёры». Боевой источник
+находится в `site/`; клиентские варианты всегда генерируются из него скриптами,
+а не редактируются внутри `build/` вручную. Production и Preview aliases из
+исполняемой карты публикуются в существующий Cloudflare Pages project
+`gambarian-landing`.
 
 ## Tech Stack
-- **Framework:** Next.js 16 (App Router, React 19, TypeScript strict)
-- **UI:** shadcn/ui (Radix primitives, Tailwind CSS v4, `cn()` utility)
-- **Icons:** Lucide React (default — will be replaced/supplemented by extracted SVGs)
-- **Styling:** Tailwind CSS v4 with oklch design tokens
-- **Deployment:** Vercel
+
+- **Runtime:** статичные HTML/CSS/JavaScript в `site/`.
+- **Preview builders:** Python; производные попадают в `build/variants/*` и
+  `build/font-variants/*`.
+- **Общая мобильная панель:** versioned addon в `site-addons/action-bar/`,
+  который каждый builder устанавливает из единственного источника.
+- **Lead API:** Cloudflare Pages Function `functions/api/lead.js`; webhook URL
+  читается только из encrypted secret `ALBATO_WEBHOOK_URL`.
+- **Deployment:** Cloudflare Pages project `gambarian-landing`; для production
+  используется явный `--branch=main`, для Preview — явный branch alias.
+
+В репозитории сохранён унаследованный Next.js 16 / React 19 / Tailwind каркас.
+Он проходит `npm run check`, но не является production-сборкой лендинга и не
+публикуется в Cloudflare Pages.
 
 ## Commands
-- `npm run dev` — Start dev server
-- `npm run build` — Production build
-- `npm run lint` — ESLint check
-- `npm run typecheck` — TypeScript check
-- `npm run check` — Run lint + typecheck + build
+
+- `python -m pip install -r requirements-build.txt` — установить зависимости
+  генераторов и browser QA.
+- `python -m playwright install chromium` — установить Chromium для Playwright.
+- `python -B scripts/build-hero-variants.py` — собрать Hero-варианты, включая
+  отдельный `final-dev1`.
+- `python -B scripts/build-font-variants.py` — собрать четыре шрифтовых Preview.
+- `python -B scripts/build-action-bar.py` — собрать канонический Action Bar
+  artifact (`final-dev` и `action-bar` используют один каталог).
+- `python -B scripts/build-review-numbered.py` — собрать вариант с нумерацией
+  клиентских текстов.
+- `python -B scripts/verify-client-previews.py` — проверить все собранные
+  Preview из исполняемой карты.
+- `python -B scripts/verify-client-copy.py` — проверить frozen-копию
+  клиентского документа, каждый использованный client/owner-approved блок и
+  разрешённый служебный текст в source и всех Preview; полный coverage `45/45`
+  не требуется.
+- `node scripts/verify-lead-hook.mjs` — проверить browser/Function contract
+  формы без реальной отправки в Albato.
+- `python scripts/qa-browser-matrix.py <base-url>` — прогнать responsive/browser
+  матрицу по локальному или живому URL.
+- `npm run check` — проверить унаследованный Next.js-каркас (lint, typecheck,
+  build); это CI-gate, а не production build.
+- `powershell -ExecutionPolicy Bypass -File scripts/deploy-pages.ps1` — ручной
+  production deploy `site/ + functions/`; запускать только после решения
+  владельца и readback по `docs/DEPLOY.md`.
 
 ## Code Style
-- TypeScript strict mode, no `any`
-- Named exports, PascalCase components, camelCase utils
-- Tailwind utility classes, no inline styles
-- 2-space indentation
-- Responsive: mobile-first
+
+- Менять канонические файлы в `site/`, `site-addons/` и `functions/`, затем
+  пересобирать производные; не исправлять копии в `build/`.
+- Сохранять существующие HTML/CSS/JavaScript и Python conventions; не
+  рефакторить соседний код без требования задачи.
+- Любое изменение versioned-контракта сопровождается новой SemVer, датой и
+  синхронизацией marker во всех его источниках.
+- Тире в видимом тексте — только длинное (U+2014) и только с неразрывным
+  пробелом перед ним: `слово&nbsp;— слово`. В JS-строках вместо сущности
+  ставится литеральный U+00A0. НЕ ставить `&nbsp;` в JSON-LD (сущности там не
+  декодируются) и в `<head>`-мета. Полное правило и гейты —
+  `docs/TYPOGRAPHY-DASHES.md`.
+- Responsive-проверки включают обе стороны границы `960/961px`, короткий
+  portrait и desktop; отсутствие horizontal overflow обязательно.
 
 ## Design Principles
-- **Pixel-perfect emulation** — match the target's spacing, colors, typography exactly
-- **No personal aesthetic changes during emulation phase** — match 1:1 first, customize later
-- **Real content** — use actual text and assets from the target site, not placeholders
-- **Beauty-first** — every pixel matters
+
+- **Утверждённый контент** — клиентские тексты и факты не переписывать по
+  предположению; явные поздние правки владельца имеют приоритет.
+- **Production isolation** — Preview builders и deploy не должны молча менять
+  `site/` или production alias.
+- **Mobile conversion** — CTA, Action Bar, форма, ошибки и autofill должны быть
+  читаемыми, доступными и полностью помещаться на целевых viewport.
+- **Проверяемость** — завершение подтверждается статическими гейтами, browser
+  matrix и live readback, соответствующими реальному контуру изменения.
 
 ## Project Structure
 ```
-src/
-  app/              # Next.js routes
-  components/       # React components
-    ui/             # shadcn/ui primitives
-    icons.tsx       # Extracted SVG icons as React components
-  lib/
-    utils.ts        # cn() utility (shadcn)
-  types/            # TypeScript interfaces
-  hooks/            # Custom React hooks
-public/
-  images/           # Downloaded images from target site
-  videos/           # Downloaded videos from target site
-  seo/              # Favicons, OG images, webmanifest
-docs/
-  research/         # Inspection output (design tokens, components, layout)
-  design-references/ # Screenshots and visual references
-scripts/            # Asset download scripts
+site/                       # канонический production source
+site-addons/action-bar/     # единственный источник мобильной Action Bar
+functions/api/lead.js       # Cloudflare Pages lead endpoint
+scripts/build-*.py          # генераторы клиентских вариантов
+scripts/client-preview-map.json
+                            # branch -> build directory + версии контрактов
+scripts/client_copy_contract.py
+                            # exact copy contract для 45 клиентских блоков
+docs/sources/client-copy-short-v1.0.0.txt
+                            # immutable byte-for-byte frozen source клиента
+build/variants/             # производные Hero/Action Bar/review (не править)
+build/font-variants/        # производные шрифтовые Preview (не править)
+docs/                       # задания, контракты, QA, deploy и handoff
+src/                        # унаследованный Next.js-каркас, не production
 ```
 
+## Что обязательно сохранять в репозиторий
+
+Сессия работает в эфемерном контейнере, а контекст диалога сжимается по ходу
+работы. Всё, что осталось только в переписке или в артефакте-ссылке, **пропадает**
+и восстановлению не подлежит. Поэтому: результат работы существует, только если он
+закоммичен.
+
+Коммитить **до конца задачи**, не «потом»:
+
+| Что | Куда |
+| --- | --- |
+| Исследование, сравнение вариантов, замеры рынка | `docs/<TEMA>.md` |
+| Тексты и правки, присланные клиентом | `docs/CONTENT-*.md` |
+| Принятое решение и его обоснование | `docs/<TEMA>.md`, секция «Рекомендация» |
+| Задание исполнителю, критерии приёмки | `docs/tasks/<дата>-<тема>.md` |
+| Разобранный дефект и его причина | `docs/ERRORS.md` |
+| Ссылки на внешние источники (артефакты, макеты, ревью-страницы) | тот же документ темы |
+
+Правила:
+
+1. **Артефакт в чате — не хранилище.** Если создан артефакт с разбором, его
+   содержание переносится в `docs/` тем же ходом. Ссылку на артефакт сохранять
+   рядом, но полагаться только на неё нельзя.
+2. **Присланный клиентом текст фиксируется дословно** — до того, как начнётся
+   перенос в вёрстку. Иначе потом нечем доказать, что на сайте только
+   утверждённое.
+3. **Внешняя страница может исчезнуть.** Если работа опирается на чужой URL
+   (страница ревью, макет, прайс), из него вытаскивается и сохраняется то, что
+   нужно для работы.
+4. **Один документ — одна задача.** Не смешивать разбор, отчёт и список
+   недостающего в одном файле: их читают в разных ситуациях.
+5. Каждый новый файл в `docs/` получает секцию `## Related` со ссылками на
+   связанные документы.
+
+## Публикация
+
+Деплой ведёт агент `cf-preview-deployer` (`.claude/agents/`): он сам
+определяет доступный путь публикации, проверяет, куда смотрит токен, и
+доказывает результат чтением живых адресов.
+
+Три правила, которые не обходятся:
+
+1. **Preview по умолчанию, боевой — только по явному решению владельца** в
+   текущем разговоре.
+2. **Exit code wrangler не доказательство.** На части предупреждений он
+   выходит с нулём. Доказательство — `python -B scripts/verify-live-previews.py`.
+3. **`status: active` не значит «нужный аккаунт».** Токен чужого аккаунта
+   заставит wrangler молча создать дубликат проекта без привязки к домену.
+   Перед публикацией убедиться, что токен видит `gambarian-landing`.
+
+Из облачной сессии Claude Code ключей Cloudflare нет — это свойство среды,
+а не отказ агента. Рабочие пути: переменные окружения на машине владельца
+либо секреты GitHub Actions (`.github/workflows/deploy-previews.yml`).
+
 ## MOST IMPORTANT NOTES
+- Before changing code or documentation, read `docs/RESUME.md` and the relevant
+  task's `Приёмка` section. Treat older handoff files as history.
 - When launching Claude Code agent teams, ALWAYS have each teammate work in their own worktree branch and merge everyone's work at the end, resolving any merge conflicts smartly since you are basically serving the orchestrator role and have full context to our goals, work given, work achieved, and desired outcomes.
 - After editing `AGENTS.md`, run `bash scripts/sync-agent-rules.sh` to regenerate platform-specific instruction files.
-- After editing `.claude/skills/clone-website/SKILL.md`, run `node scripts/sync-skills.mjs` to regenerate the skill for all platforms.
-
-# Website Inspection Guide
-
-## How to Reverse-Engineer Any Website
-
-This guide outlines what to capture when inspecting a target website via Chrome MCP or browser DevTools.
-
-## Phase 1: Visual Audit
-
-### Screenshots to Capture
-- [ ] Every distinct page — desktop, tablet, mobile
-- [ ] Dark mode variants (if applicable)
-- [ ] Light mode variants (if applicable)
-- [ ] Key interaction states (hover, active, open menus, modals)
-- [ ] Loading/skeleton states
-- [ ] Empty states
-- [ ] Error states
-
-### Design Tokens to Extract
-- [ ] **Colors** — background, text (primary/secondary/muted), accent, border, hover, error, success, warning
-- [ ] **Typography** — font family, sizes (h1-h6, body, caption, label), weights, line heights, letter spacing
-- [ ] **Spacing** — padding/margin patterns (look for a scale: 4px, 8px, 12px, 16px, 24px, 32px, etc.)
-- [ ] **Border radius** — buttons, cards, avatars, inputs
-- [ ] **Shadows/elevation** — card shadows, dropdown shadows, modal overlay
-- [ ] **Breakpoints** — when does the layout shift? (inspect with DevTools responsive mode)
-- [ ] **Icons** — which icon library? custom SVGs? sizes?
-- [ ] **Avatars** — sizes, shapes, fallback behavior
-- [ ] **Buttons** — all variants (primary, secondary, ghost, icon-only, danger)
-- [ ] **Inputs** — text fields, textareas, selects, checkboxes, toggles
-
-## Phase 2: Component Inventory
-
-For each distinct UI component, document:
-1. **Name** — what would you call this component?
-2. **Structure** — what HTML elements / child components does it contain?
-3. **Variants** — does it have different sizes, colors, or states?
-4. **States** — default, hover, active, disabled, loading, error, empty
-5. **Responsive behavior** — how does it change at different breakpoints?
-6. **Interactions** — click, hover, focus, keyboard navigation
-7. **Animations** — transitions, entrance/exit animations, micro-interactions
-
-### Common Components to Look For
-- Navigation (top bar, sidebar, bottom bar)
-- Cards / list items
-- Buttons and links
-- Forms and inputs
-- Modals and dialogs
-- Dropdowns and menus
-- Tabs and segmented controls
-- Avatars and user badges
-- Loading skeletons
-- Toast notifications
-- Tooltips and popovers
-
-## Phase 3: Layout Architecture
-
-- [ ] **Grid system** — CSS Grid? Flexbox? Fixed widths?
-- [ ] **Column layout** — how many columns at each breakpoint?
-- [ ] **Max-width** — main content area max-width
-- [ ] **Sticky elements** — header, sidebar, floating buttons
-- [ ] **Z-index layers** — navigation, modals, tooltips, overlays
-- [ ] **Scroll behavior** — infinite scroll, pagination, virtual scrolling
-
-## Phase 4: Technical Stack Analysis
-
-- [ ] **Framework** — React? Vue? Angular? Check `__NEXT_DATA__`, `__NUXT__`, `ng-version`
-- [ ] **CSS approach** — Tailwind (utility classes), CSS Modules, Styled Components, Emotion, vanilla CSS
-- [ ] **State management** — Redux (check DevTools), React Query, Zustand, Pinia
-- [ ] **API patterns** — REST, GraphQL (check network tab for `/graphql` requests)
-- [ ] **Font loading** — Google Fonts, self-hosted, system fonts
-- [ ] **Image strategy** — CDN, lazy loading, srcset, WebP/AVIF
-- [ ] **Animation library** — Framer Motion, GSAP, CSS transitions only
-
-## Phase 5: Documentation Output
-
-After inspection, create these files in `docs/research/`:
-1. `DESIGN_TOKENS.md` — All extracted colors, typography, spacing
-2. `COMPONENT_INVENTORY.md` — Every component with structure notes
-3. `LAYOUT_ARCHITECTURE.md` — Page layouts, grid system, responsive behavior
-4. `INTERACTION_PATTERNS.md` — Animations, transitions, hover states
-5. `TECH_STACK_ANALYSIS.md` — What the site uses and our chosen equivalents
+- Do not edit generated files in `build/` by hand. Rebuild them from `site/`.
+- Do not deploy production or send a real Albato lead without explicit owner
+  approval. The generic `docs/research/INSPECTION_GUIDE.md` is historical
+  reference, not the workflow entry point for this project.

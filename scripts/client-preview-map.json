@@ -1,0 +1,56 @@
+{
+  "version": "2.4.0",
+  "updated": "2026-08-13",
+  "action_bar_version": "2.3.4",
+  "action_bar_updated": "2026-08-13",
+  "client_preview_mobile_version": "1.1.0",
+  "client_preview_mobile_updated": "2026-08-11",
+  "project": "gambarian-landing",
+  "wrangler_version": "4.120.0",
+  "previews": [
+    {
+      "branch": "final-dev",
+      "directory": "build/variants/action-bar"
+    },
+    {
+      "branch": "final-dev1",
+      "directory": "build/variants/final-dev1"
+    },
+    {
+      "branch": "final-dev3",
+      "directory": "build/variants/final-dev3"
+    },
+    {
+      "branch": "v1-playfair-onest",
+      "directory": "build/font-variants/v1-playfair-onest"
+    },
+    {
+      "branch": "v2-lora-inter",
+      "directory": "build/font-variants/v2-lora-inter"
+    },
+    {
+      "branch": "v3-literata-manrope",
+      "directory": "build/font-variants/v3-literata-manrope"
+    },
+    {
+      "branch": "v4-ptserif-golos",
+      "directory": "build/font-variants/v4-ptserif-golos"
+    },
+    {
+      "branch": "hero-a-actions-first",
+      "directory": "build/variants/hero-a-actions-first"
+    },
+    {
+      "branch": "hero-b-call-first",
+      "directory": "build/variants/hero-b-call-first"
+    },
+    {
+      "branch": "action-bar",
+      "directory": "build/variants/action-bar"
+    },
+    {
+      "branch": "review-numbered",
+      "directory": "build/variants/review-numbered"
+    }
+  ]
+}

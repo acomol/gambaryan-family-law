@@ -1,3 +1,46 @@
+> ## Лендинг «Гамбарян и Партнёры»
+>
+> **Версия индекса:** `PREVIEW-HANDOFF-INDEX v2.2.1 | 2026-08-13`
+>
+> **Текущий статус:** `LOCAL + CI PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`.
+> Новый кандидат использует три тёмные карточки фактов, owner-текст
+> `fact-900-v1`, copy contract `1.1.0` и Browser runner `1.4.0`; локальная
+> матрица `177/177` и CI run `31701536955` на commit `3fd80df` прошли.
+> Стабильные Preview URL всё ещё отдают release
+> `75558d9`, где подтверждён desktop-клиппинг слова «прецедента» в карточке
+> `2.10`, поэтому прежний статус `READY FOR CLIENT` отменён. Production не
+> изменён; новый deploy требует отдельного разрешения владельца.
+>
+> Рабочий сайт живёт в папке [`site/`](site/). Шаблон-клонировщик, описанный
+> ниже, — исходная заготовка репозитория; к самому лендингу он отношения не
+> имеет.
+>
+> | Что | Где |
+> |---|---|
+> | **Начать/продолжить работу** | [`docs/RESUME.md`](docs/RESUME.md) |
+> | **Действующее задание** — тёмные карточки фактов | [`docs/tasks/2026-08-13-dark-fact-cards.md`](docs/tasks/2026-08-13-dark-fact-cards.md) |
+> | Контракт утверждённых текстов | [`docs/tasks/2026-08-11-client-approved-copy-only.md`](docs/tasks/2026-08-11-client-approved-copy-only.md) |
+> | **Клиентские Preview** — 11 URL, пока не отправлять | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
+> | Frozen source утверждённого текста | [`docs/sources/client-copy-short-v1.0.0.txt`](docs/sources/client-copy-short-v1.0.0.txt) |
+> | Исторический Claude artifact | https://claude.ai/code/artifact/f6f44336-a84c-4122-a74b-65c47e53b0c0 |
+> | **Боевой адрес** — пока отдаёт версию до правок | https://gambarian-landing.pages.dev/ |
+> | Исходники страницы | [`site/`](site/) — `index.html`, `styles.css`, `fonts.css`, `app.js`, `assets/`, `fonts/` |
+> | Вся страница одним файлом (3.87 МБ, внешних запросов 0) | [`site/gambarian-standalone.html`](site/gambarian-standalone.html) |
+> | Куда и как публикуется | [`docs/DEPLOY.md`](docs/DEPLOY.md) |
+> | Композиция экранов и критерии приёмки | [`docs/SCREEN-COMPOSITION.md`](docs/SCREEN-COMPOSITION.md) |
+> | Журнал ошибок и разборов | [`docs/ERRORS.md`](docs/ERRORS.md) |
+> | Финальный чек-лист: решения, регрессии и production-блокеры | [`docs/FINAL-QA-CHECKLIST.md`](docs/FINAL-QA-CHECKLIST.md) |
+> | Пакет из 11 Preview для согласования | [`docs/CLIENT-PREVIEW-HANDOFF.md`](docs/CLIENT-PREVIEW-HANDOFF.md) |
+> | Текущий live release: commit, deployment IDs и readback | [`docs/reviews/2026-08-13-client-preview-live-release.md`](docs/reviews/2026-08-13-client-preview-live-release.md) |
+> | Карта источников утверждённого текста | [`docs/CONTENT-SOURCE-MAP.md`](docs/CONTENT-SOURCE-MAP.md) |
+> | `final-dev3 v1.1.0` — `HISTORICAL LIVE PASS` | [`docs/reviews/2026-08-11-final-dev3-live-release.md`](docs/reviews/2026-08-11-final-dev3-live-release.md) |
+>
+> Пересобрать файл-одностраничник:
+>
+> ```bash
+> python scripts/build-preview.py site/gambarian-standalone.html --standalone
+> ```
+
 # AI Website Cloner Template
 
 <a href="https://github.com/JCodesMore/ai-website-cloner-template/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a> <a href="https://github.com/JCodesMore/ai-website-cloner-template/stargazers"><img src="https://img.shields.io/github/stars/JCodesMore/ai-website-cloner-template?style=flat" alt="Stars" /></a> <a href="https://discord.gg/hrTSX5yTpB"><img src="https://img.shields.io/discord/1400896964597383279?label=discord" alt="Discord" /></a>

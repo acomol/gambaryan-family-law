@@ -1,0 +1,1676 @@
+/* ==========================================================================
+   Гамбарян & Партнёры — короткая версия лендинга
+   Реализация по docs/SPEC-LANDING-V01.md. Все числа — из spec, не на глаз.
+   Токены повторяют дизайн-систему (colors_and_type.css); её element-defaults
+   (курсивный serif h1/h2, uppercase h3) намеренно не подключаются — прототип
+   их перебивал инлайн-стилями, здесь они просто не создаются.
+   ВАЖНО: глобального box-sizing:border-box нет — прототип работал в
+   content-box, и от этого зависят пороги переноса flex-колонок.
+   ========================================================================== */
+
+:root {
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-body: "Onest", Helvetica, Arial, sans-serif;
+  /* Отдельного узкого семейства больше нет: у Archivo Narrow не было
+     кириллицы, поэтому в русском тексте узкое начертание всё равно не
+     отрисовывалось. Надстрочники держатся на весе и трекинге. */
+  --font-narrow: var(--font-body);
+
+  --bg: #101214;
+  --bg-hero: #0a0b0d;
+  --bg-card-dark: #151b22;
+  --bg-cream: #f6f1e8;
+  --bg-card: #fff;
+  --bg-footer: #0b0d0e;
+
+  --gold: #f0ae1f;
+  --gold-light: #f5c451;
+  --wine: #8a1f1f;
+  --wine-hover: #a02626;
+
+  --ink: #14191f;
+  --ink-2: #4b5158;
+  --ink-3: #6b7280;
+  --ink-4: #9ca3af;
+  --input-line: #d1d5db;
+
+  --container: 1200px;
+  --container-hero: 1360px;
+  --pad-x: 24px;
+  --section-pad: clamp(56px, 8vw, 96px);
+}
+
+/* --- База: повторяет унаследованные значения прототипа ------------------- */
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.7; /* наследуется там, где макет не задавал line-height */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease, opacity 0.2s ease, background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+a:hover { opacity: 0.85; }
+
+a, button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+input::placeholder, textarea::placeholder { color: var(--ink-4); }
+
+img { max-width: 100%; }
+
+/* <picture> нужен только ради WebP + фолбэка, но он полноценный элемент в
+   потоке и становится flex-элементом вместо самого <img>. В карточке
+   прецедента это сдвигало текстовую колонку на 201px (space-between делил
+   свободное место на три элемента вместо двух).
+   display:contents здесь не помогает — Chromium его на <picture> игнорирует
+   (проверено: пустой <picture> остаётся flex-элементом). Поэтому там, где
+   картинка позиционируется абсолютно, из потока выводится сама обёртка. */
+picture { display: block; }
+
+.precedent-card > picture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.svc-media__person > picture { flex: none; }
+
+/* Неделимые токены. Применяется только к строкам, которые заведомо умещаются
+   в самый узкий контейнер (360px): номер телефона. Для длинных строк nowrap
+   запрещён — он источник horizontal overflow. */
+.nowrap-token { white-space: nowrap; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Общие примитивы ----------------------------------------------------- */
+
+.container {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding-inline: var(--pad-x);
+}
+
+.section-pad { padding-block: var(--section-pad); }
+
+.eyebrow {
+  font-family: var(--font-narrow);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+.eyebrow--wine { color: var(--wine); }
+
+.section-title {
+  margin: 0 0 14px;
+  font-family: var(--font-serif);
+  font-style: normal;
+  font-weight: 500;
+  font-size: clamp(26px, 3.2vw, 40px);
+  line-height: 1.2;
+  color: #fff;
+}
+.section-title--ink { color: var(--ink); }
+.section-title--narrow { max-width: 640px; }
+
+.rule { width: 56px; height: 2px; background: var(--gold); margin-bottom: 40px; }
+.rule--tight { margin-bottom: 22px; }
+.rule--flush { margin-bottom: 0; }
+.notch { width: 28px; height: 2px; background: var(--gold); }
+.notch--wide { width: 34px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: 0;
+}
+.btn--wine {
+  background: var(--wine);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 14px 26px;
+  border-radius: 8px;
+}
+.btn--wine:hover { background: var(--wine-hover); opacity: 1; }
+.btn--outline {
+  gap: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 13px 24px;
+  border-radius: 8px;
+}
+.btn--outline:hover { border-color: rgba(240, 174, 31, 0.7); opacity: 1; }
+
+/* --- 1. Шапка ------------------------------------------------------------ */
+
+.site-header {
+  border-top: 2px solid var(--gold);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.site-header__bar {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 14px var(--pad-x);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.logo { display: flex; flex-direction: column; gap: 3px; flex: none; }
+.logo__word {
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-transform: uppercase;
+}
+.logo__amp { color: var(--gold); }
+.logo__rule { display: flex; align-items: center; gap: 10px; }
+.logo__line { height: 2px; flex: 1; background: var(--gold); opacity: 0.85; }
+.logo__sub {
+  font-family: var(--font-narrow);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  /* 14px вместо дробных 13.5px: дробный кегль давал нецелые метрики строки и
+     выпадал из шкалы проекта (12/13/14/16). Вертикальный padding доводит цель
+     клика с 23px до ≥24px — WCAG 2.2 SC 2.5.8. */
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.nav-links a {
+  padding: 4px 0;
+}
+
+/* Место винной кнопки в шапке занял телефон.
+   Причина: кнопка «Получить консультацию» вела туда же, куда кнопка hero
+   «Записаться на консультацию» — два винных прямоугольника на одном экране
+   к одной цели. Это дублирование внутри экрана, ровно то, что портит
+   иерархию (см. docs/HERO-CTA-RESEARCH.md).
+   Теперь роли разведены: шапка держит звонок и остаётся при прокрутке,
+   hero держит форму. Обе цели на экране, винная кнопка одна.
+   Заодно ушла подпись «Получить консультацию» — она не проходила
+   согласование и расходилась с утверждённым «Записаться на консультацию». */
+.nav-call {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid rgba(240, 174, 31, 0.35);
+  border-radius: 8px;
+  color: var(--gold);
+  text-decoration: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.nav-call svg { flex: none; }
+.nav-call__num {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.nav-call:hover {
+  opacity: 1;
+  border-color: var(--gold);
+  background: rgba(240, 174, 31, 0.08);
+}
+
+.nav-burger {
+  display: none;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(240, 174, 31, 0.55);
+  border-radius: 8px;
+  color: var(--gold);
+  cursor: pointer;
+}
+
+.nav-drawer {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 12px var(--pad-x) 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-drawer[hidden] { display: none; }
+.nav-drawer a {
+  padding: 13px 0;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+/* В шторке — то же разведение ролей, что и в шапке: звонок, не форма.
+   Форма достижима пунктом «Контакты» строкой выше. */
+.nav-drawer .nav-drawer__call {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid rgba(240, 174, 31, 0.35);
+  border-radius: 8px;
+  color: var(--gold);
+  font-size: 15.5px;
+  font-weight: 700;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(240, 174, 31, 0.35);
+}
+.nav-drawer .nav-drawer__call:hover {
+  opacity: 1;
+  border-color: var(--gold);
+  background: rgba(240, 174, 31, 0.08);
+}
+
+/* --- 2. Hero ------------------------------------------------------------- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  min-height: clamp(560px, 84vh, 880px);
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-hero);
+}
+
+/* Золотая полоса-ограничитель: hero имеет явное окончание, а не растворяется */
+.hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  z-index: 3;
+  background: linear-gradient(
+    90deg,
+    rgba(240, 174, 31, 0) 0%,
+    var(--gold) 18%,
+    var(--gold-light) 50%,
+    var(--gold) 82%,
+    rgba(240, 174, 31, 0) 100%
+  );
+}
+
+/* Общий кадр студийной съёмки во всю ширину hero: фигуры остаются в своей
+   среде — золотой блик слева и глубокий чёрный фон часть композиции.
+   Блок лежит внутри .hero-inner ради порядка в мобильной вёрстке, но на
+   десктопе раскрывается до краёв вьюпорта. */
+.hero-media {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: min(0px, calc((var(--container-hero) - 100vw) / 2));
+  right: min(0px, calc((var(--container-hero) - 100vw) / 2));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-media picture { display: block; width: 100%; height: 100%; }
+
+.hero-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Вертикаль окна: чем шире вьюпорт, тем глубже cover режет кадр по
+     вертикали. На 1440 при 88% срезался только достроенный воздух, но на
+     1920+ срез доходил до макушек (дефект пойман владельцем на 1920).
+     56% держит головы с запасом на 1440-2000, ниже добор для сверхшироких. */
+  object-position: 50% 56%;
+}
+
+/* Текст держится над кадром на широких экранах */
+.hero-inner > *:not(.hero-media) {
+  position: relative;
+  z-index: 2;
+}
+
+/* Затемнение только слева, где лежит текст. К правой трети сходит на нет,
+   чтобы не гасить лица и не превращать снимок в серую плашку. */
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(10, 11, 13, 0.94) 0%,
+      rgba(10, 11, 13, 0.87) 28%,
+      rgba(10, 11, 13, 0.55) 44%,
+      rgba(10, 11, 13, 0.14) 58%,
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 62%,
+      rgba(10, 11, 13, 0.55) 100%
+    );
+}
+
+.hero__body {
+  position: relative;
+  z-index: 2;
+  max-width: var(--container-hero);
+  width: 100%;
+  margin: 0 auto;
+  padding: clamp(72px, 8vw, 96px) var(--pad-x) 56px;
+}
+
+.hero-inner {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.hero-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.hero-row .eyebrow { margin-bottom: 0; }
+
+.hero__title {
+  margin: 0 0 24px;
+  font-family: var(--font-serif);
+  font-style: normal;
+  font-weight: 500;
+  font-size: clamp(32px, 4.6vw, 58px);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-wrap: balance;
+}
+
+/* Подзаголовок принял на себя факты, которые раньше были бейджами */
+.hero__lede {
+  margin: 0 0 28px;
+  max-width: 30ch;
+  font-size: clamp(16px, 1.35vw, 19px);
+  line-height: 1.55;
+  color: rgba(240, 232, 218, 0.82);
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.hero__phone {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+}
+/* Звонок — вторая цель первого экрана, но НЕ вторая кнопка. Исследование
+   практики (docs/HERO-CTA-RESEARCH.md): две равновесные кнопки не встречаются
+   ни на одном проверенном сайте услуг, а контурная кнопка рядом с залитой
+   ухудшает считываемость (NN/g про ghost buttons). Поэтому звонок сделан
+   элементом другого типа — строкой с иконкой: заметной, но не спорящей с
+   основной кнопкой за роль доминанты.
+   Номер показан текстом намеренно: его читают, диктуют и набирают с другого
+   устройства, поэтому прятать его за слово «Позвонить» нельзя. */
+.hero__call {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  /* Полноценная тап-цель для аудитории 45+: звонок — основной канал.
+     Отрицательный margin гасит рост строки от паддинга. */
+  padding: 10px 6px;
+  margin: -10px -6px;
+  color: var(--gold);
+  text-decoration: none;
+}
+.hero__call svg { color: var(--gold); flex: none; }
+.hero__call-label {
+  font-family: var(--font-narrow);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.hero__call-num {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--gold);
+}
+.hero__call:hover .hero__call-num { color: var(--gold-light); }
+
+@media (max-width: 860px) {
+  /* CTA-пара по макету владельца (2026-08-10): обе кнопки во всю ширину,
+     звонок — контурная кнопка в золотой рамке, а не текстовая строка.
+     border-box здесь локально и намеренно: глобального box-sizing в проекте
+     нет (см. шапку файла), а width:100% с рамкой и паддингом в content-box
+     вылезал бы за экран.
+     align-self: stretch обязателен: .hero-inner — флекс-колонка, и мобильное
+     правило align-items:center сжимает ряды под содержимое — без stretch
+     обе «полноширинные» кнопки остаются шириной с собственный текст. */
+  .hero__actions,
+  .hero__phone { align-self: stretch; }
+  /* Мобильное центрирование абзацев (.hero-inner p { margin: auto }) ставит
+     авто-марджины по поперечной оси — они забирают свободное место и гасят
+     stretch. Для ряда со звонком марджины возвращаются в ноль. */
+  .hero-inner .hero__phone { margin-left: 0; margin-right: 0; }
+  .hero__actions .btn--wine {
+    width: 100%;
+    box-sizing: border-box;
+    padding-block: 15px;
+  }
+  .hero__call {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    margin: 0;
+    padding: 13px 16px;
+    border: 1px solid rgba(240, 174, 31, 0.5);
+    border-radius: 8px;
+  }
+  .hero__call-label {
+    display: inline;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: rgba(255, 255, 255, 0.88);
+  }
+  .hero__call-num { font-size: 17px; }
+}
+
+.hero__note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.55);
+  max-width: 580px;
+}
+
+/* --- 3. Факты ------------------------------------------------------------ */
+
+.facts { background: var(--bg-cream); color: var(--ink); }
+
+/* min(…,100%) в minmax обязателен: без него минимум колонки (300px/380px/180px)
+   становится жёстким полом и на 360–414px карточка выпирает за экран.
+   Во всех диапазонах, где макет работал, поведение не меняется. */
+.facts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+.fact-card {
+  position: relative;
+  overflow: hidden;
+  background: #101214;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 34px 32px 30px;
+  display: flex;
+  flex-direction: column;
+}
+.fact-card[data-copy-id="2.10"] {
+  border-color: rgba(240, 174, 31, 0.5);
+}
+.fact-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gold);
+}
+.fact-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.fact-card__num {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(44px, 4.6vw, 60px);
+  line-height: 0.95;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.fact-card__unit {
+  font-family: var(--font-narrow);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.fact-card__sub {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 14px;
+}
+.fact-card .notch {
+  margin-bottom: 14px;
+  background: rgba(240, 174, 31, 0.85);
+}
+.fact-card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.78);
+  text-wrap: pretty;
+}
+
+@media (min-width: 861px) {
+  .fact-card[data-copy-id="2.6"] {
+    justify-content: center;
+  }
+  .fact-card[data-copy-id="2.6"] .fact-card__num {
+    font-size: clamp(64px, 6vw, 84px);
+  }
+  .fact-card[data-copy-id="2.6"] .fact-card__sub {
+    font-size: 16px;
+  }
+
+  .fact-card[data-copy-id="2.10"] .fact-card__head {
+    display: block;
+  }
+  .fact-card[data-copy-id="2.10"] .fact-card__num,
+  .fact-card[data-copy-id="2.10"] .fact-card__unit {
+    display: block;
+    font-family: var(--font-serif);
+    font-size: clamp(28px, 2.4vw, 36px);
+    font-weight: 500;
+    line-height: 1.12;
+    letter-spacing: 0;
+    /* Обе строки заголовка белые: акцент карточки несут золотая рамка и
+       подпись-капитель, выделять внутри заголовка ещё и слово — решение
+       владельца отклонено 2026-08-13. Базовое .fact-card__unit золотое,
+       поэтому цвет переопределяется здесь явно. */
+    color: #fff;
+    text-transform: none;
+  }
+  .fact-card[data-copy-id="2.10"] .fact-card__sub {
+    margin-top: 10px;
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .fact-card[data-copy-id="2.14"] .fact-card__head,
+  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .fact-card[data-copy-id="2.14"] .fact-card__num,
+  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
+    font-size: clamp(40px, 3.4vw, 52px);
+    white-space: nowrap;
+  }
+}
+
+.facts-bar {
+  margin-top: 20px;
+  background: var(--bg-card);
+  border: 1px solid rgba(20, 25, 31, 0.07);
+  border-radius: 12px;
+  padding: 22px 32px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 40px;
+}
+.facts-bar__item {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--ink);
+}
+.facts-bar__item svg { flex: none; }
+.facts-bar strong { font-weight: 600; }
+
+/* --- 4. Услуги ----------------------------------------------------------- */
+
+.services { background: var(--bg); }
+
+.services__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 34px;
+}
+
+.services__arrows { display: flex; gap: 12px; }
+
+.svc-arrow {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.svc-arrow:hover { border-color: rgba(240, 174, 31, 0.7); }
+
+.svc-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 26px;
+}
+
+.svc-tab {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.62);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 10px 22px;
+  cursor: pointer;
+}
+.svc-tab.is-active {
+  font-weight: 600;
+  color: var(--gold);
+  background: rgba(240, 174, 31, 0.1);
+  border-color: rgba(240, 174, 31, 0.55);
+}
+
+.svc-card {
+  position: relative;
+  background: var(--bg-card-dark);
+  border: 1px solid rgba(240, 174, 31, 0.14);
+  border-radius: 16px;
+  padding: clamp(26px, 4vw, 46px);
+}
+.svc-card[hidden] { display: none; }
+
+.svc-card__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(24px, 4vw, 56px);
+}
+
+.svc-card__main { flex: 1 1 380px; min-width: 0; }
+
+.svc-card__badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.svc-card__icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(240, 174, 31, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.svc-eyebrow {
+  font-family: var(--font-narrow);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+.svc-title {
+  margin: 0 0 16px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(24px, 2.8vw, 32px);
+  line-height: 1.25;
+  color: #fff;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.svc-lead {
+  margin: 0 0 28px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.68);
+  max-width: 52ch;
+  text-wrap: pretty;
+}
+
+.svc-card__cta {
+  display: inline-block;
+  background: var(--wine);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 15px 28px;
+  border-radius: 10px;
+}
+.svc-card__cta:hover { background: var(--wine-hover); opacity: 1; }
+
+.svc-media {
+  flex: 0 1 300px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  justify-content: center;
+  align-self: stretch;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  padding-left: clamp(20px, 3vw, 36px);
+}
+.svc-media__label {
+  font-family: var(--font-narrow);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+}
+.svc-media__person { display: flex; gap: 14px; align-items: center; }
+.svc-media__avatar {
+  flex: none;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 12%;
+  border: 1px solid rgba(240, 174, 31, 0.35);
+}
+.svc-media__name {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 18px;
+  color: #fff;
+  line-height: 1.2;
+}
+.svc-media__license {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 3px;
+}
+.svc-media p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.svc-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 22px;
+}
+.svc-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.svc-dot__bar {
+  display: block;
+  width: 6px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+}
+.svc-dot[aria-current="true"] .svc-dot__bar { width: 26px; background: var(--gold); }
+
+/* --- 5. Прецедент -------------------------------------------------------- */
+
+.precedent { background: var(--bg); }
+.precedent__container { padding-block: 0 clamp(48px, 7vw, 80px); }
+
+.precedent-card {
+  margin-top: clamp(120px, 13vw, 192px);
+  background: linear-gradient(120deg, #1a1c20 0%, #241a0c 100%);
+  border: 1px solid rgba(240, 174, 31, 0.18);
+  border-radius: 20px;
+  padding: clamp(28px, 4vw, 40px);
+  position: relative;
+  min-height: clamp(280px, 26vw, 360px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(16px, 3vw, 40px);
+  flex-wrap: wrap;
+}
+
+.precedent-edge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 100%;
+  background: linear-gradient(var(--gold), var(--gold-light), var(--gold));
+  border-radius: 20px 0 0 20px;
+}
+
+.precedent-photo {
+  position: absolute;
+  left: 60%;
+  bottom: 0;
+  transform: translateX(-50%);
+  height: clamp(360px, 40vw, 520px);
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+  object-position: center bottom;
+  pointer-events: none;
+  z-index: 1;
+  /* Текст и кнопки лежат выше (z-index 2) и перекрывают часть кадра — так в
+     макете. Замеренный контраст в зоне перекрытия: 16,97:1 у заголовка,
+     8,00:1 у абзаца, 16,99:1 у контурной кнопки. Затемнение не требуется. */
+}
+
+.precedent-card__text {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 280px;
+  min-width: 240px;
+  max-width: 432px;
+}
+.precedent-card__eyebrow {
+  font-family: var(--font-narrow);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.precedent-card__title {
+  margin: 12px 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.25;
+  color: #fff;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.precedent-card__text p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.66);
+  max-width: 42ch;
+}
+
+.precedent-card__actions {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  min-width: 240px;
+}
+
+.btn--gold-lg {
+  height: 52px;
+  padding: 0 28px;
+  background: var(--gold);
+  color: #101214;
+  font-weight: 700;
+  font-size: 16px;
+  border-radius: 12px;
+}
+.btn--gold-lg:hover { background: var(--gold-light); opacity: 1; }
+
+.btn--ghost-lg {
+  gap: 8px;
+  height: 52px;
+  padding: 0 28px;
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+  font-size: 16px;
+  border-radius: 12px;
+}
+.btn--ghost-lg:hover { border-color: rgba(240, 174, 31, 0.7); opacity: 1; }
+
+/* --- 6. Адвокаты --------------------------------------------------------- */
+
+.attorneys { background: var(--bg-cream); color: var(--ink); }
+
+.attorneys-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+  gap: 28px;
+}
+
+.attorney-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 14px 14px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.attorney-photo {
+  display: block;
+  width: 100%;
+  /* Окно повторяет пропорцию источника (1122x1402 = 4:5): фиксированная
+     альбомная высота предыдущей версии превращала вертикальный портрет в
+     «одну голову» — cover отрезал всё ниже плеч. При совпадении пропорций
+     cover ничего не режет, оба адвоката видны по пояс и одинаково. */
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: 6px;
+  margin-bottom: 24px;
+}
+
+.attorney-card__body {
+  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.attorney-card__name {
+  margin: 0 0 8px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 23px;
+  line-height: 1.2;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.attorney-card__role {
+  font-family: var(--font-narrow);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--wine);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.attorney-card .notch--wide { margin-bottom: 18px; }
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+}
+.checklist li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.checklist svg { flex: none; margin-top: 4px; }
+
+.btn--gold-block {
+  display: block;
+  text-align: center;
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 13px 20px;
+  border-radius: 6px;
+}
+.btn--gold-block:hover { background: var(--gold-light); opacity: 1; }
+
+.attorneys__note {
+  margin: 32px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  max-width: 68ch;
+  text-wrap: pretty;
+}
+
+/* --- 7. Контакт ---------------------------------------------------------- */
+
+.contact { background: var(--bg); }
+
+.contact__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(32px, 5vw, 60px);
+}
+
+.contact__info { flex: 1 1 380px; min-width: 0; }
+.contact__form-col { flex: 1 1 440px; min-width: 0; }
+
+.contact__lead {
+  margin: 0 0 32px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.62);
+  max-width: 480px;
+}
+
+.contact-list { display: flex; flex-direction: column; gap: 20px; }
+.contact-list__row { display: flex; gap: 14px; align-items: center; }
+.contact-list__icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(240, 174, 31, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.contact-list__label {
+  display: block;
+  font-family: var(--font-narrow);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.contact-list__value { font-size: 15px; font-weight: 600; color: #fff; }
+
+.lead-form {
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: clamp(26px, 4vw, 38px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+}
+.lead-form[hidden], .form-success[hidden] { display: none; }
+
+.lead-form__title {
+  margin: 0 0 6px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.lead-form__note {
+  margin: 0 0 22px;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.lead-form__error {
+  margin: 0 0 18px;
+  border: 1px solid rgba(122, 28, 54, 0.35);
+  border-left: 4px solid var(--wine);
+  border-radius: 7px;
+  padding: 12px 14px;
+  background: rgba(122, 28, 54, 0.07);
+  color: var(--wine);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.lead-form__error-title,
+.lead-form__error-text,
+.lead-form__error-contact { display: block; }
+.lead-form__error-contact[hidden],
+.field__error[hidden] { display: none; }
+.lead-form__error-title { margin-bottom: 2px; font-size: 14px; }
+.lead-form__error-contact { margin-top: 6px; }
+.lead-form__error a { color: inherit; font-weight: 700; }
+
+.lead-form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.field { display: block; }
+.field--last { margin-bottom: 22px; }
+.field__label {
+  display: block;
+  font-family: var(--font-narrow);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.lead-form input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--input-line);
+  border-radius: 8px;
+  padding: 13px 14px;
+  font-size: 16px; /* < 16px вызывает zoom на iOS */
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: #fff;
+  outline: none;
+}
+.lead-form input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(240, 174, 31, 0.25);
+}
+.lead-form input[aria-invalid="true"] {
+  border: 2px solid var(--wine);
+  padding: 12px 13px;
+  background: #fff7f9;
+  box-shadow: 0 0 0 3px rgba(122, 28, 54, 0.12);
+}
+.field--invalid .field__label { color: var(--wine); }
+.field__error {
+  display: block;
+  margin-top: 6px;
+  color: var(--wine);
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.field__error::before { content: "Ошибка: "; }
+.lead-form input[aria-invalid="true"]:focus {
+  border-color: var(--wine);
+  box-shadow: 0 0 0 3px rgba(240, 174, 31, 0.42);
+}
+@media (forced-colors: active) {
+  .lead-form input[aria-invalid="true"] { border: 2px solid Mark; }
+}
+
+.lead-form__submit {
+  width: 100%;
+  border: none;
+  background: var(--wine);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  font-family: var(--font-body);
+  padding: 15px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.lead-form__submit:hover:not(:disabled) { background: var(--wine-hover); }
+.lead-form__submit:disabled { cursor: wait; opacity: 0.72; }
+
+.lead-form__legal {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-4);
+  text-align: center;
+}
+
+.form-success {
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: clamp(36px, 5vw, 56px) 32px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+.form-success__icon {
+  display: inline-flex;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(240, 174, 31, 0.14);
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.form-success__title {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 26px;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.form-success p {
+  margin: 0 0 24px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+.form-success__again {
+  border: 1px solid var(--input-line);
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13.5px;
+  font-family: var(--font-body);
+  padding: 11px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.form-success__again:hover { border-color: var(--gold); }
+
+/* --- 8. Футер ------------------------------------------------------------ */
+
+.site-footer {
+  background: var(--bg-footer);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.site-footer__inner {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 44px var(--pad-x) 28px;
+}
+.site-footer__top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+.site-footer__cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.site-footer__label {
+  display: block;
+  font-family: var(--font-narrow);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.site-footer__cols a { color: rgba(255, 255, 255, 0.85); }
+.site-footer__divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin-bottom: 20px;
+}
+.site-footer__legal {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ==========================================================================
+   Breakpoint-контракт — границы из spec, ни одна не «примерно»
+   ========================================================================== */
+
+/* Навигация: ссылки и CTA уходят в бургер */
+@media (max-width: 960px) {
+  .nav-links { display: none; }
+  .nav-call { display: none; }
+  .nav-burger { display: inline-flex; }
+}
+
+/* Сверхширокие экраны: вертикальная обрезка кадра ещё глубже,
+   окно поднимается выше, чтобы головы оставались с воздухом */
+@media (min-width: 2000px) {
+  .hero-photo { object-position: 50% 44%; }
+}
+
+/* Hero: текст не должен налезать на лица */
+@media (max-width: 1200px) and (min-width: 861px) {
+  .hero-scrim {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(10, 11, 13, 0.96) 0%,
+        rgba(10, 11, 13, 0.91) 38%,
+        rgba(10, 11, 13, 0.64) 52%,
+        rgba(10, 11, 13, 0.2) 68%,
+        transparent 82%
+      ),
+      linear-gradient(180deg, transparent 62%, rgba(10, 11, 13, 0.55) 100%);
+  }
+  .hero-inner { max-width: 440px; }
+  /* Кадр обрезается сильнее — оставляем фигурам опору на нижнюю кромку */
+  .hero-photo { object-position: 50% 92%; }
+}
+
+/* Портрет в баннере прецедента показывается только там, где для него есть место */
+@media (max-width: 1200px) {
+  .precedent-photo { display: none; }
+
+  /* Большой верхний отступ карточки существует ради портрета: тот стоит
+     абсолютно, высотой до 520px, и выступает над карточкой вверх. Как
+     только портрет скрыт, резервировать под него 120–192px не под что —
+     остаётся чёрная пауза (на 390px ровно 120px). Отступ возвращается к
+     обычному межсекционному. */
+  .precedent-card { margin-top: clamp(40px, 6vw, 64px); }
+}
+
+/* Мобильная компоновка */
+@media (max-width: 860px) {
+  /* Композиция полосами, а не слоями: надстрочник → заголовок → снимок →
+     кнопки → контакты. Кадр стоит в потоке документа, поэтому наложение
+     текста на лица невозможно по построению, а не за счёт отступов. */
+  .hero {
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  /* Затемнение больше не нужно — текст и фото не пересекаются */
+  .hero-scrim { display: none; }
+
+  /* Правило про .hero__phone-wa убрано вместе с самим дублем WhatsApp:
+     он прятался только на мобильном, а на десктопе оставался вторым
+     упоминанием WhatsApp подряд. Теперь WhatsApp в hero нет вовсе —
+     обоснование в docs/HERO-CTA-RESEARCH.md. */
+
+  .hero__body { padding: 14px var(--pad-x) 26px; }
+
+  .hero-inner {
+    width: 100%;
+    max-width: none;
+    text-align: center;
+    align-items: center;
+  }
+
+  .hero-inner p { margin-left: auto; margin-right: auto; }
+
+  /* Надстрочник на мобильном скрыт (решение владельца, подтверждено
+     2026-08-04 повторно): он съедает ~40px первого экрана и дублирует
+     подпись «Адвокаты» в шапке. На десктопе остаётся — там места
+     достаточно и гео-сигнал «Тель-Авив» работает. */
+  .hero-inner .hero-row { display: none; }
+
+  /* Заголовок в рамке из волосяных линий — приём референса.
+     Отступы полос ужаты (2026-08-04): основной CTA должен входить в
+     первый экран 390x740 — до ужатия он начинался на 715px и был виден
+     на 25px из 52. Фото при этом не мельче 6:5. */
+  .hero__title {
+    width: 100%;
+    margin: 0 0 14px;
+    padding: 14px 0 16px;
+    border-top: 1px solid rgba(240, 174, 31, 0.34);
+    border-bottom: 1px solid rgba(240, 174, 31, 0.34);
+  }
+
+  .hero__lede {
+    max-width: 34ch;
+    margin-bottom: 14px;
+  }
+
+  /* Снимок полосой во всю ширину экрана */
+  .hero-media {
+    /* HERO-MOBILE v1.0.1 | 2026-08-10: flex-start нейтрализует
+       центрирование широкого flex-item; полоса занимает ровно 0–100vw. */
+    align-self: flex-start;
+    position: relative;
+    left: calc(var(--pad-x) * -1);
+    right: auto;
+    width: calc(100% + var(--pad-x) * 2);
+    margin-bottom: 18px;
+  }
+
+  .hero-media picture { height: auto; }
+
+  .hero-photo {
+    height: auto;
+    /* Окно ниже кадра (кадр 6:5): по решению владельца 2026-08-04 фото
+       ужато до 4:3, чтобы обе CTA-кнопки входили в первый экран 390x740.
+       cover срезает ~12% высоты кадра; 22% сверху оставляет воздух над
+       головами (головы начинаются на ~13% кадра), остальное уходит снизу
+       с пиджаков. */
+    aspect-ratio: 4 / 3;
+    object-position: 50% 22%;
+  }
+
+  /* Фото адвокатов ниже на четверть (решение владельца 2026-08-10):
+     4/5 → 16/15 = высота 0.9375 ширины вместо 1.25, ровно −25%.
+     cover при center top срезает низ кадра (корпус), головы не трогает. */
+  .attorney-photo { aspect-ratio: 16 / 15; }
+
+  /* В исходном кадре голова Александра ниже примерно на 5% высоты.
+     Используем мобильный запас cover, чтобы поднять её на уровень Юлии;
+     окно и масштаб обеих карточек остаются одинаковыми. */
+  .attorney-card:first-child .attorney-photo { object-position: center 16%; }
+
+  .hero__actions { margin-bottom: 16px; }
+
+  .facts-bar { flex-direction: column; align-items: flex-start; gap: 14px; }
+}
+
+/* Плавное раскрытие карточек. interpolate-size позволяет анимировать
+   переход к height: auto, но поддержан только в Chromium (Chrome/Edge
+   129+). Поэтому — строго прогрессивное улучшение: где не поддержан,
+   карточка раскрывается мгновенно, функционал тот же.
+   Проверено на 2026-08: Firefox и Safari свойство не поддерживают. */
+@supports (interpolate-size: allow-keywords) {
+  @media (max-width: 720px) and (prefers-reduced-motion: no-preference) {
+    :root { interpolate-size: allow-keywords; }
+    .fact-card { transition: height 0.26s ease; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  a, button { transition: none; }
+  .fact-card, .fact-card__chevron { transition: none; }
+}
+
+@media (max-width: 720px) {
+  .hero__lede { font-size: 15px; }
+}
+
+@media (max-width: 860px) {
+  /* Карточки фактов: на мобильном вертикальная анатомия (цифра над
+     текстом) давала секцию в 1466px — два экрана на три цифры.
+     Цифра уходит в левую колонку, текст в правую: та же информация,
+     карточка ниже примерно на треть. Контент не сокращён. */
+  .facts .rule { margin-bottom: 24px; }
+  .facts-grid { gap: 12px; }
+
+  .fact-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 18px;
+    padding: 18px 18px 16px;
+  }
+  .fact-card__head {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    margin-bottom: 0;
+    min-width: 64px;
+  }
+  .fact-card__num { font-size: 34px; }
+  .fact-card__sub,
+  .fact-card .notch { grid-column: 2; }
+  .fact-card__sub { margin-bottom: 8px; align-self: center; }
+  .fact-card .notch { margin-bottom: 0; }
+
+  .fact-card[data-copy-id="2.10"] .fact-card__head,
+  .fact-card[data-copy-id="2.14"] .fact-card__head,
+  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    margin-bottom: 8px;
+  }
+  .fact-card[data-copy-id="2.10"] .fact-card__num,
+  .fact-card[data-copy-id="2.10"] .fact-card__unit {
+    display: block;
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: 0;
+    color: #fff;
+    text-transform: none;
+  }
+  .fact-card[data-copy-id="2.10"] .fact-card__sub {
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .fact-card[data-copy-id="2.14"] .fact-card__num,
+  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
+    font-size: 34px;
+    white-space: nowrap;
+  }
+  /* Длинным абзацам («900+ публикаций») узкая колонка противопоказана —
+     они уходят вниз на всю ширину карточки */
+  .fact-card p { grid-column: 1 / -1; margin-top: 12px; line-height: 1.55; }
+
+  /* Карточка-аккордеон: абзац обрезан двумя строками с многоточием,
+     остальное — по тапу (см. app.js). Текст в разметке полный, clamp
+     влияет только на видимость: скринридер читает абзац целиком. */
+  .fact-card { cursor: pointer; }
+
+  .fact-card p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .fact-card.is-open p {
+    display: block;
+    overflow: visible;
+    /* Снимать явно: при display:block свойство не действует, но остаётся
+       в вычисленных стилях и путает и проверки, и отладку. */
+    -webkit-line-clamp: unset;
+  }
+
+  /* Кнопка раскрытия: сама тонкая, но тап-цель добита до 44px невидимым
+     ::before — требование WCAG 2.5.8 к размеру цели. */
+  .fact-card__toggle {
+    grid-column: 1 / -1;
+    justify-self: center;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 28px;
+    margin-top: 4px;
+    margin-bottom: -8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--gold);
+    cursor: pointer;
+  }
+  .fact-card__toggle::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  .fact-card__toggle[hidden] { display: none; }
+
+  .fact-card__chevron {
+    width: 9px;
+    height: 9px;
+    border-right: 2px solid var(--gold);
+    border-bottom: 2px solid var(--gold);
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.22s ease;
+  }
+  .fact-card.is-open .fact-card__chevron {
+    transform: translateY(2px) rotate(-135deg);
+  }
+
+  /* Фокус виден на белой карточке: золото на белом даёт 1.7:1, поэтому
+     к нему добавлено тёмное кольцо. */
+  .fact-card__toggle:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 0;
+    border-radius: 6px;
+    box-shadow: 0 0 0 4px var(--ink);
+  }
+
+  .facts-bar { margin-top: 14px; padding: 16px 18px; }
+}

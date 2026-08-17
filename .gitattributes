@@ -7,3 +7,7 @@
 # Batch files must always use CRLF
 *.bat text eol=crlf
 *.cmd text eol=crlf
+
+# Frozen client approval source: preserve BOM/CRLF and treat it as an immutable
+# binary snapshot so its intentional trailing whitespace is not normalised.
+docs/sources/client-copy-short-v1.0.0.txt -text -diff

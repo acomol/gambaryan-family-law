@@ -23,8 +23,47 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Setup Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Install preview build dependencies
+        run: |
+          python -m pip install -r requirements-build.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Build client previews
+        run: |
+          python -B scripts/build-preview.py site/gambarian-standalone.html --standalone
+          python -B scripts/build-font-variants.py
+          python -B scripts/build-hero-variants.py
+          python -B scripts/build-action-bar.py
+          python -B scripts/build-review-numbered.py
+
+      - name: Verify approved client copy and preview contracts
+        run: |
+          python -B scripts/verify-client-copy.py
+          python -m unittest discover -s scripts/tests -p 'test_verify_client_copy.py'
+          python -B scripts/verify-client-previews.py
+          node scripts/verify-lead-hook.mjs
+
+      - name: Browser QA matrix
+        run: |
+          python -m http.server 8098 > /tmp/gambarian-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:8098/ >/dev/null && break
+            sleep 0.25
+          done
+          curl -fsS http://127.0.0.1:8098/ >/dev/null
+          python scripts/qa-browser-matrix.py http://127.0.0.1:8098/ --all-previews
 
       - name: Lint
         run: npm run lint
