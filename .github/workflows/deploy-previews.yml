@@ -1,0 +1,114 @@
+name: Deploy Previews
+
+# Публикация 11 клиентских Preview на Cloudflare Pages из GitHub Actions.
+#
+# Зачем через CI, а не с машины владельца:
+#   - токен живёт в GitHub Secrets и не попадает ни в чат, ни в репозиторий;
+#   - на машине владельца ничего ставить не нужно (нет WSL — не помеха);
+#   - у каждой публикации остаётся лог;
+#   - запускается кнопкой или агентом, без ручных команд.
+#
+# Запуск только вручную: боевой адрес и Preview не должны уезжать от
+# случайного push. Actions -> Deploy Previews -> Run workflow.
+#
+# Секреты (Settings -> Secrets and variables -> Actions):
+#   CLOUDFLARE_API_TOKEN   — Pages:Edit на аккаунт лендингов, Client IP пустой
+#   CLOUDFLARE_ACCOUNT_ID  — 4799e9f76c607e036c430a148d06a80b
+#
+# Боевой адрес этот workflow не трогает: у каждого Preview свой --branch alias,
+# ни один из них не равен production branch проекта (main).
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Один alias (пусто = все 11)"
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy-previews
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          python -m pip install -r requirements-build.txt
+
+      # build/ не хранится в git — Preview собираются здесь же, из site/.
+      - name: Build client previews
+        run: |
+          python -B scripts/build-preview.py site/gambarian-standalone.html --standalone
+          python -B scripts/build-font-variants.py
+          python -B scripts/build-hero-variants.py
+          python -B scripts/build-action-bar.py
+          python -B scripts/build-review-numbered.py
+
+      # Публиковать непроверенное нельзя: гейты те же, что в CI.
+      - name: Verify before publishing
+        run: |
+          python -B scripts/verify-client-copy.py
+          python -m unittest discover -s scripts/tests -p 'test_verify_client_copy.py'
+          python -B scripts/verify-client-previews.py
+          node scripts/verify-lead-hook.mjs
+
+      - name: Check token scope
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Не заданы секреты CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID"
+            exit 1
+          fi
+          # "active" != "нужный аккаунт": токен, валидный для чужого аккаунта,
+          # заставит wrangler молча создать дубликат проекта (инцидент 2026-05-13).
+          projects=$(curl -sS \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          if ! grep -q '"name":"gambarian-landing"' <<<"$projects"; then
+            echo "::error::В аккаунте $CLOUDFLARE_ACCOUNT_ID нет проекта gambarian-landing — токен от другого аккаунта."
+            echo "$projects" | head -c 400
+            exit 1
+          fi
+          echo "gambarian-landing найден в аккаунте — токен подходит."
+
+      - name: Deploy previews
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ONLY: ${{ inputs.only }}
+        run: bash scripts/deploy-previews.sh "$ONLY"
+
+      # Exit code wrangler за доказательство не принимается: на части
+      # предупреждений он выходит с нулём (docs/FINAL-QA-CHECKLIST.md, OPEN).
+      - name: Live readback
+        run: |
+          sleep 15
+          if [ -n "${{ inputs.only }}" ]; then
+            python -B scripts/verify-live-previews.py --only "${{ inputs.only }}"
+          else
+            python -B scripts/verify-live-previews.py
+          fi

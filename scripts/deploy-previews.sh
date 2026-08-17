@@ -60,9 +60,13 @@ if [ "$MISSING" = "1" ]; then
   exit 1
 fi
 
-if ! npx --yes "$WRANGLER" whoami >/dev/null 2>&1; then
-  echo "Нужен вход в Cloudflare — откроется браузер."
-  npx --yes "$WRANGLER" login
+# В CI вход через браузер невозможен и повесил бы job: там авторизация идёт
+# токеном из окружения. Логин предлагаем только когда токена нет.
+if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+  if ! npx --yes "$WRANGLER" whoami >/dev/null 2>&1; then
+    echo "Нужен вход в Cloudflare — откроется браузер."
+    npx --yes "$WRANGLER" login
+  fi
 fi
 
 FAILED=()
