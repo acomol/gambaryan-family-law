@@ -138,6 +138,26 @@ src/                        # унаследованный Next.js-каркас,
 5. Каждый новый файл в `docs/` получает секцию `## Related` со ссылками на
    связанные документы.
 
+## Публикация
+
+Деплой ведёт агент `cf-preview-deployer` (`.claude/agents/`): он сам
+определяет доступный путь публикации, проверяет, куда смотрит токен, и
+доказывает результат чтением живых адресов.
+
+Три правила, которые не обходятся:
+
+1. **Preview по умолчанию, боевой — только по явному решению владельца** в
+   текущем разговоре.
+2. **Exit code wrangler не доказательство.** На части предупреждений он
+   выходит с нулём. Доказательство — `python -B scripts/verify-live-previews.py`.
+3. **`status: active` не значит «нужный аккаунт».** Токен чужого аккаунта
+   заставит wrangler молча создать дубликат проекта без привязки к домену.
+   Перед публикацией убедиться, что токен видит `gambarian-landing`.
+
+Из облачной сессии Claude Code ключей Cloudflare нет — это свойство среды,
+а не отказ агента. Рабочие пути: переменные окружения на машине владельца
+либо секреты GitHub Actions (`.github/workflows/deploy-previews.yml`).
+
 ## MOST IMPORTANT NOTES
 - Before changing code or documentation, read `docs/RESUME.md` and the relevant
   task's `Приёмка` section. Treat older handoff files as history.
