@@ -57,6 +57,12 @@ jobs:
           npm ci
           python -m pip install -r requirements-build.txt
 
+      # build-action-bar.py поднимает Chromium через Playwright, поэтому одних
+      # pip-зависимостей мало: без браузера сборка падает на launch(). В
+      # AGENTS.md это отдельная команда, и она обязана быть и здесь.
+      - name: Install Chromium for Playwright
+        run: python -m playwright install --with-deps chromium
+
       # build/ не хранится в git — Preview собираются здесь же, из site/.
       - name: Build client previews
         run: |

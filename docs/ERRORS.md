@@ -1,6 +1,6 @@
 # Ошибки проекта и как их не повторить
 
-**Версия:** `1.3.0`
+**Версия:** `1.4.0`
 
 **Обновлено:** `2026-08-17`
 
@@ -511,6 +511,36 @@ alias в него не попадёт. Проверки этого не было
 входах она не запускается».
 
 ---
+
+---
+
+## 2026-08-17 · Первый запуск деплоя упал на сборке: в CI не было браузера
+
+**Как выглядело.** Первый реальный запуск `Deploy Previews` (run
+`32013171850`) упал через 7 секунд на шаге `Build client previews`:
+
+```
+playwright._impl._errors.Error: BrowserType.launch: Executable doesn't exist
+at /home/runner/.cache/ms-playwright/chromium_headless_shell-1208/...
+```
+
+Публикация не начиналась: шаги `Check token scope`, `Deploy previews` и
+`Live readback` пропущены, боевой адрес и Preview не тронуты.
+
+**Настоящая причина.** `build-action-bar.py` поднимает Chromium через
+Playwright — это сборщик, а не только QA. Workflow ставил зависимости из
+`requirements-build.txt`, но не выполнял `python -m playwright install`.
+В `AGENTS.md` установка браузера значится отдельной командой; при переносе
+локальной последовательности в CI этот шаг был потерян.
+
+**Что сделано.** Между `Install dependencies` и `Build client previews`
+добавлен шаг `Install Chromium for Playwright`
+(`python -m playwright install --with-deps chromium`).
+
+**Правило.** Переносить в CI не «команды сборки», а полную локальную
+последовательность из `AGENTS.md`, включая установку окружения. `pip install`
+не покрывает браузеры Playwright: они ставятся отдельной командой и в чистом
+раннере отсутствуют.
 
 ## Related
 
