@@ -27,7 +27,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-READBACK_VERSION = "1.0.0"
+READBACK_VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
 HOST = "https://{branch}.gambarian-landing.pages.dev/"
@@ -167,12 +167,14 @@ def main() -> int:
             print(f"        {item}")
         problems.extend(found)
 
-    if not args.only:
-        found = check_production()
-        print(f"{'FAIL' if found else 'PASS'}  production (не должен измениться)")
-        for item in found:
-            print(f"        {item}")
-        problems.extend(found)
+    # Боевой адрес проверяется ВСЕГДА, в том числе при --only. Раньше эта
+    # проверка пропускалась именно в узком режиме — то есть страховка
+    # отключалась там, где публикуют точечно и глазами не смотрят.
+    found = check_production()
+    print(f"{'FAIL' if found else 'PASS'}  production (не должен измениться)")
+    for item in found:
+        print(f"        {item}")
+    problems.extend(found)
 
     print()
     if problems:

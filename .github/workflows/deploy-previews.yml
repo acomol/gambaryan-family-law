@@ -95,6 +95,31 @@ jobs:
           fi
           echo "gambarian-landing найден в аккаунте — токен подходит."
 
+          # Боевую ветку спрашиваем у API, а не считаем, что это main.
+          # Если хоть один Preview alias совпадёт с ней, публикация Preview
+          # уехала бы на боевой адрес. deploy-pages.ps1 делает ровно так же.
+          printf '%s' "$projects" > "$RUNNER_TEMP/pages-projects.json"
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+
+          data = json.loads(pathlib.Path(os.environ["RUNNER_TEMP"], "pages-projects.json").read_text())
+          proj = next((p for p in data["result"] if p["name"] == "gambarian-landing"), None)
+          if proj is None:
+              print("::error::gambarian-landing пропал из ответа API между проверками")
+              sys.exit(1)
+          prod = proj.get("production_branch")
+          aliases = [p["branch"] for p in json.loads(
+              pathlib.Path("scripts/client-preview-map.json").read_text())["previews"]]
+          print(f"production_branch проекта: {prod!r}")
+          clash = [a for a in aliases if a == prod]
+          if clash:
+              print(f"::error::Preview alias {clash} совпадает с боевой веткой {prod!r} —"
+                    " публикация Preview уехала бы на боевой адрес. Остановлено.")
+              sys.exit(1)
+          print(f"Ни один из {len(aliases)} Preview alias не равен боевой ветке —"
+                " боевой адрес недостижим.")
+          PY
+
       - name: Deploy previews
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -105,10 +130,15 @@ jobs:
       # Exit code wrangler за доказательство не принимается: на части
       # предупреждений он выходит с нулём (docs/FINAL-QA-CHECKLIST.md, OPEN).
       - name: Live readback
+        # ONLY передаётся через env, а не подстановкой ${{ }} внутрь run:
+        # выражение подставляется в скрипт до запуска shell, и значение вида
+        # `x"; …; "` выполнилось бы как команда. Шаг Deploy делает так же.
+        env:
+          ONLY: ${{ inputs.only }}
         run: |
           sleep 15
-          if [ -n "${{ inputs.only }}" ]; then
-            python -B scripts/verify-live-previews.py --only "${{ inputs.only }}"
+          if [ -n "$ONLY" ]; then
+            python -B scripts/verify-live-previews.py --only "$ONLY"
           else
             python -B scripts/verify-live-previews.py
           fi
