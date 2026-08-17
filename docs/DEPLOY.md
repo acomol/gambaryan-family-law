@@ -269,6 +269,47 @@ cd /tmp/dep && npx wrangler deploy --temporary
   Автоматический live-readback по нему невозможен — проверять руками
   из обычного браузера.
 
+## Публикация из GitHub Actions: обязательное условие
+
+Workflow `.github/workflows/deploy-previews.yml` запускается только вручную
+(`workflow_dispatch`). У этого триггера есть условие, которое легко пропустить:
+
+> This event will only trigger a workflow run if the workflow file exists on
+> the default branch.
+
+**Источники:**
+
+1. [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)
+   — примечание к `workflow_dispatch`
+2. [Manually run a workflow](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
+   — «to trigger the `workflow_dispatch` event, your workflow must be in the
+   default branch»
+
+**Статус:** ВЕРИФИЦИРОВАНО
+
+**Состояние на 2026-08-17.** На `main` лежит только `ci.yml`. Нет ни
+`deploy-previews.yml`, ни `scripts/deploy-previews.sh`, ни
+`scripts/verify-live-previews.py`, ни `scripts/client-preview-map.json`, ни
+`requirements-build.txt` — вся машинерия публикации живёт в ветке
+`codex/client-approved-copy-only` (PR #3).
+
+**Следствие.** Пока PR #3 не влит в `main`, кнопки **Run workflow** в
+Actions не появится, сколько бы секретов ни добавили. Добавление секретов —
+не первый шаг, а второй.
+
+Порядок:
+
+1. Влить PR #3 в `main`.
+2. Settings -> Secrets and variables -> Actions, два секрета:
+   `CLOUDFLARE_API_TOKEN` (Pages:Edit, поле Client IP оставить пустым) и
+   `CLOUDFLARE_ACCOUNT_ID` = `4799e9f76c607e036c430a148d06a80b`.
+3. Actions -> Deploy Previews -> Run workflow.
+4. Шаг `Check token scope` сам остановит публикацию, если токен от другого
+   аккаунта; шаг `Live readback` докажет результат чтением живых адресов.
+
+Боевой адрес workflow не трогает: у каждого Preview свой `--branch` alias,
+ни один не равен production branch проекта.
+
 ## Чего здесь нет
 
 Vercel и GitHub Pages для этого проекта **не используются**. Оба
