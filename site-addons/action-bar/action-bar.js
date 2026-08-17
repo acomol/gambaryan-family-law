@@ -1,4 +1,4 @@
-/* ACTION-BAR-SPEC v2.3.4 | 2026-08-13
+/* ACTION-BAR-SPEC v2.4.0 | 2026-08-17
    ========================================================================
    Мобильная панель действий: зонная модель.
 
@@ -52,6 +52,16 @@
   var businessClock = null;
   var businessTimer = null;
   var demoBusinessState = null;
+  // Переключатель управляет состоянием, которое на final-dev3 меняет и Hero,
+  // а Hero виден на desktop. Поэтому сам переключатель скрывается вместе с
+  // панелью только на узких экранах; на desktop он доступен всегда.
+  var narrowQuery = window.matchMedia
+    ? window.matchMedia('(max-width: 960px)')
+    : null;
+
+  function isNarrowViewport() {
+    return narrowQuery ? narrowQuery.matches : true;
+  }
 
   try {
     businessClock = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
@@ -183,7 +193,7 @@
     bar.classList.toggle('is-hidden', hidden);
 
     if ('inert' in bar) bar.inert = hidden;
-    if (demoToggle) demoToggle.hidden = hidden;
+    if (demoToggle) demoToggle.hidden = hidden && isNarrowViewport();
 
     if (!hidden) {
       pointerTimer = window.setTimeout(enablePointerEvents, POINTER_FALLBACK_MS);
@@ -192,6 +202,13 @@
 
   function updateVisibility() {
     setHidden(shouldHide(state));
+    if (demoToggle) demoToggle.hidden = hidden && isNarrowViewport();
+  }
+
+  if (narrowQuery) {
+    var onWidthChange = function () { updateVisibility(); };
+    if (narrowQuery.addEventListener) narrowQuery.addEventListener('change', onWidthChange);
+    else if (narrowQuery.addListener) narrowQuery.addListener(onWidthChange);
   }
 
   bar.addEventListener('transitionend', function (event) {

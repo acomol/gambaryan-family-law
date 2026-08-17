@@ -60,7 +60,7 @@ from review_numbered_contract import OWNER_REVIEW_IDS
 
 
 RUNNER_VERSION = "1.4.1"
-ACTION_BAR_VERSION = "2.3.4"
+ACTION_BAR_VERSION = "2.4.0"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.1.0"
 KNOWN_BENIGN_HERO_PRELOAD_WARNING = "was preloaded using link preload but not used within a few seconds"
 

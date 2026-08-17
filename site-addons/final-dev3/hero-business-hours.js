@@ -1,6 +1,6 @@
 /* FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13
    final-dev3 only: Hero follows the business state already calculated by
-   Action Bar 2.3.4. This adapter has no clock, timer, storage or URL state. */
+   Action Bar 2.4.0. This adapter has no clock, timer, storage or URL state. */
 
 (function () {
   'use strict';
