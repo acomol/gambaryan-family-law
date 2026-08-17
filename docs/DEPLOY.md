@@ -1,7 +1,7 @@
 # Куда публикуется сайт
 
-**Версия документа:** `1.2.0`
-**Обновлено:** `2026-08-13`
+**Версия документа:** `1.3.0`
+**Обновлено:** `2026-08-16`
 
 Читать **до** любых попыток развернуть проект. Отдельная площадка не
 заводится: если развёртывание уже существует — обновляется оно.
@@ -81,6 +81,36 @@ production может молча создать Preview. Если production bra
 
 В автоматической среде вместо входа через браузер — токен с правом
 «Cloudflare Pages: Edit» в `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`.
+
+## Preview: все одиннадцать одной командой
+
+Боевой адрес и Preview публикуются разными командами. `deploy-pages.ps1`
+и `deploy-pages.sh` умеют только боевой (`--branch=main`). Для Preview:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\deploy-previews.ps1
+```
+
+```bash
+bash scripts/deploy-previews.sh          # macOS/Linux, или Windows с WSL
+```
+
+Один адрес: `-Only final-dev3` (PowerShell) или `final-dev3` аргументом (bash).
+
+Alias и каталоги берутся из `scripts/client-preview-map.json`, а не из
+памяти: опечатка в alias создаёт лишний живой адрес. Перед публикацией
+скрипт проверяет, что все каталоги собраны — `build/` не в git, и пустой
+каталог уехал бы на живой адрес как пустой сайт.
+
+После публикации — обязательный readback (exit code wrangler за
+доказательство не принимается, см. OPEN в `docs/FINAL-QA-CHECKLIST.md`):
+
+```bash
+python -B scripts/verify-live-previews.py
+```
+
+Он читает байты, которые реально отдаёт Cloudflare, по каждому из 11
+адресов и отдельно проверяет, что боевой адрес **не** изменился.
 
 ### Аккаунтов два — не перепутать
 
