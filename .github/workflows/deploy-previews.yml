@@ -117,14 +117,60 @@ jobs:
           fi
           echo "Токен принят Cloudflare."
 
+          # Account id тоже секрет, тоже маскируется и тоже мог приехать с лишним
+          # символом. На неверный id Cloudflare отвечает тем же «Authentication
+          # error», что и на плохой токен, поэтому проверяем его форму отдельно.
+          acc_trim=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | tr -d ' \t\r\n')
+          echo "Длина account id: ${#CLOUDFLARE_ACCOUNT_ID}; без пробелов: ${#acc_trim}"
+          if [ "${#CLOUDFLARE_ACCOUNT_ID}" -ne "${#acc_trim}" ]; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID содержит пробельные символы или перевод строки."
+            exit 1
+          fi
+          if ! printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | grep -Eq '^[0-9a-f]{32}$'; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID не похож на идентификатор аккаунта Cloudflare."
+            echo "::error::Ожидается 32 знака: цифры и строчные a-f. Сейчас длина ${#CLOUDFLARE_ACCOUNT_ID}."
+            exit 1
+          fi
+
           # Шаг 2: видит ли токен нужный аккаунт.
           projects=$(curl -sS \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
           if ! grep -q '"success":true' <<<"$projects"; then
-            echo "::error::Токен действителен, но доступ к аккаунту $CLOUDFLARE_ACCOUNT_ID отклонён."
-            echo "::error::Проверить: право Account -> Cloudflare Pages -> Edit выдано именно на этот аккаунт."
-            echo "$projects" | head -c 400
+            echo "::error::Токен действителен, но обращение к указанному аккаунту отклонено."
+            echo "Ответ Cloudflare:"
+            echo "$projects" | head -c 300
+            echo
+            # Спрашиваем, какие аккаунты этот токен вообще видит: так сразу видно,
+            # не выдано ли право на нужный аккаунт или в секрете указан не тот id.
+            curl -sS "https://api.cloudflare.com/client/v4/accounts" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" > "$RUNNER_TEMP/accounts.json"
+            python3 - <<'PY2'
+          import json, os, pathlib
+
+          want = os.environ["CLOUDFLARE_ACCOUNT_ID"]
+          try:
+              data = json.loads(pathlib.Path(os.environ["RUNNER_TEMP"], "accounts.json").read_text())
+          except Exception:
+              data = {}
+          if not data.get("success"):
+              print("Список аккаунтов получить не удалось — у токена нет права Account Settings: Read.")
+              print("::error::Проверить вручную, какому аккаунту принадлежит токен.")
+              raise SystemExit(0)
+          res = data.get("result") or []
+          print("Аккаунты, доступные этому токену:")
+          if not res:
+              print("  токен не привязан ни к одному аккаунту")
+          for a in res:
+              print(f"  {a.get('id')}  {a.get('name')}")
+          print()
+          if any(a.get("id") == want for a in res):
+              print("::error::Аккаунт токену виден, но право Account -> Cloudflare Pages -> Edit на него не выдано.")
+          else:
+              print("::error::Идентификатора из секрета CLOUDFLARE_ACCOUNT_ID нет в этом списке.")
+              print("::error::Либо в секрете не тот аккаунт, либо токен выпущен в другом аккаунте.")
+              print("::error::Взять id из списка выше и записать его в CLOUDFLARE_ACCOUNT_ID.")
+          PY2
             exit 1
           fi
           # "active" != "нужный аккаунт": токен, валидный для чужого аккаунта,
