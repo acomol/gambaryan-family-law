@@ -1,8 +1,8 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v2.4.0`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v2.4.1`
 
-**Дата:** `2026-08-17`
+**Дата:** `2026-09-06`
 
 **Статус:** `final-dev3 LIVE + VERIFIED / остальные 10 alias LIVE PENDING / PRODUCTION UNCHANGED`
 
@@ -32,7 +32,7 @@ alias. Production не изменён ни разу.
 - `30+` центрировано и увеличено только на desktop; `2.10` использует две
   полноразмерные строки; карточка `fact-900-v1` показывает `Автор` и
   `более 900` без прежней строки `опубликованных материалов,`;
-- общий Action Bar `2.3.4` с business-hours и demo-switch;
+- общий Action Bar `2.4.0` с business-hours и demo-switch (переключатель доступен и на desktop); на живых alias кроме `final-dev3` пока стоит `2.3.4`;
 - общий mobile-слой `CLIENT-PREVIEW-MOBILE v1.1.0`;
 - WhatsApp `wa.me/972545490623` без неутверждённого prefill;
 - форма содержит только обязательные имя и телефон, без Email и topic;

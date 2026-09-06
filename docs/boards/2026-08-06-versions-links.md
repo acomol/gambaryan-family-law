@@ -1,8 +1,8 @@
 # Одиннадцать Cloudflare Preview-версий для заказчика
 
-**Версия документа:** `2.7.0`; исполняемая Preview-карта — `2.4.0`
+**Версия документа:** `2.7.1`; исполняемая Preview-карта — `2.4.0`
 
-**Обновлено:** `2026-08-17`
+**Обновлено:** `2026-09-06`
 
 **Статус:** `final-dev3 LIVE / остальные 10 alias LIVE PENDING / PRODUCTION UNCHANGED`
 
@@ -38,7 +38,7 @@
 - вне client/owner allowlist разрешены только identity и `SYSTEM-UI`;
 - форма содержит только `Имя`/`Телефон`; Email, topic, proof-тексты и редакция
   «ВПЕРВЫЕ…» отсутствуют;
-- Action Bar `2.3.4` общий для всех вариантов и использует `wa.me` без
+- Action Bar `2.4.0` общий для всех вариантов (на живых alias кроме `final-dev3` пока `2.3.4`) и использует `wa.me` без
   неутверждённого `?text=` prefill;
 - effective-width fixes V2/V3 меняют только доступную ширину H1/lede на
   `+12px`; дизайн, шрифты, photo source/crop и межблочные отступы сохраняются;
@@ -48,7 +48,7 @@
 
 | Функционал | Версия кандидата | Дата | Статус контракта |
 |---|---:|---:|---:|
-| Action Bar | `2.3.4` | 2026-08-13 | `LIVE PASS 11/11` |
+| Action Bar | `2.4.0` | 2026-08-17 | LIVE на `final-dev3`; остальные 10 на `2.3.4` |
 | Client Preview Mobile | `1.1.0` | 2026-08-11 | `LIVE PASS 11/11` |
 | Client Copy contract: 45 allowlist + 2 Owner overrides | `1.1.0` | 2026-08-13 | `LOCAL PASS` |
 | Client Copy verifier | `1.0.0` | 2026-08-11 | `LOCAL PASS 24 targets / 22 unique` |
