@@ -188,7 +188,7 @@ CONTENT-OWNER-EDITS.md: новый раздел «Решения владель�
 - На машине владельца в PowerShell curl — псевдоним Invoke-WebRequest: использовать curl.exe и Get-FileHash
 - page.expect_popup для target=_blank в headless Chromium требует клика Playwright, не JS .click() — иначе popup не перехватится
 - Ожидание «&nbsp;—» per-alias для final-dev4 задано этапом 1: если оно жёсткое и не совпало с фактом сборки — причина в этапе 2/1, а не в этом этапе; зафиксировать в отчёте
-- Workflow с пустым only опубликует все 11 alias, включая final-dev3 — поле only=final-dev4 обязательно
+- Workflow с пустым only опубликует все 12 alias (после этапа 1), включая final-dev3 — поле only=final-dev4 обязательно
 
 ## Проверка карточки критиком
 
