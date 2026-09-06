@@ -30,6 +30,7 @@
 - Встроенная карта (iframe), Waze, query_place_id, координаты — не добавлять (CONTACT-LINKS-SPEC §1–2)
 - data-action на рядах Телефон/WhatsApp в контактах — не запрошено; только data-action="map_click" на ссылках карты
 - Кубики, секция услуг, шрифты, фото, отступы (этапы 5–7); final-dev3 и production не пересобираются и не публикуются
+- Удаление колонки «Связь» НЕ меняет счётчик «&nbsp;—» (в её разметке тире нет); замечание spec «D:D-07 (−1)» относится только к варианту с удалением «Офиса»
 
 ## Шаги
 
@@ -147,10 +148,11 @@ CONTENT-OWNER-EDITS.md: новый раздел «Решения владель�
 
 ## Версии и маркеры
 
-- CLIENT-COPY-CONTRACT: 1.3.0 → 1.3.1 + дата (только если allowlist меняется в этом этапе) — scripts/client_copy_contract.py:3 (docstring) и :11–12; таблицы/маркеры в docs/RESUME.md, docs/FINAL-QA-CHECKLIST.md, docs/boards/2026-08-06-versions-links.md, docs/CONTENT-SOURCE-MAP.md, docs/CONTENT-EXTRA.md, docs/tasks/2026-08-13-dark-fact-cards.md, docs/CLIENT-PREVIEW-HANDOFF.md (все, что находит grep 'CLIENT-COPY-CONTRACT v')
+- CLIENT-COPY-CONTRACT: 1.3.0 → 1.3.1 + дата (безусловно в этом этапе) — scripts/client_copy_contract.py:3 (docstring) и :11–12; таблицы/маркеры в docs/RESUME.md, docs/FINAL-QA-CHECKLIST.md, docs/boards/2026-08-06-versions-links.md, docs/CONTENT-SOURCE-MAP.md, docs/CONTENT-EXTRA.md, docs/tasks/2026-08-13-dark-fact-cards.md, docs/CLIENT-PREVIEW-HANDOFF.md (все, что находит grep 'CLIENT-COPY-CONTRACT v')
 - CONTENT-OWNER-EDITS: следующая минорная версия после этапа 2 + дата (docs/CONTENT-OWNER-EDITS.md шапка)
 - ADDRESS-LINKS-GATE v1.0.0 | <дата> — заголовок нового scripts/verify-address-links.py
 - Не меняются: FINAL-DEV4-DESIGN (правки только в site/), ACTION-BAR-SPEC 2.x, LIVE-PREVIEW-READBACK (счётчик тире не меняется), PREVIEW-BROWSER-QA-RUNNER
+- CLIENT-COPY-CONTRACT 1.3.0 → 1.3.1 — безусловно (новый aria-label, JSON-LD «Карлибах, 10» и jobTitle без точки); из ALLOWED_OUTSIDE_COPY_TEXT убрать строку «Адвокат Израиля, лицензия № 30178.» с точкой — видимых вхождений после этапа 2 нет
 
 ## Приёмка этапа
 
@@ -187,6 +189,18 @@ CONTENT-OWNER-EDITS.md: новый раздел «Решения владель�
 - page.expect_popup для target=_blank в headless Chromium требует клика Playwright, не JS .click() — иначе popup не перехватится
 - Ожидание «&nbsp;—» per-alias для final-dev4 задано этапом 1: если оно жёсткое и не совпало с фактом сборки — причина в этапе 2/1, а не в этом этапе; зафиксировать в отчёте
 - Workflow с пустым only опубликует все 11 alias, включая final-dev3 — поле only=final-dev4 обязательно
+
+## Проверка карточки критиком
+
+скоуп: ок; пути: ок; гейты: ок; промпт: ок.
+
+Правки критика, обязательные к применению исполнителем:
+
+- Сделать bump CLIENT-COPY-CONTRACT 1.3.0 → 1.3.1 безусловным: ALLOWED_TEXT_ATTRIBUTES (новый aria-label) и ALLOWED_JSON_LD_TEXT («Карлибах, 10», jobTitle без точки) меняются в любом случае, формулировка «только если allowlist меняется» вводит в заблуждение исполнителя и ломает цепочку версий этапа 4 (1.3.1 → 1.3.2)
+- Убрать в шаге 8 и из ALLOWED_OUTSIDE_COPY_TEXT строку «Адвокат Израиля, лицензия № 30178.» (после этапа 2 видимых вхождений с точкой нет) — иначе регрессия точки пройдёт гейт
+- В шаге 1 зафиксировать явно: удаление колонки «Связь» НЕ меняет счётчик «&nbsp;—» (в строке 565 тире нет), а замечание spec «D:D-07 (−1)» относится к варианту с удалением «Офиса»
+
+Строки ~141–144, ~513–516, ~564, ~565, ~569, ~585, ~593, styles.css:101, allowlist-записи (:116, :133, :136, :57, :79, :86), HERO-CTA-RESEARCH :190 «в футере», CONTACT-LINKS-SPEC §1/§5 подтверждены. Текст 8.9 и «Лицензия №&nbsp;30178» совпадают. .contact-list__row display:flex (:1139) верно. Открытый №26 применён только по умолчанию.
 
 ## Промпт для Codex
 

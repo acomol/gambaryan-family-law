@@ -39,7 +39,15 @@
 
 Проверка: awk '/<footer/,/<\/footer>/' site/index.html | grep -c 'tel:' → 0; grep -rn 'FINAL-DEV4-DESIGN v' scripts site-addons docs | одна версия/дата; grep -n 'final-dev4' scripts/verify-client-copy.py → путь адаптера в DYNAMIC_UI_PATHS
 
-### 2. Разметить в site/index.html, что делать с каждой телефонной ссылкой в состоянии «закрыто».
+### 2. Завести собственный адаптер dev4 и расцепить проверки dev3/dev4 (этап 1 этого не делал — он копировал dev3-адаптер как есть).
+
+Файлы: `site-addons/final-dev4/hero-business-hours.js (новый)`, `scripts/final_dev4_contract.py`, `scripts/build-hero-variants.py`, `scripts/verify-client-previews.py`, `scripts/verify-client-copy.py`, `docs/tasks/codex/README.md`
+
+1) Скопировать site-addons/final-dev3/hero-business-hours.js → site-addons/final-dev4/hero-business-hours.js, заголовочный маркер заменить на FINAL-DEV4-DESIGN v<версия этапа> | <ДАТА> (дальнейшие правки поведения — в этом файле, dev3-адаптер не трогать). 2) scripts/final_dev4_contract.py: HERO_BUSINESS_SCRIPT = "hero-business-hours.js", HERO_BUSINESS_SCRIPT_TAG (как у final_dev3_contract), SCRIPT_REQUIRED_TOKENS / SCRIPT_FORBIDDEN_TOKENS для dev4 (свои: маркер dev4, селекторы вне Hero, data-business-closed; без dev3-токена '.hero--final-dev1 .hero__call--expanded', если он больше не нужен), apply_script_contract(js). 3) scripts/build-hero-variants.py: FINAL_DEV4_ADDON = ROOT / "site-addons" / "final-dev4"; в build(): отдельная ветка `if key == "dev4":` — копировать адаптер из FINAL_DEV4_ADDON и применять dev4 script-контракт (dev3 остаётся на своей ветке); в verify(): отдельный блок dev4 с байт-сравнением против site-addons/final-dev4 и dev4-токенами; условие `key in {"dev3", "dev4"}` из этапа 1 вернуть к `key == "dev3"`. 4) scripts/verify-client-previews.py: verify_final_dev4 сравнивает hero-business-hours.js с site-addons/final-dev4 и dev4-токенами; `branch in {...}` расцепить аналогично. 5) scripts/verify-client-copy.py: DYNAMIC_UI_PATHS += site-addons/final-dev4/hero-business-hours.js. 6) docs/tasks/codex/README.md (TASK_PATH): строка Marker final-dev4 → новая версия/дата. Действующее решение по латчу: класс page--final-dev3 в body dev4 сохраняется намеренно (Action Bar 2.4.0 включает scoped latch по нему); Action Bar не бампится.
+
+Проверка: test -f site-addons/final-dev4/hero-business-hours.js; python -B scripts/build-hero-variants.py → все варианты «проверка пройдена»; cmp build/variants/final-dev4/hero-business-hours.js site-addons/final-dev4/hero-business-hours.js → без вывода; cmp build/variants/final-dev3/hero-business-hours.js site-addons/final-dev3/hero-business-hours.js → без вывода; grep -n 'key in {"dev3", "dev4"}' scripts/build-hero-variants.py → 0; python -B scripts/verify-client-previews.py → PASS; python -B scripts/verify-client-copy.py → PASS
+
+### 3. Разметить в site/index.html, что делать с каждой телефонной ссылкой в состоянии «закрыто».
 
 Файлы: `site/index.html`
 
@@ -47,7 +55,7 @@
 
 Проверка: grep -c 'data-business-closed="whatsapp"' site/index.html → 3; grep -c 'data-business-closed="hide"' site/index.html → 1; python -B scripts/build-hero-variants.py dev1 dev3 dev4 → без «.nav-call остался» и «пропал звонок»
 
-### 3. Подготовить подсказку ошибки формы к двум состояниям без изменения текущего текста.
+### 4. Подготовить подсказку ошибки формы к двум состояниям без изменения текущего текста.
 
 Файлы: `site/index.html`, `scripts/client_copy_contract.py`, `docs/CONTENT-EXTRA.md`
 
@@ -55,7 +63,7 @@
 
 Проверка: python -B scripts/verify-client-copy.py → PASS (нет «неизвестный текст вне data-copy-id»); node scripts/verify-lead-hook.mjs → PASS; grep -c 'data-business-variant="closed"' site/index.html → 1
 
-### 4. Добавить CSS для скрытого ряда контактов.
+### 5. Добавить CSS для скрытого ряда контактов.
 
 Файлы: `site/styles.css`
 
@@ -63,7 +71,7 @@
 
 Проверка: grep -c 'contact-list__row\[hidden\]' site/styles.css → 1
 
-### 5. Расширить dev4-адаптер с Hero на все размеченные ссылки, сохранив архитектуру dev3-адаптера.
+### 6. Расширить dev4-адаптер с Hero на все размеченные ссылки, сохранив архитектуру dev3-адаптера.
 
 Файлы: `site-addons/final-dev4/hero-business-hours.js (или фактическое имя файла адаптера dev4 из scripts/final_dev4_contract.py)`
 
@@ -71,7 +79,7 @@
 
 Проверка: python -B scripts/verify-client-copy.py → PASS (verify_dynamic_ui без новых строк); grep -c 'setTimeout(\|setInterval(\|DateTimeFormat(' <адаптер> → 0; grep -c 'new MutationObserver(syncFromActionBar)' <адаптер> → 1
 
-### 6. Поднять версию FINAL-DEV4-DESIGN и синхронизировать токены проверок адаптера.
+### 7. Поднять версию FINAL-DEV4-DESIGN и синхронизировать токены проверок адаптера.
 
 Файлы: `scripts/final_dev4_contract.py`, `scripts/build-hero-variants.py`, `scripts/verify-client-previews.py`, `docs/boards/2026-08-06-versions-links.md`, `docs/tasks/ (документ TASK_PATH из final_dev4_contract.py)`
 
@@ -79,7 +87,7 @@ VERSION — минорный bump относительно значения по
 
 Проверка: python -B scripts/build-hero-variants.py → все варианты «Проверка пройдена»; python -B scripts/verify-client-previews.py → PASS; grep -rn 'FINAL-DEV4-DESIGN v' scripts site-addons docs build/variants/final-dev4 | одна версия/дата
 
-### 7. Обновить контракт копирайта под новый SYSTEM-UI фрагмент.
+### 8. Обновить контракт копирайта под новый SYSTEM-UI фрагмент.
 
 Файлы: `scripts/client_copy_contract.py`, `scripts/tests/test_verify_client_copy.py`, `docs/RESUME.md`, `docs/FINAL-QA-CHECKLIST.md`, `docs/boards/2026-08-06-versions-links.md`, `docs/CONTENT-SOURCE-MAP.md`, `docs/CONTENT-EXTRA.md`, `docs/tasks/2026-08-13-dark-fact-cards.md`, `docs/CLIENT-PREVIEW-HANDOFF.md`
 
@@ -87,7 +95,7 @@ ALLOWED_OUTSIDE_COPY_TEXT += «Если ошибка повторяется, н�
 
 Проверка: python -B scripts/verify-client-copy.py → PASS; python -m unittest discover -s scripts/tests → OK; grep -rn 'CLIENT-COPY-CONTRACT v' docs scripts → одна версия/дата
 
-### 8. Добавить DOM-гейт рабочего времени (Playwright) с принудительными состояниями.
+### 9. Добавить DOM-гейт рабочего времени (Playwright) с принудительными состояниями.
 
 Файлы: `scripts/verify-business-hours.py (новый)`
 
@@ -95,7 +103,7 @@ ALLOWED_OUTSIDE_COPY_TEXT += «Если ошибка повторяется, н�
 
 Проверка: python -m http.server 8098 (из корня) и python scripts/verify-business-hours.py http://127.0.0.1:8098/build/variants/final-dev4/ → exit 0, PASS на 390 и 1440 в обоих состояниях
 
-### 9. Пересобрать standalone и все Preview, прогнать полный набор гейтов.
+### 10. Пересобрать standalone и все Preview, прогнать полный набор гейтов.
 
 Файлы: `site/gambarian-standalone.html`, `build/variants/final-dev4/ (производный)`
 
@@ -103,7 +111,7 @@ python -B scripts/build-preview.py site/gambarian-standalone.html --standalone; 
 
 Проверка: все гейты код 0; git diff --stat site-addons/final-dev3 site-addons/action-bar → пусто; python scripts/qa-browser-matrix.py http://127.0.0.1:8098/ --all-previews → summary PASS, action-bar visibleItemCount open=3/closed=2 без регрессии
 
-### 10. Зафиксировать поведение и решение в документации.
+### 11. Зафиксировать поведение и решение в документации.
 
 Файлы: `docs/FINAL-QA-CHECKLIST.md`, `docs/CONTENT-EXTRA.md`, `docs/CONTENT-OWNER-EDITS.md`, `docs/tasks/ (документ TASK_PATH final-dev4)`
 
@@ -111,7 +119,7 @@ FINAL-QA-CHECKLIST.md §7 (Action Bar / рабочее время): запись
 
 Проверка: grep -c 'verify-business-hours' docs/FINAL-QA-CHECKLIST.md ≥ 1; grep -rn 'FINAL-DEV4-DESIGN v' docs → только новая версия; git diff --check → пусто
 
-### 11. Закоммитить, запушить, открыть draft PR; после деплоя владельцем выполнить live-приёмку.
+### 12. Закоммитить, запушить, открыть draft PR; после деплоя владельцем выполнить live-приёмку.
 
 Файлы: `.github/PULL_REQUEST_TEMPLATE.md`
 
@@ -142,7 +150,7 @@ FINAL-QA-CHECKLIST.md §7 (Action Bar / рабочее время): запись
 - CLIENT-COPY-CONTRACT: следующий patch после этапа 3 (1.3.1 → 1.3.2) + дата — client_copy_contract.py:3 и :11–12 и все документы по grep 'CLIENT-COPY-CONTRACT v'
 - BUSINESS-HOURS-GATE v1.0.0 | <дата> — заголовок нового scripts/verify-business-hours.py
 - CONTENT-EXTRA и CONTENT-OWNER-EDITS — следующие версии/даты документов
-- Не меняются: ACTION-BAR-SPEC (2.4.0 или версия после этапа 1), FINAL-DEV3-DESIGN 2.0.2, LIVE-PREVIEW-READBACK, PREVIEW-BROWSER-QA-RUNNER 1.4.1 (runner 1.5.0 — этап 6)
+- Не меняются: ACTION-BAR-SPEC (2.4.0 или версия после этапа 1), FINAL-DEV3-DESIGN 2.0.2, LIVE-PREVIEW-READBACK, PREVIEW-BROWSER-QA-RUNNER 1.4.2 (runner 1.5.0 — этап 6)
 
 ## Приёмка этапа
 
@@ -181,13 +189,26 @@ FINAL-QA-CHECKLIST.md §7 (Action Bar / рабочее время): запись
 - Мок 503 для /api/lead в Playwright: route должна быть задана до submit; ошибка должна показать .lead-form__error-contact (showContact=true только для delivery-ошибок, не для 422)
 - Workflow с пустым only опубликует все alias, включая final-dev3 — only=final-dev4 обязательно
 
+## Проверка карточки критиком
+
+скоуп: ок; пути: ЗАМЕЧАНИЯ; гейты: ок; промпт: ЗАМЕЧАНИЯ.
+
+Правки критика, обязательные к применению исполнителем:
+
+- Добавить шаг «Завести собственный адаптер dev4»: git mv/копия site-addons/final-dev3/hero-business-hours.js → site-addons/final-dev4/hero-business-hours.js с маркером FINAL-DEV4-DESIGN; в final_dev4_contract.py задать HERO_BUSINESS_SCRIPT/HERO_BUSINESS_SCRIPT_TAG (то же имя файла), TASK_PATH и списки SCRIPT_REQUIRED/FORBIDDEN_TOKENS dev4; в build-hero-variants.py: FINAL_DEV4_ADDON и копирование для dev4 из него (условие `if key == "dev4"` отдельно от dev3), в verify() отдельный блок dev4 с байт-сравнением против site-addons/final-dev4 и dev4-токенами; в verify-client-previews.py verify_final_dev4 сравнивать с site-addons/final-dev4 и dev4-токенами; в verify-client-copy.py DYNAMIC_UI_PATHS += site-addons/final-dev4/hero-business-hours.js
+- Исправить «PREVIEW-BROWSER-QA-RUNNER 1.4.1» → 1.4.2
+- Переписать пункт про Action Bar: класс page--final-dev3 в body dev4 сохраняется намеренно (латч finalDev3TopOnly), Action Bar 2.4.0 не бампится; либо перенести этот bump в карточку явно
+- В промпте заменить «созданы этапом 1» на «создать в этом этапе по шагу N»
+
+Логика адаптера, разметка data-business-closed (строки ~54/~64/~93/~505/~526 совпадают), CSS :1139, DYNAMIC_UI_PATHS :56–61, токены Action Bar ([data-business-demo], data-business-action phone/whatsapp/booking) и dev3-адаптера (MutationObserver/attributeFilter/hero__call-num/data-hero-business-state) подтверждены. Дефект структурный: карточка опирается на инфраструктуру dev4-адаптера, которую этап 1 явно отложил на этап 4, а этап 4 считает уже сделанной.
+
 ## Промпт для Codex
 
 Вставить в Codex CLI в корне репозитория на ветке этапа:
 
 ```text
 Ты исполнитель этапа 4 «Нерабочее время: все tel: вне Hero → WhatsApp» версии final-dev4 лендинга «Гамбарян и партнёры». Работай в корне репозитория, уровень рассуждений high.
-Сначала прочитай по порядку: AGENTS.md; docs/RESUME.md («Следующий цикл»); docs/CODEX-WORKING-MODEL.md; docs/tasks/codex/2026-09-06-final-dev4-stage-4.md (карточка этапа, целиком); в docs/tasks/2026-09-06-final-dev4-spec.md — «Реестр решений владельца» (№25), «Что затрагивает контракты», «Правила для исполнителя», «Приёмка»; в docs/tasks/2026-09-06-final-dev4-items.md — D:D-05, E:G-03, F:M-05; docs/FINAL-QA-CHECKLIST.md §7. Затем код: site-addons/action-bar/action-bar.js (состояние data-business-state — единственный источник), site-addons/final-dev3/hero-business-hours.js (образец адаптера, НЕ менять), scripts/final_dev4_contract.py и адаптер в site-addons/final-dev4/ (созданы этапом 1), scripts/build-hero-variants.py и scripts/verify-client-previews.py (токены проверок dev4), scripts/verify-client-copy.py (DYNAMIC_UI_PATHS), site/index.html строки с tel: и .lead-form__error-contact, site/app.js (showFormError).
+Сначала прочитай по порядку: AGENTS.md; docs/RESUME.md («Следующий цикл»); docs/CODEX-WORKING-MODEL.md; docs/tasks/codex/2026-09-06-final-dev4-stage-4.md (карточка этапа, целиком); в docs/tasks/2026-09-06-final-dev4-spec.md — «Реестр решений владельца» (№25), «Что затрагивает контракты», «Правила для исполнителя», «Приёмка»; в docs/tasks/2026-09-06-final-dev4-items.md — D:D-05, E:G-03, F:M-05; docs/FINAL-QA-CHECKLIST.md §7. Затем код: site-addons/action-bar/action-bar.js (состояние data-business-state — единственный источник), site-addons/final-dev3/hero-business-hours.js (образец адаптера, НЕ менять), scripts/final_dev4_contract.py и адаптер в site-addons/final-dev4/ (создать в этом этапе (шаг 2 карточки «Завести собственный адаптер dev4»)), scripts/build-hero-variants.py и scripts/verify-client-previews.py (токены проверок dev4), scripts/verify-client-copy.py (DYNAMIC_UI_PATHS), site/index.html строки с tel: и .lead-form__error-contact, site/app.js (showFormError).
 Предусловие: влиты этапы 1–3 (в <footer> нет tel:, есть alias final-dev4 и маркер FINAL-DEV4-DESIGN). Если нет — остановись на этом пункте и напиши в отчёт.
 Ветка codex/final-dev4-s4-hours от main после слияния этапа 3 (пока PR #11 не влит — от codex/final-dev4). Draft PR в main по .github/PULL_REQUEST_TEMPLATE.md.
 Сделай (правки только в site/, site-addons/final-dev4/, scripts/, docs/; build/ руками не править):
