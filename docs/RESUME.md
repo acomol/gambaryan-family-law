@@ -111,8 +111,11 @@ workflow`, ветка `main`, поле `only` — конкретный alias и�
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: effective-width fix Manrope lede |
 | Browser QA runner | `1.4.0` | LOCAL PASS: `177/177`, fact-card clip guard |
 
-Версии контракта датированы `2026-08-11` или `2026-08-13`. Stable aliases
-обслуживают прежний release `75558d9`, а не новый dark-facts кандидат.
+Версии контрактов датированы `2026-08-11`, `2026-08-13` и `2026-08-17`
+(Action Bar `2.4.0`, маркер `ACTION-BAR-SPEC v2.4.0 | 2026-08-17` в
+`site-addons/action-bar/action-bar.{html,css,js}` и в Preview-карте). Из
+stable aliases текущий релиз `main` отдаёт только `final-dev3`; остальные
+десять по-прежнему обслуживают прежний release `75558d9`.
 
 ## Текущая regression-семантика
 
