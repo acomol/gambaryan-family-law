@@ -3,9 +3,9 @@
 
 # Gambarian Family Law Landing Page
 
-**Версия правил:** `PROJECT-AGENT-RULES v1.2.0`
+**Версия правил:** `PROJECT-AGENT-RULES v1.3.0`
 
-**Обновлено:** `2026-08-11`
+**Обновлено:** `2026-09-06`
 
 ## What This Is
 
@@ -157,6 +157,24 @@ src/                        # унаследованный Next.js-каркас,
 Из облачной сессии Claude Code ключей Cloudflare нет — это свойство среды,
 а не отказ агента. Рабочие пути: переменные окружения на машине владельца
 либо секреты GitHub Actions (`.github/workflows/deploy-previews.yml`).
+
+## Цикл final-dev4: исполнитель Codex CLI
+
+Версия `final-dev4` реализуется по этапам Codex CLI на машине владельца;
+ТЗ, карточки этапов и приёмку ведёт архитектор (Claude). Модель работы —
+`docs/CODEX-WORKING-MODEL.md`; задание с реестром решений владельца —
+`docs/tasks/2026-09-06-final-dev4-spec.md`; карточки этапов —
+`docs/tasks/codex/`. Исполнитель любого этапа:
+
+1. читает `AGENTS.md` → `docs/RESUME.md` → `docs/CODEX-WORKING-MODEL.md` →
+   карточку этапа, и только потом код;
+2. работает в ветке `codex/final-dev4-s<N>-<slug>` и открывает draft PR в
+   `main` с proof-блоком (хэш, diff, вывод гейтов, «Проверено / Не проверено»);
+3. берёт тексты только из колонки «Правка»
+   `docs/CONTENT-OWNER-REVISIONS-2026-09-06.md` дословно;
+4. не реализует открытые вопросы без явного «по умолчанию» и не трогает
+   `final-dev3`, production и frozen source;
+5. деплой делает владелец: `Deploy Previews` из ветки этапа с `only=final-dev4`.
 
 ## MOST IMPORTANT NOTES
 - Before changing code or documentation, read `docs/RESUME.md` and the relevant
