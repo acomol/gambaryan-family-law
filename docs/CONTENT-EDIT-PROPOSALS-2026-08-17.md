@@ -103,4 +103,4 @@
 - [CONTENT-APPROVED.md](CONTENT-APPROVED.md) — action allowlist, который эти предложения не расширяют
 - [CONTENT-OWNER-EDITS.md](CONTENT-OWNER-EDITS.md) — прежние точечные правки владельца
 - [CLIENT-PREVIEW-HANDOFF.md](CLIENT-PREVIEW-HANDOFF.md) — какой Preview сейчас можно показывать
-- [LEAD-WEBHOOK-CONTRACT.md](LEAD-WEBHOOK-CONTRACT.md) — контракт формы, объясняющий расхождение в 7.6
+- [LEAD-WEBHOOK-CONTRACT.md](LEAD-WEBHOOK-CONTRACT.md) — контракт формы (только имя и телефон); подтверждает сценарий обратного звонка из 7.6, никакого расхождения нет
