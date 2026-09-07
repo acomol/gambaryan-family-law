@@ -147,7 +147,7 @@ class ClientCopyVerifierTests(unittest.TestCase):
         mutations = (
             (
                 'src="assets/yulia-card-v3-760w.ac06d5c7.jpg"',
-                'src="assets/alexander-card-v3-760w.0ca191e9.jpg"',
+                'src="assets/alexander-card-v3-760w.b5e5dc3d.jpg"',
             ),
             ('alt="Адвокат Юлия Саакян"', 'alt="Адвокат Александр Гамбарян"'),
             (
