@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.7`
+**Версия:** `2.3.8`
 
 **Обновлено:** `2026-09-07`
 
@@ -59,10 +59,10 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 | `FINAL-DEV1-HERO` | `2.0.0` | LIVE PASS |
 | `FINAL-DEV3-DESIGN` | `2.0.2` | LIVE PASS |
 | Lead contract | `2.0.0` | LIVE readback: name/phone only |
-| Review Numbered | `2.2.0` | LOCAL PASS: client/owner gate |
+| Review Numbered | `2.2.1` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
-| Browser QA runner | `1.4.3` | LOCAL final-dev4: 15/15 PASS; вся матрица 194 cells не запускалась |
+| Browser QA runner | `1.5.0` | LOCAL final-dev4: 15/15 PASS; вся матрица 194 cells не запускалась |
 | Этот чек-лист | `2.3.6` | active |
 
 ### Кубики фактов — этап 5, 2026-09-07
@@ -70,7 +70,7 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 Кандидат в `codex/final-dev4-s5-facts`, база `a09f923`. Этапы 1–3 есть в истории;
 этап 4 исключён заданием владельца. Onest уже принят отдельной работой.
 Контракт копирайта 1.4.0: 45 client + 18 owner; numbered-review 2.2.0;
-readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.4.3.
+readback 1.3.0; DARK-FACT-CARDS 2.0.0. На этапе 5 использовался runner 1.4.3; текущий — 1.5.0.
 
 - [x] Три кубика перестроены по строкам 7–10; заголовок секции и аккордеон сняты.
 - [x] Copy parser: source, standalone и final-dev4 без ошибок; тексты трёх owner ID точные.
@@ -476,6 +476,19 @@ Claude review; действующий gate выше требует новый `1
   предположению.
 
 ## 4. Hero и адаптивная вёрстка
+
+### Окно услуг, этап 6 (2026-09-07)
+
+- [x] Runner 1.5.0: final-dev4 15/15 PASS, гейты равной высоты панелей,
+  неподвижности media/CTA, стрелок, одной строки тем, упора и свайпа.
+- [x] Все восемь тем: 1440 — 1003.328125px; 390 — 1217.203125px (≤1220).
+- [x] Regression display:none вызывает svc-panels-unequal-height.
+- [x] Numbered Review 2.2.1; тексты и copy contract 1.4.1 без изменений.
+- [ ] 194 cells и live не проверены; отсутствуют font-variants по заданию.
+- B6/B7 и прочие прежние OPEN-пункты не закрываются этим этапом.
+
+[Отчёт и PNG](reviews/2026-09-07-final-dev4-stage-6-local.md).
+
 
 - [x] На мобильном Hero построен полосами без наложения текста на лица.
 - [x] Фото Hero занимает полную доступную ширину без бокового смещения.

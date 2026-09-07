@@ -1,6 +1,6 @@
 # Двенадцать Cloudflare Preview-версий для заказчика
 
-**Версия документа:** `2.7.4`; исполняемая Preview-карта — `2.5.0`
+**Версия документа:** `2.7.5`; исполняемая Preview-карта — `2.5.0`
 
 **Обновлено:** `2026-09-07`
 
@@ -51,7 +51,7 @@
 Кандидат в `codex/final-dev4-s5-facts`, база `a09f923`. Этапы 1–3 есть в истории;
 этап 4 исключён заданием владельца. Onest уже принят отдельной работой.
 Контракт копирайта 1.4.0: 45 client + 18 owner; numbered-review 2.2.0;
-readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.4.3.
+readback 1.3.0; DARK-FACT-CARDS 2.0.0. На этапе 5 использовался runner 1.4.3; текущий 1.5.0: [этап 6](../reviews/2026-09-07-final-dev4-stage-6-local.md).
 
 - [x] Три кубика перестроены по строкам 7–10; заголовок секции и аккордеон сняты.
 - [x] Copy parser: source, standalone и final-dev4 без ошибок; тексты трёх owner ID точные.
@@ -76,10 +76,10 @@ readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.
 | `final-dev3` | `2.0.2` | 2026-08-13 | `LIVE PASS` |
 | final-dev4 | `1.0.0` | 2026-09-07 | `LOCAL PASS / LIVE PENDING` |
 | Lead hook / форма (name + phone only) | `2.0.0` | 2026-08-11 | `LIVE PASS` |
-| Review numbering | `2.2.0` | 2026-09-07 | `LOCAL PASS` |
+| Review numbering | `2.2.1` | 2026-09-07 | `LOCAL PASS` |
 | Font Variant V2 Mobile | `1.1.0` | 2026-08-13 | `LIVE PASS` |
 | Font Variant V3 Mobile | `1.0.0` | 2026-08-13 | `LIVE PASS` |
-| Browser QA runner | `1.4.2` | 2026-09-07 | `NOT RUN: 194 cells, CI` |
+| Browser QA runner | `1.5.0` | 2026-09-07 | `LOCAL final-dev4 15/15 PASS; 194 cells NOT RUN` |
 
 Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13`.
 

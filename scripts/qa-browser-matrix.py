@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.4.3 | 2026-09-07
+"""PREVIEW-BROWSER-QA-RUNNER v1.5.0 | 2026-09-07
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -24,8 +24,9 @@ For live aliases, use a URL template (PowerShell users should quote it)::
 Stdout is JSON Lines: every ``cell`` record is one target/viewport PASS or
 FAIL, followed by one ``summary`` record with per-suite and total counts. A
 PASS means the page loaded with the expected Preview markers, no horizontal
-overflow, clipped fact-card content (including collapsed and expanded mobile
-accordion states), unexpected browser console/page errors or failed requests; Hero/photo, the real
+overflow, clipped fact-card content, forbidden fact accordion toggles or unstable
+services geometry (equal panels, fixed media/CTA, arrows, single tab row, swipe),
+unexpected browser console/page errors or failed requests; Hero/photo, the real
 Chromium platform font used for title/body/CTA glyphs, and Action Bar breakpoint
 geometry also passed. Font coverage includes title, service heading,
 body and CTA text. Short portrait cells additionally require all Hero
@@ -59,7 +60,7 @@ from final_dev3_contract import (
 from review_numbered_contract import OWNER_REVIEW_IDS
 
 
-RUNNER_VERSION = "1.4.3"
+RUNNER_VERSION = "1.5.0"
 ACTION_BAR_VERSION = "2.4.0"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.1.0"
 KNOWN_BENIGN_HERO_PRELOAD_WARNING = "was preloaded using link preload but not used within a few seconds"
@@ -401,7 +402,7 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
           } : { left: null, right: null };
           const measureFactCards = () => factCards.map((card, index) => {
             const cardRect = card.getBoundingClientRect();
-            const head = card.querySelector('.fact-card__head');
+            const head = card.querySelector('.fact-card__title, .fact-card__head');
             const headRect = head?.getBoundingClientRect() || null;
             const childRects = [...card.querySelectorAll('*')]
               .map((child) => child.getBoundingClientRect())
@@ -441,31 +442,80 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               textRight: textBounds.right,
               contentLeft: contentBounds.left,
               contentRight: contentBounds.right,
-              hasExpandableContent: Boolean(card.querySelector('p')),
+              hasClampedParagraph: [...card.querySelectorAll('p')].some(
+                (p) => p.scrollHeight > p.clientHeight
+              ),
               togglePresent: Boolean(toggle),
               ariaExpanded: toggle?.getAttribute('aria-expanded') ?? null,
               isOpen: card.classList.contains('is-open'),
             };
           });
-          const setFactCardsExpanded = async (expanded) => {
-            factCards.forEach((card) => {
-              const toggle = card.querySelector('.fact-card__toggle');
-              if (!toggle) return;
-              const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
-              if (isExpanded !== expanded) toggle.click();
-            });
-            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-          };
-          let factCardAccordion = null;
-          if (innerWidth === 360 || innerWidth === 390) {
-            await setFactCardsExpanded(false);
-            const collapsed = measureFactCards();
-            await setFactCardsExpanded(true);
-            const expanded = measureFactCards();
-            await setFactCardsExpanded(false);
-            factCardAccordion = { collapsed, expanded };
-          }
           const factCardMetrics = measureFactCards();
+          const frame = document.querySelector('.svc-frame');
+          let services = null;
+          if (frame) {
+            const tabs = [...document.querySelectorAll('.svc-tab')];
+            const dots = [...document.querySelectorAll('.svc-dot')];
+            const panels = [...document.querySelectorAll('.svc-card')];
+            const tablist = document.querySelector('.svc-tabs');
+            const stage = document.querySelector('.svc-stage');
+            const prev = document.querySelector('.svc-arrow[data-dir="prev"]');
+            const next = document.querySelector('.svc-arrow[data-dir="next"]');
+            const rect = (element) => element?.getBoundingClientRect().toJSON() || null;
+            const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            const active = () => tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true');
+            const states = [];
+            for (let i = 0; i < dots.length; i++) {
+              dots[i].click();
+              await settle();
+              states.push({
+                index: i,
+                section: rect(document.querySelector('.services')),
+                media: rect(document.querySelector('.svc-media')),
+                cta: rect(document.querySelector('.svc-card__cta')),
+                title: rect(panels[i].querySelector('.svc-title')),
+              });
+            }
+            const nextDisabledAtEnd = next?.disabled;
+            dots[0].click();
+            await settle();
+            services = {
+              tabsRows: new Set(tabs.map((tab) => Math.round(tab.getBoundingClientRect().top))).size,
+              tabsScrollable: tablist.scrollWidth > tablist.clientWidth,
+              servicesHeight: document.querySelector('.services').getBoundingClientRect().height,
+              mediaCount: document.querySelectorAll('.svc-media').length,
+              ctaCount: document.querySelectorAll('.svc-card__cta').length,
+              frame: rect(frame),
+              arrows: { prev: { rect: rect(prev), disabled: prev?.disabled }, next: { rect: rect(next), disabled: next?.disabled } },
+              panelHeights: panels.map((panel) => panel.getBoundingClientRect().height),
+              states,
+              prevDisabledAtStart: prev?.disabled,
+              nextDisabledAtEnd,
+              swipe: null,
+            };
+            if (innerWidth <= 860) {
+              const swipe = async (dx, dy) => {
+                const y = stage.getBoundingClientRect().top + 20;
+                const options = { pointerId: 7, pointerType: 'touch', isPrimary: true, clientX: 300, clientY: y, bubbles: true };
+                stage.dispatchEvent(new PointerEvent('pointerdown', options));
+                stage.dispatchEvent(new PointerEvent('pointerup', { ...options, clientX: 300 + dx, clientY: y + dy }));
+                await settle();
+                return active();
+              };
+              services.swipe = {
+                next: await swipe(-120, 0),
+                prev: await swipe(120, 0),
+                start: await swipe(120, 0),
+                vertical: await swipe(0, 100),
+                threshold: await swipe(-30, 0),
+              };
+              dots[dots.length - 1].click();
+              await settle();
+              services.swipe.end = await swipe(-120, 0);
+              dots[0].click();
+              await settle();
+            }
+          }
 
           return {
             viewport: { width: innerWidth, height: innerHeight },
@@ -475,7 +525,7 @@ def browser_metrics(page: Page, short_portrait: bool, timeout_ms: int) -> dict[s
               overflow: root.scrollWidth - root.clientWidth,
             },
             factCards: factCardMetrics,
-            factCardAccordion,
+            services,
             hero: {
               present: Boolean(hero),
               width: hero ? hero.getBoundingClientRect().width : 0,
@@ -663,6 +713,67 @@ def final_dev3_bar_visibility_metrics(page: Page) -> dict[str, Any]:
     )
 
 
+def validate_services(services: dict[str, Any] | None, width: int) -> list[str]:
+    """Validate measured service states; absent geometry must never silently pass."""
+    if not services:
+        return ["svc-window-missing"]
+    failures = []
+    for key, label in (("mediaCount", "media"), ("ctaCount", "cta")):
+        if services[key] != 1:
+            failures.append(f"svc-{label}-count={services[key]}")
+    heights = services["panelHeights"]
+    if len(heights) != 8 or min(heights, default=0) <= 0 or max(heights) - min(heights) > 1:
+        failures.append(f"svc-panels-unequal-height={heights}")
+    states = services["states"]
+    if len(states) != 8:
+        failures.append(f"svc-state-count={len(states)}")
+    if states:
+        for state in states:
+            for key in ("media", "cta"):
+                initial, current = states[0][key], state[key]
+                if not initial or not current or any(
+                    abs(current[dim] - initial[dim]) > 1
+                    for dim in ("top", "left", "width", "height")
+                ):
+                    failures.append(f"svc-{key}-moved index={state['index']}")
+            if abs(state["section"]["height"] - states[0]["section"]["height"]) > 1:
+                failures.append(f"svc-section-height-changed index={state['index']}")
+    frame = services["frame"]
+    for name, arrow in services["arrows"].items():
+        rect = arrow["rect"]
+        if not rect or rect["width"] < 44 or rect["height"] < 44:
+            failures.append(f"svc-arrow-target {name}")
+            continue
+        if width >= 861:
+            if (abs(rect["top"] + rect["height"] / 2 - frame["top"] - frame["height"] / 2) > 2
+                    or (name == "prev" and rect["right"] > frame["left"])
+                    or (name == "next" and rect["left"] < frame["right"])):
+                failures.append(f"svc-arrows-desktop-position {name}")
+        elif rect["top"] < frame["top"] or any(
+            rect["bottom"] > state["title"]["bottom"] + 44 for state in states
+        ):
+            failures.append(f"svc-arrows-mobile-position {name}")
+    if not services["prevDisabledAtStart"] or not services["nextDisabledAtEnd"]:
+        failures.append("svc-edge-stop")
+    if width <= 860:
+        if services["tabsRows"] != 1:
+            failures.append(f"svc-tabs-rows={services['tabsRows']}")
+        swipe = services.get("swipe") or {}
+        for key, expected, failure in (
+            ("next", 1, "svc-swipe-next-failed"),
+            ("prev", 0, "svc-swipe-prev-failed"),
+            ("start", 0, "svc-swipe-edge-not-stopped"),
+            ("end", 7, "svc-swipe-edge-not-stopped"),
+            ("vertical", 0, "svc-swipe-vertical-switched"),
+            ("threshold", 0, "svc-swipe-threshold"),
+        ):
+            if swipe.get(key) != expected:
+                failures.append(failure)
+    if width == 390 and services["servicesHeight"] > 1220:
+        failures.append(f"services-height-390={services['servicesHeight']}")
+    return failures
+
+
 def validate_metrics(
     target: Target,
     width: int,
@@ -731,42 +842,15 @@ def validate_metrics(
     fact_cards = metrics["factCards"]
     if not fact_cards:
         failures.append("fact-cards-missing")
-    if width in {360, 390}:
-        accordion = metrics.get("factCardAccordion")
-        if not accordion:
-            failures.append("fact-card-mobile-accordion-metrics-missing")
-            validate_fact_cards(fact_cards, "restored-collapsed")
-        else:
-            expected_ids = [card["copyId"] for card in fact_cards]
-            for state, expected_expanded in (("collapsed", False), ("expanded", True)):
-                cards = accordion.get(state, [])
-                actual_ids = [card["copyId"] for card in cards]
-                if actual_ids != expected_ids:
-                    failures.append(
-                        f"fact-card-mobile-accordion-{state}-coverage="
-                        f"{actual_ids} expected={expected_ids}"
-                    )
-                validate_fact_cards(cards, state)
-                for card in cards:
-                    if card["hasExpandableContent"] and not card["togglePresent"]:
-                        failures.append(
-                            f"fact-card-mobile-accordion-{state}-toggle-missing "
-                            f"copy-id={card['copyId']}"
-                        )
-                    if not card["togglePresent"]:
-                        continue
-                    expected_aria = "true" if expected_expanded else "false"
-                    if (
-                        card["ariaExpanded"] != expected_aria
-                        or card["isOpen"] is not expected_expanded
-                    ):
-                        failures.append(
-                            f"fact-card-mobile-accordion-{state}-state "
-                            f"copy-id={card['copyId']} aria-expanded={card['ariaExpanded']} "
-                            f"is-open={card['isOpen']} expected={expected_aria}"
-                        )
-    else:
-        validate_fact_cards(fact_cards, "initial")
+    validate_fact_cards(fact_cards, "initial")
+    # final-dev3 is an immutable legacy source; its fact accordion stays supported.
+    if target.name != "final-dev3":
+        for card in fact_cards:
+            if card["togglePresent"]:
+                failures.append(f"fact-card-accordion-forbidden copy-id={card['copyId']}")
+            if width <= 860 and card["hasClampedParagraph"] and not card["togglePresent"]:
+                failures.append(f"fact-card-mobile-accordion-toggle-missing copy-id={card['copyId']}")
+        failures.extend(validate_services(metrics.get("services"), width))
     if not hero["present"] or hero["width"] <= 0 or hero["height"] <= 0:
         failures.append("hero-missing-or-empty")
     if not hero["photoComplete"] or hero["photoWidth"] <= 0 or hero["photoHeight"] <= 0:
@@ -1162,7 +1246,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--all-previews",
         action="store_true",
-        help="run 12 Preview targets plus the 10-cell large-desktop subset",
+        help="run 194 cells across 12 Previews, including service geometry/swipe gates and the large-desktop subset",
     )
     parser.add_argument(
         "--target-name",

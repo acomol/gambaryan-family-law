@@ -747,9 +747,13 @@ picture { display: block; }
   margin-bottom: 34px;
 }
 
-.services__arrows { display: flex; gap: 12px; }
+.svc-window { position: relative; padding-inline: 64px; }
 
 .svc-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
   flex: none;
   width: 44px;
   height: 44px;
@@ -763,6 +767,11 @@ picture { display: block; }
   justify-content: center;
 }
 .svc-arrow:hover { border-color: rgba(240, 174, 31, 0.7); }
+.svc-arrow[data-dir="prev"] { left: 0; }
+.svc-arrow[data-dir="next"] { right: 0; }
+.svc-arrow:disabled { opacity: .35; cursor: default; }
+.svc-arrow:disabled:hover { border-color: rgba(255, 255, 255, .18); }
+.svc-arrow:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 .svc-tabs {
   display: flex;
@@ -789,22 +798,32 @@ picture { display: block; }
   border-color: rgba(240, 174, 31, 0.55);
 }
 
-.svc-card {
+.svc-frame {
   position: relative;
   background: var(--bg-card-dark);
   border: 1px solid rgba(240, 174, 31, 0.14);
   border-radius: 16px;
   padding: clamp(26px, 4vw, 46px);
-}
-.svc-card[hidden] { display: none; }
-
-.svc-card__inner {
   display: flex;
   flex-wrap: wrap;
   gap: clamp(24px, 4vw, 56px);
 }
 
-.svc-card__main { flex: 1 1 380px; min-width: 0; }
+.svc-frame__main {
+  flex: 1 1 380px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.svc-stage { display: grid; flex: 1 1 auto; min-width: 0; touch-action: pan-y; }
+.svc-card {
+  grid-area: 1 / 1;
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  transition: opacity .2s ease;
+}
+.svc-card[hidden] { display: grid; visibility: hidden; opacity: 0; pointer-events: none; }
 
 .svc-title {
   margin: 0 0 16px;
@@ -819,7 +838,7 @@ picture { display: block; }
 }
 
 .svc-lead {
-  margin: 0 0 28px;
+  margin: 0;
   font-size: 15px;
   line-height: 1.7;
   color: rgba(255, 255, 255, 0.68);
@@ -828,6 +847,8 @@ picture { display: block; }
 }
 
 .svc-card__cta {
+  margin-top: 28px;
+  align-self: flex-start;
   display: inline-block;
   background: var(--wine);
   color: #fff;
@@ -1543,6 +1564,7 @@ picture { display: block; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   a, button { transition: none; }
+  .svc-card { transition: none; }
 }
 
 @media (max-width: 720px) {
@@ -1550,6 +1572,40 @@ picture { display: block; }
 }
 
 @media (max-width: 860px) {
+  .svc-window { padding-inline: 0; }
+  .svc-frame { flex-direction: column; flex-wrap: nowrap; gap: 24px; padding: 22px 20px 24px; }
+  .svc-frame__main { flex: none; }
+  .svc-arrow { top: 22px; transform: none; }
+  .svc-arrow[data-dir="prev"] { left: auto; right: 72px; }
+  .svc-arrow[data-dir="next"] { right: 20px; }
+  .svc-title { padding-right: 104px; min-height: 44px; min-width: 0; overflow-wrap: anywhere; }
+  .svc-media {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    flex: none;
+    min-width: 0;
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    padding-top: 20px;
+  }
+  .svc-media__person, .svc-media p { grid-column: 1 / -1; }
+  .svc-media .notch { grid-column: 2; grid-row: 1; align-self: center; margin: 0; }
+  .svc-tabs {
+    position: relative;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    margin-inline: calc(var(--pad-x) * -1);
+    padding-inline: var(--pad-x);
+    scroll-padding-inline: var(--pad-x);
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  }
+  .svc-tabs::-webkit-scrollbar { display: none; }
+  .svc-tab { flex: none; min-height: 44px; }
   .facts__container { padding-block: 20px; }
   .facts-grid { gap: 12px; }
   .fact-card { padding: 18px 18px 16px; }
@@ -1666,28 +1722,60 @@ picture { display: block; }
         <h2 class="section-title section-title--narrow" data-owner-copy-id="svc-h2-v1">Развод по взаимному согласию и представительство в бракоразводных спорах при отсутствии соглашения между супругами</h2>
         <div class="rule rule--flush"></div>
       </div>
-      <div class="services__arrows">
-        <button class="svc-arrow" type="button" data-dir="prev" aria-label="Назад"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-        <button class="svc-arrow" type="button" data-dir="next" aria-label="Вперёд"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
-      </div>
     </div>
 
     <div class="svc-tabs" role="tablist" aria-label="Направления семейного права">
       <button class="svc-tab is-active" type="button" role="tab" id="svc-tab-1" aria-controls="svc-panel-1" aria-selected="true">Развод</button>
       <button class="svc-tab" type="button" role="tab" id="svc-tab-2" aria-controls="svc-panel-2" aria-selected="false" tabindex="-1">Алименты</button>
-      <button class="svc-tab" type="button" role="tab" id="svc-tab-3" aria-controls="svc-panel-3" aria-selected="false" tabindex="-1">Дети</button>
-      <button class="svc-tab" type="button" role="tab" id="svc-tab-4" aria-controls="svc-panel-4" aria-selected="false" tabindex="-1">Отцовство</button>
-      <button class="svc-tab" type="button" role="tab" id="svc-tab-5" aria-controls="svc-panel-5" aria-selected="false" tabindex="-1">Раздел имущества</button>
+      <button class="svc-tab" type="button" role="tab" id="svc-tab-3" aria-controls="svc-panel-3" aria-selected="false" tabindex="-1">Раздел имущества</button>
+      <button class="svc-tab" type="button" role="tab" id="svc-tab-4" aria-controls="svc-panel-4" aria-selected="false" tabindex="-1">Дети</button>
+      <button class="svc-tab" type="button" role="tab" id="svc-tab-5" aria-controls="svc-panel-5" aria-selected="false" tabindex="-1">Отцовство</button>
       <button class="svc-tab" type="button" role="tab" id="svc-tab-6" aria-controls="svc-panel-6" aria-selected="false" tabindex="-1">Медиация</button>
       <button class="svc-tab" type="button" role="tab" id="svc-tab-7" aria-controls="svc-panel-7" aria-selected="false" tabindex="-1">Брачный договор</button>
       <button class="svc-tab" type="button" role="tab" id="svc-tab-8" aria-controls="svc-panel-8" aria-selected="false" tabindex="-1">Защита при угрозах</button>
     </div>
 
-    <div class="svc-card" role="tabpanel" id="svc-panel-1" aria-labelledby="svc-tab-1">
-      <div class="svc-card__inner">
-        <div class="svc-card__main">
-          <h3 class="svc-title" data-owner-copy-id="svc-divorce-title-v1">Бракоразводные процессы</h3>
-          <p class="svc-lead" data-owner-copy-id="svc-divorce-lead-v1">Консультация и полное юридическое сопровождение развода по взаимному согласию&nbsp;— без судебного спора между супругами. Когда соглашение между супругами невозможно, адвокат обеспечивает полное сопровождение бракоразводного процесса&nbsp;— от подготовки документов до представительства в суде и иных инстанциях.</p>
+    <div class="svc-window">
+      <div class="services__arrows">
+        <button class="svc-arrow" type="button" data-dir="prev" aria-label="Назад"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        <button class="svc-arrow" type="button" data-dir="next" aria-label="Вперёд"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+      </div>
+      <div class="svc-frame">
+        <div class="svc-frame__main">
+          <div class="svc-stage">
+          <div class="svc-card" role="tabpanel" id="svc-panel-1" aria-labelledby="svc-tab-1">
+            <h3 class="svc-title" data-owner-copy-id="svc-divorce-title-v1">Бракоразводные процессы</h3>
+            <p class="svc-lead" data-owner-copy-id="svc-divorce-lead-v1">Консультация и полное юридическое сопровождение развода по взаимному согласию&nbsp;— без судебного спора между супругами. Когда соглашение между супругами невозможно, адвокат обеспечивает полное сопровождение бракоразводного процесса&nbsp;— от подготовки документов до представительства в суде и иных инстанциях.</p>
+          </div>
+          <div class="svc-card" role="tabpanel" id="svc-panel-2" aria-labelledby="svc-tab-2" hidden>
+            <h3 class="svc-title" data-copy-id="3.12">Алименты</h3>
+            <p class="svc-lead" data-copy-id="3.13">Установление, взыскание и пересмотр алиментов на детей, включая временные выплаты на период рассмотрения дела.</p>
+          </div>
+          <div class="svc-card" role="tabpanel" id="svc-panel-3" aria-labelledby="svc-tab-3" hidden>
+            <h3 class="svc-title" data-copy-id="3.27">Раздел имущества</h3>
+            <p class="svc-lead" data-owner-copy-id="svc-property-lead-v1">Раздел имущества и долгов супругов: недвижимость, ипотека, банковские счета, пенсионные накопления, бизнес, кредиты и иные обязательства&nbsp;— в переговорах, соглашении и судебном процессе.</p>
+          </div>
+          <div class="svc-card" role="tabpanel" id="svc-panel-4" aria-labelledby="svc-tab-4" hidden>
+            <h3 class="svc-title" data-copy-id="3.17">Дети, родительские права и международное возвращение</h3>
+            <p class="svc-lead" data-owner-copy-id="svc-children-lead-v1">Споры о месте проживания ребенка и порядке общения. Международные дела о возвращении похищенных или незаконно удерживаемых детей, включая сложные случаи с неоформленными родительскими правами</p>
+          </div>
+          <div class="svc-card" role="tabpanel" id="svc-panel-5" aria-labelledby="svc-tab-5" hidden>
+            <h3 class="svc-title" data-owner-copy-id="svc-paternity-title-v1">Установление или оспаривание отцовства, тест ДНК</h3>
+            <p class="svc-lead" data-owner-copy-id="svc-paternity-lead-v1">Установление и оспаривание отцовства, получение судебного разрешения на проведение ДНК-теста и полное сопровождение процедуры. В Израиле генетическая экспертиза для установления родства проводится на основании постановления суда.</p>
+          </div>
+          <div class="svc-card" role="tabpanel" id="svc-panel-6" aria-labelledby="svc-tab-6" hidden>
+            <h3 class="svc-title" data-copy-id="3.32">Семейная медиация и соглашение</h3>
+            <p class="svc-lead" data-owner-copy-id="svc-mediation-lead-v1">При готовности сторон к диалогу офис сопровождает медиацию, помогает достичь соглашения по вопросам детей, алиментов и имущества, а также оформляет договорённости в юридически грамотное соглашение для последующего утверждения.</p>
+          </div>
+          <div class="svc-card" role="tabpanel" id="svc-panel-7" aria-labelledby="svc-tab-7" hidden>
+            <h3 class="svc-title" data-copy-id="3.37">Брачный договор</h3>
+            <p class="svc-lead" data-owner-copy-id="svc-prenup-lead-v1">Разработка брачного договора на индивидуальных условиях с учетом имущества, бизнеса, долговых и иных обязательств сторон. Защита интересов каждого супруга и сопровождение официального утверждения соглашения.</p>
+          </div>
+          <div class="svc-card" role="tabpanel" id="svc-panel-8" aria-labelledby="svc-tab-8" hidden>
+            <h3 class="svc-title" data-copy-id="3.42">Защита при угрозах и насилии</h3>
+            <p class="svc-lead" data-owner-copy-id="svc-protection-lead-v1">Срочное обращение за защитным ордером и юридическое сопровождение процедуры. При непосредственной опасности следует немедленно обратиться в экстренные службы, не дожидаясь ответа через сайт.</p>
+          </div>
+          </div>
           <a class="svc-card__cta" href="#contact">Записаться на консультацию</a>
         </div>
         <div class="svc-media">
@@ -1707,188 +1795,12 @@ picture { display: block; }
         </div>
       </div>
     </div>
-
-    <div class="svc-card" role="tabpanel" id="svc-panel-2" aria-labelledby="svc-tab-2">
-      <div class="svc-card__inner">
-        <div class="svc-card__main">
-          <h3 class="svc-title" data-copy-id="3.12">Алименты</h3>
-          <p class="svc-lead" data-copy-id="3.13">Установление, взыскание и пересмотр алиментов на детей, включая временные выплаты на период рассмотрения дела.</p>
-          <a class="svc-card__cta" href="#contact">Записаться на консультацию</a>
-        </div>
-        <div class="svc-media">
-          <span class="svc-media__label">Ведёт</span>
-          <div class="svc-media__person">
-            <picture>
-              <source type="image/webp" srcset="data:image/webp;base64,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">
-              <img class="svc-media__avatar" src="data:image/jpeg;base64,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" width="128" height="134" alt="Адвокат Александр Гамбарян" loading="lazy" decoding="async">
-            </picture>
-            <div>
-              <div class="svc-media__name">Адвокат Александр Гамбарян</div>
-              <div class="svc-media__license">Адвокат Израиля, лицензия №&nbsp;30178</div>
-            </div>
-          </div>
-          <div class="notch"></div>
-          <p>Более 30 лет профессионального опыта в юридической сфере. Работа с клиентами на русском, иврите и английском языках.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="svc-card" role="tabpanel" id="svc-panel-3" aria-labelledby="svc-tab-3">
-      <div class="svc-card__inner">
-        <div class="svc-card__main">
-          <h3 class="svc-title" data-copy-id="3.17">Дети, родительские права и международное возвращение</h3>
-          <p class="svc-lead" data-owner-copy-id="svc-children-lead-v1">Споры о месте проживания ребенка и порядке общения. Международные дела о возвращении похищенных или незаконно удерживаемых детей, включая сложные случаи с неоформленными родительскими правами</p>
-          <a class="svc-card__cta" href="#contact">Записаться на консультацию</a>
-        </div>
-        <div class="svc-media">
-          <span class="svc-media__label">Ведёт</span>
-          <div class="svc-media__person">
-            <picture>
-              <source type="image/webp" srcset="data:image/webp;base64,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">
-              <img class="svc-media__avatar" src="data:image/jpeg;base64,/9j/2wBDAAYGBgYGBgYHBwYJCgkKCQ0MCwsMDRQODw4PDhQfExYTExYTHxshGxkbIRsxJiIiJjE4Ly0vOEQ9PURWUVZwcJb/2wBDAQYGBgYGBgYHBwYJCgkKCQ0MCwsMDRQODw4PDhQfExYTExYTHxshGxkbIRsxJiIiJjE4Ly0vOEQ9PURWUVZwcJb/wgARCACGAIADASIAAhEBAxEB/8QAHAAAAQUBAQEAAAAAAAAAAAAAAwACBAUGBwEI/8QAGgEAAwADAQAAAAAAAAAAAAAAAAECAwQFBv/aAAwDAQACEAMQAAAAy5/fTIYjTAnxaPHn0RsD7F73zP6LNgaw4wjhkAJjAkx2pJByAcZhYy2Fuay4nq85n95nRcv01PJ6vntQ1wtjUHHLHEKMeITYyo5mFY7GY83VL7jErn93UUo85UQZxIeXT6GIgdzmjjOiEsijiBrCNIx1bZ+p1mjeLlencGQRVhayXA2+RvIx4u5zo1fLqlMaCSA10koyj988QPGpGl2IxYuEw7IpxNvtc2vdy/pmzoRqm2qkU9fYVrnqrmjKeq/CC39lwjuU5o82fuNHrR+Ab3iXS40S7pkY+mt5tfS7Kssa9Lp7FmG8hUtdc+9q4r9KOtJE0XGnXM6goFDE8SEKRFCTd5LQQdS5juOX0OTCtO+s/k77Opt+Q+rcbR6kwPR+pHkaXHCLe0N5BLpEqXhkmH+u0qPkMCSHuSTAVIFESQC3Sk//xAA7EAACAQMDAQUFBQcDBQAAAAABAgMABBEFITESBhNBUWEQImJxgQcjMlKhFBVCU3KRsSQzY4OSosHR/9oACAEBAAE/AFWkFKK6aUUBXfQhsd6mfLqFZBFbVisURRFMKYU4oJttQpaWrq6S2Xgs5/Ag5Y1Jb61fAGSTuVYZCJkYFSaHIgyWJbNRNe2GCkzg+R3G1adrqXDCG6URSk4U/wALUK8KYUaampqDE0opaGwyasbGNmMrpl2PPp5U1mn5KntlC/7f6VdWcecmMVqVqqyMqDGTWgXT3ViBI2ZImKMflxRNGmpqanNKKVRQFIpeWJAPU1ZRIEGfCumMY43q4EZBFXqIMjatROLjoPFdnz3dzcpkYdA31U02DRNM1E0xqRsUu5FJ7Hu47JllkOFO1aPrel3E5h/aB1DwO1XV/Z2UBnkJK9JOAMk/KrjtNNdF1tdKuPRmGBirnXIh1i4+6YDctsuavtZtJpgY+uU/CNv7mtL1B4Ulv51VEXMccfLyM3gAK6jTGiac4FSSinfIrFK2R7Li+1TUXZRYLHBDKwYPu2U+oq2u9QlUBdPswpQkFogDkDg4Oc1qF7rZstGN21vHbTKAO5LFsncB2NSw30cVwsMzx94BhggbYcg5yc0LCaa5jW7AdcscFQMleM1d6fHEHIHHFadFGbiFriUd2Y5SoAyQ67/rXgM05pzipXqR6aShQoVcW7JNLKqkpInvhQSQw2BwPMVYwxbBEmLMMYEbYGdskkCu0GkiHSLRQpIhRO7Hj7u2RWnJdXtlJE4tmZHKl2Zger+kCv3OA/ezTqSAQFUYArWm/wBQY04CnNaGsc0wgJPUJRIR8Kb01OakapnqV6eSlNAUKBqK66ouhs7jBxVzZXuqJEkuoyLCpxiNcOcfFVssWnjuovdLsCxYklm4zvVxOACx+vzrV3xOxHJWuz22q/8ASemNOalNTNzUzUz70grj2rjJUuV6uGHgadruMd293ddBPMRVQRVrpqTTrLIH6BwrOXY1q0yxWzIuBk1f3hnu+lDnbBNdn4Z/29HVCfu5Gb0SrW/t7+HvoGJXJUgjBUjkEU5qWp6mPNMd6jNGs0DR3pNWjsxmZVBxjJGxNXfa62U9KAEgb9NahqV5qUxIJVPBa0vQ5JMSOjEtsAOST4Crqzh7M6TdS3JVZmUNJ6dP4IR/7rStbkstQlmkGIZ3JlQcDJzkfKg6yIrowZWAII4INS8VOOamFNzQGKJrNZq71C0sl6rm4SP0J3PyFaZeWl72d1O8ELFJphboXHKJhnYVFo2msGDwgSCrLQY55444Lbrc8KKt9NtdIQN1h7rGOofhj9E9fWu2uv8A72vO4gfNtCTjyd/Fq6cmtM1u809Vjz3kP8tvAfCfCrTVLTUEzC+H8Y22YVPU9PzWazuavL+2sIjNcShVzgDksfICtR7VXlyWS0zBF+blzTF5GLyOWJ5JOTWiLbnsTpaw77T94f8AkZj1CtDsrjWobN4Y/wCBQ8h2VRjk1Lc2Oh28sFqOuY4Uv/E75/xXbzXp9PtINMSTF3PGZJ2HKI/A+tS/mptkPmdh7FYxsGRiGHBBwRVtrz4Ed37w/mDn61K6uoZGBUjIIp6zROMkmtb1I6pellP3MeVjHp4t9axj2fZvbSah2d7SWgXh1aInjrK1ZwPY28MENs0UMMSpH1bMSo3IHrXcQaJbajqmqkstsMgHlscAepNarqNzq+oXd/dNmWeQu3kPID0FSjqBroUDIojpGTTDim2q1vmtm6TkxtyPL1FMRyPZ2ovntbARRth52KZ+EDJpfYor7PYFsOxaTcPdTSv+vSK0+x6YFuZwxaSREQMc4X8R+pxX2n9pGvbwaRC47uF+uYjxfwX6UTRHXufw/wCa5PoKf3nRfDP+KYAU5zk+H+aO+WNWrl7WAn8uP7V15rtFfPeajKvV7kDd2n05NA7V5UNhXZa1K9ntCt1i6sWkW3qw6jXbDV10HRxeOgXuoXKp+aZ8Kq1cTy3E0s0rlpJGLux8Sxya/GfhH60536RXAwKTd2P0FPvgU6+dN5VB7tvCPhrVb9NOspZSffIKxDzY0N9yck14qK8qHiK7LqRYaT+UWkR/8BX2u9ov3jrMekwSZhsRiT1nbn/tpn6yVB+f/wApnCDApdgWPJpiFBPlSDpQZ5O59klHxpD93H/SK7SXTz6k0J/BCoUD1O5NDil3avKkGzH0qTUj2f7LXGoqnW1tpyMi/F0hRV9dTSysXctLMzO8h5JJyT8zUfuLtQXJyTRG1N70ix+HJrctRPFSNkk0wwmfOgfcT5Cv/8QAIBEAAgICAgMBAQAAAAAAAAAAAQIAAxExEiAQIUFRcf/aAAgBAgEBPwDw9iJswXIYCDrrY/BGb8EYvYxYncGVO5QfQ62qHRgYagCMYxONBUE/nzcVgEHDI6n2DFUlj8wYwIOpUBhR2urZX5KMqdwI7Nk+hKhyfC6XZh62ekb+Smiy47IX6YqLWoRBgeCOnENkGa10MHgaPU+Ro9TP/8QAJhEAAgECBQQCAwAAAAAAAAAAAQIDABEEECAxQRITIVEwMmGB0f/aAAgBAwEBPwDKOGST6qTTYaRdxRBGVs4Y+7KiezSJHEiqq7CnAcfWsUoDtpgcxyo43FLOxU9Qa/sCwpmxSsQLnzztTIxlPdsb/oaVNmFGRO2OQV4FB1ZdySKxDG7kfnVgcSgTpZgGGxPIqWeMIbeWPqprqhZ922FX0XrD2aZAfdTzw4cABQz8D+1LK8rFna5yvoUlWBG4pjfzoGY0j4BX/9k=" width="128" height="134" alt="Адвокат Александр Гамбарян" loading="lazy" decoding="async">
-            </picture>
-            <div>
-              <div class="svc-media__name">Адвокат Александр Гамбарян</div>
-              <div class="svc-media__license">Адвокат Израиля, лицензия №&nbsp;30178</div>
-            </div>
-          </div>
-          <div class="notch"></div>
-          <p>Более 30 лет профессионального опыта в юридической сфере. Работа с клиентами на русском, иврите и английском языках.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="svc-card" role="tabpanel" id="svc-panel-4" aria-labelledby="svc-tab-4">
-      <div class="svc-card__inner">
-        <div class="svc-card__main">
-          <h3 class="svc-title" data-owner-copy-id="svc-paternity-title-v1">Установление или оспаривание отцовства, тест ДНК</h3>
-          <p class="svc-lead" data-owner-copy-id="svc-paternity-lead-v1">Установление и оспаривание отцовства, получение судебного разрешения на проведение ДНК-теста и полное сопровождение процедуры. В Израиле генетическая экспертиза для установления родства проводится на основании постановления суда.</p>
-          <a class="svc-card__cta" href="#contact">Записаться на консультацию</a>
-        </div>
-        <div class="svc-media">
-          <span class="svc-media__label">Ведёт</span>
-          <div class="svc-media__person">
-            <picture>
-              <source type="image/webp" srcset="data:image/webp;base64,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">
-              <img class="svc-media__avatar" src="data:image/jpeg;base64,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" width="128" height="134" alt="Адвокат Александр Гамбарян" loading="lazy" decoding="async">
-            </picture>
-            <div>
-              <div class="svc-media__name">Адвокат Александр Гамбарян</div>
-              <div class="svc-media__license">Адвокат Израиля, лицензия №&nbsp;30178</div>
-            </div>
-          </div>
-          <div class="notch"></div>
-          <p>Более 30 лет профессионального опыта в юридической сфере. Работа с клиентами на русском, иврите и английском языках.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="svc-card" role="tabpanel" id="svc-panel-5" aria-labelledby="svc-tab-5">
-      <div class="svc-card__inner">
-        <div class="svc-card__main">
-          <h3 class="svc-title" data-copy-id="3.27">Раздел имущества</h3>
-          <p class="svc-lead" data-owner-copy-id="svc-property-lead-v1">Раздел имущества и долгов супругов: недвижимость, ипотека, банковские счета, пенсионные накопления, бизнес, кредиты и иные обязательства&nbsp;— в переговорах, соглашении и судебном процессе.</p>
-          <a class="svc-card__cta" href="#contact">Записаться на консультацию</a>
-        </div>
-        <div class="svc-media">
-          <span class="svc-media__label">Ведёт</span>
-          <div class="svc-media__person">
-            <picture>
-              <source type="image/webp" srcset="data:image/webp;base64,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">
-              <img class="svc-media__avatar" src="data:image/jpeg;base64,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" width="128" height="134" alt="Адвокат Александр Гамбарян" loading="lazy" decoding="async">
-            </picture>
-            <div>
-              <div class="svc-media__name">Адвокат Александр Гамбарян</div>
-              <div class="svc-media__license">Адвокат Израиля, лицензия №&nbsp;30178</div>
-            </div>
-          </div>
-          <div class="notch"></div>
-          <p>Более 30 лет профессионального опыта в юридической сфере. Работа с клиентами на русском, иврите и английском языках.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="svc-card" role="tabpanel" id="svc-panel-6" aria-labelledby="svc-tab-6">
-      <div class="svc-card__inner">
-        <div class="svc-card__main">
-          <h3 class="svc-title" data-copy-id="3.32">Семейная медиация и соглашение</h3>
-          <p class="svc-lead" data-owner-copy-id="svc-mediation-lead-v1">При готовности сторон к диалогу офис сопровождает медиацию, помогает достичь соглашения по вопросам детей, алиментов и имущества, а также оформляет договорённости в юридически грамотное соглашение для последующего утверждения.</p>
-          <a class="svc-card__cta" href="#contact">Записаться на консультацию</a>
-        </div>
-        <div class="svc-media">
-          <span class="svc-media__label">Ведёт</span>
-          <div class="svc-media__person">
-            <picture>
-              <source type="image/webp" srcset="data:image/webp;base64,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">
-              <img class="svc-media__avatar" src="data:image/jpeg;base64,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" width="128" height="134" alt="Адвокат Александр Гамбарян" loading="lazy" decoding="async">
-            </picture>
-            <div>
-              <div class="svc-media__name">Адвокат Александр Гамбарян</div>
-              <div class="svc-media__license">Адвокат Израиля, лицензия №&nbsp;30178</div>
-            </div>
-          </div>
-          <div class="notch"></div>
-          <p>Более 30 лет профессионального опыта в юридической сфере. Работа с клиентами на русском, иврите и английском языках.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="svc-card" role="tabpanel" id="svc-panel-7" aria-labelledby="svc-tab-7">
-      <div class="svc-card__inner">
-        <div class="svc-card__main">
-          <h3 class="svc-title" data-copy-id="3.37">Брачный договор</h3>
-          <p class="svc-lead" data-owner-copy-id="svc-prenup-lead-v1">Разработка брачного договора на индивидуальных условиях с учетом имущества, бизнеса, долговых и иных обязательств сторон. Защита интересов каждого супруга и сопровождение официального утверждения соглашения.</p>
-          <a class="svc-card__cta" href="#contact">Записаться на консультацию</a>
-        </div>
-        <div class="svc-media">
-          <span class="svc-media__label">Ведёт</span>
-          <div class="svc-media__person">
-            <picture>
-              <source type="image/webp" srcset="data:image/webp;base64,UklGRqwHAABXRUJQVlA4IKAHAABwKwCdASqAAIYAPmEskkYkIqYhJ5eLMMAMCWVtOVwD6uCQO7bf9MO3J8x3nAejv/C77nvM/+ASJA7CWdjUvLm1Fzkq/muql1ywb52fxnjqKuVbMph5fhHWa7w6uHYNafJbzf/DIlBJCj/DGaKnwWhnzdyq0tLsJJ4dY3Bpq62tQowD621i9frRLrofef2XcDZF/QsF4m+41EBkEWEQMCc/Ow6HiEZNCwIksu67WP0WvjQHi4MfUweFxhdpLbVevZxOH7j43v2w7e3IQr4KDRW9nam7EvGbpNP38lTK/JyKkr/hpSHqgqpbr3hVrEdYU7s1mJnz/iLylR7pfBNlTs0qXf6xHR9FJ50oA/wOYcNVwojakOXr46fJv2Xzf2EvyTMTVmKGC+w36Ewzm5JtkW5FLJQ+TCt4/RgXpCstRSV6Dzj4lPHK1GpfDnP/sPpEzvkIASd7xrwEgCpERcI0+sfnI7Aw+AD+6+s8QaQBu5QX1jzlqUIlaXdK2z6LbJ+sASqzV/Q3Izpj6oepmRsfNwdI5Kvzqk5yUjDE1atBrfGMmiMxfSZ7KA+OadX+fCwY6piv8cYl5ChtCfUMmg72j9mOz05xnnDxusXbhruGeNQWDmxZ/wWhf67Q3680zCHcdl+lAV4zGwqshg6MRS4F/ykO6dDM6V9+1iFWguw5XUq4ClcZdw1GBSsRxJ5s9cqsnssr/UiUs5jXDg7wHDx1Uw7bCBAS0/q5gUHPJ5sjtRZcbccm8cNxzyHrJC6BZZ8tczPkkrAYMFZOXZDvS5otMEDtGIpYjxI8ZxNc3VXfvDH/UCFbvkbi5mYsuFSlCeGK9Hlj1+w3aN7j1Tj954rHWw+TtmPCh6u9GTcN6GpqkV7tt6EluPPZDTMwIRoIlHdgVVI3KIk73XwMfEIpBTVwVfhWYUhSlzllZTuBJVC30En6l2m0e2BDnP17nfgTuz4zrbZOCQsV6h4Ed8BuX6lxURo8aMq9auGoLLB84Wddd/lp8/8qnCv0cMVPAXM4PMkUKbXtVh0r+LwIrvGUNda3vcBgq6Oeq98p6AlJt+jBZ9/cgKA4zkf7wc3pc3iQ0mOPDVQ8USLLKCSIblCPyhCcaRRu2fDndCdN8QVU+3y2bLcPM9Ws9oGctTSOd5bK2p3ndJl4MaEKj5m/n6+miN51x5Ka/55Dm9XzzlsJtq6Rz65IqYZRNZd1aa+0abhkQgFlUQxtQBUOcrWvxxG1SLRJSzDgs+dzdVLkhNjnONGf7tFP8y2nqNOVAVLSVcQGkwvpntzJCx1kOAnMGa+rzEidoDA8khukcYtdwiu1dyyoKkoDciJZ5P9uKyf+ZxXbDjQ3mWE+iZWxn9mgRH17CXfKrn3qhDISr5PHt9qZJYeWz4u6Ca9BLC2WCmwLtMZY4tld+2XIdYrMcoQXqsRvgqx+IX9BzKFONM9kFASkxEjFiab/cmdAL9mzX3pOFkhL/CTPF86LVxO5enJ5RweUq2gngYeuGSrdOy4DKm64nCUVWNILmNZM34ArVtSh/sN7TvueK26oi3bPCigcJs0hkk+55RmcK4OJIGW8lnbxT9S/3kHn4jNzq00+UJ6uI5T5hVIQXmW5XdAWCYXTu6KiX5oKp1oUSoPzWqOEa3mmfafwjL8KBBjcW7MRU77PXDtJsOvB9yEdnBGyvDoldXBqwXTkOMnDGgK9Gg2iu2F0dqVUiEzlN5HMA1XCjJoSfGYptmb528Fod+bM/YY8NWfRVvz/k1dlxiJK5yvPTsD0x4UarYevtCi5m/L7VfRnnhzOl6nSyk2joBF4yX0gkjnfq0l8JAMNBb2rb7yNHfdizmt3P+OobPvdJcKTDKnRZTdfL+LBBqhD/cWR4HHGWIK8a1gmZQRAMnm7pp6SqNslmQhoQQR/KHv6KVqG6rLMICr7TgVwrrM2f6xifsp1W4Y37tS92wO/X6enjQfGaC727dHe3T4ET2zJ/VZCWa3C6VVjDYjR+yNnM9AQ8EFz/evlBLJsWlEfAMlkfZqNaqP6Zjqb1GRLwafQnsnsp9NUEsLtpN14+wFR08yLQqIt5wu1Y7vcdaR5CUjiy4WXHw/tvhlZPH11xuTRzgEx5Im3jCFR1wpob+djsecKYNJxuUXLG9iA4tz2eWI2V+U4ONt8rnpfEg9CC7zy709fpTiM7in1OuelSi5p89ylxPwLvdDZmZ3DWyoCYru3X+mdS9K/blm4RAHJiS7/56DX1zsgrSRGFpaVaj5UHmaiByFEaN1DOUbPJCnl6RS43moC/EMM3kAeGcZNPEqfvULdAUzLkjNptf24RQqs777pREdIqgo6VcVqQoJvUWGS/GMJ7awUl+xW4JMTsKqxqI/KERgHo0/5xFucy3moYoMnx8PxgsBFJPWxrWyjj31uDDfEoo3hMIAs67ms1D8exIN7mKBPfSp2FIL/emLUQTLaQ0MRCUzv4CAyvQ6aOBXc4WNleIZ199GfrCC0HkoLgzEIdhk9KxTtABGEGYHxFEJZQjD5KMYIZ7NM00b++wS7+6PwP+59y+phoxbEH9Z7+7JbuqpcElTv4mV/3AdL4Jo+OE4kHgbh0DMewJw/0ZfZkJMMfjqqwJ9KwAAAAA==">
-              <img class="svc-media__avatar" src="data:image/jpeg;base64,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" width="128" height="134" alt="Адвокат Александр Гамбарян" loading="lazy" decoding="async">
-            </picture>
-            <div>
-              <div class="svc-media__name">Адвокат Александр Гамбарян</div>
-              <div class="svc-media__license">Адвокат Израиля, лицензия №&nbsp;30178</div>
-            </div>
-          </div>
-          <div class="notch"></div>
-          <p>Более 30 лет профессионального опыта в юридической сфере. Работа с клиентами на русском, иврите и английском языках.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="svc-card" role="tabpanel" id="svc-panel-8" aria-labelledby="svc-tab-8">
-      <div class="svc-card__inner">
-        <div class="svc-card__main">
-          <h3 class="svc-title" data-copy-id="3.42">Защита при угрозах и насилии</h3>
-          <p class="svc-lead" data-owner-copy-id="svc-protection-lead-v1">Срочное обращение за защитным ордером и юридическое сопровождение процедуры. При непосредственной опасности следует немедленно обратиться в экстренные службы, не дожидаясь ответа через сайт.</p>
-          <a class="svc-card__cta" href="#contact">Записаться на консультацию</a>
-        </div>
-        <div class="svc-media">
-          <span class="svc-media__label">Ведёт</span>
-          <div class="svc-media__person">
-            <picture>
-              <source type="image/webp" srcset="data:image/webp;base64,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">
-              <img class="svc-media__avatar" src="data:image/jpeg;base64,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" width="128" height="134" alt="Адвокат Александр Гамбарян" loading="lazy" decoding="async">
-            </picture>
-            <div>
-              <div class="svc-media__name">Адвокат Александр Гамбарян</div>
-              <div class="svc-media__license">Адвокат Израиля, лицензия №&nbsp;30178</div>
-            </div>
-          </div>
-          <div class="notch"></div>
-          <p>Более 30 лет профессионального опыта в юридической сфере. Работа с клиентами на русском, иврите и английском языках.</p>
-        </div>
-      </div>
-    </div>
-
     <div class="svc-dots">
       <button class="svc-dot" type="button" aria-label="Развод" aria-current="true"><span class="svc-dot__bar"></span></button>
       <button class="svc-dot" type="button" aria-label="Алименты" aria-current="false"><span class="svc-dot__bar"></span></button>
+      <button class="svc-dot" type="button" aria-label="Раздел имущества" aria-current="false"><span class="svc-dot__bar"></span></button>
       <button class="svc-dot" type="button" aria-label="Дети" aria-current="false"><span class="svc-dot__bar"></span></button>
       <button class="svc-dot" type="button" aria-label="Отцовство" aria-current="false"><span class="svc-dot__bar"></span></button>
-      <button class="svc-dot" type="button" aria-label="Раздел имущества" aria-current="false"><span class="svc-dot__bar"></span></button>
       <button class="svc-dot" type="button" aria-label="Медиация" aria-current="false"><span class="svc-dot__bar"></span></button>
       <button class="svc-dot" type="button" aria-label="Брачный договор" aria-current="false"><span class="svc-dot__bar"></span></button>
       <button class="svc-dot" type="button" aria-label="Защита при угрозах" aria-current="false"><span class="svc-dot__bar"></span></button>
@@ -2284,7 +2196,7 @@ picture { display: block; }
     window.addEventListener("load", loadSecondHeroSlide, { once: true });
   }
 
-  /* --- Карусель направлений --------------------------------------------- */
+  /* --- Направления: упор, свайп, горизонтальная строка тем --------------- */
 
   var tabs = Array.prototype.slice.call(document.querySelectorAll(".svc-tab"));
   var dots = Array.prototype.slice.call(document.querySelectorAll(".svc-dot"));
@@ -2292,9 +2204,15 @@ picture { display: block; }
 
   if (tabs.length && tabs.length === panels.length && dots.length === panels.length) {
     var active = 0;
+    var last = panels.length - 1;
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var stage = document.querySelector('.svc-stage');
+    var tablist = document.querySelector('.svc-tabs');
+    var prev = document.querySelector('.svc-arrow[data-dir="prev"]');
+    var next = document.querySelector('.svc-arrow[data-dir="next"]');
 
-    function setActive(index, moveFocus) {
-      active = (index + panels.length) % panels.length;
+    function setActive(index, moveFocus, wrap) {
+      active = wrap ? (index + panels.length) % panels.length : Math.max(0, Math.min(index, last));
 
       tabs.forEach(function (tab, i) {
         var on = i === active;
@@ -2311,7 +2229,15 @@ picture { display: block; }
         panel.hidden = i !== active;
       });
 
-      if (moveFocus) tabs[active].focus();
+      if (prev) prev.disabled = active === 0;
+      if (next) next.disabled = active === last;
+      if (moveFocus) tabs[active].focus({ preventScroll: true });
+      if (tablist && tablist.scrollWidth > tablist.clientWidth) {
+        tablist.scrollTo({
+          left: tabs[active].offsetLeft - (tablist.clientWidth - tabs[active].offsetWidth) / 2,
+          behavior: reduceMotion.matches ? 'auto' : 'smooth'
+        });
+      }
     }
 
     tabs.forEach(function (tab, i) {
@@ -2326,18 +2252,17 @@ picture { display: block; }
       });
     });
 
-    var tablist = document.querySelector(".svc-tabs");
     if (tablist) {
       tablist.addEventListener("keydown", function (event) {
         var handled = true;
         switch (event.key) {
           case "ArrowRight":
           case "ArrowDown":
-            setActive(active + 1, true);
+            setActive(active + 1, true, true);
             break;
           case "ArrowLeft":
           case "ArrowUp":
-            setActive(active - 1, true);
+            setActive(active - 1, true, true);
             break;
           case "Home":
             setActive(0, true);
@@ -2352,10 +2277,26 @@ picture { display: block; }
       });
     }
 
-    var prev = document.querySelector('.svc-arrow[data-dir="prev"]');
-    var next = document.querySelector('.svc-arrow[data-dir="next"]');
     if (prev) prev.addEventListener("click", function () { setActive(active - 1); });
     if (next) next.addEventListener("click", function () { setActive(active + 1); });
+
+    if (stage) {
+      var swipe = null;
+      stage.addEventListener('pointerdown', function (event) {
+        if (event.pointerType === 'mouse' || !event.isPrimary) return;
+        swipe = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      stage.addEventListener('pointerup', function (event) {
+        if (!swipe || event.pointerId !== swipe.id) return;
+        var dx = event.clientX - swipe.x;
+        var dy = event.clientY - swipe.y;
+        swipe = null;
+        if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy)) {
+          setActive(active + (dx < 0 ? 1 : -1));
+        }
+      });
+      stage.addEventListener('pointercancel', function () { swipe = null; });
+    }
 
     setActive(0);
   }
