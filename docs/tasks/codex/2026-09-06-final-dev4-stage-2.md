@@ -144,7 +144,7 @@ CONTENT-OWNER-EDITS.md → v1.2.0, <ДАТА>: раздел «Правки вл�
 - `python -m http.server 8098 (фон) && python scripts/qa-browser-matrix.py http://127.0.0.1:8098/ --all-previews`
 - `git diff --check`
 - `после деплоя владельцем (Deploy Previews → ветка codex/final-dev4-s2-texts → only=final-dev4): python -B scripts/verify-live-previews.py --only final-dev4`
-- `после деплоя: curl -sA gambarian-readback https://final-dev4.gambarian-landing.pages.dev/ | grep -c по каждому новому тексту (см. «Приёмка»); curl -sA gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ | sha256sum (до/после совпадает); curl -sA gambarian-readback https://gambarian-landing.pages.dev/ | sha256sum → 656CBCD0…C13E22`
+- `после деплоя: curl -sA gambarian-readback https://final-dev4.gambarian-landing.pages.dev/ | grep -c по каждому новому тексту (см. «Приёмка»); curl -fsS -A gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ -o rb.tmp && test -s rb.tmp && sha256sum rb.tmp (до/после совпадает); curl -fsS -A gambarian-readback https://gambarian-landing.pages.dev/ -o rb.tmp && test -s rb.tmp && sha256sum rb.tmp → 656CBCD0…C13E22`
 
 ## Версии и маркеры
 
