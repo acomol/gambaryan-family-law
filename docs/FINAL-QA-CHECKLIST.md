@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.4`
+**Версия:** `2.3.5`
 
 **Обновлено:** `2026-09-07`
 
@@ -62,8 +62,127 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 | Review Numbered | `2.1.1` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
-| Browser QA runner | `1.4.2` | NOT RUN: матрица 194 cells; делегирована CI |
-| Этот чек-лист | `2.3.4` | active |
+| Browser QA runner | `1.4.3` | LOCAL final-dev4: 15/15 PASS; вся матрица 194 cells не запускалась |
+| Этот чек-лист | `2.3.5` | active |
+
+### Заголовки Onest — этап 7a, 2026-09-07
+
+Ветка `codex/final-dev4-s7a-font`, база `68da774`. Решение №29:
+[веса и основание](CONTENT-OWNER-EDITS.md#заголовки-onest--решение-29-2026-09-07-этап-7a).
+Все десять потребителей `--font-serif` используют Onest; H1/H2 700,
+остальные изменяемые заголовки 600, факты сохраняют 500. Курсив снят.
+Из `site/` удалены Playfair, четыре файла шрифта, `@font-face` и preload.
+Standalone пересобран из source. Размеры и тексты сохранены.
+
+- [x] Сборка standalone → font variants → hero variants → action bar → review numbered.
+- [x] Copy gate → unit-тесты → preview gate → lead hook → diff check, в порядке задания.
+- [x] Browser runner `1.4.3`: ожидание Onest для сборок из `site/`,
+  индивидуальные семейства v1–v4 сохранены. Версии остальных контрактов не менялись.
+- [x] Матрица `final-dev4`: 15/15 PASS, main 10/10, breakpoint 5/5;
+  включает 360×600, 360×668, 390×724, 960/961px и 1440×900.
+- [x] Дополнительный DOMRect readback 390×740, горизонтальный overflow 0.
+- [x] `[verified]` CSS + computed styles подтверждают веса/normal;
+  CDP для отрисованного текста на 390×740 и 1440×900: только Onest,
+  системных подстановок 0. Screenshots Hero на этих ширинах просмотрены.
+- [x] H1 уменьшать не понадобилось: минимум `clamp` остаётся 32px.
+- [ ] Live readback: публикацию выполняет владелец; в этой задаче деплой не запускался.
+
+| Viewport | Низ кнопки консультации, px | Запас до низа viewport, px | Overflow, px |
+|---|---:|---:|---:|
+| 360×600 | 523.4375 | 76.5625 | 0 |
+| 360×668 | 591.4375 | 76.5625 | 0 |
+| 390×724 | 644.1875 | 79.8125 | 0 |
+| 390×740 | 660.1875 | 79.8125 | 0 |
+
+Порт 8098 занят другим процессом `http.server`, возвращавшим
+`ERR_EMPTY_RESPONSE`: первые прогоны на нём не являются проверкой вёрстки.
+Успешная матрица выполнена тем же runner на
+`http://127.0.0.1:65352/build/variants/final-dev4/` через локальный
+`http.server.ThreadingHTTPServer`. Сервер после проверки остановлен.
+Все Preview пересобраны по командам задания; source/addons `final-dev3`
+не редактировались. Живые final-dev3 и production не публиковались и не проверялись.
+
+Дословный вывод гейтов:
+
+```text
+PASS CLIENT-COPY-VERIFIER v1.1.0 | 2026-09-07: 26 HTML targets, 24 unique files, client-copy allowlist 45 IDs, owner-approved 16 block; contract v1.3.1 | 2026-09-07; source SHA256 5234CC5D9A3A4DF991827EF02E8DA46AE9C8B46D33C84CC33671E4B0465FA18E
+...............
+----------------------------------------------------------------------
+Ran 15 tests in 1.095s
+
+OK
+PASS: Preview-карта v2.5.0 | 2026-09-07; Action Bar v2.4.0 | 2026-08-17; Client Preview Mobile v1.1.0 | 2026-08-11 присутствуют во всех 12 клиентских Preview-артефактах.
+Lead hook 2.0.0 (2026-08-11): contract/static/runtime PASS
+```
+
+`git diff --check`: exit 0; stdout пуст. Первоначальный stderr содержал
+предупреждения Git об автоматической замене LF на CRLF в четырёх текстовых файлах.
+
+Дословный summary браузерного runner:
+
+```json
+{"limitations": ["visual review is still required for heads/hair, overlaps, and microtext", "lead-form submission and broader click interaction smoke remain separate gates", "the known unused hero-duo-air preload timing warning is excluded"], "mode": "single-preview", "runner_version": "1.4.3", "status": "PASS", "suites": {"breakpoint": {"fail": 0, "pass": 5, "total": 5}, "main": {"fail": 0, "pass": 10, "total": 10}}, "targets": 1, "totals": {"fail": 0, "pass": 15, "total": 15}, "type": "summary"}
+```
+
+<details>
+<summary>Дословный вывод grep -ric playfair site/ (все файлы: 0)</summary>
+
+```text
+site/app.js:0
+site/assets/alexander-avatar-128w.71d1278f.jpg:0
+site/assets/alexander-avatar-128w.de2d4e53.webp:0
+site/assets/alexander-card-v2-1100w.81a0e939.webp:0
+site/assets/alexander-card-v2-1100w.f6a22a7e.jpg:0
+site/assets/alexander-card-v2-480w.b11d2ea8.webp:0
+site/assets/alexander-card-v2-480w.e47b99b3.jpg:0
+site/assets/alexander-card-v2-760w.621afb9f.webp:0
+site/assets/alexander-card-v2-760w.681730d0.jpg:0
+site/assets/hero-duo-2623w.020f19ef.jpg:0
+site/assets/hero-duo-air-1024w.d5751a26.jpg:0
+site/assets/hero-duo-air-1024w.e56eaeeb.webp:0
+site/assets/hero-duo-air-1440w.ba967ca5.webp:0
+site/assets/hero-duo-air-1440w.d112fafc.jpg:0
+site/assets/hero-duo-air-2048w.5683c056.jpg:0
+site/assets/hero-duo-air-2048w.ebf0733b.webp:0
+site/assets/hero-duo-air-2859w.0b0a31ec.jpg:0
+site/assets/hero-duo-air-2859w.c1bbe4e7.webp:0
+site/assets/hero-duo-air-640w.170af78d.webp:0
+site/assets/hero-duo-air-640w.e9d5c777.jpg:0
+site/assets/hero-duo-mob-1170w.2a4874c6.jpg:0
+site/assets/hero-duo-mob-1170w.7d128605.webp:0
+site/assets/hero-duo-mob-480w.4e93e124.jpg:0
+site/assets/hero-duo-mob-480w.8e46849b.webp:0
+site/assets/hero-duo-mob-760w.57eeaa64.jpg:0
+site/assets/hero-duo-mob-760w.ff3e9eeb.webp:0
+site/assets/manifest.json:0
+site/assets/precedent-alexander-1040w.c8124a8d.png:0
+site/assets/precedent-alexander-1040w.e1f80cfe.webp:0
+site/assets/precedent-alexander-1600w.a1395450.webp:0
+site/assets/precedent-alexander-720w.010e2a6d.webp:0
+site/assets/precedent-alexander-720w.ec64f2f8.png:0
+site/assets/yulia-card-1100w.6f3eba82.webp:0
+site/assets/yulia-card-1100w.af90eefa.jpg:0
+site/assets/yulia-card-480w.46c5af85.jpg:0
+site/assets/yulia-card-480w.a736c3ca.webp:0
+site/assets/yulia-card-760w.cb17a9cc.webp:0
+site/assets/yulia-card-760w.df9bd223.jpg:0
+site/fonts/onest-normal-400-800-cyrillic-ext.c29dea91.woff2:0
+site/fonts/onest-normal-400-800-cyrillic.37bc1687.woff2:0
+site/fonts/onest-normal-400-800-latin-ext.391a9b24.woff2:0
+site/fonts/onest-normal-400-800-latin.67849bcc.woff2:0
+site/fonts.css:0
+site/gambarian-standalone.html:0
+site/index.html:0
+site/lead-contract.js:0
+site/social-preview-logo-v1.0.2-1200x630.png:0
+site/styles.css:0
+site/_routes.json:0
+
+```
+
+Exit 1 — совпадений нет.
+
+</details>
 
 ### Адрес и подвал final-dev4 — этап 3, 2026-09-07
 

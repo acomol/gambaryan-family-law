@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.4.2 | 2026-09-07
+"""PREVIEW-BROWSER-QA-RUNNER v1.4.3 | 2026-09-07
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -27,7 +27,7 @@ PASS means the page loaded with the expected Preview markers, no horizontal
 overflow, clipped fact-card content (including collapsed and expanded mobile
 accordion states), unexpected browser console/page errors or failed requests; Hero/photo, the real
 Chromium platform font used for title/body/CTA glyphs, and Action Bar breakpoint
-geometry also passed. Font coverage includes title, italic service heading,
+geometry also passed. Font coverage includes title, service heading,
 body and CTA text. Short portrait cells additionally require all Hero
 actions to end at least 8px above the viewport bottom. The process exits 0 only
 when every emitted cell passes.
@@ -59,7 +59,7 @@ from final_dev3_contract import (
 from review_numbered_contract import OWNER_REVIEW_IDS
 
 
-RUNNER_VERSION = "1.4.2"
+RUNNER_VERSION = "1.4.3"
 ACTION_BAR_VERSION = "2.4.0"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.1.0"
 KNOWN_BENIGN_HERO_PRELOAD_WARNING = "was preloaded using link preload but not used within a few seconds"
@@ -120,7 +120,7 @@ PREVIEWS = (
     Target("review-numbered", "build/variants/review-numbered"),
 )
 
-EXPECTED_FONTS = {target.name: ("Playfair Display", "Onest") for target in PREVIEWS}
+EXPECTED_FONTS = {target.name: ("Onest", "Onest") for target in PREVIEWS}
 EXPECTED_FONTS.update({
     "v1-playfair-onest": ("Playfair Display", "Onest"),
     "v2-lora-inter": ("Lora", "Inter"),

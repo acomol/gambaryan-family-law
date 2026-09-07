@@ -9,7 +9,8 @@
    ========================================================================== */
 
 :root {
-  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  /* Исторический serif-токен: с 2026-09-07 семейство без засечек, решение №29. */
+  --font-serif: "Onest", Helvetica, Arial, sans-serif;
   --font-body: "Onest", Helvetica, Arial, sans-serif;
   /* Отдельного узкого семейства больше нет: у Archivo Narrow не было
      кириллицы, поэтому в русском тексте узкое начертание всё равно не
@@ -146,7 +147,7 @@ picture { display: block; }
   margin: 0 0 14px;
   font-family: var(--font-serif);
   font-style: normal;
-  font-weight: 500;
+  font-weight: 700;
   font-size: clamp(26px, 3.2vw, 40px);
   line-height: 1.2;
   color: #fff;
@@ -437,7 +438,7 @@ picture { display: block; }
   margin: 0 0 24px;
   font-family: var(--font-serif);
   font-style: normal;
-  font-weight: 500;
+  font-weight: 700;
   font-size: clamp(32px, 4.6vw, 58px);
   line-height: 1.12;
   letter-spacing: -0.01em;
@@ -772,8 +773,8 @@ picture { display: block; }
 .svc-title {
   margin: 0 0 16px;
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: clamp(24px, 2.8vw, 32px);
   line-height: 1.25;
   color: #fff;
@@ -832,8 +833,8 @@ picture { display: block; }
 }
 .svc-media__name {
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: 18px;
   color: #fff;
   line-height: 1.2;
@@ -942,8 +943,8 @@ picture { display: block; }
 .precedent-card__title {
   margin: 12px 0;
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: clamp(24px, 3vw, 32px);
   line-height: 1.25;
   color: #fff;
@@ -1036,8 +1037,8 @@ picture { display: block; }
 .attorney-card__name {
   margin: 0 0 8px;
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: 23px;
   line-height: 1.2;
   color: var(--ink);
@@ -1288,8 +1289,8 @@ picture { display: block; }
 }
 .form-success__title {
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: 26px;
   color: var(--ink);
   margin-bottom: 10px;
