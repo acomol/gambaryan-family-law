@@ -69,7 +69,7 @@ done < <(python3 -c "
 import json
 for p in json.load(open('$MAP'))['previews']:
     print(p['branch'], p['directory'], sep='\t')
-")
+" | tr -d '\r')   # python на Windows печатает CRLF: иначе возврат каретки приклеивается к пути
 if [ "$MISSING" = "1" ]; then
   echo >&2
   echo "Сначала собрать варианты:" >&2
@@ -109,7 +109,7 @@ done < <(python3 -c "
 import json
 for p in json.load(open('$MAP'))['previews']:
     print(p['branch'], p['directory'], sep='\t')
-")
+" | tr -d '\r')   # python на Windows печатает CRLF: иначе возврат каретки приклеивается к пути
 
 echo "Опубликовано: ${#DONE[@]}; с ошибкой: ${#FAILED[@]}"
 [ ${#FAILED[@]} -gt 0 ] && printf '  ПРОВАЛ  %s\n' "${FAILED[@]}" >&2
