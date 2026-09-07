@@ -1,6 +1,6 @@
 """Точный контракт утверждённого клиентом текста лендинга.
 
-CLIENT-COPY-CONTRACT v1.1.0 | 2026-08-13
+CLIENT-COPY-CONTRACT v1.2.0 | 2026-08-16
 """
 
 from __future__ import annotations

@@ -1,8 +1,8 @@
 # Задание: тёмные карточки фактов и owner-текст «более 900»
 
-**Версия:** `DARK-FACT-CARDS v1.0.1`
+**Версия:** `DARK-FACT-CARDS v1.0.2`
 
-**Дата:** `2026-08-13`
+**Дата:** `2026-09-07`
 
 **Статус:** `LOCAL + CI PASS / LIVE PENDING / DO NOT SEND / PRODUCTION UNCHANGED`
 
@@ -77,8 +77,8 @@
 
 ## Автоматическая приёмка
 
-- [x] `CLIENT-COPY-CONTRACT v1.1.0 | 2026-08-13` и неизменный
-  `CLIENT-COPY-VERIFIER v1.0.0 | 2026-08-11`: `24 targets / 22 unique`, `45`
+- [x] `CLIENT-COPY-CONTRACT v1.2.0 | 2026-08-16` и неизменный
+  `CLIENT-COPY-VERIFIER v1.1.0 | 2026-09-07`: `24 targets / 22 unique`, `45`
   client allowlist + `2` owner blocks; фактически используются `37` client ID;
 - [x] `PREVIEW-BROWSER-QA-RUNNER v1.4.0 | 2026-08-13` проверяет
   `scrollWidth <= clientWidth` у `.fact-card` и `.fact-card__head`, DOMRect

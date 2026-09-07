@@ -795,13 +795,11 @@ picture { display: block; }
     text-transform: uppercase;
   }
 
-  .fact-card[data-copy-id="2.14"] .fact-card__head,
   .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
   }
-  .fact-card[data-copy-id="2.14"] .fact-card__num,
   .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
     font-size: clamp(40px, 3.4vw, 52px);
     white-space: nowrap;
@@ -1710,7 +1708,6 @@ picture { display: block; }
   .fact-card .notch { margin-bottom: 0; }
 
   .fact-card[data-copy-id="2.10"] .fact-card__head,
-  .fact-card[data-copy-id="2.14"] .fact-card__head,
   .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
     grid-column: 1 / -1;
     grid-row: auto;
@@ -1734,7 +1731,6 @@ picture { display: block; }
     letter-spacing: 0.16em;
     text-transform: uppercase;
   }
-  .fact-card[data-copy-id="2.14"] .fact-card__num,
   .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
     font-size: 34px;
     white-space: nowrap;
@@ -3064,7 +3060,7 @@ picture { display: block; }
   }
 
   /* --- Раскрывающиеся карточки фактов (только мобильный) ----------------- */
-  // Прогрессивное раскрытие (progressive disclosure): на <=720px абзац
+  // Прогрессивное раскрытие (progressive disclosure): на <=860px абзац
   // карточки обрезан двумя строками с многоточием, остальное — по тапу.
   //
   // Управляющий элемент — настоящая <button> с aria-expanded и

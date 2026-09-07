@@ -19,6 +19,7 @@ from action_bar_addon import install_action_bar, verify_action_bar_install
 from client_copy_contract import APPROVED_COPY
 from review_numbered_contract import (
     OWNER_REVIEW_IDS,
+    OWNER_REVIEW_ANCHORS,
     REVIEW_NUMBERED_UPDATED,
     REVIEW_NUMBERED_VERSION,
 )
@@ -174,30 +175,29 @@ def _insert_banner(html: str) -> str:
     return html[:hero_end] + "\n" + BANNER + html[hero_end:]
 
 
-def _add_owner_review_ids(html: str) -> str:
-    fact_token = 'data-owner-copy-id="fact-900-v1"'
-    fact_label = '<span class="fact-card__unit">Автор</span>'
-    fact_start = html.find(fact_token)
-    fact_label_start = html.find(fact_label, fact_start)
-    if fact_start < 0 or fact_label_start < 0:
-        raise SystemExit("Сборка остановлена — OWNER-карточка fact-900-v1 не уникальна")
-    fact_replacement = (
-        '<span class="fact-card__unit" '
-        f'data-review-id="{OWNER_REVIEW_IDS["fact-900-v1"]}">Автор</span>'
-    )
-    html = html[:fact_label_start] + fact_replacement + html[fact_label_start + len(fact_label) :]
+def _source_owner_review_ids() -> list[str]:
+    html = (SITE / "index.html").read_text(encoding="utf-8")
+    return [OWNER_REVIEW_IDS[value] for value in re.findall(r'data-owner-copy-id="([^"]+)"', html)]
 
-    yulia_token = 'data-owner-copy-id="yulia-card-v1"'
-    yulia_name = '<h3 class="attorney-card__name">Юлия Саакян</h3>'
-    yulia_start = html.find(yulia_token)
-    yulia_name_start = html.find(yulia_name, yulia_start)
-    if yulia_start < 0 or yulia_name_start < 0:
-        raise SystemExit("Сборка остановлена — OWNER-блок Юлии не найден")
-    replacement = (
-        '<h3 class="attorney-card__name" '
-        f'data-review-id="{OWNER_REVIEW_IDS["yulia-card-v1"]}">Юлия Саакян</h3>'
-    )
-    return html[:yulia_name_start] + replacement + html[yulia_name_start + len(yulia_name) :]
+
+def _add_owner_review_ids(html: str) -> str:
+    # Positions are calculated against the unmodified source, then inserted backwards.
+    insertions = []
+    for match in re.finditer(r'data-owner-copy-id="([^"]+)"', html):
+        owner_id = match.group(1)
+        if owner_id not in OWNER_REVIEW_IDS:
+            raise SystemExit(f"owner-id {owner_id} не зарегистрирован в OWNER_REVIEW_IDS")
+        position = match.end()
+        if owner_id in OWNER_REVIEW_ANCHORS:
+            anchor = OWNER_REVIEW_ANCHORS[owner_id]
+            anchor_start = html.find(anchor, position)
+            if anchor_start < 0:
+                raise SystemExit(f"owner-id {owner_id}: review anchor не найден")
+            position = html.index(">", anchor_start)
+        insertions.append((position, f' data-review-id="{OWNER_REVIEW_IDS[owner_id]}"'))
+    for position, attribute in sorted(insertions, reverse=True):
+        html = html[:position] + attribute + html[position:]
+    return html
 
 
 def _relax_hero_title_nbsp(html: str) -> str:
@@ -269,7 +269,7 @@ def verify(dest: Path) -> list[str]:
         problems.append("не найдены data-copy-id: " + ", ".join(missing))
     if unexpected:
         problems.append("неожиданные data-copy-id: " + ", ".join(unexpected))
-    expected_review_ids = list(OWNER_REVIEW_IDS.values())
+    expected_review_ids = _source_owner_review_ids()
     if review_ids != expected_review_ids:
         problems.append(
             "OWNER review ID должны быть "
@@ -318,7 +318,7 @@ def main() -> int:
     dest = build()
     problems = verify(dest)
     copy_id_count = len(_source_copy_ids())
-    owner_id_count = len(OWNER_REVIEW_IDS)
+    owner_id_count = len(_source_owner_review_ids())
     print(f"Собрано: {dest.relative_to(ROOT)}")
     print(
         "Использованных утверждённых номеров: "

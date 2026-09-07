@@ -32,6 +32,13 @@ class ClientCopyVerifierTests(unittest.TestCase):
             path.write_text(html, encoding="utf-8")
             return verifier.verify_html(path)
 
+    def test_owner_review_ids_cover_owner_blocks(self) -> None:
+        from review_numbered_contract import OWNER_REVIEW_IDS, OWNER_REVIEW_ANCHORS
+
+        self.assertLessEqual(set(verifier.OWNER_APPROVED_COPY), set(OWNER_REVIEW_IDS))
+        self.assertLessEqual(set(re.findall(r'data-owner-copy-id="([^"]+)"', self.source_html)), set(OWNER_REVIEW_IDS))
+        self.assertLessEqual(set(OWNER_REVIEW_ANCHORS), set(OWNER_REVIEW_IDS))
+
     def test_current_source_passes(self) -> None:
         self.assertEqual(verifier.verify_html(ROOT / "site" / "index.html"), [])
 

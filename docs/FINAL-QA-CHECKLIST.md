@@ -1,8 +1,8 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.1`
+**Версия:** `2.3.2`
 
-**Обновлено:** `2026-08-13`
+**Обновлено:** `2026-09-07`
 
 > **Обновление 2026-08-17:** `codex/client-approved-copy-only` слита в `main`
 > (PR #3) и закрыта; ветка ниже — история конкретной задачи, не текущее
@@ -52,18 +52,18 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.1.0` | LOCAL PASS: 45 client + 2 owner blocks |
-| Client Copy verifier | `1.0.0` | LOCAL PASS: 24 targets / 22 unique |
+| Client Copy contract | `1.2.0` | LOCAL PASS: 45 client + 2 owner blocks |
+| Client Copy verifier | `1.1.0` | LOCAL PASS: 26 targets / 24 unique |
 | Action Bar | `2.3.4` | LIVE PASS 11/11 |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `FINAL-DEV1-HERO` | `2.0.0` | LIVE PASS |
 | `FINAL-DEV3-DESIGN` | `2.0.2` | LIVE PASS |
 | Lead contract | `2.0.0` | LIVE readback: name/phone only |
-| Review Numbered | `2.0.0` | LIVE PASS: client/owner gate |
+| Review Numbered | `2.1.0` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
-| Browser QA runner | `1.4.0` | LOCAL PASS: `177/177`, fact-card clipping guard |
-| Этот чек-лист | `2.3.1` | active |
+| Browser QA runner | `1.4.2` | NOT RUN: матрица 194 cells; делегирована CI |
+| Этот чек-лист | `2.3.2` | active |
 
 ### Исправление статуса после независимого review
 
@@ -680,7 +680,7 @@ git diff --check
   проверяет оба Hero business-state `final-dev3`, выдаёт машинный PASS/FAIL по
   каждой ячейке и итоговый счёт; карта из одиннадцати вариантов ожидает
   `110 + 55 + 8 = 173` ячейки.
-- [ ] OPEN `verify-fact-cards.mjs` требует не объявленный `playwright-core` и
+- [x] закрыто 2026-09-07: verify-fact-cards.mjs удалён; действующий гейт аккордеона — scripts/qa-browser-matrix.py
   сейчас не является воспроизводимым gate.
 
 ## 13. Cloudflare deployment

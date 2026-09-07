@@ -1,6 +1,6 @@
 {
-  "version": "2.4.0",
-  "updated": "2026-08-13",
+  "version": "2.5.0",
+  "updated": "2026-09-07",
   "action_bar_version": "2.4.0",
   "action_bar_updated": "2026-08-17",
   "client_preview_mobile_version": "1.1.0",
@@ -19,6 +19,10 @@
     {
       "branch": "final-dev3",
       "directory": "build/variants/final-dev3"
+    },
+    {
+      "branch": "final-dev4",
+      "directory": "build/variants/final-dev4"
     },
     {
       "branch": "v1-playfair-onest",
