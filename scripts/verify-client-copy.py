@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Проверяет точный клиентский текст в source и 11 Preview-артефактах.
+"""Проверяет точный клиентский текст в source и 12 Preview-артефактах.
 
-CLIENT-COPY-VERIFIER v1.0.0 | 2026-08-11
+CLIENT-COPY-VERIFIER v1.1.0 | 2026-09-07
 """
 
 from __future__ import annotations
@@ -33,9 +33,9 @@ from client_copy_contract import (
 )
 
 
-VERIFIER_VERSION = "1.0.0"
-VERIFIER_DATE = "2026-08-11"
-EXPECTED_PREVIEW_ALIASES = 11
+VERIFIER_VERSION = "1.1.0"
+VERIFIER_DATE = "2026-09-07"
+EXPECTED_PREVIEW_ALIASES = 12
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
 SKIPPED_TEXT_TAGS = {"script", "style"}

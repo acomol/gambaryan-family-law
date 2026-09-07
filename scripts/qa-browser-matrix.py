@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PREVIEW-BROWSER-QA-RUNNER v1.4.1 | 2026-08-13
+"""PREVIEW-BROWSER-QA-RUNNER v1.4.2 | 2026-09-07
 
 Reproduce the browser viewport matrix recorded in ``docs/FINAL-QA-CHECKLIST.md``.
 
@@ -12,7 +12,7 @@ Install and run::
 The default command checks one locally served Preview at the exact 10 main and
 5 breakpoint/landscape viewports. The Lora/Inter and Literata/Manrope targets
 add two effective-width cells each for a nominal 360px viewport with a classic
-scrollbar. The eleven-target aggregate is ``110/110 + 55/55 + 8/8 + 4/4``; serve the
+scrollbar. The twelve-target aggregate is ``120/120 + 60/60 + 10/10 + 4/4``; serve the
 repository root and add ``--all-previews``::
 
     python scripts/qa-browser-matrix.py http://127.0.0.1:8000/ --all-previews
@@ -59,7 +59,7 @@ from final_dev3_contract import (
 from review_numbered_contract import OWNER_REVIEW_IDS
 
 
-RUNNER_VERSION = "1.4.1"
+RUNNER_VERSION = "1.4.2"
 ACTION_BAR_VERSION = "2.4.0"
 CLIENT_PREVIEW_MOBILE_VERSION = "1.1.0"
 KNOWN_BENIGN_HERO_PRELOAD_WARNING = "was preloaded using link preload but not used within a few seconds"
@@ -109,6 +109,7 @@ PREVIEWS = (
     Target("final-dev", "build/variants/action-bar", True),
     Target("final-dev1", "build/variants/final-dev1"),
     Target("final-dev3", "build/variants/final-dev3", True),
+    Target("final-dev4", "build/variants/final-dev4", True),
     Target("v1-playfair-onest", "build/font-variants/v1-playfair-onest"),
     Target("v2-lora-inter", "build/font-variants/v2-lora-inter"),
     Target("v3-literata-manrope", "build/font-variants/v3-literata-manrope"),
@@ -806,7 +807,7 @@ def validate_metrics(
         if not hero["photoCurrentSrc"]:
             failures.append("v3-effective-width-photo-current-src-missing")
 
-    if target.name == "final-dev3":
+    if target.name in {"final-dev3", "final-dev4"}:
         if width <= 860:
             if not form["present"]:
                 failures.append("final-dev3-mobile-form-missing")
@@ -1030,7 +1031,7 @@ def validate_metrics(
 
     if target.name == "final-dev1" and not metrics["variant"]["finalDev1"]:
         failures.append("final-dev1-marker-missing")
-    if target.name == "final-dev3":
+    if target.name in {"final-dev3", "final-dev4"}:
         if not metrics["variant"]["finalDev1"]:
             failures.append("final-dev3-inherited-final-dev1-class-missing")
         if not metrics["markers"]["finalDev3"]:
@@ -1112,7 +1113,7 @@ def run_cell(
                 or (target.name in CLASSIC_SCROLLBAR_TARGETS and (width, height) in CLASSIC_SCROLLBAR_VIEWPORTS),
                 timeout_ms,
             )
-            if target.name == "final-dev3" and width <= 960 and height > 400:
+            if target.name in {"final-dev3", "final-dev4"} and width <= 960 and height > 400:
                 metrics["finalDev3BarVisibility"] = final_dev3_bar_visibility_metrics(page)
             metrics["platformFonts"] = platform_font_metrics(page)
             failures = validate_metrics(
@@ -1161,7 +1162,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--all-previews",
         action="store_true",
-        help="run 11 Preview targets plus the 8-cell large-desktop subset",
+        help="run 12 Preview targets plus the 10-cell large-desktop subset",
     )
     parser.add_argument(
         "--target-name",

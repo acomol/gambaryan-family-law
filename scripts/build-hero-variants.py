@@ -9,9 +9,10 @@
 утверждённый клиентский текст и добавляет только versioned layout/crop.
 `dev3` является отдельным маркированным клоном `dev1`; в нём добавлен только
 scoped adapter, синхронизирующий Hero с уже рассчитанным Action Bar состоянием.
+`dev4` наследует dev3 и добавляет собственные body class и маркеры.
 
     python scripts/build-hero-variants.py             # все
-    python scripts/build-hero-variants.py a b dev1 dev3    # выборочно
+    python scripts/build-hero-variants.py a b dev1 dev3 dev4    # выборочно
 """
 
 from __future__ import annotations
@@ -43,6 +44,17 @@ from final_dev3_contract import (
     apply_css_contract as apply_final_dev3_css_contract,
     apply_html_contract as apply_final_dev3_html_contract,
     apply_script_contract as apply_final_dev3_script_contract,
+)
+
+from final_dev4_contract import (
+    BODY_TAG as FINAL_DEV4_BODY_TAG,
+    CSS_COMMENT as FINAL_DEV4_CSS_COMMENT,
+    DATE as FINAL_DEV4_DATE,
+    HTML_COMMENT as FINAL_DEV4_HTML_COMMENT,
+    MARKER_RE as FINAL_DEV4_MARKER_RE,
+    VERSION as FINAL_DEV4_VERSION,
+    apply_css_contract as apply_final_dev4_css_contract,
+    apply_html_contract as apply_final_dev4_html_contract,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -288,11 +300,18 @@ def variant_final_dev3(html: str) -> tuple[str, str]:
     )
 
 
+def variant_final_dev4(html: str) -> tuple[str, str]:
+    """До этапа 4 наследует adapter dev3 байт в байт."""
+    html, css = variant_final_dev3(html)
+    return apply_final_dev4_html_contract(html), apply_final_dev4_css_contract(css)
+
+
 VARIANTS = {
     "a": ("hero-a-actions-first", "Действия перед фотографией", variant_a),
     "b": ("hero-b-call-first", "Звонок — главное действие", variant_b),
     "dev1": ("final-dev1", "Desktop Hero с расширенной конверсией", variant_final_dev1),
     "dev3": ("final-dev3", "Desktop Hero с расширенной конверсией", variant_final_dev3),
+    "dev4": ("final-dev4", "final-dev4: наследник final-dev3 с правками владельцев 2026-09-06", variant_final_dev4),
 }
 
 
@@ -312,7 +331,7 @@ def build(key: str) -> Path:
     styles = (dest / "styles.css").read_text(encoding="utf-8")
     (dest / "styles.css").write_text(styles + "\n" + css, encoding="utf-8")
     install_action_bar(dest)
-    if key == "dev3":
+    if key in {"dev3", "dev4"}:
         source = FINAL_DEV3_ADDON / FINAL_DEV3_HERO_BUSINESS_SCRIPT
         shutil.copy(source, dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT)
         html_path = dest / "index.html"
@@ -356,7 +375,7 @@ def verify(dest: Path, key: str) -> list[str]:
     if key == "b" and 'class="hero hero--call-first"' not in hero:
         problems.append("Hero B не имеет изолирующего класса")
 
-    if key in {"dev1", "dev3"}:
+    if key in {"dev1", "dev3", "dev4"}:
         styles = (dest / "styles.css").read_text(encoding="utf-8")
         marker_text = f"/* FINAL-DEV1-HERO v{FINAL_DEV1_VERSION} | {FINAL_DEV1_DATE}"
         variant_css_position = styles.rfind(marker_text)
@@ -403,7 +422,7 @@ def verify(dest: Path, key: str) -> list[str]:
             )
         ):
             problems.append("mobile crop, compaction или desktop layout final-dev1 неполны")
-    if key == "dev3":
+    if key in {"dev3", "dev4"}:
         styles = (dest / "styles.css").read_text(encoding="utf-8")
         script_path = dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT
         script = script_path.read_text(encoding="utf-8") if script_path.exists() else ""
@@ -421,8 +440,9 @@ def verify(dest: Path, key: str) -> list[str]:
             problems.append("final-dev3 HTML marker должен встречаться ровно один раз")
         if styles.count(FINAL_DEV3_CSS_COMMENT) != 1:
             problems.append("final-dev3 CSS marker должен встречаться ровно один раз")
-        if html.count(f'<body class="{FINAL_DEV3_BODY_CLASS}">') != 1:
-            problems.append("final-dev3 должен иметь отдельный scoped body class")
+        expected_body = f'<body class="{FINAL_DEV3_BODY_CLASS}">' if key == "dev3" else FINAL_DEV4_BODY_TAG
+        if html.count(expected_body) != 1:
+            problems.append(f"{key} должен иметь отдельный scoped body class")
         if html.count(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) != 1:
             problems.append("final-dev3 Hero adapter должен быть подключён ровно один раз")
         elif html.find(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) < html.find(
@@ -456,6 +476,14 @@ def verify(dest: Path, key: str) -> list[str]:
         )
         if any(token in script for token in forbidden_script_tokens):
             problems.append("final-dev3 Hero adapter не должен иметь второй источник состояния")
+    if key == "dev4":
+        expected_marker = [(FINAL_DEV4_VERSION, FINAL_DEV4_DATE)]
+        if (FINAL_DEV4_MARKER_RE.findall(html) != expected_marker
+                or FINAL_DEV4_MARKER_RE.findall(styles) != expected_marker
+                or html.count(FINAL_DEV4_HTML_COMMENT) != 1
+                or styles.count(FINAL_DEV4_CSS_COMMENT) != 1
+                or html.count(FINAL_DEV4_BODY_TAG) != 1):
+            problems.append("final-dev4 HTML/CSS marker или body расходится с контрактом")
     problems.extend(verify_action_bar_install(dest))
     return problems
 

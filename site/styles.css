@@ -100,6 +100,17 @@ picture { display: block; }
    запрещён — он источник horizontal overflow. */
 .nowrap-token { white-space: nowrap; }
 
+.map-link__address {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(240, 174, 31, 0.55);
+}
+.map-link:hover .map-link__address,
+.map-link:focus-visible .map-link__address {
+  text-decoration-color: var(--gold);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;
@@ -654,13 +665,11 @@ picture { display: block; }
     text-transform: uppercase;
   }
 
-  .fact-card[data-copy-id="2.14"] .fact-card__head,
   .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
   }
-  .fact-card[data-copy-id="2.14"] .fact-card__num,
   .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
     font-size: clamp(40px, 3.4vw, 52px);
     white-space: nowrap;
@@ -759,32 +768,6 @@ picture { display: block; }
 }
 
 .svc-card__main { flex: 1 1 380px; min-width: 0; }
-
-.svc-card__badge {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.svc-card__icon {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid rgba(240, 174, 31, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.svc-eyebrow {
-  font-family: var(--font-narrow);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  color: var(--gold);
-  text-transform: uppercase;
-}
 
 .svc-title {
   margin: 0 0 16px;
@@ -1106,7 +1089,9 @@ picture { display: block; }
 .btn--gold-block:hover { background: var(--gold-light); opacity: 1; }
 
 .attorneys__note {
-  margin: 32px 0 0;
+  margin: 32px auto 0;
+  text-align: center;
+  font-weight: 700;
   font-size: 15px;
   line-height: 1.7;
   color: var(--ink-2);
@@ -1569,7 +1554,6 @@ picture { display: block; }
   .fact-card .notch { margin-bottom: 0; }
 
   .fact-card[data-copy-id="2.10"] .fact-card__head,
-  .fact-card[data-copy-id="2.14"] .fact-card__head,
   .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
     grid-column: 1 / -1;
     grid-row: auto;
@@ -1593,7 +1577,6 @@ picture { display: block; }
     letter-spacing: 0.16em;
     text-transform: uppercase;
   }
-  .fact-card[data-copy-id="2.14"] .fact-card__num,
   .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
     font-size: 34px;
     white-space: nowrap;

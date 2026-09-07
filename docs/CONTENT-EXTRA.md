@@ -1,10 +1,10 @@
 # Текст на сайте вне клиентского документа
 
-**Версия:** `CONTENT-EXTRA v2.2.0`
+**Версия:** `CONTENT-EXTRA v2.3.0`
 
-**Дата:** `2026-08-13`
+**Дата:** `2026-09-07`
 
-**Статус:** `2 OWNER OVERRIDES + SYSTEM-UI VERIFIED / LOCAL PASS / LIVE PENDING`
+**Статус:** `16 OWNER OVERRIDES + SYSTEM-UI VERIFIED / LOCAL PASS / LIVE PENDING`
 
 ## Допустимый текст вне 45 номерных блоков
 
@@ -17,10 +17,11 @@
 | Action Bar | Рабочее/нерабочее состояние и Preview demo-switch |
 | Review | Служебная инструкция и номера `data-copy-id` |
 
-Отдельно разрешены два точных `OWNER-APPROVED` блока, перечисленных в
+Отдельно разрешены 16 точных `OWNER-APPROVED` блока, перечисленных в
 `CONTENT-APPROVED.md` и `CONTENT-SOURCE-MAP.md`:
 
-- прежний полный блок Юлии Саакян;
+- 15 owner-блоков правок 2026-09-06, включая `yulia-card-v2`,
+  по реестру `CONTENT-OWNER-EDITS.md`;
 - `fact-900-v1`: `Автор` / `более 900` / точный абзац об экспертных статьях.
 
 Это единственные содержательные исключения вне 45 клиентских ID. Остальной
@@ -39,12 +40,13 @@
 - сокращённые заголовки, лиды, факты и другие переформулировки утверждённых
   номерных блоков.
 
-Текущий `CLIENT-COPY-VERIFIER v1.0.0` использует контракт `1.1.0` и проверяет
+Текущий `CLIENT-COPY-VERIFIER v1.1.0` использует
+`CLIENT-COPY-CONTRACT v1.3.1 | 2026-09-07` и проверяет
 frozen source `docs/sources/client-copy-short-v1.0.0.txt`, принадлежность каждого реально
-размещённого смыслового текста к client allowlist или двум точным owner
+размещённого смыслового текста к client allowlist или 16 точным owner
 overrides, отсутствие полей `Email`/`topic` и известных запрещённых строк.
-Локальная проверка: `24 targets / 22 unique`, `45` client allowlist + `2` owner
-blocks, фактически `37` client ID. Полный coverage `45/45` не требуется.
+Локальная проверка: `26 targets / 24 unique`, `45` client allowlist + `16` owner
+blocks, фактически `20` client ID. Полный coverage `45/45` не требуется.
 Предыдущий PASS `45/45` остаётся историческим; новый кандидат ещё не deployed.
 
 ## Related

@@ -29,7 +29,7 @@ Client IP Filtering на токене — все разобраны в `ERRORS.m
 
 **Если нужно показать клиенту больше одного варианта** — сначала обновить
 нужные alias тем же workflow (`Actions -> Deploy Previews -> Run workflow`,
-поле `only` под конкретный alias или пусто для всех 11), иначе часть Preview
+поле `only` под конкретный alias или пусто для всех 12), иначе часть Preview
 будет отдавать текст без правок от 2026-08-17.
 
 **Правило деплоя, подтверждённое прогоном 2026-08-17:** `workflow_dispatch` виден в Actions
@@ -81,7 +81,7 @@ Client IP Filtering на токене — все разобраны в `ERRORS.m
 
 **Рабочий путь — GitHub Actions:** `Actions -> Deploy Previews -> Run
 workflow`, ветка `main`, поле `only` — конкретный alias или пусто для всех
-11. Секреты заведены и работают; повторная проверка их наличия не нужна.
+12. Секреты заведены и работают; повторная проверка их наличия не нужна.
 Запускать может только владелец — токен облачной сессии не имеет права
 `actions: write` (`403 Resource not accessible by integration`); агент читает
 статус и логи прогона, но не запускает workflow сам.
@@ -118,17 +118,18 @@ workflow`, ветка `main`, поле `only` — конкретный alias и�
 
 | Контракт | Версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.1.0` | LOCAL PASS: 45 client + 2 owner blocks |
-| Client Copy verifier | `1.0.0` | LOCAL PASS: 24 targets / 22 unique |
+| Client Copy contract | `1.3.1` | LOCAL PASS: 45 client + 16 owner blocks |
+| Client Copy verifier | `1.1.0` | LOCAL PASS: 26 targets / 24 unique |
 | Action Bar | `2.4.0` | LIVE на `final-dev3`; остальные 10 alias всё ещё отдают `2.3.4` |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `final-dev1` Hero | `2.0.0` | LIVE PASS |
 | `final-dev3` Design | `2.0.2` | LIVE PASS |
+| final-dev4 Design | `1.0.0` | LOCAL PASS; live не опубликован |
 | Lead schema | `2.0.0` | LIVE readback: name/phone only; GET `405` |
-| Review Numbered | `2.0.0` | LIVE PASS: client/owner gate |
+| Review Numbered | `2.1.1` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: effective-width fix Lora H1 |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: effective-width fix Manrope lede |
-| Browser QA runner | `1.4.0` | LOCAL PASS: `177/177`, fact-card clip guard |
+| Browser QA runner | `1.4.2` | NOT RUN: матрица 194 cells; делегирована CI |
 
 Версии контрактов датированы `2026-08-11`, `2026-08-13` и `2026-08-17`
 (Action Bar `2.4.0`, маркер `ACTION-BAR-SPEC v2.4.0 | 2026-08-17` в

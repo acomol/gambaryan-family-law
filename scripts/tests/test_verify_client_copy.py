@@ -32,6 +32,13 @@ class ClientCopyVerifierTests(unittest.TestCase):
             path.write_text(html, encoding="utf-8")
             return verifier.verify_html(path)
 
+    def test_owner_review_ids_cover_owner_blocks(self) -> None:
+        from review_numbered_contract import OWNER_REVIEW_IDS, OWNER_REVIEW_ANCHORS
+
+        self.assertLessEqual(set(verifier.OWNER_APPROVED_COPY), set(OWNER_REVIEW_IDS))
+        self.assertLessEqual(set(re.findall(r'data-owner-copy-id="([^"]+)"', self.source_html)), set(OWNER_REVIEW_IDS))
+        self.assertLessEqual(set(OWNER_REVIEW_ANCHORS), set(OWNER_REVIEW_IDS))
+
     def test_current_source_passes(self) -> None:
         self.assertEqual(verifier.verify_html(ROOT / "site" / "index.html"), [])
 
@@ -70,10 +77,33 @@ class ClientCopyVerifierTests(unittest.TestCase):
         )
         self.assertEqual(self.verify_temp_html(html), [])
 
-    def test_owner_approved_yulia_drift_fails(self) -> None:
-        html = self.source_html.replace("Записаться к Юлии", "Связаться с Юлией", 1)
+    def test_owner_approved_yulia_v2_drift_fails(self) -> None:
+        html = self.source_html.replace("Более 17 лет профессионального опыта в юриспруденции", "Более 17 лет опыта", 1)
         problems = self.verify_temp_html(html)
-        self.assertTrue(any("owner:yulia-card-v1" in item for item in problems))
+        self.assertTrue(any("owner:yulia-card-v2" in item for item in problems))
+
+    def test_owner_approved_new_blocks_drift_fails(self) -> None:
+        mutations = (
+            ('svc-h2-v1', 'представительство в бракоразводных спорах', 'представительство в спорах'),
+            ('svc-divorce-title-v1', 'Бракоразводные процессы</h3>', 'Развод</h3>'),
+            ('svc-divorce-lead-v1', 'иных инстанциях', 'других инстанциях'),
+            ('svc-children-lead-v1', 'незаконно удерживаемых', 'удерживаемых'),
+            ('svc-paternity-title-v1', 'отцовства, тест ДНК', 'отцовства и тест ДНК'),
+            ('svc-paternity-lead-v1', 'генетическая экспертиза', 'экспертиза'),
+            ('svc-property-lead-v1', 'кредиты и иные обязательства', 'кредиты'),
+            ('svc-mediation-lead-v1', 'оформляет договорённости', 'оформляет договоренности'),
+            ('svc-prenup-lead-v1', 'Разработка брачного договора', 'Составление брачного договора'),
+            ('svc-protection-lead-v1', 'не дожидаясь ответа через сайт', 'не ожидая ответа'),
+            ('precedent-title-v1', 'неправомерно перемещенного', 'похищенного'),
+            ('precedent-body-v1', 'по делу о возвращении', 'о возвращении'),
+            ('alexander-card-v1', 'Более 30 лет профессионального опыта в юриспруденции</span>', 'Более 30 лет опыта</span>'),
+            ('attorneys-note-v1', 'полное сопровождение, включающее', 'сопровождение, включающее'),
+        )
+        for owner_id, old, new in mutations:
+            with self.subTest(owner_id=owner_id):
+                self.assertIn(old, self.source_html)
+                problems = self.verify_temp_html(self.source_html.replace(old, new, 1))
+                self.assertTrue(any(f"owner:{owner_id}" in item for item in problems), problems)
 
     def test_owner_approved_fact_900_drift_fails(self) -> None:
         html = self.source_html.replace("экспертных статей", "экспертные статьи", 1)
@@ -140,6 +170,17 @@ class ClientCopyVerifierTests(unittest.TestCase):
             with self.subTest(old=old):
                 problems = self.verify_temp_html(self.source_html.replace(old, new, 1))
                 self.assertTrue(any("Гарантируем победу" in item for item in problems))
+
+    def test_json_ld_old_address_and_job_title_fail(self) -> None:
+        mutations = (
+            ('"streetAddress": "Карлибах, 10"', '"streetAddress": "Карлибах 10"'),
+            ('"jobTitle": "Адвокат Израиля, лицензия № 30178"', '"jobTitle": "Адвокат Израиля, лицензия № 30178."'),
+        )
+        for old, new in mutations:
+            with self.subTest(old=old):
+                self.assertIn(old, self.source_html)
+                problems = self.verify_temp_html(self.source_html.replace(old, new, 1))
+                self.assertTrue(any("неизвестный текст JSON-LD" in item for item in problems), problems)
 
     def test_changed_frozen_source_fails_hash(self) -> None:
         original_root = verifier.ROOT

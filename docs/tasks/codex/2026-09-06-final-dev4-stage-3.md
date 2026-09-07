@@ -29,7 +29,7 @@
 - Поведение в нерабочее время (tel: → WhatsApp) — этап 4; ряды «Телефон»/«WhatsApp» рядом с формой не трогать
 - Встроенная карта (iframe), Waze, query_place_id, координаты — не добавлять (CONTACT-LINKS-SPEC §1–2)
 - data-action на рядах Телефон/WhatsApp в контактах — не запрошено; только data-action="map_click" на ссылках карты
-- Кубики, секция услуг, шрифты, фото, отступы (этапы 5–7); final-dev3 и production не пересобираются и не публикуются
+- Кубики, секция услуг, шрифты, фото, отступы (этапы 5–7). Про final-dev3 точная формулировка: локальный `build-hero-variants.py` без аргументов пересобирает ВСЕ варианты, включая build/variants/final-dev3 (`keys = [k.lower() for k in sys.argv[1:]] or list(VARIANTS)` :469, затем rmtree+copytree из site/ :303–305) — это нормально и нужно гейтам. Неизменность final-dev3 держится не на запрете сборки, а на том, что его алиас не публикуется (деплой строго с only=final-dev4), и доказывается байтовым сравнением живого адреса до и после. Production не пересобирается и не публикуется
 - Удаление колонки «Связь» НЕ меняет счётчик «&nbsp;—» (в её разметке тире нет); замечание spec «D:D-07 (−1)» относится только к варианту с удалением «Офиса»
 
 ## Шаги
@@ -102,7 +102,7 @@ ALLOWED_TEXT_ATTRIBUTES: добавить «Открыть адрес в Google 
 
 Файлы: `scripts/verify-address-links.py (новый)`
 
-Скрипт с заголовком-маркером ADDRESS-LINKS-GATE v1.0.0 | <дата>; аргумент base_url (локальный http://127.0.0.1:8098/build/variants/final-dev4/ или живой alias), viewports 390×844 и 1440×900, вывод JSON Lines + итог, exit 0/1. Проверки: (a) a.map-link ровно 3, у каждого href начинается с https://www.google.com/maps/search/?api=1&query=, target=_blank, rel содержит noopener, dataset.action==='map_click', aria-label==='Открыть адрес в Google Maps: Тель-Авив, Карлибах, 10', внутри .map-link__address с текстом «Карлибах, 10» (U+00A0→пробел) и getComputedStyle(...).textDecorationLine содержит underline; (b) document.querySelectorAll('a a').length===0; (c) третий ряд #contact .contact-list и третий пункт .facts-bar — tagName 'A'; .site-footer__cols > div ровно 1, footer без a[href^="tel:"] и без текста «Связь»; (d) клик по каждой ссылке через page.expect_popup() → popup.url содержит google.com/maps; (e) блок [data-copy-id="8.9"]: Range по «©» и по «дела.» дают разные getBoundingClientRect().top, фраза «Лицензия № 30178» на одной строке; (f) JSON-LD: streetAddress «Карлибах, 10», employee[0].jobTitle без точки; (g) documentElement.scrollWidth <= innerWidth. Playwright уже в requirements-build.txt; в облаке Chromium запускать с executable_path из PLAYWRIGHT_BROWSERS_PATH (spec, подготовительный шаг 7).
+Скрипт с заголовком-маркером ADDRESS-LINKS-GATE v1.0.0 | <дата>; аргумент base_url (локальный http://127.0.0.1:8098/build/variants/final-dev4/ или живой alias), viewports 390×844 и 1440×900, вывод JSON Lines + итог, exit 0/1. Проверки: (a) a.map-link ровно 3, у каждого href строго равен существующему адресу карты целиком (сравнение полной строки, а не префикса: проверка только начала пропустит подмену параметра query при сохранённой подписи «Карлибах, 10»), target=_blank, rel содержит noopener, dataset.action==='map_click', aria-label==='Открыть адрес в Google Maps: Тель-Авив, Карлибах, 10', внутри .map-link__address с текстом «Карлибах, 10» (U+00A0→пробел) и getComputedStyle(...).textDecorationLine содержит underline; (b) document.querySelectorAll('a a').length===0; (c) третий ряд #contact .contact-list и третий пункт .facts-bar — tagName 'A'; .site-footer__cols > div ровно 1, footer без a[href^="tel:"] и без текста «Связь»; (d) клик по каждой ссылке через page.expect_popup() → popup.url содержит google.com/maps; (e) блок [data-copy-id="8.9"]: Range по «©» и по «дела.» дают разные getBoundingClientRect().top, фраза «Лицензия № 30178» на одной строке; (f) JSON-LD: streetAddress «Карлибах, 10», employee[0].jobTitle без точки; (g) documentElement.scrollWidth <= innerWidth. Playwright уже в requirements-build.txt; в облаке Chromium запускать с executable_path из PLAYWRIGHT_BROWSERS_PATH (spec, подготовительный шаг 7).
 
 Проверка: в отдельном терминале из корня: python -m http.server 8098; затем python scripts/verify-address-links.py http://127.0.0.1:8098/build/variants/final-dev4/ → exit 0, все проверки PASS на 390 и 1440
 
@@ -126,16 +126,16 @@ CONTENT-OWNER-EDITS.md: новый раздел «Решения владель�
 
 Файлы: `.github/PULL_REQUEST_TEMPLATE.md`
 
-Ветка codex/final-dev4-s3-contacts (от main после слияния PR #11 и PR этапа 2; пока PR #11 не влит — от codex/final-dev4). Коммиты вида feat: address rows link to Google Maps, footer without contact column / docs: record owner decisions 13, 14, 26, 27 — без идентификаторов моделей. Draft PR в main по шаблону + proof-блок. Деплой запускает владелец: Actions → Deploy Previews → Run workflow → «Use workflow from» = ветка этапа → only=final-dev4 (никогда не пусто). До деплоя снять SHA-256 final-dev3 и production: curl -sS -A gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ | sha256sum (в PowerShell — curl.exe и Get-FileHash); после деплоя повторить и сравнить (production = 656CBCD0…C13E22), затем python -B scripts/verify-live-previews.py --only final-dev4; python scripts/verify-address-links.py https://final-dev4.gambarian-landing.pages.dev/; curl -sS -A gambarian-readback https://final-dev4.gambarian-landing.pages.dev/ | grep -c 'site-footer__label">Связь' → 0, | grep -c 'data-action="map_click"' → 3, | grep -c 'Карлибах&nbsp;10' → 0, | grep -c '30178\.' → 0. wrangler напрямую не запускать.
+Ветка codex/final-dev4-s3-contacts (от main после слияния PR #11 и PR этапа 2; пока PR #11 не влит — от codex/final-dev4). Коммиты вида feat: address rows link to Google Maps, footer without contact column / docs: record owner decisions 13, 14, 26, 27 — без идентификаторов моделей. Draft PR в main по шаблону + proof-блок. Деплой запускает владелец: Actions → Deploy Previews → Run workflow → «Use workflow from» = ветка этапа → only=final-dev4 (никогда не пусто). До деплоя снять SHA-256 final-dev3 и production: curl -fsS -A gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ -o rb.tmp && test -s rb.tmp && sha256sum rb.tmp (в PowerShell — curl.exe и Get-FileHash); после деплоя повторить и сравнить (production = 656CBCD0…C13E22), затем python -B scripts/verify-live-previews.py --only final-dev4; python scripts/verify-address-links.py https://final-dev4.gambarian-landing.pages.dev/; curl -sS -A gambarian-readback https://final-dev4.gambarian-landing.pages.dev/ | grep -c 'site-footer__label">Связь' → 0, | grep -c 'data-action="map_click"' → 3, | grep -c 'Карлибах&nbsp;10' → 0, | grep -c '30178\.' → 0. wrangler напрямую не запускать.
 
 Проверка: PR draft открыт в main с proof-блоком; после деплоя verify-live-previews --only final-dev4 → PASS, SHA-256 final-dev3 и production до/после совпадают
 
 ## Гейты (в этом порядке)
 
 - `python -B scripts/build-preview.py site/gambarian-standalone.html --standalone`
-- `python -B scripts/verify-client-copy.py`
-- `python -m unittest discover -s scripts/tests`
 - `python -B scripts/build-font-variants.py && python -B scripts/build-hero-variants.py && python -B scripts/build-action-bar.py && python -B scripts/build-review-numbered.py`
+- `python -B scripts/verify-client-copy.py` — строго ПОСЛЕ сборки: verifier читает build/variants/*/index.html (:364), на старых сборках со старым адресом даст FAIL, а на чистом checkout сборок ещё нет («index.html не найден» :385)
+- `python -m unittest discover -s scripts/tests`
 - `python -B scripts/verify-client-previews.py`
 - `node scripts/verify-lead-hook.mjs`
 - `python -m http.server 8098 (отдельный терминал, из корня репо) && python scripts/verify-address-links.py http://127.0.0.1:8098/build/variants/final-dev4/`
@@ -144,7 +144,7 @@ CONTENT-OWNER-EDITS.md: новый раздел «Решения владель�
 - `git diff --check`
 - `после деплоя владельцем: python -B scripts/verify-live-previews.py --only final-dev4`
 - `после деплоя: python scripts/verify-address-links.py https://final-dev4.gambarian-landing.pages.dev/`
-- `после деплоя: curl -sS -A gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ | sha256sum и curl -sS -A gambarian-readback https://gambarian-landing.pages.dev/ | sha256sum — совпадают с замером до деплоя (production 656CBCD0…C13E22)`
+- `после деплоя: curl -fsS -A gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ -o rb.tmp && test -s rb.tmp && sha256sum rb.tmp и curl -fsS -A gambarian-readback https://gambarian-landing.pages.dev/ -o rb.tmp && test -s rb.tmp && sha256sum rb.tmp — совпадают с замером до деплоя (production 656CBCD0…C13E22)`
 
 ## Версии и маркеры
 
@@ -188,7 +188,7 @@ CONTENT-OWNER-EDITS.md: новый раздел «Решения владель�
 - На машине владельца в PowerShell curl — псевдоним Invoke-WebRequest: использовать curl.exe и Get-FileHash
 - page.expect_popup для target=_blank в headless Chromium требует клика Playwright, не JS .click() — иначе popup не перехватится
 - Ожидание «&nbsp;—» per-alias для final-dev4 задано этапом 1: если оно жёсткое и не совпало с фактом сборки — причина в этапе 2/1, а не в этом этапе; зафиксировать в отчёте
-- Workflow с пустым only опубликует все 11 alias, включая final-dev3 — поле only=final-dev4 обязательно
+- Workflow с пустым only опубликует все 12 alias (после этапа 1), включая final-dev3 — поле only=final-dev4 обязательно
 
 ## Проверка карточки критиком
 
@@ -223,7 +223,7 @@ CONTENT-OWNER-EDITS.md: новый раздел «Решения владель�
 9. Документы: docs/CONTENT-OWNER-EDITS.md (решения 8/13/14/26/27, версия и дата), docs/CONTACT-LINKS-SPEC.md (пример ссылки), docs/TRACKING-REQUIREMENTS.md (map_click стоит), docs/HERO-CTA-RESEARCH.md §6 (WhatsApp снят из футера решением владельца 2026-09-06), docs/FINAL-QA-CHECKLIST.md (§2 версия, §3 запись).
 Не делай: не редактируй тексты владельца и frozen source docs/sources/client-copy-short-v1.0.0.txt; не трогай final-dev3, production, build/; не запускай wrangler и production-деплой; не добавляй встроенную карту, Waze, координаты; не удаляй колонку «Офис»; не меняй контраст .site-footer__legal; нерабочее время — этап 4.
 Коммиты вида feat: address rows link to Google Maps, footer without contact column; docs: record owner decisions 13, 14, 26, 27 — без идентификаторов моделей.
-Отчёт в PR: хэш и push; список файлов и что изменилось; вывод каждого гейта; число «&nbsp;—»; «Проверено / Не проверено / Вопросы владельцу». Деплой делает владелец (Actions → Deploy Previews → Run workflow → ветка этапа → only=final-dev4). До деплоя сними SHA-256: curl -sS -A gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ | sha256sum и то же для https://gambarian-landing.pages.dev/ (в PowerShell — curl.exe и Get-FileHash). После деплоя: python -B scripts/verify-live-previews.py --only final-dev4; python scripts/verify-address-links.py https://final-dev4.gambarian-landing.pages.dev/; curl final-dev4 | grep -c 'site-footer__label">Связь' → 0, grep -c 'data-action="map_click"' → 3, grep -c 'Карлибах&nbsp;10' → 0; повтори SHA-256 final-dev3 и production — должны совпасть с замером до деплоя (production 656CBCD0…C13E22). Допиши proof-блок в PR.
+Отчёт в PR: хэш и push; список файлов и что изменилось; вывод каждого гейта; число «&nbsp;—»; «Проверено / Не проверено / Вопросы владельцу». Деплой делает владелец (Actions → Deploy Previews → Run workflow → ветка этапа → only=final-dev4). До деплоя сними SHA-256: curl -fsS -A gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ -o rb.tmp && test -s rb.tmp && sha256sum rb.tmp и то же для https://gambarian-landing.pages.dev/ (в PowerShell — curl.exe и Get-FileHash). После деплоя: python -B scripts/verify-live-previews.py --only final-dev4; python scripts/verify-address-links.py https://final-dev4.gambarian-landing.pages.dev/; curl final-dev4 | grep -c 'site-footer__label">Связь' → 0, grep -c 'data-action="map_click"' → 3, grep -c 'Карлибах&nbsp;10' → 0; повтори SHA-256 final-dev3 и production — должны совпасть с замером до деплоя (production 656CBCD0…C13E22). Допиши proof-блок в PR.
 ```
 
 ## Related

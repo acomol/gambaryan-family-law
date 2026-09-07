@@ -55,15 +55,28 @@ from final_dev3_contract import (
 )
 
 
+from final_dev4_contract import (
+    BODY_TAG as FINAL_DEV4_BODY_TAG,
+    CSS_COMMENT as FINAL_DEV4_CSS_COMMENT,
+    DATE as FINAL_DEV4_DATE,
+    HTML_COMMENT as FINAL_DEV4_HTML_COMMENT,
+    MARKER_RE as FINAL_DEV4_MARKER_RE,
+    VERSION as FINAL_DEV4_VERSION,
+    BOARD_PATH as FINAL_DEV4_BOARD_PATH,
+    TASK_PATH as FINAL_DEV4_TASK_PATH,
+    MARKER as FINAL_DEV4_MARKER,
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
-MAP_VERSION = "2.4.0"
-MAP_DATE = "2026-08-13"
+MAP_VERSION = "2.5.0"
+MAP_DATE = "2026-09-07"
 
 EXPECTED_PREVIEWS = {
     "final-dev": "build/variants/action-bar",
     "final-dev1": "build/variants/final-dev1",
     "final-dev3": "build/variants/final-dev3",
+    "final-dev4": "build/variants/final-dev4",
     "v1-playfair-onest": "build/font-variants/v1-playfair-onest",
     "v2-lora-inter": "build/font-variants/v2-lora-inter",
     "v3-literata-manrope": "build/font-variants/v3-literata-manrope",
@@ -291,6 +304,44 @@ def verify_final_dev3(dest: Path, baseline: Path) -> list[str]:
     return problems
 
 
+def verify_final_dev4_sources() -> list[str]:
+    problems = []
+    for path in (FINAL_DEV4_BOARD_PATH, FINAL_DEV4_TASK_PATH):
+        source = ROOT / path
+        if not source.exists() or FINAL_DEV4_MARKER not in source.read_text(encoding="utf-8"):
+            problems.append(f"{path} не содержит текущий marker final-dev4")
+    return problems
+
+
+def verify_final_dev4(dest: Path) -> list[str]:
+    problems = []
+    html = (dest / "index.html").read_text(encoding="utf-8")
+    css = (dest / "styles.css").read_text(encoding="utf-8")
+    expected = [(FINAL_DEV4_VERSION, FINAL_DEV4_DATE)]
+    if (html.count(FINAL_DEV4_HTML_COMMENT) != 1
+            or css.count(FINAL_DEV4_CSS_COMMENT) != 1
+            or html.count(FINAL_DEV4_BODY_TAG) != 1
+            or FINAL_DEV4_MARKER_RE.findall(html) != expected
+            or FINAL_DEV4_MARKER_RE.findall(css) != expected):
+        problems.append("final-dev4 HTML/CSS marker или body расходится с контрактом")
+    if html.count(FINAL_DEV3_HTML_COMMENT) != 1 or css.count(FINAL_DEV3_CSS_COMMENT) != 1:
+        problems.append("final-dev4 не содержит унаследованные маркеры final-dev3")
+    if (html.count(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) != 1
+            or html.find(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) < html.find(FINAL_DEV3_ACTION_BAR_SCRIPT_TAG)):
+        problems.append("final-dev4 Hero adapter должен идти один раз после Action Bar")
+    script_path = dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT
+    source = ROOT / "site-addons" / "final-dev3" / FINAL_DEV3_HERO_BUSINESS_SCRIPT
+    if not script_path.exists() or script_path.read_bytes() != source.read_bytes():
+        problems.append("final-dev4 Hero adapter расходится с единым источником final-dev3")
+    else:
+        script = script_path.read_text(encoding="utf-8")
+        if any(token not in script for token in FINAL_DEV3_SCRIPT_REQUIRED_TOKENS):
+            problems.append("final-dev4 Hero adapter неполон")
+        if any(token in script for token in FINAL_DEV3_SCRIPT_FORBIDDEN_TOKENS):
+            problems.append("final-dev4 Hero adapter содержит второй источник состояния")
+    return problems
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -318,6 +369,7 @@ def main() -> int:
         )
     problems.extend(verify_final_dev1_sources())
     problems.extend(verify_final_dev3_sources())
+    problems.extend(verify_final_dev4_sources())
 
     if manifest.get("version") != MAP_VERSION:
         problems.append(f"ожидалась Preview-карта v{MAP_VERSION}")
@@ -372,7 +424,7 @@ def main() -> int:
                     f"{branch}: client-copy ID должны точно повторять текущий source"
                 )
             review_labels = re.findall(r'data-review-id="([^"]+)"', html)
-            if review_labels != list(OWNER_REVIEW_IDS.values()):
+            if review_labels != [OWNER_REVIEW_IDS[v] for v in re.findall(r'data-owner-copy-id="([^"]+)"', source_html)]:
                 problems.append(f"{branch}: отсутствуют номера OWNER-APPROVED блоков")
             ordered_labels = [
                 value
@@ -388,8 +440,10 @@ def main() -> int:
             )
             if marker not in styles or f"<!-- {marker} -->" not in html:
                 problems.append(f"{branch}: нет versioned client-copy overlay")
-        if branch in {"final-dev1", "final-dev3"}:
+        if branch in {"final-dev1", "final-dev3", "final-dev4"}:
             problems.extend(f"{branch}: {problem}" for problem in verify_final_dev1(dest))
+        if branch == "final-dev4":
+            problems.extend(f"{branch}: {p}" for p in verify_final_dev4(dest))
         if branch == "final-dev3":
             baseline = ROOT / EXPECTED_PREVIEWS["final-dev1"]
             if not (baseline / "index.html").is_file():
