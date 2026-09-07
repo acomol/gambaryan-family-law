@@ -980,7 +980,7 @@ picture { display: block; }
      «одну голову» — cover отрезал всё ниже плеч. При совпадении пропорций
      cover ничего не режет, оба адвоката видны по пояс и одинаково. */
   height: auto;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
   object-position: center top;
   border-radius: 6px;

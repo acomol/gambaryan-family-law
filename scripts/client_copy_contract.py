@@ -1,6 +1,6 @@
 """Точный контракт утверждённого клиентом текста лендинга.
 
-CLIENT-COPY-CONTRACT v1.4.2 | 2026-09-07
+CLIENT-COPY-CONTRACT v1.4.3 | 2026-09-07
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Final
 
 
-CONTRACT_VERSION: Final = "1.4.2"
+CONTRACT_VERSION: Final = "1.4.3"
 CONTRACT_DATE: Final = "2026-09-07"
 SOURCE_FILENAME: Final = "Копия LP - Короткая версия (1).txt"
 SOURCE_REPO_PATH: Final = "docs/sources/client-copy-short-v1.0.0.txt"
@@ -405,8 +405,8 @@ OWNER_APPROVED_COPY: Final[dict[str, str]] = {
 
 OWNER_APPROVED_HTML_TOKENS: Final[tuple[str, ...]] = (
     'data-owner-copy-id="yulia-card-v2"',
-    'src="assets/yulia-card-760w.df9bd223.jpg"',
-    'srcset="assets/yulia-card-480w.a736c3ca.webp 480w, assets/yulia-card-760w.cb17a9cc.webp 760w, assets/yulia-card-1100w.6f3eba82.webp 1100w"',
+    'src="assets/yulia-card-v3-760w.ac06d5c7.jpg"',
+    'srcset="assets/yulia-card-v3-480w.dfae6691.webp 480w, assets/yulia-card-v3-760w.15691aa4.webp 760w, assets/yulia-card-v3-1100w.2d34e061.webp 1100w"',
     'alt="Адвокат Юлия Саакян"',
 )
 

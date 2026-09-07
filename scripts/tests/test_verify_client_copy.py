@@ -146,8 +146,8 @@ class ClientCopyVerifierTests(unittest.TestCase):
     def test_owner_approved_yulia_structure_fails(self) -> None:
         mutations = (
             (
-                'src="assets/yulia-card-760w.df9bd223.jpg"',
-                'src="assets/alexander-card-v2-760w.681730d0.jpg"',
+                'src="assets/yulia-card-v3-760w.ac06d5c7.jpg"',
+                'src="assets/alexander-card-v3-760w.0ca191e9.jpg"',
             ),
             ('alt="Адвокат Юлия Саакян"', 'alt="Адвокат Александр Гамбарян"'),
             (

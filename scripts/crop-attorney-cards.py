@@ -22,15 +22,25 @@ measurement = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(measurement)
 
 
-def crop_box(alexander: Image.Image, yulia: Image.Image, faces: dict) -> tuple:
+def crop_box(alexander: Image.Image, yulia: Image.Image, faces: dict, trust_visual: bool = False) -> tuple:
     """Keep the existing 4:5 frame; never pad or upscale either portrait."""
     top_a, top_y = measurement.head_top(alexander), measurement.head_top(yulia)
     # A reviewed coordinate is required: contrast alone also detects mottled
     # background. Do not silently crop against an unverified foreground line.
     for person, detected in (("alexander", top_a), ("yulia", top_y)):
-        if abs(faces[person]["head_top"] - detected) > 3:
-            raise ValueError(f"{person}: detected y={detected}, visually reviewed "
-                             f"y={faces[person]['head_top']}; detector needs correction")
+        gap = abs(faces[person]["head_top"] - detected)
+        if gap <= 3:
+            continue
+        if trust_visual:
+            # The reviewed coordinate wins on purpose: on these portraits the
+            # contrast detector locks onto the studio backdrop gradient, not
+            # onto hair. The detector value stays in the evidence so the
+            # disagreement is visible in the report rather than hidden.
+            print(f"ВНИМАНИЕ {person}: детектор y={detected}, замер глазами "
+                  f"y={faces[person]['head_top']}, расхождение {gap}px — взят замер")
+            continue
+        raise ValueError(f"{person}: detected y={detected}, visually reviewed "
+                         f"y={faces[person]['head_top']}; detector needs correction")
     face_y = faces["yulia"]["chin"] - top_y
     face_a = faces["alexander"]["chin"] - top_a
     if min(face_a, face_y) <= 0:
@@ -46,7 +56,9 @@ def crop_box(alexander: Image.Image, yulia: Image.Image, faces: dict) -> tuple:
         # requested equal scale. Never fill outside the photograph with black.
         raise ValueError(f"Equal-scale crop {box} exceeds source {alexander.size}; "
                          "cannot preserve both head height and face scale without an owner decision")
-    return box, {"alexander_head_top": top_a, "yulia_head_top": top_y,
+    return box, {"alexander_head_top_detected": top_a, "yulia_head_top_detected": top_y,
+            "alexander_head_top_reviewed": faces["alexander"]["head_top"],
+            "yulia_head_top_reviewed": faces["yulia"]["head_top"],
                  "alexander_box": list(box), "yulia_box": [0, 0, *yulia.size],
                  "face_scale": face_y / target_height}
 
@@ -60,13 +72,15 @@ def main() -> int:
     parser.add_argument("--quality", type=int, default=82)
     parser.add_argument("--face", type=Path, required=True,
                         help="JSON: alexander/yulia with visually reviewed head_top, chin; Alexander center_x")
+    parser.add_argument("--trust-visual", action="store_true",
+                        help="Взять замер глазами, когда детектор с ним не согласен; расхождение печатается и попадает в доказательства")
     parser.add_argument("--out", type=Path, default=ROOT / "build" / "attorney-crops")
     args = parser.parse_args()
     faces = json.loads(args.face.read_text(encoding="utf-8"))
     originals = {person: Image.open(ROOT / "docs" / "source-photos" / f"{person}-portrait.jpg").convert("RGB")
                  for person in ("alexander", "yulia")}
     try:
-        box, evidence = crop_box(originals["alexander"], originals["yulia"], faces)
+        box, evidence = crop_box(originals["alexander"], originals["yulia"], faces, args.trust_visual)
     except ValueError as error:
         parser.exit(1, f"BLOCKED: {error}\n")
     widths = [int(width) for width in args.widths.split(",")]
