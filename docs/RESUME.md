@@ -32,6 +32,14 @@ readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.
 
 Дословные логи и границы проверки: [отчёт этапа 5](reviews/2026-09-07-final-dev4-stage-5-local.md).
 
+## Этап 6: локальный кандидат окна услуг
+
+Runner 1.5.0: final-dev4 15/15 PASS; Review Numbered 2.2.1.
+Высота по всем 8 темам: 1440 — 1003.328125px; 390 — 1217.203125px.
+Свайп, упор и неподвижность CTA/«Ведёт» проверены. Полные copy/preview-гейты
+не закрыты: четыре font-variants не собирались по указанию владельца.
+Публикации не было. [Доказательства](reviews/2026-09-07-final-dev4-stage-6-local.md).
+
 ## Что изменилось с прошлой версии этого документа
 
 Блокер публикации, описанный здесь версией `2.4.0`, снят. Владелец выполнил
@@ -152,10 +160,10 @@ workflow`, ветка `main`, поле `only` — конкретный alias и�
 | `final-dev3` Design | `2.0.2` | LIVE PASS |
 | final-dev4 Design | `1.1.1` | STATIC PASS; browser blocked; live не опубликован |
 | Lead schema | `2.0.0` | LIVE readback: name/phone only; GET `405` |
-| Review Numbered | `2.2.0` | LOCAL PASS: client/owner gate |
+| Review Numbered | `2.2.1` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: effective-width fix Lora H1 |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: effective-width fix Manrope lede |
-| Browser QA runner | `1.4.2` | NOT RUN: матрица 194 cells; делегирована CI |
+| Browser QA runner | `1.5.0` | LOCAL final-dev4 15/15 PASS; 194 cells NOT RUN |
 
 Версии контрактов датированы `2026-08-11`, `2026-08-13` и `2026-08-17`
 (Action Bar `2.4.0`, маркер `ACTION-BAR-SPEC v2.4.0 | 2026-08-17` в

@@ -126,7 +126,7 @@
     window.addEventListener("load", loadSecondHeroSlide, { once: true });
   }
 
-  /* --- Карусель направлений --------------------------------------------- */
+  /* --- Направления: упор, свайп, горизонтальная строка тем --------------- */
 
   var tabs = Array.prototype.slice.call(document.querySelectorAll(".svc-tab"));
   var dots = Array.prototype.slice.call(document.querySelectorAll(".svc-dot"));
@@ -134,9 +134,15 @@
 
   if (tabs.length && tabs.length === panels.length && dots.length === panels.length) {
     var active = 0;
+    var last = panels.length - 1;
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var stage = document.querySelector('.svc-stage');
+    var tablist = document.querySelector('.svc-tabs');
+    var prev = document.querySelector('.svc-arrow[data-dir="prev"]');
+    var next = document.querySelector('.svc-arrow[data-dir="next"]');
 
-    function setActive(index, moveFocus) {
-      active = (index + panels.length) % panels.length;
+    function setActive(index, moveFocus, wrap) {
+      active = wrap ? (index + panels.length) % panels.length : Math.max(0, Math.min(index, last));
 
       tabs.forEach(function (tab, i) {
         var on = i === active;
@@ -153,7 +159,15 @@
         panel.hidden = i !== active;
       });
 
-      if (moveFocus) tabs[active].focus();
+      if (prev) prev.disabled = active === 0;
+      if (next) next.disabled = active === last;
+      if (moveFocus) tabs[active].focus({ preventScroll: true });
+      if (tablist && tablist.scrollWidth > tablist.clientWidth) {
+        tablist.scrollTo({
+          left: tabs[active].offsetLeft - (tablist.clientWidth - tabs[active].offsetWidth) / 2,
+          behavior: reduceMotion.matches ? 'auto' : 'smooth'
+        });
+      }
     }
 
     tabs.forEach(function (tab, i) {
@@ -168,18 +182,17 @@
       });
     });
 
-    var tablist = document.querySelector(".svc-tabs");
     if (tablist) {
       tablist.addEventListener("keydown", function (event) {
         var handled = true;
         switch (event.key) {
           case "ArrowRight":
           case "ArrowDown":
-            setActive(active + 1, true);
+            setActive(active + 1, true, true);
             break;
           case "ArrowLeft":
           case "ArrowUp":
-            setActive(active - 1, true);
+            setActive(active - 1, true, true);
             break;
           case "Home":
             setActive(0, true);
@@ -194,10 +207,26 @@
       });
     }
 
-    var prev = document.querySelector('.svc-arrow[data-dir="prev"]');
-    var next = document.querySelector('.svc-arrow[data-dir="next"]');
     if (prev) prev.addEventListener("click", function () { setActive(active - 1); });
     if (next) next.addEventListener("click", function () { setActive(active + 1); });
+
+    if (stage) {
+      var swipe = null;
+      stage.addEventListener('pointerdown', function (event) {
+        if (event.pointerType === 'mouse' || !event.isPrimary) return;
+        swipe = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      stage.addEventListener('pointerup', function (event) {
+        if (!swipe || event.pointerId !== swipe.id) return;
+        var dx = event.clientX - swipe.x;
+        var dy = event.clientY - swipe.y;
+        swipe = null;
+        if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy)) {
+          setActive(active + (dx < 0 ? 1 : -1));
+        }
+      });
+      stage.addEventListener('pointercancel', function () { swipe = null; });
+    }
 
     setActive(0);
   }
