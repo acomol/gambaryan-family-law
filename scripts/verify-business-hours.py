@@ -47,7 +47,7 @@ CLOSED_CHECK = """() => {
   [...whatsappRows, ...formRows].forEach(e =>
     check(e.querySelectorAll('svg').length === 1, 'contact-icon'));
   check(formRows[0]?.querySelector('.contact-list__label')?.textContent === 'ЗАЯВКА', 'contact-form-label');
-  check(formRows[0]?.querySelector('.contact-list__value')?.textContent === 'Оставить заявку', 'contact-form-value');
+  check(formRows[0]?.querySelector('.contact-list__value')?.textContent === 'Записаться на консультацию', 'contact-form-value');
   const closed = document.querySelector('.lead-form__error-contact [data-business-variant="closed"]');
   check(!closed.hidden && closed.getClientRects().length > 0, 'closed-error-visible');
   check(!!closed.querySelector('a[href^="https://wa.me/"]'), 'closed-error-whatsapp');
