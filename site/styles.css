@@ -100,6 +100,17 @@ picture { display: block; }
    запрещён — он источник horizontal overflow. */
 .nowrap-token { white-space: nowrap; }
 
+.map-link__address {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(240, 174, 31, 0.55);
+}
+.map-link:hover .map-link__address,
+.map-link:focus-visible .map-link__address {
+  text-decoration-color: var(--gold);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;

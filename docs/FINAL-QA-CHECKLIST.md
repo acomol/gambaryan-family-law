@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.3`
+**Версия:** `2.3.4`
 
 **Обновлено:** `2026-09-07`
 
@@ -52,9 +52,9 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.3.0` | LOCAL PASS: 45 client + 16 owner blocks |
+| Client Copy contract | `1.3.1` | LOCAL PASS: 45 client + 16 owner blocks |
 | Client Copy verifier | `1.1.0` | LOCAL PASS: 26 targets / 24 unique |
-| Action Bar | `2.3.4` | LIVE PASS 11/11 |
+| Action Bar | `2.4.0` | LIVE на final-dev3; остальные alias на прежнем релизе |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `FINAL-DEV1-HERO` | `2.0.0` | LIVE PASS |
 | `FINAL-DEV3-DESIGN` | `2.0.2` | LIVE PASS |
@@ -63,7 +63,17 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
 | Browser QA runner | `1.4.2` | NOT RUN: матрица 194 cells; делегирована CI |
-| Этот чек-лист | `2.3.3` | active |
+| Этот чек-лист | `2.3.4` | active |
+
+### Адрес и подвал final-dev4 — этап 3, 2026-09-07
+
+- [x] Вся строка адреса кликабельна в плашке, контактах и подвале;
+  Google Maps в новом окне, `map_click`, новый aria-label, подчёркнутый адрес.
+- [x] JSON-LD: «Карлибах, 10», лицензия без точки; старые формы запрещены контрактом 1.3.1.
+- [x] Колонка «Связь» удалена, «Офис» сохранён; © начинается с отдельной строки в блоке 8.9.
+- [x] `scripts/verify-address-links.py`: 390×844 и 1440×900 PASS;
+  дополнительный DOM/Range-прогон 360×668 PASS, вся лицензия на одной строке.
+- [ ] Live readback после публикации владельцем; деплой не запускался.
 
 ### Исправление статуса после независимого review
 

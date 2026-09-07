@@ -1,10 +1,18 @@
 # Пакет Preview для согласования с заказчиком
 
-**Версия:** `CLIENT-PREVIEW-HANDOFF v2.4.1`
+**Версия:** `CLIENT-PREVIEW-HANDOFF v2.4.2`
 
-**Дата:** `2026-09-06`
+**Дата:** `2026-09-07`
 
 **Статус:** `final-dev3 LIVE + VERIFIED / остальные 10 alias LIVE PENDING / PRODUCTION UNCHANGED`
+
+## Кандидат final-dev4 — 2026-09-07
+
+Этапы 1–3 собраны в ветке `codex/final-dev4-s1-s3-texts` (draft PR #13).
+Контракт `CLIENT-COPY-CONTRACT v1.3.1 | 2026-09-07`; результаты и ограничения:
+[отчёт этапов 1–3](reviews/2026-09-07-final-dev4-s1-s3.md).
+Он ещё не опубликован. В этом цикле владелец публикует только `only=final-dev4`.
+Описание пакета из 11 версий ниже сохранено как история предыдущего release.
 
 ## Важное перед отправкой
 
@@ -77,7 +85,7 @@ alias. Production не изменён ни разу.
 
 ## Перед отправкой заказчику
 
-- [x] повторить `CLIENT-COPY-CONTRACT v1.1.0` через
+- [x] повторить `CLIENT-COPY-CONTRACT v1.3.1 | 2026-09-07` через
   `CLIENT-COPY-VERIFIER v1.0.0` после полной пересборки: `24 targets / 22
   unique`, `45` client allowlist + `2` owner blocks, фактически `37` client ID;
 - [x] повторить lead tests `2.0.0` после удаления Email/topic;

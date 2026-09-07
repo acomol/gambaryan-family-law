@@ -118,7 +118,7 @@ workflow`, ветка `main`, поле `only` — конкретный alias и�
 
 | Контракт | Версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.3.0` | LOCAL PASS: 45 client + 16 owner blocks |
+| Client Copy contract | `1.3.1` | LOCAL PASS: 45 client + 16 owner blocks |
 | Client Copy verifier | `1.1.0` | LOCAL PASS: 26 targets / 24 unique |
 | Action Bar | `2.4.0` | LIVE на `final-dev3`; остальные 10 alias всё ещё отдают `2.3.4` |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |

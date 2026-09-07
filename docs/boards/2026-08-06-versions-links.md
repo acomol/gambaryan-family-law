@@ -52,7 +52,7 @@
 |---|---:|---:|---:|
 | Action Bar | `2.4.0` | 2026-08-17 | LIVE на `final-dev3`; остальные 10 на `2.3.4` |
 | Client Preview Mobile | `1.1.0` | 2026-08-11 | `LIVE PASS 11/11` |
-| Client Copy contract: 45 allowlist + 16 Owner overrides | `1.3.0` | 2026-09-07 | `LOCAL PASS` |
+| Client Copy contract: 45 allowlist + 16 Owner overrides | `1.3.1` | 2026-09-07 | `LOCAL PASS` |
 | Client Copy verifier | `1.1.0` | 2026-09-07 | `LOCAL PASS 26 targets / 24 unique` |
 | Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `LIVE PASS` |
 | `final-dev3` | `2.0.2` | 2026-08-13 | `LIVE PASS` |

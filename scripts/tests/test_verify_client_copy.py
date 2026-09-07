@@ -171,6 +171,17 @@ class ClientCopyVerifierTests(unittest.TestCase):
                 problems = self.verify_temp_html(self.source_html.replace(old, new, 1))
                 self.assertTrue(any("Гарантируем победу" in item for item in problems))
 
+    def test_json_ld_old_address_and_job_title_fail(self) -> None:
+        mutations = (
+            ('"streetAddress": "Карлибах, 10"', '"streetAddress": "Карлибах 10"'),
+            ('"jobTitle": "Адвокат Израиля, лицензия № 30178"', '"jobTitle": "Адвокат Израиля, лицензия № 30178."'),
+        )
+        for old, new in mutations:
+            with self.subTest(old=old):
+                self.assertIn(old, self.source_html)
+                problems = self.verify_temp_html(self.source_html.replace(old, new, 1))
+                self.assertTrue(any("неизвестный текст JSON-LD" in item for item in problems), problems)
+
     def test_changed_frozen_source_fails_hash(self) -> None:
         original_root = verifier.ROOT
         with tempfile.TemporaryDirectory() as directory:
