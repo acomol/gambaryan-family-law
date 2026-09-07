@@ -29,7 +29,7 @@
 - Поведение в нерабочее время (tel: → WhatsApp) — этап 4; ряды «Телефон»/«WhatsApp» рядом с формой не трогать
 - Встроенная карта (iframe), Waze, query_place_id, координаты — не добавлять (CONTACT-LINKS-SPEC §1–2)
 - data-action на рядах Телефон/WhatsApp в контактах — не запрошено; только data-action="map_click" на ссылках карты
-- Кубики, секция услуг, шрифты, фото, отступы (этапы 5–7); final-dev3 и production не пересобираются и не публикуются
+- Кубики, секция услуг, шрифты, фото, отступы (этапы 5–7). Про final-dev3 точная формулировка: локальный `build-hero-variants.py` без аргументов пересобирает ВСЕ варианты, включая build/variants/final-dev3 (`keys = [k.lower() for k in sys.argv[1:]] or list(VARIANTS)` :469, затем rmtree+copytree из site/ :303–305) — это нормально и нужно гейтам. Неизменность final-dev3 держится не на запрете сборки, а на том, что его алиас не публикуется (деплой строго с only=final-dev4), и доказывается байтовым сравнением живого адреса до и после. Production не пересобирается и не публикуется
 - Удаление колонки «Связь» НЕ меняет счётчик «&nbsp;—» (в её разметке тире нет); замечание spec «D:D-07 (−1)» относится только к варианту с удалением «Офиса»
 
 ## Шаги
@@ -133,9 +133,9 @@ CONTENT-OWNER-EDITS.md: новый раздел «Решения владель�
 ## Гейты (в этом порядке)
 
 - `python -B scripts/build-preview.py site/gambarian-standalone.html --standalone`
-- `python -B scripts/verify-client-copy.py`
-- `python -m unittest discover -s scripts/tests`
 - `python -B scripts/build-font-variants.py && python -B scripts/build-hero-variants.py && python -B scripts/build-action-bar.py && python -B scripts/build-review-numbered.py`
+- `python -B scripts/verify-client-copy.py` — строго ПОСЛЕ сборки: verifier читает build/variants/*/index.html (:364), на старых сборках со старым адресом даст FAIL, а на чистом checkout сборок ещё нет («index.html не найден» :385)
+- `python -m unittest discover -s scripts/tests`
 - `python -B scripts/verify-client-previews.py`
 - `node scripts/verify-lead-hook.mjs`
 - `python -m http.server 8098 (отдельный терминал, из корня репо) && python scripts/verify-address-links.py http://127.0.0.1:8098/build/variants/final-dev4/`

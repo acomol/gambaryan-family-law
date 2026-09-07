@@ -64,3 +64,6 @@ skills-lock.json
 
 # Local temp files
 temp/
+
+# Логи прогонов цикла проверок на Codex (вердикты коммитятся, логи нет)
+docs/reviews/codex-loop/*.log
