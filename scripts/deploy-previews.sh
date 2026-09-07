@@ -24,6 +24,27 @@ PROJECT="${CF_PAGES_PROJECT:-gambarian-landing}"
 MAP="scripts/client-preview-map.json"
 ONLY="${1:-}"
 
+# Защита эталона. Пустой alias публикует ВСЕ адреса, включая final-dev3, с
+# которым мы сравниваем результат: перезапись эталона лишает доказательства
+# неизменности. Опасное действие не должно быть значением по умолчанию, а поле
+# в форме workflow пустое по умолчанию — поэтому запрет живёт здесь, в скрипте,
+# который приезжает из ветки этапа вместе со сборкой.
+if [ -z "$ONLY" ]; then
+  if [ "${DEPLOY_ALL:-}" != "i-know" ]; then
+    echo "Отказ: alias не указан, а пустое значение публикует все адреса из карты," >&2
+    echo "включая эталонный final-dev3. Укажите alias: bash $0 final-dev4" >&2
+    echo "Если действительно нужны все: DEPLOY_ALL=i-know bash $0" >&2
+    exit 2
+  fi
+  echo "ВНИМАНИЕ: публикуются ВСЕ адреса (DEPLOY_ALL=i-know), включая final-dev3."
+fi
+
+if [ "$ONLY" = "final-dev3" ] && [ "${ALLOW_DEV3:-}" != "i-know" ]; then
+  echo "Отказ: final-dev3 — эталон цикла final-dev4, по нему сверяют неизменность." >&2
+  echo "Если публикация эталона действительно нужна: ALLOW_DEV3=i-know bash $0 final-dev3" >&2
+  exit 2
+fi
+
 [ -f "$MAP" ] || { echo "Ошибка: $MAP не найден. Запускать из корня репозитория." >&2; exit 1; }
 command -v npx >/dev/null 2>&1 || { echo "Ошибка: не найден npx. Установите Node.js." >&2; exit 1; }
 
