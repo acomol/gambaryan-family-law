@@ -118,7 +118,7 @@ workflow`, ветка `main`, поле `only` — конкретный alias и�
 
 | Контракт | Версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.2.0` | LOCAL PASS: 45 client + 2 owner blocks |
+| Client Copy contract | `1.3.0` | LOCAL PASS: 45 client + 16 owner blocks |
 | Client Copy verifier | `1.1.0` | LOCAL PASS: 26 targets / 24 unique |
 | Action Bar | `2.4.0` | LIVE на `final-dev3`; остальные 10 alias всё ещё отдают `2.3.4` |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
@@ -126,7 +126,7 @@ workflow`, ветка `main`, поле `only` — конкретный alias и�
 | `final-dev3` Design | `2.0.2` | LIVE PASS |
 | final-dev4 Design | `1.0.0` | LOCAL PASS; live не опубликован |
 | Lead schema | `2.0.0` | LIVE readback: name/phone only; GET `405` |
-| Review Numbered | `2.1.0` | LOCAL PASS: client/owner gate |
+| Review Numbered | `2.1.1` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: effective-width fix Lora H1 |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: effective-width fix Manrope lede |
 | Browser QA runner | `1.4.2` | NOT RUN: матрица 194 cells; делегирована CI |

@@ -758,32 +758,6 @@ picture { display: block; }
 
 .svc-card__main { flex: 1 1 380px; min-width: 0; }
 
-.svc-card__badge {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.svc-card__icon {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid rgba(240, 174, 31, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.svc-eyebrow {
-  font-family: var(--font-narrow);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  color: var(--gold);
-  text-transform: uppercase;
-}
-
 .svc-title {
   margin: 0 0 16px;
   font-family: var(--font-serif);
@@ -1104,7 +1078,9 @@ picture { display: block; }
 .btn--gold-block:hover { background: var(--gold-light); opacity: 1; }
 
 .attorneys__note {
-  margin: 32px 0 0;
+  margin: 32px auto 0;
+  text-align: center;
+  font-weight: 700;
   font-size: 15px;
   line-height: 1.7;
   color: var(--ink-2);

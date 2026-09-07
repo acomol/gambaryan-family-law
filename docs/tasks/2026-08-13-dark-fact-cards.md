@@ -1,6 +1,6 @@
 # Задание: тёмные карточки фактов и owner-текст «более 900»
 
-**Версия:** `DARK-FACT-CARDS v1.0.2`
+**Версия:** `DARK-FACT-CARDS v1.0.3`
 
 **Дата:** `2026-09-07`
 
@@ -77,7 +77,7 @@
 
 ## Автоматическая приёмка
 
-- [x] `CLIENT-COPY-CONTRACT v1.2.0 | 2026-08-16` и неизменный
+- [x] `CLIENT-COPY-CONTRACT v1.3.0 | 2026-09-07` и неизменный
   `CLIENT-COPY-VERIFIER v1.1.0 | 2026-09-07`: `24 targets / 22 unique`, `45`
   client allowlist + `2` owner blocks; фактически используются `37` client ID;
 - [x] `PREVIEW-BROWSER-QA-RUNNER v1.4.0 | 2026-08-13` проверяет

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Читает ЖИВЫЕ Preview и доказывает, что на них уехал текущий релиз.
 
-LIVE-PREVIEW-READBACK v1.2.0 | 2026-09-07
+LIVE-PREVIEW-READBACK v1.2.1 | 2026-09-07
 
 Зачем отдельно от verify-client-previews.py: тот проверяет собранные
 каталоги на диске. Здесь проверяются байты, которые реально отдаёт
@@ -30,7 +30,7 @@ from pathlib import Path
 
 from final_dev4_contract import MARKER as FINAL_DEV4_MARKER, BODY_CLASS as FINAL_DEV4_BODY_CLASS
 
-READBACK_VERSION = "1.2.0"
+READBACK_VERSION = "1.2.1"
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
 HOST = "https://{branch}.gambarian-landing.pages.dev/"
@@ -42,7 +42,7 @@ TIMEOUT = 30
 # Each alias describes its served release; recount final-dev4 after text edits:
 # build/variants/final-dev4/index.html -> count("&nbsp;—").
 NBSP_EXPECTED_DEFAULT = 23
-NBSP_EXPECTED = {"review-numbered": 22, "final-dev4": 23}
+NBSP_EXPECTED = {"review-numbered": 22, "final-dev4": 15}
 IDENTITY = {
     "final-dev4": {
         "html": (f"<!-- {FINAL_DEV4_MARKER} -->", FINAL_DEV4_BODY_CLASS),

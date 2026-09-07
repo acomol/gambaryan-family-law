@@ -33,7 +33,7 @@
 ## Общее для нового кандидата
 
 - каждый размещённый смысловой блок входит в client allowlist или в точный
-  `OWNER-APPROVED` блок Юлии/`fact-900-v1`; фактически используются `37/45`
+  один из 16 `OWNER-APPROVED` блоков; фактически используются `20/45`
   client ID;
 - все три карточки фактов тёмные; `2.10` имеет единственную золотую рамку,
   `30+` центрировано только на desktop, `Автор / более 900` не переносится;
@@ -52,13 +52,13 @@
 |---|---:|---:|---:|
 | Action Bar | `2.4.0` | 2026-08-17 | LIVE на `final-dev3`; остальные 10 на `2.3.4` |
 | Client Preview Mobile | `1.1.0` | 2026-08-11 | `LIVE PASS 11/11` |
-| Client Copy contract: 45 allowlist + 2 Owner overrides | `1.2.0` | 2026-08-16 | `LOCAL PASS` |
+| Client Copy contract: 45 allowlist + 16 Owner overrides | `1.3.0` | 2026-09-07 | `LOCAL PASS` |
 | Client Copy verifier | `1.1.0` | 2026-09-07 | `LOCAL PASS 26 targets / 24 unique` |
 | Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `LIVE PASS` |
 | `final-dev3` | `2.0.2` | 2026-08-13 | `LIVE PASS` |
 | final-dev4 | `1.0.0` | 2026-09-07 | `LOCAL PASS / LIVE PENDING` |
 | Lead hook / форма (name + phone only) | `2.0.0` | 2026-08-11 | `LIVE PASS` |
-| Review numbering | `2.1.0` | 2026-09-07 | `LOCAL PASS` |
+| Review numbering | `2.1.1` | 2026-09-07 | `LOCAL PASS` |
 | Font Variant V2 Mobile | `1.1.0` | 2026-08-13 | `LIVE PASS` |
 | Font Variant V3 Mobile | `1.0.0` | 2026-08-13 | `LIVE PASS` |
 | Browser QA runner | `1.4.2` | 2026-09-07 | `NOT RUN: 194 cells, CI` |
@@ -94,7 +94,7 @@ visual QA — были пройдены локально и на live до об�
 | Action Bar | `site-addons/action-bar/` | общий addon во всех Preview |
 | Hero | `scripts/build-hero-variants.py` | `final-dev1`, `final-dev3`, `final-dev4`, Hero A/B |
 | Шрифты | `scripts/build-font-variants.py` | четыре font Preview |
-| Review | `scripts/build-review-numbered.py` | `review-numbered`, 37 используемых client ID + 2 owner blocks |
+| Review | `scripts/build-review-numbered.py` | `review-numbered`, 20 используемых client ID + 16 owner blocks |
 
 ## Ограничения
 

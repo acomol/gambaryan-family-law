@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.2`
+**Версия:** `2.3.3`
 
 **Обновлено:** `2026-09-07`
 
@@ -46,24 +46,24 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 
 Последние явные решения владельца задают allowlist, а не обязательный coverage:
 каждый размещённый смысловой текст должен входить в 45-строчный client allowlist
-или в один из двух точных `OWNER-APPROVED` блоков: Юлия и `fact-900-v1`. Вне них
+или в один из 16 точных `OWNER-APPROVED` блоков (реестр CONTENT-OWNER-EDITS). Вне них
 допустимы только существующая identity и `SYSTEM-UI`. Форма содержит только
 `Имя`/`Телефон`, без Email/topic.
 
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.2.0` | LOCAL PASS: 45 client + 2 owner blocks |
+| Client Copy contract | `1.3.0` | LOCAL PASS: 45 client + 16 owner blocks |
 | Client Copy verifier | `1.1.0` | LOCAL PASS: 26 targets / 24 unique |
 | Action Bar | `2.3.4` | LIVE PASS 11/11 |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `FINAL-DEV1-HERO` | `2.0.0` | LIVE PASS |
 | `FINAL-DEV3-DESIGN` | `2.0.2` | LIVE PASS |
 | Lead contract | `2.0.0` | LIVE readback: name/phone only |
-| Review Numbered | `2.1.0` | LOCAL PASS: client/owner gate |
+| Review Numbered | `2.1.1` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
 | Browser QA runner | `1.4.2` | NOT RUN: матрица 194 cells; делегирована CI |
-| Этот чек-лист | `2.3.2` | active |
+| Этот чек-лист | `2.3.3` | active |
 
 ### Исправление статуса после независимого review
 
