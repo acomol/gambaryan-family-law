@@ -1,10 +1,10 @@
 # Текст на сайте вне клиентского документа
 
-**Версия:** `CONTENT-EXTRA v2.3.0`
+**Версия:** `CONTENT-EXTRA v2.4.0`
 
 **Дата:** `2026-09-07`
 
-**Статус:** `16 OWNER OVERRIDES + SYSTEM-UI VERIFIED / LOCAL PASS / LIVE PENDING`
+**Статус:** `18 OWNER OVERRIDES + SYSTEM-UI VERIFIED / SOURCE PASS / ALL-PREVIEWS BLOCKED / LIVE PENDING`
 
 ## Допустимый текст вне 45 номерных блоков
 
@@ -17,12 +17,12 @@
 | Action Bar | Рабочее/нерабочее состояние и Preview demo-switch |
 | Review | Служебная инструкция и номера `data-copy-id` |
 
-Отдельно разрешены 16 точных `OWNER-APPROVED` блока, перечисленных в
+Отдельно разрешены 18 точных `OWNER-APPROVED` блока, перечисленных в
 `CONTENT-APPROVED.md` и `CONTENT-SOURCE-MAP.md`:
 
 - 15 owner-блоков правок 2026-09-06, включая `yulia-card-v2`,
   по реестру `CONTENT-OWNER-EDITS.md`;
-- `fact-900-v1`: `Автор` / `более 900` / точный абзац об экспертных статьях.
+- Три кубика: `fact-30-v1`, `fact-precedent-v1`, `fact-900-v2`; тексты в CONTENT-OWNER-EDITS.
 
 Это единственные содержательные исключения вне 45 клиентских ID. Остальной
 `SYSTEM-UI` не должен содержать юридические факты, обещания результата, новые
@@ -41,12 +41,12 @@
   номерных блоков.
 
 Текущий `CLIENT-COPY-VERIFIER v1.1.0` использует
-`CLIENT-COPY-CONTRACT v1.3.1 | 2026-09-07` и проверяет
+`CLIENT-COPY-CONTRACT v1.4.0 | 2026-09-07` и проверяет
 frozen source `docs/sources/client-copy-short-v1.0.0.txt`, принадлежность каждого реально
-размещённого смыслового текста к client allowlist или 16 точным owner
+размещённого смыслового текста к client allowlist или 18 точным owner
 overrides, отсутствие полей `Email`/`topic` и известных запрещённых строк.
-Локальная проверка: `26 targets / 24 unique`, `45` client allowlist + `16` owner
-blocks, фактически `20` client ID. Полный coverage `45/45` не требуется.
+Контракт охватывает: `26 targets / 24 unique`, `45` client allowlist + `18` owner
+blocks, в source/final-dev4 `18` client ID; общий гейт заблокирован сборкой шрифтов. Полный coverage `45/45` не требуется.
 Предыдущий PASS `45/45` остаётся историческим; новый кандидат ещё не deployed.
 
 ## Related

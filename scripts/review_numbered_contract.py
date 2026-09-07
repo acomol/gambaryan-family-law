@@ -1,12 +1,11 @@
 """Shared contract for the service-only numbered client review page."""
 
-REVIEW_NUMBERED_VERSION = "2.1.1"
+REVIEW_NUMBERED_VERSION = "2.2.0"
 REVIEW_NUMBERED_UPDATED = "2026-09-07"
 
 OWNER_REVIEW_IDS = {
     "fact-30-v1": "2.6",
     "fact-precedent-v1": "2.10",
-    "fact-900-v1": "2.14",
     "fact-900-v2": "2.14",
     "svc-h2-v1": "3.H2",
     "svc-divorce-title-v1": "3.7",
@@ -26,6 +25,5 @@ OWNER_REVIEW_IDS = {
 }
 
 OWNER_REVIEW_ANCHORS = {
-    "fact-900-v1": '<span class="fact-card__unit">Автор</span>',
     "yulia-card-v2": '<h3 class="attorney-card__name">Юлия Саакян</h3>',
 }

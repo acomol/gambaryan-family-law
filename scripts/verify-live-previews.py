@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Читает ЖИВЫЕ Preview и доказывает, что на них уехал текущий релиз.
 
-LIVE-PREVIEW-READBACK v1.2.1 | 2026-09-07
+LIVE-PREVIEW-READBACK v1.3.0 | 2026-09-07
 
 Зачем отдельно от verify-client-previews.py: тот проверяет собранные
 каталоги на диске. Здесь проверяются байты, которые реально отдаёт
@@ -30,7 +30,7 @@ from pathlib import Path
 
 from final_dev4_contract import MARKER as FINAL_DEV4_MARKER, BODY_CLASS as FINAL_DEV4_BODY_CLASS
 
-READBACK_VERSION = "1.2.1"
+READBACK_VERSION = "1.3.0"
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
 HOST = "https://{branch}.gambarian-landing.pages.dev/"
@@ -39,10 +39,24 @@ TIMEOUT = 30
 
 # review-numbered снимает &nbsp; в H1: бейджи нумерации сужают колонку и
 # заголовок утягивал CTA за первый экран. Обоснование — docs/TYPOGRAPHY-DASHES.md §7.
-# Each alias describes its served release; recount final-dev4 after text edits:
+# Stage 5 keeps the facts aria-label; final-dev4 still has 15 protected dashes:
 # build/variants/final-dev4/index.html -> count("&nbsp;—").
 NBSP_EXPECTED_DEFAULT = 23
 NBSP_EXPECTED = {"review-numbered": 22, "final-dev4": 15}
+FACT_CARD_MARKERS = {
+    "final-dev4": (
+        'data-owner-copy-id="fact-30-v1"',
+        'data-owner-copy-id="fact-precedent-v1"',
+        'data-owner-copy-id="fact-900-v2"',
+    ),
+}
+FACT_CARD_FORBIDDEN = {
+    "final-dev4": (
+        'class="fact-card__num"',
+        'Профессиональный опыт в юриспруденции</h2>',
+        'data-owner-copy-id="fact-900-v1"',
+    ),
+}
 IDENTITY = {
     "final-dev4": {
         "html": (f"<!-- {FINAL_DEV4_MARKER} -->", FINAL_DEV4_BODY_CLASS),
@@ -126,7 +140,16 @@ def check_preview(branch: str) -> list[str]:
                      or any(token not in styles for token in identity["css"])):
         problems.append(f"{branch}: живая страница не содержит маркер/класс final-dev4 — на алиасе чужая сборка")
 
-    if 'class="fact-card__unit">прецедента</span>' in page:
+    if branch in FACT_CARD_MARKERS:
+        for marker in FACT_CARD_MARKERS[branch]:
+            if page.count(marker) != 1:
+                problems.append(f"{branch}: кубик {marker} не доехал ровно один раз")
+        for marker in FACT_CARD_FORBIDDEN[branch]:
+            if marker in page:
+                problems.append(f"{branch}: осталась старая разметка кубиков {marker}")
+        if not re.search(r"\.fact-card__title\s*\{", styles):
+            problems.append(f"{branch}: стили кубиков старые")
+    elif 'class="fact-card__unit">прецедента</span>' in page:
         white = re.findall(
             r'data-copy-id="2\.10"\]\s*\.fact-card__unit\s*\{[^}]*color:\s*#fff',
             styles,

@@ -1,10 +1,28 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v2.6.2`
+**Версия:** `HANDOFF-RESUME v2.6.3`
 
 **Обновлено:** `2026-09-06`
 
 **Текущий статус:** `final-dev3 LIVE + VERIFIED / остальные 10 Preview на старом релизе / PRODUCTION UNCHANGED`
+
+### Кубики фактов — этап 5, 2026-09-07
+
+Кандидат в `codex/final-dev4-s5-facts`, база `a09f923`. Этапы 1–3 есть в истории;
+этап 4 исключён заданием владельца. Onest уже принят отдельной работой.
+Контракт копирайта 1.4.0: 45 client + 18 owner; numbered-review 2.2.0;
+readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.4.3.
+
+- [x] Три кубика перестроены по строкам 7–10; заголовок секции и аккордеон сняты.
+- [x] Copy parser: source, standalone и final-dev4 без ошибок; тексты трёх owner ID точные.
+- [x] Unit-тесты: 17 OK с TEMP/TMP внутри репозитория; lead-hook PASS.
+- [x] Standalone, Hero и numbered-review собраны; 18 client + 18 owner номеров.
+- [ ] Полный copy/preview PASS: сборка шрифтов остановлена ошибкой curl 7,
+      v2–v4 устарели, v1 собран не полностью.
+- [ ] Action Bar builder и browser matrix: Playwright не стартует, WinError 5.
+- [ ] Замеры и PNG 1440/390 v2.0.0; live readback после деплоя владельцем.
+
+Дословные логи и границы проверки: [отчёт этапа 5](reviews/2026-09-07-final-dev4-stage-5-local.md).
 
 ## Что изменилось с прошлой версии этого документа
 
@@ -118,15 +136,15 @@ workflow`, ветка `main`, поле `only` — конкретный alias и�
 
 | Контракт | Версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.3.1` | LOCAL PASS: 45 client + 16 owner blocks |
-| Client Copy verifier | `1.1.0` | LOCAL PASS: 26 targets / 24 unique |
+| Client Copy contract | `1.4.0` | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
+| Client Copy verifier | `1.1.0` | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
 | Action Bar | `2.4.0` | LIVE на `final-dev3`; остальные 10 alias всё ещё отдают `2.3.4` |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `final-dev1` Hero | `2.0.0` | LIVE PASS |
 | `final-dev3` Design | `2.0.2` | LIVE PASS |
 | final-dev4 Design | `1.0.0` | LOCAL PASS; live не опубликован |
 | Lead schema | `2.0.0` | LIVE readback: name/phone only; GET `405` |
-| Review Numbered | `2.1.1` | LOCAL PASS: client/owner gate |
+| Review Numbered | `2.2.0` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: effective-width fix Lora H1 |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: effective-width fix Manrope lede |
 | Browser QA runner | `1.4.2` | NOT RUN: матрица 194 cells; делегирована CI |

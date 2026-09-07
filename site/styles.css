@@ -557,6 +557,7 @@ picture { display: block; }
 /* --- 3. Факты ------------------------------------------------------------ */
 
 .facts { background: var(--bg-cream); color: var(--ink); }
+.facts__container { padding-block: 32px; }
 
 /* min(…,100%) в minmax обязателен: без него минимум колонки (300px/380px/180px)
    становится жёстким полом и на 360–414px карточка выпирает за экран.
@@ -577,8 +578,9 @@ picture { display: block; }
   padding: 34px 32px 30px;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
 }
-.fact-card[data-copy-id="2.10"] {
+.fact-card--accent {
   border-color: rgba(240, 174, 31, 0.5);
 }
 .fact-card::before {
@@ -588,93 +590,27 @@ picture { display: block; }
   height: 3px;
   background: var(--gold);
 }
-.fact-card__head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-.fact-card__num {
+.fact-card__title {
+  margin: 0;
   font-family: var(--font-serif);
   font-weight: 500;
-  font-size: clamp(44px, 4.6vw, 60px);
-  line-height: 0.95;
+  font-size: clamp(28px, 2.4vw, 36px);
+  line-height: 1.12;
+  letter-spacing: 0;
   color: #fff;
-  letter-spacing: -0.02em;
-}
-.fact-card__unit {
-  font-family: var(--font-narrow);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  color: var(--gold);
-  text-transform: uppercase;
-}
-.fact-card__sub {
-  font-size: 15px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 14px;
-}
-.fact-card .notch {
-  margin-bottom: 14px;
-  background: rgba(240, 174, 31, 0.85);
-}
-.fact-card p {
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.65;
-  color: rgba(255, 255, 255, 0.78);
   text-wrap: pretty;
 }
-
-@media (min-width: 861px) {
-  .fact-card[data-copy-id="2.6"] {
-    justify-content: center;
-  }
-  .fact-card[data-copy-id="2.6"] .fact-card__num {
-    font-size: clamp(64px, 6vw, 84px);
-  }
-  .fact-card[data-copy-id="2.6"] .fact-card__sub {
-    font-size: 16px;
-  }
-
-  .fact-card[data-copy-id="2.10"] .fact-card__head {
-    display: block;
-  }
-  .fact-card[data-copy-id="2.10"] .fact-card__num,
-  .fact-card[data-copy-id="2.10"] .fact-card__unit {
-    display: block;
-    font-family: var(--font-serif);
-    font-size: clamp(28px, 2.4vw, 36px);
-    font-weight: 500;
-    line-height: 1.12;
-    letter-spacing: 0;
-    /* Обе строки заголовка белые: акцент карточки несут золотая рамка и
-       подпись-капитель, выделять внутри заголовка ещё и слово — решение
-       владельца отклонено 2026-08-13. Базовое .fact-card__unit золотое,
-       поэтому цвет переопределяется здесь явно. */
-    color: #fff;
-    text-transform: none;
-  }
-  .fact-card[data-copy-id="2.10"] .fact-card__sub {
-    margin-top: 10px;
-    color: var(--gold);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
-    font-size: clamp(40px, 3.4vw, 52px);
-    white-space: nowrap;
-  }
+.fact-card .notch {
+  margin: 14px 0 12px;
+  background: rgba(240, 174, 31, 0.85);
+}
+.fact-card__sub {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+  text-wrap: pretty;
 }
 
 .facts-bar {
@@ -1503,22 +1439,9 @@ picture { display: block; }
   .facts-bar { flex-direction: column; align-items: flex-start; gap: 14px; }
 }
 
-/* Плавное раскрытие карточек. interpolate-size позволяет анимировать
-   переход к height: auto, но поддержан только в Chromium (Chrome/Edge
-   129+). Поэтому — строго прогрессивное улучшение: где не поддержан,
-   карточка раскрывается мгновенно, функционал тот же.
-   Проверено на 2026-08: Firefox и Safari свойство не поддерживают. */
-@supports (interpolate-size: allow-keywords) {
-  @media (max-width: 720px) and (prefers-reduced-motion: no-preference) {
-    :root { interpolate-size: allow-keywords; }
-    .fact-card { transition: height 0.26s ease; }
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   a, button { transition: none; }
-  .fact-card, .fact-card__chevron { transition: none; }
 }
 
 @media (max-width: 720px) {
@@ -1526,135 +1449,9 @@ picture { display: block; }
 }
 
 @media (max-width: 860px) {
-  /* Карточки фактов: на мобильном вертикальная анатомия (цифра над
-     текстом) давала секцию в 1466px — два экрана на три цифры.
-     Цифра уходит в левую колонку, текст в правую: та же информация,
-     карточка ниже примерно на треть. Контент не сокращён. */
-  .facts .rule { margin-bottom: 24px; }
+  .facts__container { padding-block: 20px; }
   .facts-grid { gap: 12px; }
-
-  .fact-card {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    column-gap: 18px;
-    padding: 18px 18px 16px;
-  }
-  .fact-card__head {
-    grid-column: 1;
-    grid-row: 1 / 3;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    margin-bottom: 0;
-    min-width: 64px;
-  }
-  .fact-card__num { font-size: 34px; }
-  .fact-card__sub,
-  .fact-card .notch { grid-column: 2; }
-  .fact-card__sub { margin-bottom: 8px; align-self: center; }
-  .fact-card .notch { margin-bottom: 0; }
-
-  .fact-card[data-copy-id="2.10"] .fact-card__head,
-  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
-    grid-column: 1 / -1;
-    grid-row: auto;
-    margin-bottom: 8px;
-  }
-  .fact-card[data-copy-id="2.10"] .fact-card__num,
-  .fact-card[data-copy-id="2.10"] .fact-card__unit {
-    display: block;
-    font-family: var(--font-serif);
-    font-size: 26px;
-    font-weight: 500;
-    line-height: 1.15;
-    letter-spacing: 0;
-    color: #fff;
-    text-transform: none;
-  }
-  .fact-card[data-copy-id="2.10"] .fact-card__sub {
-    color: var(--gold);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
-    font-size: 34px;
-    white-space: nowrap;
-  }
-  /* Длинным абзацам («900+ публикаций») узкая колонка противопоказана —
-     они уходят вниз на всю ширину карточки */
-  .fact-card p { grid-column: 1 / -1; margin-top: 12px; line-height: 1.55; }
-
-  /* Карточка-аккордеон: абзац обрезан двумя строками с многоточием,
-     остальное — по тапу (см. app.js). Текст в разметке полный, clamp
-     влияет только на видимость: скринридер читает абзац целиком. */
-  .fact-card { cursor: pointer; }
-
-  .fact-card p {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .fact-card.is-open p {
-    display: block;
-    overflow: visible;
-    /* Снимать явно: при display:block свойство не действует, но остаётся
-       в вычисленных стилях и путает и проверки, и отладку. */
-    -webkit-line-clamp: unset;
-  }
-
-  /* Кнопка раскрытия: сама тонкая, но тап-цель добита до 44px невидимым
-     ::before — требование WCAG 2.5.8 к размеру цели. */
-  .fact-card__toggle {
-    grid-column: 1 / -1;
-    justify-self: center;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 28px;
-    margin-top: 4px;
-    margin-bottom: -8px;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--gold);
-    cursor: pointer;
-  }
-  .fact-card__toggle::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 44px;
-    height: 44px;
-    transform: translate(-50%, -50%);
-  }
-  .fact-card__toggle[hidden] { display: none; }
-
-  .fact-card__chevron {
-    width: 9px;
-    height: 9px;
-    border-right: 2px solid var(--gold);
-    border-bottom: 2px solid var(--gold);
-    transform: translateY(-2px) rotate(45deg);
-    transition: transform 0.22s ease;
-  }
-  .fact-card.is-open .fact-card__chevron {
-    transform: translateY(2px) rotate(-135deg);
-  }
-
-  /* Фокус виден на белой карточке: золото на белом даёт 1.7:1, поэтому
-     к нему добавлено тёмное кольцо. */
-  .fact-card__toggle:focus-visible {
-    outline: 2px solid var(--gold);
-    outline-offset: 0;
-    border-radius: 6px;
-    box-shadow: 0 0 0 4px var(--ink);
-  }
-
+  .fact-card { padding: 18px 18px 16px; }
+  .fact-card__title { font-size: 26px; line-height: 1.15; }
   .facts-bar { margin-top: 14px; padding: 16px 18px; }
 }

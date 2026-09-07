@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.5`
+**Версия:** `2.3.6`
 
 **Обновлено:** `2026-09-07`
 
@@ -46,24 +46,42 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 
 Последние явные решения владельца задают allowlist, а не обязательный coverage:
 каждый размещённый смысловой текст должен входить в 45-строчный client allowlist
-или в один из 16 точных `OWNER-APPROVED` блоков (реестр CONTENT-OWNER-EDITS). Вне них
+или в один из 18 точных `OWNER-APPROVED` блоков (реестр CONTENT-OWNER-EDITS). Вне них
 допустимы только существующая identity и `SYSTEM-UI`. Форма содержит только
 `Имя`/`Телефон`, без Email/topic.
 
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.3.1` | LOCAL PASS: 45 client + 16 owner blocks |
-| Client Copy verifier | `1.1.0` | LOCAL PASS: 26 targets / 24 unique |
+| Client Copy contract | `1.4.0` | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
+| Client Copy verifier | `1.1.0` | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
 | Action Bar | `2.4.0` | LIVE на final-dev3; остальные alias на прежнем релизе |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `FINAL-DEV1-HERO` | `2.0.0` | LIVE PASS |
 | `FINAL-DEV3-DESIGN` | `2.0.2` | LIVE PASS |
 | Lead contract | `2.0.0` | LIVE readback: name/phone only |
-| Review Numbered | `2.1.1` | LOCAL PASS: client/owner gate |
+| Review Numbered | `2.2.0` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
 | Browser QA runner | `1.4.3` | LOCAL final-dev4: 15/15 PASS; вся матрица 194 cells не запускалась |
-| Этот чек-лист | `2.3.5` | active |
+| Этот чек-лист | `2.3.6` | active |
+
+### Кубики фактов — этап 5, 2026-09-07
+
+Кандидат в `codex/final-dev4-s5-facts`, база `a09f923`. Этапы 1–3 есть в истории;
+этап 4 исключён заданием владельца. Onest уже принят отдельной работой.
+Контракт копирайта 1.4.0: 45 client + 18 owner; numbered-review 2.2.0;
+readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.4.3.
+
+- [x] Три кубика перестроены по строкам 7–10; заголовок секции и аккордеон сняты.
+- [x] Copy parser: source, standalone и final-dev4 без ошибок; тексты трёх owner ID точные.
+- [x] Unit-тесты: 17 OK с TEMP/TMP внутри репозитория; lead-hook PASS.
+- [x] Standalone, Hero и numbered-review собраны; 18 client + 18 owner номеров.
+- [ ] Полный copy/preview PASS: сборка шрифтов остановлена ошибкой curl 7,
+      v2–v4 устарели, v1 собран не полностью.
+- [ ] Action Bar builder и browser matrix: Playwright не стартует, WinError 5.
+- [ ] Замеры и PNG 1440/390 v2.0.0; live readback после деплоя владельцем.
+
+Дословные логи и границы проверки: [отчёт этапа 5](reviews/2026-09-07-final-dev4-stage-5-local.md).
 
 ### Заголовки Onest — этап 7a, 2026-09-07
 
@@ -202,7 +220,11 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
 `scrollY > 1` допускал показ Action Bar до первого прохода Hero. Эти результаты
 не закрывают ни автоматическую матрицу `177/177`, ни повторный ручной visual QA.
 
-### CURRENT ERRATUM: карточка `2.10`
+### Исторический erratum: карточка `2.10`
+
+В source этапа 5 прежняя геометрия снята: заголовок в одной колонке, без nowrap.
+Браузерное подтверждение закрытия ожидается: Playwright блокируется WinError 5.
+Ниже сохранена история опубликованного релиза.
 
 После live release `75558d9` точечная проверка выявила внутрикардовый
 desktop-клиппинг слова «прецедента». Page overflow оставался `0`, поэтому

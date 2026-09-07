@@ -1,6 +1,6 @@
 # Двенадцать Cloudflare Preview-версий для заказчика
 
-**Версия документа:** `2.7.2`; исполняемая Preview-карта — `2.5.0`
+**Версия документа:** `2.7.3`; исполняемая Preview-карта — `2.5.0`
 
 **Обновлено:** `2026-09-07`
 
@@ -46,19 +46,37 @@
   `+12px`; дизайн, шрифты, photo source/crop и межблочные отступы сохраняются;
 - production не меняется.
 
+### Кубики фактов — этап 5, 2026-09-07
+
+Кандидат в `codex/final-dev4-s5-facts`, база `a09f923`. Этапы 1–3 есть в истории;
+этап 4 исключён заданием владельца. Onest уже принят отдельной работой.
+Контракт копирайта 1.4.0: 45 client + 18 owner; numbered-review 2.2.0;
+readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.4.3.
+
+- [x] Три кубика перестроены по строкам 7–10; заголовок секции и аккордеон сняты.
+- [x] Copy parser: source, standalone и final-dev4 без ошибок; тексты трёх owner ID точные.
+- [x] Unit-тесты: 17 OK с TEMP/TMP внутри репозитория; lead-hook PASS.
+- [x] Standalone, Hero и numbered-review собраны; 18 client + 18 owner номеров.
+- [ ] Полный copy/preview PASS: сборка шрифтов остановлена ошибкой curl 7,
+      v2–v4 устарели, v1 собран не полностью.
+- [ ] Action Bar builder и browser matrix: Playwright не стартует, WinError 5.
+- [ ] Замеры и PNG 1440/390 v2.0.0; live readback после деплоя владельцем.
+
+Дословные логи и границы проверки: [отчёт этапа 5](../reviews/2026-09-07-final-dev4-stage-5-local.md).
+
 ## Версии контрактов
 
 | Функционал | Версия кандидата | Дата | Статус контракта |
 |---|---:|---:|---:|
 | Action Bar | `2.4.0` | 2026-08-17 | LIVE на `final-dev3`; остальные 10 на `2.3.4` |
 | Client Preview Mobile | `1.1.0` | 2026-08-11 | `LIVE PASS 11/11` |
-| Client Copy contract: 45 allowlist + 16 Owner overrides | `1.3.1` | 2026-09-07 | `LOCAL PASS` |
-| Client Copy verifier | `1.1.0` | 2026-09-07 | `LOCAL PASS 26 targets / 24 unique` |
+| Client Copy contract: 45 allowlist + 18 Owner overrides | `1.4.0` | 2026-09-07 | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
+| Client Copy verifier | `1.1.0` | 2026-09-07 | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
 | Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `LIVE PASS` |
 | `final-dev3` | `2.0.2` | 2026-08-13 | `LIVE PASS` |
 | final-dev4 | `1.0.0` | 2026-09-07 | `LOCAL PASS / LIVE PENDING` |
 | Lead hook / форма (name + phone only) | `2.0.0` | 2026-08-11 | `LIVE PASS` |
-| Review numbering | `2.1.1` | 2026-09-07 | `LOCAL PASS` |
+| Review numbering | `2.2.0` | 2026-09-07 | `LOCAL PASS` |
 | Font Variant V2 Mobile | `1.1.0` | 2026-08-13 | `LIVE PASS` |
 | Font Variant V3 Mobile | `1.0.0` | 2026-08-13 | `LIVE PASS` |
 | Browser QA runner | `1.4.2` | 2026-09-07 | `NOT RUN: 194 cells, CI` |
@@ -90,11 +108,11 @@ visual QA — были пройдены локально и на live до об�
 | Группа | Источник | Производные |
 |---|---|---|
 | База | `site/` | все двенадцать Preview |
-| Copy | frozen `docs/sources/client-copy-short-v1.0.0.txt` + `scripts/client_copy_contract.py` | 45 client allowlist, owner overrides Юлии/`fact-900-v1` и статический gate source + builds |
+| Copy | frozen `docs/sources/client-copy-short-v1.0.0.txt` + `scripts/client_copy_contract.py` | 45 client allowlist, 18 owner overrides, включая три новых кубика и статический gate source + builds |
 | Action Bar | `site-addons/action-bar/` | общий addon во всех Preview |
 | Hero | `scripts/build-hero-variants.py` | `final-dev1`, `final-dev3`, `final-dev4`, Hero A/B |
 | Шрифты | `scripts/build-font-variants.py` | четыре font Preview |
-| Review | `scripts/build-review-numbered.py` | `review-numbered`, 20 используемых client ID + 16 owner blocks |
+| Review | `scripts/build-review-numbered.py` | `review-numbered`, 18 используемых client ID + 18 owner blocks |
 
 ## Ограничения
 

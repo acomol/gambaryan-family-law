@@ -105,10 +105,25 @@ class ClientCopyVerifierTests(unittest.TestCase):
                 problems = self.verify_temp_html(self.source_html.replace(old, new, 1))
                 self.assertTrue(any(f"owner:{owner_id}" in item for item in problems), problems)
 
-    def test_owner_approved_fact_900_drift_fails(self) -> None:
-        html = self.source_html.replace("экспертных статей", "экспертные статьи", 1)
+    def test_owner_approved_fact_900_v2_drift_fails(self) -> None:
+        html = self.source_html.replace("В области уголовного", "в области уголовного", 1)
         problems = self.verify_temp_html(html)
-        self.assertTrue(any("owner:fact-900-v1" in item for item in problems))
+        self.assertTrue(any("owner:fact-900-v2" in item for item in problems))
+
+    def test_owner_approved_fact_cards_drift_fails(self) -> None:
+        mutations = (
+            ('fact-30-v1', 'профессиональный опыт в юриспруденции</div>', 'опыт в юриспруденции</div>'),
+            ('fact-precedent-v1', 'в международной судебной практике', 'в судебной практике'),
+        )
+        for owner_id, old, new in mutations:
+            with self.subTest(owner_id=owner_id):
+                self.assertIn(old, self.source_html)
+                problems = self.verify_temp_html(self.source_html.replace(old, new, 1))
+                self.assertTrue(any(f"owner:{owner_id}" in item for item in problems), problems)
+
+    def test_fact_cards_have_no_paragraphs(self) -> None:
+        facts = self.source_html.split('class="facts"', 1)[1].split('class="facts-bar"', 1)[0]
+        self.assertNotIn('<p', facts)
 
     def test_frozen_client_block_2_14_remains_unchanged(self) -> None:
         self.assertEqual(
