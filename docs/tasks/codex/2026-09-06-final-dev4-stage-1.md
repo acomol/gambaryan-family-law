@@ -166,7 +166,7 @@ CONTENT-OWNER-EDITS.md → версия `CONTENT-OWNER-EDITS v1.1.0`, дата <
 - `python -m http.server 8098 (фон) && python scripts/qa-browser-matrix.py http://127.0.0.1:8098/ --all-previews`
 - `git diff --check`
 - `после деплоя владельцем (Deploy Previews → ветка codex/final-dev4-s1-prep → only=final-dev4): python -B scripts/verify-live-previews.py --only final-dev4`
-- `после деплоя: curl -sA gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ | sha256sum (до и после — совпадает) и curl -sA gambarian-readback https://gambarian-landing.pages.dev/ | sha256sum → 656CBCD0…C13E22`
+- `после деплоя: curl -fsSA gambarian-readback https://final-dev3.gambarian-landing.pages.dev/ -o dev3.after && test -s dev3.after && sha256sum dev3.after` (до и после — совпадает) и то же для https://gambarian-landing.pages.dev/ → 656CBCD0…C13E22. Флаг -f и проверка -s обязательны: без них недоступный адрес даёт пустой поток, sha256sum считает хэш пустоты `e3b0c442…b855`, конвейер завершается нулём, и два таких «совпавших» хэша не доказывают ничего (проверено: curl к закрытому порту → код 7, файл не создан)`
 
 ## Версии и маркеры
 
@@ -240,7 +240,7 @@ CONTENT-OWNER-EDITS.md → версия `CONTENT-OWNER-EDITS v1.1.0`, дата <
 
 Ветка уже создана в origin: git fetch origin && git checkout codex/final-dev4-s1-prep && git pull --ff-only (если ветки нет локально — git checkout -b codex/final-dev4-s1-prep origin/codex/final-dev4-s1-prep). Установи зависимости (pip -r requirements-build.txt, playwright install chromium, npm ci).
 
-Сделай ровно шаги 2–15 карточки, в её порядке, с указанными файлами и проверками:
+Сделай ровно шаги 2–15 карточки, в её порядке, с указанными файлами и проверками. Важно про порядок проверок: verify-client-copy читает build/variants/*/index.html по всей карте Preview, поэтому его PASS достижим только ПОСЛЕ полной пересборки (шаг 15). До шага 15 в промежуточных шагах проверяй правки grep-ом по исходникам, а verify-client-copy запускай один раз в конце вместе с остальными гейтами:
 1) alias final-dev4 в scripts/client-preview-map.json (2.5.0 + дата);
 2) новый scripts/final_dev4_contract.py (FINAL-DEV4-DESIGN v1.0.0, наследник final-dev3, body class page--final-dev3 page--final-dev4);
 3) вариант dev4 в scripts/build-hero-variants.py (variant_final_dev3 + маркер dev4; adapter копируется из site-addons/final-dev3);
