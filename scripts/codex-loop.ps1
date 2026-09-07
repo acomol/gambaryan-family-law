@@ -54,7 +54,17 @@ $date = Get-Date -Format 'yyyy-MM-dd'
 
 $outDir = Join-Path $repo 'docs/reviews/codex-loop'
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+# Never overwrite an existing verdict: earlier runs are evidence and some are
+# already committed. On collision, take the next free suffix and say so loudly.
 $stem = "$date-r$Round-$Lens"
+$attempt = 1
+while (Test-Path (Join-Path $outDir "$stem.md")) {
+    $attempt++
+    $stem = "$date-r$Round-$Lens-$attempt"
+}
+if ($attempt -gt 1) {
+    Write-Host "verdict for this date/round/lens already exists; writing $stem instead"
+}
 $outFile = Join-Path $outDir "$stem.md"
 $logFile = Join-Path $outDir "$stem.log"
 $taskFile = Join-Path $outDir "$stem.task.md"
