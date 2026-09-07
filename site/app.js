@@ -602,7 +602,12 @@
           var message = deliveryMessage(error);
           showFormError(message[0], message[1], true);
           if (submitButton) submitButton.textContent = "Повторить отправку";
-          if (errorBox) {
+          // Фокус ведём на кнопку повтора, а не в блок сообщения: сообщение и так
+          // объявляется role="alert" независимо от фокуса, а следующее действие
+          // человека — повторить отправку. С клавиатуры это снимает лишний таб.
+          if (submitButton) {
+            submitButton.focus();
+          } else if (errorBox) {
             errorBox.focus();
           }
         }
