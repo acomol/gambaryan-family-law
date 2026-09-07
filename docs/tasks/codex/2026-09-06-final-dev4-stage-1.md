@@ -23,7 +23,7 @@
 
 - Любые правки текстов владельца (строки списка 7–67) — этап 2; адрес/лицензия в JSON-LD и aria-label, подвал — этап 3; нерабочее время — этап 4
 - site-addons/final-dev4/ и новый business-hours adapter — этап 4 (в этом этапе final-dev4 копирует site-addons/final-dev3/hero-business-hours.js как есть)
-- Bump Action Bar 2.4.0 и собственная поддержка класса page--final-dev4 в action-bar.js — этап 4; сейчас final-dev4 наследует latch через класс page--final-dev3
+- Action Bar в этом цикле НЕ бампится вовсе и собственной поддержки класса page--final-dev4 не получает: final-dev4 наследует латч через класс page--final-dev3, который остаётся в body намеренно. Ни этап 1, ни этап 4 этого не меняют — согласовано с карточкой этапа 4
 - Runner 1.5.0 с новыми гейтами (toggle-missing, свайп, одна строка табов, отступы) — этап 6; здесь только patch 1.4.2 (12-й target)
 - Скрипты замеров (measure-fonts.py, measure-section-gaps.py) — подготовительные шаги 4–7 spec; measure-fonts.py и measure-section-gaps.py создаёт этап 7. Гейт тире по 57 ширинам (подготовительный шаг 4 spec: «закоммитить скрипт прогона тире по ширинам 320–1440») и порт verify-live-surface.py в этом цикле НЕ создаются ни одной карточкой — это осознанное отклонение от spec: счётчик «&nbsp;—» покрыт per-alias проверкой verify-live-previews, прогон по ширинам остаётся разовым по docs/TYPOGRAPHY-DASHES.md §6. Отклонение обязано попасть в отчёт этапа 8 (раздел «Данные для приёмки spec»), иначе «Приёмка» будет искать несуществующий скрипт
 - Новые документы docs/tasks/<дата>-fact-cards-hierarchy.md и <дата>-mobile-services.md — пишет архитектор к этапам 5–6
