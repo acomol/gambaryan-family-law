@@ -56,6 +56,10 @@ from final_dev3_contract import (
 
 
 from final_dev4_contract import (
+    HERO_BUSINESS_SCRIPT as FINAL_DEV4_HERO_BUSINESS_SCRIPT,
+    HERO_BUSINESS_SCRIPT_TAG as FINAL_DEV4_HERO_BUSINESS_SCRIPT_TAG,
+    SCRIPT_REQUIRED_TOKENS as FINAL_DEV4_SCRIPT_REQUIRED_TOKENS,
+    SCRIPT_FORBIDDEN_TOKENS as FINAL_DEV4_SCRIPT_FORBIDDEN_TOKENS,
     BODY_TAG as FINAL_DEV4_BODY_TAG,
     CSS_COMMENT as FINAL_DEV4_CSS_COMMENT,
     DATE as FINAL_DEV4_DATE,
@@ -326,18 +330,20 @@ def verify_final_dev4(dest: Path) -> list[str]:
         problems.append("final-dev4 HTML/CSS marker или body расходится с контрактом")
     if html.count(FINAL_DEV3_HTML_COMMENT) != 1 or css.count(FINAL_DEV3_CSS_COMMENT) != 1:
         problems.append("final-dev4 не содержит унаследованные маркеры final-dev3")
-    if (html.count(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) != 1
-            or html.find(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) < html.find(FINAL_DEV3_ACTION_BAR_SCRIPT_TAG)):
+    if (html.count(FINAL_DEV4_HERO_BUSINESS_SCRIPT_TAG) != 1
+            or html.find(FINAL_DEV4_HERO_BUSINESS_SCRIPT_TAG) < html.find(FINAL_DEV3_ACTION_BAR_SCRIPT_TAG)):
         problems.append("final-dev4 Hero adapter должен идти один раз после Action Bar")
-    script_path = dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT
-    source = ROOT / "site-addons" / "final-dev3" / FINAL_DEV3_HERO_BUSINESS_SCRIPT
+    script_path = dest / FINAL_DEV4_HERO_BUSINESS_SCRIPT
+    source = ROOT / "site-addons" / "final-dev4" / FINAL_DEV4_HERO_BUSINESS_SCRIPT
     if not script_path.exists() or script_path.read_bytes() != source.read_bytes():
-        problems.append("final-dev4 Hero adapter расходится с единым источником final-dev3")
+        problems.append("final-dev4 Hero adapter расходится с единым источником final-dev4")
     else:
         script = script_path.read_text(encoding="utf-8")
-        if any(token not in script for token in FINAL_DEV3_SCRIPT_REQUIRED_TOKENS):
+        if FINAL_DEV4_MARKER_RE.findall(script) != expected:
+            problems.append("final-dev4 JS marker расходится с контрактом")
+        if any(token not in script for token in FINAL_DEV4_SCRIPT_REQUIRED_TOKENS):
             problems.append("final-dev4 Hero adapter неполон")
-        if any(token in script for token in FINAL_DEV3_SCRIPT_FORBIDDEN_TOKENS):
+        if any(token in script for token in FINAL_DEV4_SCRIPT_FORBIDDEN_TOKENS):
             problems.append("final-dev4 Hero adapter содержит второй источник состояния")
     return problems
 

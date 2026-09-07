@@ -4,6 +4,8 @@
 
 **Дата:** `2026-09-07`
 
+**Редакция документа:** `V02` (ссылка на copy contract 1.4.1, этап 4)
+
 **Статус:** `FINAL-DEV4 CANDIDATE / SOURCE PASS / ALL-PREVIEWS + BROWSER BLOCKED / LIVE PENDING`
 
 ## Решение владельца
@@ -54,7 +56,7 @@
 
 ## Автоматическая приёмка
 
-- `CLIENT-COPY-CONTRACT v1.4.0 | 2026-09-07`: 45 client + 18 owner.
+- `CLIENT-COPY-CONTRACT v1.4.1 | 2026-09-07`: 45 client + 18 owner.
 - `CLIENT-COPY-VERIFIER v1.1.0`: source, standalone, final-dev4 — без ошибок.
 - `REVIEW-NUMBERED v2.2.0 | 2026-09-07`: 18 client + 18 owner номеров.
 - `LIVE-PREVIEW-READBACK v1.3.0 | 2026-09-07`: три обязательных owner-маркера,

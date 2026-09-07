@@ -7,7 +7,7 @@ import re
 from final_dev3_contract import BODY_CLASS as DEV3_BODY_CLASS, HTML_COMMENT as DEV3_HTML_COMMENT
 
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 DATE = "2026-09-07"
 MARKER = f"FINAL-DEV4-DESIGN v{VERSION} | {DATE}"
 MARKER_RE = re.compile(r"FINAL-DEV4-DESIGN v(\d+\.\d+\.\d+) \| (\d{4}-\d{2}-\d{2})")
@@ -20,6 +20,33 @@ CSS_COMMENT = f"/* {MARKER} */"
 BODY_TAG = f'<body class="{DEV3_BODY_CLASS} {BODY_CLASS}">'
 BODY_MARKER_SNIPPET = f"{BODY_TAG}\n{DEV3_HTML_COMMENT}\n{HTML_COMMENT}"
 CSS_MARKER_SNIPPET = f"\n{CSS_COMMENT}\n"
+HERO_BUSINESS_SCRIPT = "hero-business-hours.js"
+HERO_BUSINESS_SCRIPT_TAG = f'<script src="{HERO_BUSINESS_SCRIPT}" defer></script>'
+ACTION_BAR_SCRIPT_TAG = '<script src="action-bar.js" defer></script>'
+SCRIPT_REQUIRED_TOKENS = (
+    MARKER,
+    ".mobile-bar[data-business-state]",
+    "[data-business-closed]",
+    "[data-business-variant]",
+    '[data-business-action="whatsapp"]',
+    "Написать в WhatsApp",
+    "data-action', 'whatsapp_click",
+    "new MutationObserver(syncFromActionBar)",
+    "attributeFilter: ['data-business-state']",
+)
+SCRIPT_FORBIDDEN_TOKENS = (
+    "setTimeout(", "setInterval(", "DateTimeFormat(", "localStorage",
+    "sessionStorage", "location.search", "URLSearchParams",
+)
+
+
+def apply_script_contract(html: str) -> str:
+    if html.count(ACTION_BAR_SCRIPT_TAG) != 1:
+        raise ValueError("final-dev4 ожидает ровно один action-bar.js")
+    if HERO_BUSINESS_SCRIPT_TAG in html:
+        raise ValueError("final-dev4 business-hours contract уже применён")
+    return html.replace(ACTION_BAR_SCRIPT_TAG,
+                        ACTION_BAR_SCRIPT_TAG + "\n" + HERO_BUSINESS_SCRIPT_TAG, 1)
 
 
 def apply_html_contract(html: str) -> str:

@@ -42,6 +42,13 @@ class ClientCopyVerifierTests(unittest.TestCase):
     def test_current_source_passes(self) -> None:
         self.assertEqual(verifier.verify_html(ROOT / "site" / "index.html"), [])
 
+    def test_business_hours_preserve_open_error_contact(self) -> None:
+        expected = ('<span data-business-variant="open">Если ошибка повторяется, позвоните: '
+                    '<a href="tel:+972545490623">054-549-0623</a> или напишите в '
+                    '<a href="https://wa.me/972545490623" target="_blank" rel="noopener">WhatsApp</a>.</span>')
+        self.assertIn(expected, self.source_html)
+        self.assertIn('<span data-business-variant="closed" hidden>', self.source_html)
+
     def test_unknown_visible_claim_fails(self) -> None:
         html = self.source_html.replace(
             "</main>",

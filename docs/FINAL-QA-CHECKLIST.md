@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.6`
+**Версия:** `2.3.7`
 
 **Обновлено:** `2026-09-07`
 
@@ -52,8 +52,8 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.4.0` | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
-| Client Copy verifier | `1.1.0` | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
+| Client Copy contract | `1.4.1` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
+| Client Copy verifier | `1.1.0` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
 | Action Bar | `2.4.0` | LIVE на final-dev3; остальные alias на прежнем релизе |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `FINAL-DEV1-HERO` | `2.0.0` | LIVE PASS |
@@ -577,6 +577,17 @@ Claude review; действующий gate выше требует новый `1
   что варианты 2–4 не опубликованы, хотя четыре Preview уже live.
 
 ## 7. Action Bar: historical baseline v2.3.0 / then-current Preview v2.3.1
+
+### final-dev4: этап 4, локальный кандидат 2026-09-07
+
+- FINAL-DEV4-DESIGN 1.1.0; CLIENT-COPY-CONTRACT 1.4.1.
+- В closed меню, Hero и ряд телефона у формы заменяются на WhatsApp;
+  ошибка формы показывает вариант closed. Ряд контактов остаётся видимым.
+- Единственный источник состояния — Action Bar; отдельный DOM-гейт
+  `scripts/verify-business-hours.py` проверяет 390/1440 и мок доставки 503.
+- [ ] Browser/live приёмка; актуальные результаты и ограничения —
+  [отчёт этапа 4](reviews/2026-09-07-final-dev4-stage-4-local.md).
+
 
 ### Состав и single source
 

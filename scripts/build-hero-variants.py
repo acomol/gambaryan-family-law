@@ -47,6 +47,10 @@ from final_dev3_contract import (
 )
 
 from final_dev4_contract import (
+    HERO_BUSINESS_SCRIPT as FINAL_DEV4_HERO_BUSINESS_SCRIPT,
+    HERO_BUSINESS_SCRIPT_TAG as FINAL_DEV4_HERO_BUSINESS_SCRIPT_TAG,
+    SCRIPT_REQUIRED_TOKENS as FINAL_DEV4_SCRIPT_REQUIRED_TOKENS,
+    SCRIPT_FORBIDDEN_TOKENS as FINAL_DEV4_SCRIPT_FORBIDDEN_TOKENS,
     BODY_TAG as FINAL_DEV4_BODY_TAG,
     CSS_COMMENT as FINAL_DEV4_CSS_COMMENT,
     DATE as FINAL_DEV4_DATE,
@@ -55,12 +59,14 @@ from final_dev4_contract import (
     VERSION as FINAL_DEV4_VERSION,
     apply_css_contract as apply_final_dev4_css_contract,
     apply_html_contract as apply_final_dev4_html_contract,
+    apply_script_contract as apply_final_dev4_script_contract,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 OUT = ROOT / "build" / "variants"
 FINAL_DEV3_ADDON = ROOT / "site-addons" / "final-dev3"
+FINAL_DEV4_ADDON = ROOT / "site-addons" / "final-dev4"
 
 MEDIA = re.compile(r'\n      <div class="hero-media">.*?</div>\n', re.S)
 ACTIONS = re.compile(r'\n      <div class="hero__actions">.*?</div>\n', re.S)
@@ -331,11 +337,17 @@ def build(key: str) -> Path:
     styles = (dest / "styles.css").read_text(encoding="utf-8")
     (dest / "styles.css").write_text(styles + "\n" + css, encoding="utf-8")
     install_action_bar(dest)
-    if key in {"dev3", "dev4"}:
+    if key == "dev3":
         source = FINAL_DEV3_ADDON / FINAL_DEV3_HERO_BUSINESS_SCRIPT
         shutil.copy(source, dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT)
         html_path = dest / "index.html"
         html = apply_final_dev3_script_contract(html_path.read_text(encoding="utf-8"))
+        html_path.write_text(html, encoding="utf-8")
+    if key == "dev4":
+        source = FINAL_DEV4_ADDON / FINAL_DEV4_HERO_BUSINESS_SCRIPT
+        shutil.copy(source, dest / FINAL_DEV4_HERO_BUSINESS_SCRIPT)
+        html_path = dest / "index.html"
+        html = apply_final_dev4_script_contract(html_path.read_text(encoding="utf-8"))
         html_path.write_text(html, encoding="utf-8")
     return dest
 
@@ -422,7 +434,7 @@ def verify(dest: Path, key: str) -> list[str]:
             )
         ):
             problems.append("mobile crop, compaction или desktop layout final-dev1 неполны")
-    if key in {"dev3", "dev4"}:
+    if key == "dev3":
         styles = (dest / "styles.css").read_text(encoding="utf-8")
         script_path = dest / FINAL_DEV3_HERO_BUSINESS_SCRIPT
         script = script_path.read_text(encoding="utf-8") if script_path.exists() else ""
@@ -440,7 +452,7 @@ def verify(dest: Path, key: str) -> list[str]:
             problems.append("final-dev3 HTML marker должен встречаться ровно один раз")
         if styles.count(FINAL_DEV3_CSS_COMMENT) != 1:
             problems.append("final-dev3 CSS marker должен встречаться ровно один раз")
-        expected_body = f'<body class="{FINAL_DEV3_BODY_CLASS}">' if key == "dev3" else FINAL_DEV4_BODY_TAG
+        expected_body = f'<body class="{FINAL_DEV3_BODY_CLASS}">'
         if html.count(expected_body) != 1:
             problems.append(f"{key} должен иметь отдельный scoped body class")
         if html.count(FINAL_DEV3_HERO_BUSINESS_SCRIPT_TAG) != 1:
@@ -477,6 +489,24 @@ def verify(dest: Path, key: str) -> list[str]:
         if any(token in script for token in forbidden_script_tokens):
             problems.append("final-dev3 Hero adapter не должен иметь второй источник состояния")
     if key == "dev4":
+        styles = (dest / "styles.css").read_text(encoding="utf-8")
+        script_path = dest / FINAL_DEV4_HERO_BUSINESS_SCRIPT
+        source_path = FINAL_DEV4_ADDON / FINAL_DEV4_HERO_BUSINESS_SCRIPT
+        script = script_path.read_text(encoding="utf-8") if script_path.exists() else ""
+        if not script_path.exists() or script_path.read_bytes() != source_path.read_bytes():
+            problems.append("final-dev4 adapter расходится с единым источником")
+        if any(token not in script for token in FINAL_DEV4_SCRIPT_REQUIRED_TOKENS):
+            problems.append("final-dev4 business-hours adapter неполон")
+        if any(token in script for token in FINAL_DEV4_SCRIPT_FORBIDDEN_TOKENS):
+            problems.append("final-dev4 adapter содержит второй источник состояния")
+        if (html.count(FINAL_DEV4_HERO_BUSINESS_SCRIPT_TAG) != 1
+                or html.count(FINAL_DEV3_ACTION_BAR_SCRIPT_TAG) != 1
+                or html.find(FINAL_DEV4_HERO_BUSINESS_SCRIPT_TAG) < html.find(FINAL_DEV3_ACTION_BAR_SCRIPT_TAG)):
+            problems.append("final-dev4 adapter должен идти один раз после Action Bar")
+        if FINAL_DEV4_MARKER_RE.findall(script) != [(FINAL_DEV4_VERSION, FINAL_DEV4_DATE)]:
+            problems.append("final-dev4 JS marker расходится с контрактом")
+        if html.count(FINAL_DEV3_HTML_COMMENT) != 1 or styles.count(FINAL_DEV3_CSS_COMMENT) != 1:
+            problems.append("final-dev4 не содержит унаследованные маркеры final-dev3")
         expected_marker = [(FINAL_DEV4_VERSION, FINAL_DEV4_DATE)]
         if (FINAL_DEV4_MARKER_RE.findall(html) != expected_marker
                 or FINAL_DEV4_MARKER_RE.findall(styles) != expected_marker

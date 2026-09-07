@@ -58,6 +58,7 @@ DYNAMIC_UI_PATHS = (
     "site/lead-contract.js",
     "site-addons/action-bar/action-bar.js",
     "site-addons/final-dev3/hero-business-hours.js",
+    "site-addons/final-dev4/hero-business-hours.js",
 )
 
 

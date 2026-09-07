@@ -1058,6 +1058,7 @@ picture { display: block; }
 }
 
 .contact-list { display: flex; flex-direction: column; gap: 20px; }
+.contact-list__row[hidden] { display: none; }
 .contact-list__row { display: flex; gap: 14px; align-items: center; }
 .contact-list__icon {
   flex: none;

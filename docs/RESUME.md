@@ -1,10 +1,18 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v2.6.3`
+**Версия:** `HANDOFF-RESUME v2.6.4`
 
-**Обновлено:** `2026-09-06`
+**Обновлено:** `2026-09-07`
 
 **Текущий статус:** `final-dev3 LIVE + VERIFIED / остальные 10 Preview на старом релизе / PRODUCTION UNCHANGED`
+
+### Нерабочее время — этап 4, 2026-09-07
+
+Локальный кандидат: `FINAL-DEV4-DESIGN 1.1.0`, copy contract `1.4.1`.
+Копирайт PASS (26 targets), unit 18/18, lead-hook PASS; Hero/numbered builders PASS.
+Шрифтовая сборка curl 7, общий Preview-гейт FAIL на неполном v1;
+Playwright-гейты blocked (WinError 5). Деплой не выполнялся.
+Дословные логи и статус Git: [отчёт этапа 4](reviews/2026-09-07-final-dev4-stage-4-local.md).
 
 ### Кубики фактов — этап 5, 2026-09-07
 
@@ -136,13 +144,13 @@ workflow`, ветка `main`, поле `only` — конкретный alias и�
 
 | Контракт | Версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.4.0` | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
-| Client Copy verifier | `1.1.0` | `SOURCE PASS / ALL-PREVIEWS BLOCKED` |
+| Client Copy contract | `1.4.1` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
+| Client Copy verifier | `1.1.0` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
 | Action Bar | `2.4.0` | LIVE на `final-dev3`; остальные 10 alias всё ещё отдают `2.3.4` |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `final-dev1` Hero | `2.0.0` | LIVE PASS |
 | `final-dev3` Design | `2.0.2` | LIVE PASS |
-| final-dev4 Design | `1.0.0` | LOCAL PASS; live не опубликован |
+| final-dev4 Design | `1.1.0` | STATIC PASS; browser blocked; live не опубликован |
 | Lead schema | `2.0.0` | LIVE readback: name/phone only; GET `405` |
 | Review Numbered | `2.2.0` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: effective-width fix Lora H1 |
