@@ -1384,7 +1384,9 @@ picture { display: block; }
 .site-footer__inner {
   max-width: var(--container);
   margin: 0 auto;
-  padding: 44px var(--pad-x) 28px;
+  /* Тот же ряд, что у контентных секций: владелец просил одинаковые отступы
+     во всех секциях, включая подвал (правки 2026-09-06, блок 94). */
+  padding: var(--section-pad) var(--pad-x);
 }
 .site-footer__top {
   display: flex;
