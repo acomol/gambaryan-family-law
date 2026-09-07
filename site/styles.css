@@ -38,7 +38,8 @@
   --container: 1200px;
   --container-hero: 1360px;
   --pad-x: 24px;
-  --section-pad: clamp(56px, 8vw, 96px);
+  --section-pad: clamp(48px, 8vw, 80px);
+  --precedent-reserve: 80px;
 }
 
 /* --- База: повторяет унаследованные значения прототипа ------------------- */
@@ -817,10 +818,12 @@ picture { display: block; }
 /* --- 5. Прецедент -------------------------------------------------------- */
 
 .precedent { background: var(--bg); }
-.precedent__container { padding-block: 0 clamp(48px, 7vw, 80px); }
+.precedent__container { padding-block: 0 var(--section-pad); }
 
 .precedent-card {
-  margin-top: clamp(120px, 13vw, 192px);
+  /* 48px выступа портрета + 32px воздуха; исходный замер
+     SPACING-MEASUREMENTS-2026-09-06: 235px пустоты при запасе 187px. */
+  margin-top: var(--precedent-reserve);
   background: linear-gradient(120deg, #1a1c20 0%, #241a0c 100%);
   border: 1px solid rgba(240, 174, 31, 0.18);
   border-radius: 20px;
