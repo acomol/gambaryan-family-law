@@ -1,8 +1,8 @@
 # Этап 5: Кубики фактов: заголовок раздела снят, три кубика заголовок → линия → подзаголовок, кремовое поле 32/20, без аккордеонов; контракт 1.4.0, readback 1.3.0, DARK-FACT-CARDS 2.0.0
 
-**Версия:** `FINAL-DEV4-STAGE-5 v1.0.0`
+**Версия:** `FINAL-DEV4-STAGE-5 v1.0.1`
 
-**Дата:** `2026-09-06`
+**Дата:** `2026-09-07`
 
 **Ветка:** `codex/final-dev4-s5-facts` → draft PR в `main`
 
@@ -173,7 +173,7 @@ dark-fact-cards.md → DARK-FACT-CARDS v2.0.0 | <ДАТА>, статус «FINAL
 - [ ] qa-browser-matrix 1.4.2 --all-previews → 194/194 без fact-card-horizontal-clipping и fact-card-mobile-accordion-*; verify-business-hours и verify-address-links PASS (регрессии нет)
 - [ ] verify-live-previews.py v1.3.0: FACT_CARD_MARKERS/FORBIDDEN per-alias для final-dev4, NBSP_EXPECTED['final-dev4'] = фактическое число «&nbsp;—» в сборке (ожидаемо 15), docstring и READBACK_VERSION совпадают; --only final-dev3 живьём PASS
 - [ ] Эталоны docs/design-references/facts-dark-1440-v2.0.0.png и facts-dark-390-v2.0.0.png закоммичены; DARK-FACT-CARDS v2.0.0 описывает новую схему и ссылается на них
-- [ ] Маркеры CLIENT-COPY-CONTRACT v1.4.0 | <ДАТА> и REVIEW-NUMBERED 2.2.0 синхронизированы во всех источниках из раздела «Версии»; CONTENT-OWNER-EDITS содержит три owner-текста дословно
+- [ ] Маркеры CLIENT-COPY-CONTRACT v1.4.2 | 2026-09-07 и REVIEW-NUMBERED 2.2.0 синхронизированы во всех источниках из раздела «Версии»; CONTENT-OWNER-EDITS содержит три owner-текста дословно
 - [ ] После деплоя only=final-dev4: verify-live-previews --only final-dev4 PASS; live runner PASS; curl: 0 «Профессиональный опыт в юриспруденции</h2>», 3 data-owner-copy-id="fact-, 0 fact-card__num; SHA-256 final-dev3 и production не изменились
 
 ## Отчёт в PR (обязательные поля)

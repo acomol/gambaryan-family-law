@@ -1,6 +1,6 @@
 # Утверждённый текст: client allowlist и owner-approved override
 
-**Версия:** `CONTENT-APPROVED v2.4.1`
+**Версия:** `CONTENT-APPROVED v2.4.2`
 
 **Дата:** `2026-09-07`
 
@@ -22,7 +22,7 @@
 | Обязательный coverage | нет |
 | Фактически размещено в новом кандидате | 18/45 client ID в source/final-dev4; общая проверка 26 targets заблокирована сборкой шрифтов |
 | Дополнительные точные owner-approved блоки | `fact-30-v1`, `fact-precedent-v1`, `fact-900-v2` + 15 блоков правок 2026-09-06 (карта ниже) |
-| Copy contract / verifier | `v1.4.1` / `v1.1.0`: 26 targets / 24 unique / 45 client + 18 owner |
+| Copy contract / verifier | `v1.4.2` / `v1.1.0`: 26 targets / 24 unique / 45 client + 18 owner |
 
 Таблицы ниже — allowlist: колонка «Разрешён» означает, что строку можно
 использовать дословно, а не что её обязательно размещать. Новый dark-facts

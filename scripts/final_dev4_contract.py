@@ -7,7 +7,7 @@ import re
 from final_dev3_contract import BODY_CLASS as DEV3_BODY_CLASS, HTML_COMMENT as DEV3_HTML_COMMENT
 
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 DATE = "2026-09-07"
 MARKER = f"FINAL-DEV4-DESIGN v{VERSION} | {DATE}"
 MARKER_RE = re.compile(r"FINAL-DEV4-DESIGN v(\d+\.\d+\.\d+) \| (\d{4}-\d{2}-\d{2})")

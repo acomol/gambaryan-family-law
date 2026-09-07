@@ -1,6 +1,6 @@
 """Точный контракт утверждённого клиентом текста лендинга.
 
-CLIENT-COPY-CONTRACT v1.4.1 | 2026-09-07
+CLIENT-COPY-CONTRACT v1.4.2 | 2026-09-07
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Final
 
 
-CONTRACT_VERSION: Final = "1.4.1"
+CONTRACT_VERSION: Final = "1.4.2"
 CONTRACT_DATE: Final = "2026-09-07"
 SOURCE_FILENAME: Final = "Копия LP - Короткая версия (1).txt"
 SOURCE_REPO_PATH: Final = "docs/sources/client-copy-short-v1.0.0.txt"
@@ -55,6 +55,7 @@ ALLOWED_OUTSIDE_COPY_TEXT: Final[frozenset[str]] = frozenset(
         "Записаться на консультацию",
         "Защита при угрозах",
         "Заявка получена",
+        "ЗАЯВКА",
         "или напишите в",
         "имущество",
         "Контакты",
@@ -65,6 +66,7 @@ ALLOWED_OUTSIDE_COPY_TEXT: Final[frozenset[str]] = frozenset(
         "международное дело",
         "Написать в WhatsApp",
         "Офис",
+        "Оставить заявку",
         "Оставьте свои контактные данные — специалист офиса свяжется с вами, уточнит обстоятельства и тему обращения, а также согласует удобные дату и время консультации",
         "Отправить ещё одну заявку",
         "Отцовство",

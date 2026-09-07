@@ -1,6 +1,6 @@
 # Тёмные карточки фактов: заголовок → линия → подзаголовок
 
-**Версия:** `DARK-FACT-CARDS v2.0.0`
+**Версия:** `DARK-FACT-CARDS v2.0.1`
 
 **Дата:** `2026-09-07`
 
@@ -56,7 +56,7 @@
 
 ## Автоматическая приёмка
 
-- `CLIENT-COPY-CONTRACT v1.4.1 | 2026-09-07`: 45 client + 18 owner.
+- `CLIENT-COPY-CONTRACT v1.4.2 | 2026-09-07`: 45 client + 18 owner.
 - `CLIENT-COPY-VERIFIER v1.1.0`: source, standalone, final-dev4 — без ошибок.
 - `REVIEW-NUMBERED v2.2.0 | 2026-09-07`: 18 client + 18 owner номеров.
 - `LIVE-PREVIEW-READBACK v1.3.0 | 2026-09-07`: три обязательных owner-маркера,

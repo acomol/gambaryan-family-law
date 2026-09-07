@@ -1,6 +1,6 @@
 # Двенадцать Cloudflare Preview-версий для заказчика
 
-**Версия документа:** `2.7.4`; исполняемая Preview-карта — `2.5.0`
+**Версия документа:** `2.7.5`; исполняемая Preview-карта — `2.5.0`
 
 **Обновлено:** `2026-09-07`
 
@@ -70,7 +70,7 @@ readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.
 |---|---:|---:|---:|
 | Action Bar | `2.4.0` | 2026-08-17 | LIVE на `final-dev3`; остальные 10 на `2.3.4` |
 | Client Preview Mobile | `1.1.0` | 2026-08-11 | `LIVE PASS 11/11` |
-| Client Copy contract: 45 allowlist + 18 Owner overrides | `1.4.1` | 2026-09-07 | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
+| Client Copy contract: 45 allowlist + 18 Owner overrides | `1.4.2` | 2026-09-07 | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
 | Client Copy verifier | `1.1.0` | 2026-09-07 | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
 | Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `LIVE PASS` |
 | `final-dev3` | `2.0.2` | 2026-08-13 | `LIVE PASS` |
@@ -83,7 +83,7 @@ readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.
 
 Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13`.
 
-Marker final-dev4: FINAL-DEV4-DESIGN v1.1.0 | 2026-09-07
+Marker final-dev4: FINAL-DEV4-DESIGN v1.1.1 | 2026-09-07
 
 ## Историческая live-приёмка
 

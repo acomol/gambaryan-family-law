@@ -1,4 +1,4 @@
-/* FINAL-DEV4-DESIGN v1.1.0 | 2026-09-07
+/* FINAL-DEV4-DESIGN v1.1.1 | 2026-09-07
    final-dev4 only: Hero + all phone links outside Hero follow Action Bar.
    This adapter has no clock, timer, storage or URL state. */
 
@@ -30,6 +30,17 @@
     };
   });
   var variants = document.querySelectorAll('[data-business-variant]');
+  var errorLinks = Array.from(document.querySelectorAll(
+    '.lead-form__error-contact [data-business-variant="closed"] a'
+  )).map(function (element) {
+    return { element: element, originalMarkup: element.innerHTML };
+  });
+  document.querySelectorAll('.contact-list__row[data-business-variant="closed"][href="#contact"]').forEach(function (element) {
+    element.addEventListener('click', function (event) {
+      event.preventDefault();
+      document.querySelector('#lead-name').focus();
+    });
+  });
   var closed = false;
 
   function setAttribute(element, name, value) {
@@ -51,10 +62,7 @@
       element.setAttribute('data-action', 'whatsapp_click');
       element.setAttribute('aria-label', CLOSED_LABEL);
 
-      var icon = whatsappAction.querySelector('svg').cloneNode(true);
-      icon.setAttribute('aria-hidden', 'true');
-      if (target.width) icon.setAttribute('width', target.width);
-      if (target.height) icon.setAttribute('height', target.height);
+      var icon = cloneWhatsappIcon(target.width, target.height);
       if (target.iconClass) {
         var wrapper = document.createElement('span');
         wrapper.className = target.iconClass;
@@ -68,7 +76,18 @@
       element.replaceChildren(icon, label);
       if (target.heroContact) target.heroContact.setAttribute('data-hero-business-state', 'closed');
     });
+    errorLinks.forEach(function (link) {
+      link.element.prepend(cloneWhatsappIcon('16', '16'));
+    });
     closed = true;
+  }
+
+  function cloneWhatsappIcon(width, height) {
+    var icon = whatsappAction.querySelector('svg').cloneNode(true);
+    icon.setAttribute('aria-hidden', 'true');
+    if (width) icon.setAttribute('width', width);
+    if (height) icon.setAttribute('height', height);
+    return icon;
   }
 
   function renderOpen() {
@@ -81,6 +100,9 @@
       });
       element.innerHTML = target.originalMarkup;
       if (target.heroContact) target.heroContact.removeAttribute('data-hero-business-state');
+    });
+    errorLinks.forEach(function (link) {
+      link.element.innerHTML = link.originalMarkup;
     });
     closed = false;
   }

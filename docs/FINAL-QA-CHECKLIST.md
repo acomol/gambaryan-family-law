@@ -1,6 +1,6 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.7`
+**Версия:** `2.3.8`
 
 **Обновлено:** `2026-09-07`
 
@@ -52,7 +52,7 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.4.1` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
+| Client Copy contract | `1.4.2` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
 | Client Copy verifier | `1.1.0` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
 | Action Bar | `2.4.0` | LIVE на final-dev3; остальные alias на прежнем релизе |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
@@ -580,7 +580,10 @@ Claude review; действующий gate выше требует новый `1
 
 ### final-dev4: этап 4, локальный кандидат 2026-09-07
 
-- FINAL-DEV4-DESIGN 1.1.0; CLIENT-COPY-CONTRACT 1.4.1.
+- FINAL-DEV4-DESIGN 1.1.1; CLIENT-COPY-CONTRACT 1.4.2.
+- Дополнение 2026-09-07: закрытый нижний контакт ведёт на форму,
+  SVG подсказки ошибки восстановлен; BUSINESS-HOURS-GATE 1.0.1 проверяет оба ряда.
+  [Локальные результаты и ограничения](reviews/2026-09-07-final-dev4-contact-dedup-local.md).
 - В closed меню, Hero и ряд телефона у формы заменяются на WhatsApp;
   ошибка формы показывает вариант closed. Ряд контактов остаётся видимым.
 - Единственный источник состояния — Action Bar; отдельный DOM-гейт

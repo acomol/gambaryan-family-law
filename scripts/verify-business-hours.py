@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BUSINESS-HOURS-GATE v1.0.0 | 2026-09-07
+"""BUSINESS-HOURS-GATE v1.0.1 | 2026-09-07
 
 Проверяет closed/open на 390 и 1440px; /api/lead всегда замокан.
 Запуск: python scripts/verify-business-hours.py <base_url>
@@ -38,10 +38,23 @@ CLOSED_CHECK = """() => {
           `${i}-icon`);
     check(!e.hidden, `${i}-not-hidden`);
   });
-  const closed = document.querySelector('[data-business-variant="closed"]');
+  const rows = [...document.querySelectorAll('.contact-list__row')]
+    .filter(e => !e.closest('[hidden]') && e.getClientRects().length > 0);
+  const whatsappRows = rows.filter(e => e.getAttribute('href') === whatsapp.getAttribute('href'));
+  const formRows = rows.filter(e => e.getAttribute('href') === '#contact');
+  check(whatsappRows.length === 1, 'contact-whatsapp-count');
+  check(formRows.length === 1, 'contact-form-count');
+  [...whatsappRows, ...formRows].forEach(e =>
+    check(e.querySelectorAll('svg').length === 1, 'contact-icon'));
+  check(formRows[0]?.querySelector('.contact-list__label')?.textContent === 'ЗАЯВКА', 'contact-form-label');
+  check(formRows[0]?.querySelector('.contact-list__value')?.textContent === 'Оставить заявку', 'contact-form-value');
+  const closed = document.querySelector('.lead-form__error-contact [data-business-variant="closed"]');
   check(!closed.hidden && closed.getClientRects().length > 0, 'closed-error-visible');
   check(!!closed.querySelector('a[href^="https://wa.me/"]'), 'closed-error-whatsapp');
-  check(document.querySelector('[data-business-variant="open"]').hidden, 'open-error-hidden');
+  check(closed.querySelectorAll('a svg').length === 1, 'closed-error-icon-count');
+  check(closed.querySelector('a svg')?.innerHTML === whatsapp.querySelector('svg').innerHTML,
+        'closed-error-icon');
+  check(document.querySelector('.lead-form__error-contact [data-business-variant="open"]').hidden, 'open-error-hidden');
   check(document.querySelector('.hero__phone').dataset.heroBusinessState === 'closed', 'hero-state');
   check(bar.querySelector('[data-business-action="phone"]').hidden, 'bar-phone-hidden');
   check(document.querySelectorAll('a a').length === 0, 'nested-links');
@@ -110,10 +123,17 @@ def main() -> int:
                             failures.append('hero-phone-restore')
                         if not page.locator('.contact-list__row[data-business-closed]').is_visible():
                             failures.append('contact-phone-visible')
-                        if not page.locator('[data-business-variant="open"]').is_visible():
+                        if not page.locator('.lead-form__error-contact [data-business-variant="open"]').is_visible():
                             failures.append('open-error-visible')
                         set_state(page, "closed")
                         failures.extend(page.evaluate(CLOSED_CHECK))
+                        form_link = page.locator('.contact-list__row[href="#contact"]:visible')
+                        if form_link.count() == 1:
+                            form_link.click()
+                            if page.evaluate('document.activeElement.id') != 'lead-name':
+                                failures.append('contact-form-focus')
+                        else:
+                            failures.append('contact-form-focus-link-missing')
                     except (Error, OSError, AssertionError) as error:
                         failures.append(str(error))
                     finally:
@@ -129,7 +149,7 @@ def main() -> int:
         print(json.dumps({"type": "error", "error": str(error)}, ensure_ascii=False))
     passed = sum(result["status"] == "PASS" for result in results)
     success = passed == len(VIEWPORTS)
-    print(json.dumps({"type": "summary", "gate": "BUSINESS-HOURS-GATE v1.0.0",
+    print(json.dumps({"type": "summary", "gate": "BUSINESS-HOURS-GATE v1.0.1",
                       "status": "PASS" if success else "FAIL", "passed": passed,
                       "total": len(VIEWPORTS)}, ensure_ascii=False))
     return 0 if success else 1
