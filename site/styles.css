@@ -918,6 +918,19 @@ picture { display: block; }
 .precedent-card__title:first-child { margin-top: 0; }
 /* В карточке теперь два абзаца: без этого правила они слиплись бы, у p margin: 0. */
 .precedent-card__text p + p { margin-top: 12px; }
+
+/* Заключительная строка — приглашение, а не продолжение абзаца: она снимает
+   барьер «обращаться ещё рано». Отделена золотой чертой слева и набрана
+   светлее основного текста. Акцент тот же, что у кромки карточки и линии в
+   логотипе, нового визуального языка не вводим. Селектор с двумя классами —
+   чтобы перебить `p + p` выше, у того специфичность больше. */
+.precedent-card__text p.precedent-card__note {
+  margin-top: 20px;
+  padding-left: 14px;
+  border-left: 2px solid var(--gold);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 500;
+}
 .precedent-card__text p {
   margin: 0;
   font-size: 16px;
@@ -935,6 +948,15 @@ picture { display: block; }
   gap: 12px;
   align-items: stretch;
   min-width: 240px;
+}
+
+/* На узких экранах подпись «Записаться на консультацию» вместе с набивкой
+   28 px с двух сторон даёт минимальную ширину колонки около 266 px при 254
+   доступных, и кнопки вылезали за карточку. Замер 2026-09-08 на ширине 360:
+   вылет 20.6 px. Дефект существовал и до перестройки блока. */
+@media (max-width: 420px) {
+  .precedent-card__actions { min-width: 0; }
+  .precedent-card__actions .btn { padding: 0 14px; }
 }
 
 .btn--gold-lg {
