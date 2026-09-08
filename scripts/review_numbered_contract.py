@@ -1,7 +1,7 @@
 """Shared contract for the service-only numbered client review page."""
 
-REVIEW_NUMBERED_VERSION = "2.2.1"
-REVIEW_NUMBERED_UPDATED = "2026-09-07"
+REVIEW_NUMBERED_VERSION = "2.3.0"
+REVIEW_NUMBERED_UPDATED = "2026-09-08"
 
 OWNER_REVIEW_IDS = {
     "fact-30-v1": "2.6",
@@ -17,8 +17,11 @@ OWNER_REVIEW_IDS = {
     "svc-mediation-lead-v1": "3.33",
     "svc-prenup-lead-v1": "3.38",
     "svc-protection-lead-v1": "3.43",
-    "precedent-title-v1": "4.5",
-    "precedent-body-v1": "4.6",
+    # Блок перестроен устным указанием владельца 2026-09-08; номера 4.5/4.6
+    # сохранены за местом в макете, 4.7 — новый второй абзац.
+    "precedent-title-v2": "4.5",
+    "precedent-body-v2": "4.6",
+    "precedent-note-v1": "4.7",
     "alexander-card-v1": "5.9–5.13",
     "yulia-card-v2": "5.18",
     "attorneys-note-v1": "5.19",

@@ -41,7 +41,7 @@
   номерных блоков.
 
 Текущий `CLIENT-COPY-VERIFIER v1.1.0` использует
-`CLIENT-COPY-CONTRACT v1.4.3 | 2026-09-07` и проверяет
+`CLIENT-COPY-CONTRACT v1.5.0 | 2026-09-08` и проверяет
 frozen source `docs/sources/client-copy-short-v1.0.0.txt`, принадлежность каждого реально
 размещённого смыслового текста к client allowlist или 18 точным owner
 overrides, отсутствие полей `Email`/`topic` и известных запрещённых строк.

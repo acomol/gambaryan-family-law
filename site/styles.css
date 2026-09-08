@@ -902,15 +902,9 @@ picture { display: block; }
   min-width: 240px;
   max-width: 432px;
 }
-.precedent-card__eyebrow {
-  font-family: var(--font-narrow);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
 .precedent-card__title {
+  /* Надпись-категория над заголовком убрана решением владельца 2026-09-08,
+     поэтому верхний отступ у первого элемента карточки обнуляем. */
   margin: 12px 0;
   font-family: var(--font-serif);
   font-style: normal;
@@ -921,6 +915,9 @@ picture { display: block; }
   text-transform: none;
   letter-spacing: 0;
 }
+.precedent-card__title:first-child { margin-top: 0; }
+/* В карточке теперь два абзаца: без этого правила они слиплись бы, у p margin: 0. */
+.precedent-card__text p + p { margin-top: 12px; }
 .precedent-card__text p {
   margin: 0;
   font-size: 16px;
