@@ -101,82 +101,112 @@
       }
     ]
   },
-  "alexander-card-v3": {
+  "alexander-card-v4": {
     "alt": "Адвокат Александр Гамбарян",
     "natural": [
-      2794,
-      3726
+      2792,
+      3490
     ],
     "fallbackExt": "jpg",
     "variants": {
-      "480w": {
+      "320w": {
         "jpg": {
-          "file": "alexander-card-v3-480w.fe887cd7.jpg",
-          "bytes": 22814
+          "file": "alexander-card-v4-320w.63f9be09.jpg",
+          "bytes": 12517
         },
         "webp": {
-          "file": "alexander-card-v3-480w.cdaf1197.webp",
-          "bytes": 11554
+          "file": "alexander-card-v4-320w.f6206c77.webp",
+          "bytes": 6818
+        }
+      },
+      "560w": {
+        "jpg": {
+          "file": "alexander-card-v4-560w.2e48dfb8.jpg",
+          "bytes": 28798
+        },
+        "webp": {
+          "file": "alexander-card-v4-560w.8e0711cd.webp",
+          "bytes": 14566
         }
       },
       "760w": {
         "jpg": {
-          "file": "alexander-card-v3-760w.b5e5dc3d.jpg",
-          "bytes": 47082
+          "file": "alexander-card-v4-760w.26c259cb.jpg",
+          "bytes": 46799
         },
         "webp": {
-          "file": "alexander-card-v3-760w.7b5871ff.webp",
-          "bytes": 21790
+          "file": "alexander-card-v4-760w.de07771c.webp",
+          "bytes": 21850
         }
       },
-      "1100w": {
+      "1120w": {
         "jpg": {
-          "file": "alexander-card-v3-1100w.bdc76afc.jpg",
-          "bytes": 87504
+          "file": "alexander-card-v4-1120w.42414a6a.jpg",
+          "bytes": 89429
         },
         "webp": {
-          "file": "alexander-card-v3-1100w.459d8f7b.webp",
-          "bytes": 37792
+          "file": "alexander-card-v4-1120w.d2135cab.webp",
+          "bytes": 38930
+        }
+      },
+      "1520w": {
+        "jpg": {
+          "file": "alexander-card-v4-1520w.ce16bcf2.jpg",
+          "bytes": 149999
+        },
+        "webp": {
+          "file": "alexander-card-v4-1520w.5c9013bd.webp",
+          "bytes": 62754
         }
       }
     }
   },
-  "yulia-card-v3": {
+  "yulia-card-v4": {
     "alt": "Адвокат Юлия Саакян",
     "natural": [
-      920,
-      1227
+      812,
+      1015
     ],
     "fallbackExt": "jpg",
     "variants": {
-      "480w": {
+      "320w": {
         "jpg": {
-          "file": "yulia-card-v3-480w.f793b84a.jpg",
-          "bytes": 26759
+          "file": "yulia-card-v4-320w.fc74dd88.jpg",
+          "bytes": 14910
         },
         "webp": {
-          "file": "yulia-card-v3-480w.dfae6691.webp",
-          "bytes": 14628
+          "file": "yulia-card-v4-320w.e1ea92a3.webp",
+          "bytes": 8842
+        }
+      },
+      "560w": {
+        "jpg": {
+          "file": "yulia-card-v4-560w.fc807895.jpg",
+          "bytes": 36193
+        },
+        "webp": {
+          "file": "yulia-card-v4-560w.fabe7634.webp",
+          "bytes": 19648
         }
       },
       "760w": {
         "jpg": {
-          "file": "yulia-card-v3-760w.ac06d5c7.jpg",
-          "bytes": 57321
+          "file": "yulia-card-v4-760w.e05bc5d6.jpg",
+          "bytes": 60257
         },
         "webp": {
-          "file": "yulia-card-v3-760w.15691aa4.webp",
-          "bytes": 27748
+          "file": "yulia-card-v4-760w.56414b57.webp",
+          "bytes": 29368
         }
       },
-      "1100w": {
+      "812w": {
         "jpg": {
-          "file": "yulia-card-v3-1100w.b9dbfc1c.jpg",
-          "bytes": 108170
+          "file": "yulia-card-v4-812w.8635259c.jpg",
+          "bytes": 66957
         },
         "webp": {
-          "file": "yulia-card-v3-1100w.2d34e061.webp",
-          "bytes": 45520
+          "file": "yulia-card-v4-812w.cc052c0e.webp",
+          "bytes": 32254
         }
       }
     }
