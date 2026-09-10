@@ -443,6 +443,30 @@ picture { display: block; }
 
 /* --- 2. Hero ------------------------------------------------------------- */
 
+/* final-dev4, 2026-09-10: внешние отступы по общей шкале; внутренние
+   интервалы компенсируют их, сохраняя кадр и видимость мобильной CTA. */
+@media (min-width: 961px) {
+  .page--final-dev4 .hero--final-dev1 .hero__body {
+    display: flex;
+    flex-direction: column;
+    padding-block: 80px;
+  }
+  .page--final-dev4 .hero--final-dev1 .hero-inner {
+    flex: 1;
+    justify-content: space-between;
+  }
+  .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block) {
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 860px) {
+  .page--final-dev4 .hero--final-dev1 .hero__body { padding-block: 48px; }
+  .page--final-dev4 .hero--final-dev1 .hero__title {
+    padding-block: 0;
+  }
+}
+
 .hero {
   position: relative;
   overflow: hidden;
