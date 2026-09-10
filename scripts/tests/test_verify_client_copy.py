@@ -95,7 +95,7 @@ class ClientCopyVerifierTests(unittest.TestCase):
             ('svc-divorce-title-v1', 'Бракоразводные процессы</h3>', 'Развод</h3>'),
             ('svc-divorce-lead-v1', 'иных инстанциях', 'других инстанциях'),
             ('svc-children-lead-v1', 'незаконно удерживаемых', 'удерживаемых'),
-            ('svc-paternity-title-v1', 'отцовства, тест ДНК', 'отцовства и тест ДНК'),
+            ('svc-paternity-title-v1', 'отцовства, <br>тест ДНК', 'отцовства и <br>тест ДНК'),
             ('svc-paternity-lead-v1', 'генетическая экспертиза', 'экспертиза'),
             ('svc-property-lead-v1', 'кредиты и иные обязательства', 'кредиты'),
             ('svc-mediation-lead-v1', 'оформляет договорённости', 'оформляет договоренности'),
