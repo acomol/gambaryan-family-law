@@ -445,11 +445,14 @@ picture { display: block; }
 
 /* final-dev4, 2026-09-10: внешние отступы по общей шкале; внутренние
    интервалы компенсируют их, сохраняя кадр и видимость мобильной CTA. */
-@media (min-width: 961px) {
+.page--final-dev4 .hero--final-dev1 .hero__body {
+  padding-block: var(--section-pad);
+}
+
+@media (min-width: 861px) {
   .page--final-dev4 .hero--final-dev1 .hero__body {
     display: flex;
     flex-direction: column;
-    padding-block: 80px;
   }
   .page--final-dev4 .hero--final-dev1 .hero-inner {
     flex: 1;
@@ -460,11 +463,21 @@ picture { display: block; }
   }
 }
 
+@media (min-width: 861px) and (max-width: 960px) {
+  /* Сохраняем исходную высоту фонового кадра на коротких окнах:
+     108px — сумма пяти прежних интервалов, 56px — нижний padding.
+     Изменение внешних отступов компенсируют эти пять интервалов. */
+  .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block) {
+    margin-bottom: calc((108px + max(72px, var(--section-pad)) + 56px - 2 * var(--section-pad)) / 5);
+  }
+}
+
 @media (max-width: 860px) {
-  .page--final-dev4 .hero--final-dev1 .hero__body { padding-block: 48px; }
   .page--final-dev4 .hero--final-dev1 .hero__title {
     padding-block: 0;
   }
+  .page--final-dev4 .hero--final-dev1 .hero__actions { margin-bottom: 8px; }
+  .page--final-dev4 .hero--final-dev1 .hero__call { padding-block: 7px; }
 }
 
 .hero {
