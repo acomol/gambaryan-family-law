@@ -2,9 +2,9 @@
 
 **Версия:** ACCEPTANCE v1.1.0
 
-**Дата:** 2026-09-10
+**Дата:** 2026-09-12
 
-**SHA проверяемого дерева:** `HEAD` ветки `codex/final-dev4-s4-hours` после rebase
+**SHA проверяемого дерева:** 6c43485abe522454a6d7f9484a9ec619b69bb428
 (точный SHA — `git rev-parse HEAD`; пояснение в машинном чек-листе).
 
 **Адрес Preview:** https://final-dev4.gambarian-landing.pages.dev/
