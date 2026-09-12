@@ -11,7 +11,7 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -45,6 +45,27 @@ jobs:
           python -B scripts/build-hero-variants.py
           python -B scripts/build-action-bar.py
           python -B scripts/build-review-numbered.py
+
+      - name: Install visual test Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Visual test types
+        run: npx tsc --noEmit -p tests/visual
+
+      - name: Playwright visual matrix and invariants
+        run: npm run test:visual
+
+      - name: Upload visual review and Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-dev4-visual-review-linux
+          path: |
+            build/visual-review/
+            build/visual-report/
+            build/visual-results/
+            build/visual-results.json
+          if-no-files-found: warn
 
       - name: Verify approved client copy and preview contracts
         run: |

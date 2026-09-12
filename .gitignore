@@ -7,6 +7,10 @@ node_modules/
 .next/
 out/
 build/
+# Visual captures, contact sheets and Playwright reports (baselines stay tracked).
+build/visual-review/
+playwright-report/
+test-results/
 dist/
 
 # Environment
