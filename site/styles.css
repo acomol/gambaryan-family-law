@@ -359,17 +359,41 @@ picture { display: block; }
     justify-content: space-between;
   }
   .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block) {
-    margin-bottom: 8px;
+    margin-bottom: 0;
+  }
+  /* Не шире самого узкого desktop-лида (30ch при 16px Onest).
+     Две дополнительные строки компенсируем интервалами, сохраняя кадр. */
+  .page--final-dev4 .hero--final-dev1 :is(.hero__note, .hero__contact-block) {
+    max-width: 319px;
   }
 }
 
 @media (min-width: 861px) and (max-width: 960px) {
   /* Сохраняем исходную высоту фонового кадра на коротких окнах:
      108px — сумма пяти прежних интервалов, 56px — нижний padding.
-     Изменение внешних отступов компенсируют эти пять интервалов. */
+     Эти пять интервалов компенсируют внешние отступы и рост абзаца
+     на две строки по 13px * 1.6 = 20.8px. */
   .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block) {
-    margin-bottom: calc((108px + max(72px, var(--section-pad)) + 56px - 2 * var(--section-pad)) / 5);
+    margin-bottom: calc((108px + max(72px, var(--section-pad)) + 56px - 2 * var(--section-pad) - 41.6px) / 5);
   }
+}
+
+@media (min-width: 961px) {
+  .page--final-dev4 .hero--final-dev1 .hero__contact-block {
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+}
+
+@media (min-width: 961px) and (max-width: 1200px) {
+  .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block) {
+    margin-bottom: calc(8px - 39px / 5);
+  }
+}
+
+@media (min-width: 1201px) {
+  /* Из 42px роста абзаца 40px покрыты пятью интервалами, ещё 2px — здесь. */
+  .page--final-dev4 .hero--final-dev1 .hero__contact-block { padding-top: 4px; }
 }
 
 @media (max-width: 860px) {
