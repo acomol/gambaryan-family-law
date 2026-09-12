@@ -39,6 +39,7 @@
   --container-hero: 1360px;
   --pad-x: 24px;
   --section-pad: clamp(48px, 8vw, 80px);
+  --hero-gap: 2px;
   --precedent-reserve: 80px;
   /* Высота закреплённой шапки. Держится 77 px на всех шириных: 14+14 отступа
      .site-header__bar плюс логотип. Меняешь набивку шапки - поправь и здесь. */
@@ -343,8 +344,8 @@ picture { display: block; }
 
 /* --- 2. Hero ------------------------------------------------------------- */
 
-/* final-dev4, 2026-09-10: внешние отступы по общей шкале; внутренние
-   интервалы компенсируют их, сохраняя кадр и видимость мобильной CTA. */
+/* final-dev4: внешние отступы по общей шкале, внутренний ритм — одним токеном.
+   Свободную высоту распределяет flex; содержимое может увеличить Hero. */
 .page--final-dev4 .hero--final-dev1 .hero__body {
   padding-block: var(--section-pad);
 }
@@ -356,44 +357,23 @@ picture { display: block; }
   }
   .page--final-dev4 .hero--final-dev1 .hero-inner {
     flex: 1;
+    row-gap: var(--hero-gap);
     justify-content: space-between;
   }
-  .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block) {
-    margin-bottom: 0;
+  .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block, .hero__note) {
+    margin-block: 0;
   }
-  /* Не шире самого узкого desktop-лида (30ch при 16px Onest).
-     Две дополнительные строки компенсируем интервалами, сохраняя кадр. */
+  /* Не шире самого узкого desktop-лида (30ch при 16px Onest):
+     абзац и контактный блок остаются слева от фигуры на фото. */
   .page--final-dev4 .hero--final-dev1 :is(.hero__note, .hero__contact-block) {
     max-width: 319px;
   }
 }
 
-@media (min-width: 861px) and (max-width: 960px) {
-  /* Сохраняем исходную высоту фонового кадра на коротких окнах:
-     108px — сумма пяти прежних интервалов, 56px — нижний padding.
-     Эти пять интервалов компенсируют внешние отступы и рост абзаца
-     на две строки по 13px * 1.6 = 20.8px. */
-  .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block) {
-    margin-bottom: calc((108px + max(72px, var(--section-pad)) + 56px - 2 * var(--section-pad) - 41.6px) / 5);
-  }
-}
-
 @media (min-width: 961px) {
   .page--final-dev4 .hero--final-dev1 .hero__contact-block {
-    margin-top: 8px;
-    padding-top: 6px;
+    padding-top: calc(var(--hero-gap) / 2);
   }
-}
-
-@media (min-width: 961px) and (max-width: 1200px) {
-  .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block) {
-    margin-bottom: calc(8px - 39px / 5);
-  }
-}
-
-@media (min-width: 1201px) {
-  /* Из 42px роста абзаца 40px покрыты пятью интервалами, ещё 2px — здесь. */
-  .page--final-dev4 .hero--final-dev1 .hero__contact-block { padding-top: 4px; }
 }
 
 @media (max-width: 860px) {
