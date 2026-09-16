@@ -1223,6 +1223,11 @@ picture { display: block; }
 @media (max-width: 420px) {
   .precedent-card__actions { min-width: 0; }
   .precedent-card__actions .btn { padding: 0 14px; }
+  /* 2026-09-16: на 360 колонка текста шириной 236 px переносила каждую строку на
+     три, карточка росла, и кнопка WhatsApp вставала под демо-переключатель
+     (инвариант 10, 360x640). Поля 20 px и подзаголовок 16 px возвращают высоту. */
+  .precedent-card { --precedent-pad: 20px; }
+  .precedent-card__text p:not(.precedent-card__note) { font-size: 16px; }
 }
 
 .btn--gold-lg {
