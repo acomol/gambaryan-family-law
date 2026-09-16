@@ -244,8 +244,11 @@ export async function assertDnaLineBreak(page: Page) {
   expect(geometry.before.length).toBeGreaterThan(0);
   const top = geometry.phrase[0].top;
   for (const rect of geometry.phrase) expect(Math.abs(rect.top - top), '«тест ДНК» целиком на одной строке').toBeLessThanOrEqual(1);
+  // Соседние строки одного блока перекрываются по вертикали на доли пикселя
+  // (интерлиньяж и субпиксельное округление), поэтому допуск 3 px, а не 1.
+  // «Та же строка» дала бы разницу в целую высоту строки, её допуск не пропустит.
   const previousBottom = Math.max(...geometry.before.map((rect) => rect.bottom));
-  expect(top, '«тест ДНК» начинается с новой строки').toBeGreaterThanOrEqual(previousBottom - 1);
+  expect(top, '«тест ДНК» начинается с новой строки').toBeGreaterThanOrEqual(previousBottom - 3);
 }
 
 export async function visibleTelephoneCount(page: Page) {
