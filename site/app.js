@@ -401,6 +401,20 @@
   /* --- Форма обращения --------------------------------------------------- */
 
   var LEAD_CONTRACT = window.GAMBARIAN_LEAD_CONTRACT;
+  var EXPECTED_LEAD_CONTRACT_VERSION = "2.2.0";
+  if (!LEAD_CONTRACT || LEAD_CONTRACT.version !== EXPECTED_LEAD_CONTRACT_VERSION) {
+    var unavailableForm = document.querySelector(".lead-form");
+    if (unavailableForm) {
+      unavailableForm.noValidate = true;
+      unavailableForm.addEventListener("submit", function (event) { event.preventDefault(); });
+      unavailableForm.querySelector(".lead-form__error-title").textContent = "Не удалось проверить данные";
+      unavailableForm.querySelector(".lead-form__error-text").textContent =
+        "Обновите страницу и заполните форму ещё раз. Если ошибка повторится, свяжитесь с нами напрямую.";
+      unavailableForm.querySelector(".lead-form__error-contact").hidden = false;
+      unavailableForm.querySelector(".lead-form__error").hidden = false;
+    }
+    return;
+  }
   var LEAD_ENDPOINT = LEAD_CONTRACT.endpoint;
   var LEAD_FORM_ID = LEAD_CONTRACT.formId;
   var LEAD_ATTRIBUTION_STORAGE_KEY = LEAD_CONTRACT.attributionStorageKey;
@@ -537,6 +551,9 @@
   var attribution = readFirstTouchAttribution();
   var pendingSubmissionId = "";
   var pendingFingerprint = "";
+  var acceptedSubmissionId = "";
+  var acceptedContacts = null;
+  var editingContacts = false;
   var submitting = false;
   var errorMode = "";
   var invalidBatchScheduled = false;
@@ -593,11 +610,32 @@
     form.querySelector('[data-confirm="name"]').textContent = data.name;
     form.querySelector('[data-confirm="phone"]').textContent = displayPhone(data.phone);
     form.querySelector('[data-confirm="email"]').textContent = data.email;
+    form.querySelector('[data-confirm="channel"]').textContent =
+      form.querySelector('[name="channel"]:checked').closest("label").textContent.trim();
     hideFormError();
     formFields.hidden = true;
     submitButton.hidden = true;
     confirmBox.hidden = false;
     confirmBox.querySelector(".lead-form__confirm-title").focus();
+  }
+
+  function showSuccess(data) {
+    var message = data.channel === "whatsapp"
+      ? "Мы напишем вам в WhatsApp: " + displayPhone(data.phone)
+      : data.channel === "email"
+        ? "Мы ответим на e-mail: " + data.email
+        : "Мы свяжемся с вами по телефону " + displayPhone(data.phone);
+    hideFormError();
+    form.hidden = true;
+    success.querySelector(".form-success__contacts").textContent =
+      message + ". Вы указали: " + displayPhone(data.phone) + ", " + data.email;
+    success.hidden = false;
+    // Фокус на результат: кнопка отправки уже скрыта.
+    var title = success.querySelector(".form-success__title");
+    if (title) {
+      title.setAttribute("tabindex", "-1");
+      title.focus();
+    }
   }
 
   function fieldMessage(input) {
@@ -824,6 +862,10 @@
         channel: form.elements.channel.value,
       };
       var contactFingerprint = JSON.stringify(data);
+      if (editingContacts && contactFingerprint === JSON.stringify(acceptedContacts)) {
+        showSuccess(acceptedContacts);
+        return;
+      }
       if (confirmBox.hidden || confirmedFingerprint !== contactFingerprint) {
         showConfirmation(data, contactFingerprint);
         return;
@@ -831,6 +873,7 @@
       Object.assign(data, attribution, {
         landing_path: window.location.pathname,
       });
+      if (editingContacts) data.corrects_submission_id = acceptedSubmissionId;
 
       var fingerprint = JSON.stringify(data);
       if (!pendingSubmissionId || fingerprint !== pendingFingerprint) {
@@ -843,20 +886,13 @@
       setSubmitting(true);
 
       submitLead(data).then(
-        function () {
+        function (response) {
           setSubmitting(false);
-          form.hidden = true;
-          success.querySelector(".form-success__contacts").textContent =
-            "Мы свяжемся с вами по телефону " + displayPhone(data.phone) + " и e-mail " + data.email;
-          success.hidden = false;
+          acceptedSubmissionId = response.submission_id || data.submission_id;
+          acceptedContacts = JSON.parse(contactFingerprint);
+          editingContacts = false;
+          showSuccess(acceptedContacts);
           pushFormEvent("generate_lead");
-          // Фокус на заголовок результата — иначе после отправки фокус
-          // остаётся на скрытой кнопке и скринридер не сообщает об успехе.
-          var title = success.querySelector(".form-success__title");
-          if (title) {
-            title.setAttribute("tabindex", "-1");
-            title.focus();
-          }
         },
         function (error) {
           setSubmitting(false);
@@ -888,7 +924,12 @@
   }
 
   function reopenForm(reset) {
-    if (reset) form.reset();
+    editingContacts = !reset;
+    if (reset) {
+      form.reset();
+      acceptedSubmissionId = "";
+      acceptedContacts = null;
+    }
     pendingSubmissionId = "";
     pendingFingerprint = "";
     formInputs.forEach(function (input) {

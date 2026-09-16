@@ -58,7 +58,7 @@ for asset in sorted(set(re.findall(r"assets/[A-Za-z0-9._-]+", html + css)), key=
 
 # Ресурсы уже внутри документа — preload, внешние стили и скрипт не нужны.
 html = re.sub(r'\s*<link rel="(?:preload|stylesheet)"[^>]*>', "", html)
-html = re.sub(r'\s*<script src="(?:lead-contract|app)\.js"[^>]*></script>', "", html)
+html = re.sub(r'\s*<script src="(?:lead-contract|app)\.js(?:\?v=[^"]+)?"[^>]*></script>', "", html)
 
 title = re.search(r"<title>(.*?)</title>", html, re.S).group(1)
 body = re.search(r"<body>(.*)</body>", html, re.S).group(1)

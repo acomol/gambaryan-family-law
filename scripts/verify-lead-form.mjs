@@ -15,7 +15,7 @@ export async function verifyLeadForm(page, baseUrl) {
     requests.push(route.request().postDataJSON());
     if (requestStarted) requestStarted();
     if (hold) await new Promise(resolve => { release = resolve; });
-    await route.fulfill({ status, json: status === 202 ? { ok: true } : status === 422
+    await route.fulfill({ status, json: status === 202 ? { ok: true, submission_id: requests.at(-1).submission_id } : status === 422
       ? { ok: false, error: "invalid_lead", field_errors: { email: "invalid_format" } }
       : { ok: false, error: "temporarily_unavailable" } });
   });
@@ -55,6 +55,7 @@ export async function verifyLeadForm(page, baseUrl) {
     assert.equal(requests.length, 0);
     assert.equal(await page.locator(".lead-form__fields").isVisible(), false);
     assert.equal(await page.locator('[data-confirm="phone"]').textContent(), "+972 50-000-0000");
+    assert.equal(await page.locator('[data-confirm="channel"]').textContent(), "Позвонить");
     assert.equal(await focus(), "lead-form__confirm-title");
     const overflow = await page.evaluate(() => {
       const box = document.querySelector(".lead-form__confirm");
@@ -70,6 +71,7 @@ export async function verifyLeadForm(page, baseUrl) {
   await fill();
   await page.locator('[name="channel"][value="whatsapp"]').check();
   await review();
+  assert.equal(await page.locator('[data-confirm="channel"]').textContent(), "WhatsApp");
   await page.locator(".lead-form__edit").click();
   assert.equal(await focus(), "lead-name");
   await review();
@@ -91,20 +93,33 @@ export async function verifyLeadForm(page, baseUrl) {
   await visible(".form-success");
   assert.equal(requests[0].email, "changed@example.com");
   assert.equal(requests[0].channel, "whatsapp");
-  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы свяжемся с вами по телефону +972 50-000-0000 и e-mail changed@example.com");
+  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы напишем вам в WhatsApp: +972 50-000-0000. Вы указали: +972 50-000-0000, changed@example.com");
+  assert.equal(requests[0].corrects_submission_id, undefined);
+  const acceptedId = requests[0].submission_id;
+  const leadEvents = () => page.evaluate(() => (window.dataLayer || []).filter(event => event.event === "generate_lead").length);
+  assert.equal(await leadEvents(), 1);
   await page.locator(".form-success__edit").click();
   assert.equal(await page.locator("#lead-email").inputValue(), "changed@example.com");
   assert.equal(await page.locator('[name="channel"][value="whatsapp"]').isChecked(), true);
   assert.equal(await focus(), "lead-name");
+  await review();
+  await visible(".form-success");
+  assert.equal(requests.length, 1, "Unchanged contacts must not POST again");
+  assert.equal(await leadEvents(), 1, "Showing an existing success must not count another lead");
+  await page.locator(".form-success__edit").click();
+  await page.locator("#lead-email").fill("pending@example.com");
   status = 503;
   await review(); await send();
   await visible(".lead-form__error");
   assert.equal(await page.locator(".lead-form__fields").isVisible(), true);
   assert.equal(await page.locator(".lead-form__submit").textContent(), "Повторить отправку");
   const failedId = requests.at(-1).submission_id;
+  assert.notEqual(failedId, acceptedId);
+  assert.equal(requests.at(-1).corrects_submission_id, acceptedId);
   await review(); await send();
   await visible(".lead-form__error");
   assert.equal(requests.at(-1).submission_id, failedId);
+  assert.equal(requests.at(-1).corrects_submission_id, acceptedId);
   await page.locator("#lead-email").fill("corrected@example.com");
   status = 422;
   await review(); await send();
@@ -114,13 +129,58 @@ export async function verifyLeadForm(page, baseUrl) {
   status = 202;
   await page.locator("#lead-email").fill("good@example.com");
   await page.locator('[name="channel"][value="email"]').check();
-  await review(); await send();
+  await review();
+  assert.equal(await page.locator('[data-confirm="channel"]').textContent(), "Написать на e-mail");
+  await send();
   await visible(".form-success");
   assert.equal(requests.at(-1).channel, "email");
+  assert.equal(requests.at(-1).corrects_submission_id, acceptedId);
+  assert.notEqual(requests.at(-1).submission_id, failedId);
+  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы ответим на e-mail: good@example.com. Вы указали: +972 50-000-0000, good@example.com");
+  // Each contact field independently starts a correction of the latest accepted request.
+  for (const field of ["name", "phone", "channel"]) {
+    const previousId = requests.at(-1).submission_id;
+    const count = requests.length;
+    await page.locator(".form-success__edit").click();
+    if (field === "channel") await page.locator('[name="channel"][value="phone"]').check();
+    else await page.locator(`#lead-${field}`).fill(field === "name" ? "Другое Имя" : "+972 54 000 0000");
+    await review(); await send();
+    await visible(".form-success");
+    assert.equal(requests.length, count + 1);
+    assert.equal(requests.at(-1).corrects_submission_id, previousId);
+    assert.notEqual(requests.at(-1).submission_id, previousId);
+  }
+  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы свяжемся с вами по телефону +972 54-000-0000. Вы указали: +972 54-000-0000, good@example.com");
+  const lastCorrectionId = requests.at(-1).submission_id;
   await page.locator(".form-success__again").click();
   assert.equal(await page.locator("#lead-email").inputValue(), "");
   assert.equal(await page.locator("#lead-name").inputValue(), "");
   assert.equal(await page.locator('[name="channel"][value="phone"]').isChecked(), true);
+  await fill();
+  await review(); await send();
+  await visible(".form-success");
+  assert.equal(requests.at(-1).corrects_submission_id, undefined);
+  assert.notEqual(requests.at(-1).submission_id, lastCorrectionId);
+
+  const countBeforeMismatch = requests.length;
+  const contractUrl = /\/lead-contract\.js(?:\?.*)?$/;
+  for (const contractScript of [
+    'window.GAMBARIAN_LEAD_CONTRACT = { version: "2.1.0" };',
+    'window.GAMBARIAN_LEAD_CONTRACT = { schemaVersion: "2.1.0" };',
+    "/* contract failed to load */",
+  ]) {
+    await page.route(contractUrl, route => route.fulfill({ contentType: "application/javascript", body: contractScript }));
+    await page.goto(baseUrl);
+    await visible(".lead-form__error");
+    assert.equal(await page.locator(".lead-form__error-title").textContent(), "Не удалось проверить данные");
+    assert.equal(await page.locator(".lead-form__error-contact").isVisible(), true);
+    assert.ok(await page.locator('.lead-form__error-contact a[href^="https://wa.me/"]').first().getAttribute("href"));
+    await fill();
+    await review();
+    assert.equal(requests.length, countBeforeMismatch, "Incompatible scripts must not POST");
+    assert.equal(await page.locator(".form-success").isVisible(), false);
+    await page.unroute(contractUrl);
+  }
   assert.deepEqual(errors, []);
   return { status: "PASS", layouts, mockedRequests: requests.length, pageErrors: errors.length };
 }
