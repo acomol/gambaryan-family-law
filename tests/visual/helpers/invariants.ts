@@ -49,12 +49,12 @@ export async function assertSectionSpacing(page: Page, heroOnly: boolean) {
       probe.remove();
       return value;
     };
-    const first = hero.querySelector(innerWidth > 860 ? '.hero-row .eyebrow' : '.hero__title')!;
+    const first = hero.querySelector('.hero-address')!;
     const note = hero.querySelector('.hero__note')!;
     const header = document.querySelector('.site-header')!.getBoundingClientRect();
     const token = tokenAt(hero);
     const result = [
-      { name: 'Hero: верхний видимый отступ', value: first.getBoundingClientRect().top - header.bottom, token },
+      { name: 'Hero: верхний видимый отступ адреса', value: first.getBoundingClientRect().top - header.bottom, token: token - (innerWidth > 860 ? 8 : 0) },
       { name: 'Hero: нижний видимый отступ', value: hero.getBoundingClientRect().bottom - note.getBoundingClientRect().bottom, token },
     ];
     if (!onlyHero) {

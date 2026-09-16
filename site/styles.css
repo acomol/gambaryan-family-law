@@ -486,6 +486,19 @@ picture { display: block; }
 .hero-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
 .hero-row .eyebrow { margin-bottom: 0; }
 
+/* final-dev5, 2026-09-16, указание владельца: вместо надстрочника — адрес офиса.
+   Зона нажатия >= 44 px через ::before, строка при этом не растёт (кнопка записи
+   на мобильном остаётся в первом экране). */
+.hero-address { position: relative; display: inline-flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 500; line-height: 1.3; color: rgba(255, 255, 255, 0.88); }
+.hero-address::before { content: ""; position: absolute; inset: -12px -8px; min-height: 44px; }
+.hero-address__icon { flex: none; color: var(--gold); }
+.hero-address:hover { opacity: 1; color: #fff; }
+
+@media (min-width: 861px) {
+  .hero-row { transform: translateY(-8px); }
+}
+
 .hero__title {
   margin: 0 0 24px;
   font-family: var(--font-serif);
@@ -1578,11 +1591,13 @@ picture { display: block; }
 
   .hero-inner p { margin-left: auto; margin-right: auto; }
 
-  /* Надстрочник на мобильном скрыт (решение владельца, подтверждено
-     2026-08-04 повторно): он съедает ~40px первого экрана и дублирует
-     подпись «Адвокаты» в шапке. На десктопе остаётся — там места
-     достаточно и гео-сигнал «Тель-Авив» работает. */
-  .hero-inner .hero-row { display: none; }
+  /* Адрес над заголовком по указанию владельца 2026-09-16; замер:
+     кнопка записи на 360×640 заканчивается на 559 px (≤ 632). */
+  .hero-inner .hero-row { display: flex; justify-content: center; margin: 0 0 10px; }
+  .hero-address { font-size: 14px; }
+  /* Нижний край зоны нажатия совпадает с верхом H1, не перекрывая его. */
+  .hero-address::before { inset: auto -8px -10px; height: 44px; }
+  .hero-address__icon { width: 15px; height: 15px; }
 
   /* Заголовок в рамке из волосяных линий — приём референса.
      Отступы полос ужаты (2026-08-04): основной CTA должен входить в
