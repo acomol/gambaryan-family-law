@@ -140,8 +140,101 @@
     var tablist = document.querySelector('.svc-tabs');
     var prev = document.querySelector('.svc-arrow[data-dir="prev"]');
     var next = document.querySelector('.svc-arrow[data-dir="next"]');
+    var hint = document.querySelector('.svc-next-hint');
+    var hintLabel = hint && hint.querySelector('.svc-next-hint__label');
+    var supportsInert = 'inert' in HTMLElement.prototype;
+    var transitionToken = 0;
+    var finishTransition = null;
+    var swipe = null;
+    var dragFrame = null;
+    var settlingPanel = null;
+    var settleTimer = null;
 
-    function setActive(index, moveFocus, wrap) {
+    function clearDragStyles(panel) {
+      panel.style.removeProperty('transform');
+      panel.style.removeProperty('opacity');
+      panel.style.removeProperty('will-change');
+    }
+
+    function clearSettling() {
+      window.clearTimeout(settleTimer);
+      settleTimer = null;
+      if (settlingPanel) {
+        settlingPanel.classList.remove('is-settling');
+        clearDragStyles(settlingPanel);
+        settlingPanel = null;
+      }
+    }
+
+    function resetSwipe(settle) {
+      if (!swipe) return;
+      var gesture = swipe;
+      swipe = null;
+      window.cancelAnimationFrame(dragFrame);
+      dragFrame = null;
+      gesture.panel.classList.remove('is-dragging');
+      if (settle && gesture.dragging && !reduceMotion.matches) {
+        settlingPanel = gesture.panel;
+        settlingPanel.classList.add('is-settling');
+        settleTimer = window.setTimeout(clearSettling, 180);
+      }
+      clearDragStyles(gesture.panel);
+      if (stage.hasPointerCapture(gesture.id)) stage.releasePointerCapture(gesture.id);
+    }
+
+    function transitionTo(prevIndex, nextIndex, dir) {
+      if (finishTransition) finishTransition();
+      resetSwipe(false);
+      clearSettling();
+      var outgoing = panels[prevIndex];
+      var incoming = panels[nextIndex];
+      var token = ++transitionToken;
+      var finished = false;
+      var timer = null;
+
+      function finish() {
+        if (finished || token !== transitionToken) return;
+        finished = true;
+        window.clearTimeout(timer);
+        incoming.removeEventListener('animationend', onAnimationEnd);
+        [outgoing, incoming].forEach(function (panel) {
+          panel.classList.remove('is-active', 'is-enter-next', 'is-enter-prev',
+            'is-leave-next', 'is-leave-prev', 'is-dragging', 'is-settling');
+          clearDragStyles(panel);
+        });
+        outgoing.hidden = true;
+        incoming.classList.add('is-active');
+        if (stage) stage.dataset.motion = 'idle';
+        finishTransition = null;
+      }
+
+      function onAnimationEnd(event) {
+        if (event.target === incoming) finish();
+      }
+
+      finishTransition = finish;
+      if (outgoing.contains(document.activeElement)) tabs[nextIndex].focus({ preventScroll: true });
+      outgoing.setAttribute('aria-hidden', 'true');
+      incoming.hidden = false;
+      incoming.removeAttribute('aria-hidden');
+      if (supportsInert) {
+        outgoing.inert = true;
+        incoming.inert = false;
+      }
+      outgoing.classList.remove('is-active');
+      outgoing.classList.add('is-leave-' + dir);
+      incoming.classList.add('is-enter-' + dir);
+      if (stage) stage.dataset.motion = 'moving';
+      incoming.addEventListener('animationend', onAnimationEnd);
+      if (reduceMotion.matches || window.getComputedStyle(incoming).animationName === 'none') {
+        finish();
+      } else {
+        timer = window.setTimeout(finish, 320);
+      }
+    }
+
+    function setActive(index, moveFocus, wrap, dirHint) {
+      var previous = active;
       active = wrap ? (index + panels.length) % panels.length : Math.max(0, Math.min(index, last));
 
       tabs.forEach(function (tab, i) {
@@ -155,12 +248,14 @@
         dot.setAttribute("aria-current", i === active ? "true" : "false");
       });
 
-      panels.forEach(function (panel, i) {
-        panel.hidden = i !== active;
-      });
+      if (previous !== active) {
+        transitionTo(previous, active, dirHint || (active > previous ? 'next' : 'prev'));
+      }
 
       if (prev) prev.disabled = active === 0;
       if (next) next.disabled = active === last;
+      if (hintLabel) hintLabel.textContent = tabs[active + 1] ? tabs[active + 1].textContent : '';
+      if (hint) hint.hidden = active === last;
       if (moveFocus) tabs[active].focus({ preventScroll: true });
       if (tablist && tablist.scrollWidth > tablist.clientWidth) {
         tablist.scrollTo({
@@ -188,17 +283,17 @@
         switch (event.key) {
           case "ArrowRight":
           case "ArrowDown":
-            setActive(active + 1, true, true);
+            setActive(active + 1, true, true, 'next');
             break;
           case "ArrowLeft":
           case "ArrowUp":
-            setActive(active - 1, true, true);
+            setActive(active - 1, true, true, 'prev');
             break;
           case "Home":
-            setActive(0, true);
+            setActive(0, true, false, 'prev');
             break;
           case "End":
-            setActive(panels.length - 1, true);
+            setActive(panels.length - 1, true, false, 'next');
             break;
           default:
             handled = false;
@@ -209,24 +304,96 @@
 
     if (prev) prev.addEventListener("click", function () { setActive(active - 1); });
     if (next) next.addEventListener("click", function () { setActive(active + 1); });
+    if (hint) hint.addEventListener("click", function () { setActive(active + 1); });
 
     if (stage) {
-      var swipe = null;
+      function recordPoint(event) {
+        swipe.points.push({ x: event.clientX, time: event.timeStamp });
+        swipe.points = swipe.points.filter(function (point) {
+          return event.timeStamp - point.time <= 80;
+        });
+      }
+
+      function drawSwipe() {
+        dragFrame = null;
+        if (!swipe || !swipe.dragging) return;
+        var dx = swipe.dx;
+        if ((active === 0 && dx > 0) || (active === last && dx < 0)) dx *= .3;
+        swipe.panel.style.transform = 'translateX(' + dx + 'px)';
+        swipe.panel.style.opacity = Math.max(0, 1 - Math.abs(dx) / swipe.width * .5);
+      }
+
       stage.addEventListener('pointerdown', function (event) {
-        if (event.pointerType === 'mouse' || !event.isPrimary) return;
-        swipe = { id: event.pointerId, x: event.clientX, y: event.clientY };
+        if (event.pointerType === 'mouse' || !event.isPrimary || swipe) return;
+        if (event.target.closest('a, button, input')) return;
+        if (finishTransition) finishTransition();
+        clearSettling();
+        swipe = {
+          id: event.pointerId, x: event.clientX, y: event.clientY,
+          width: stage.getBoundingClientRect().width, panel: panels[active],
+          dx: 0, horizontal: false, dragging: false, cancelled: false,
+          points: [{ x: event.clientX, time: event.timeStamp }]
+        };
+      });
+      stage.addEventListener('pointermove', function (event) {
+        if (!swipe || event.pointerId !== swipe.id || swipe.cancelled) return;
+        var dx = event.clientX - swipe.x;
+        var dy = event.clientY - swipe.y;
+        recordPoint(event);
+        if (!swipe.horizontal) {
+          if (Math.abs(dy) > Math.abs(dx)) {
+            swipe.cancelled = true;
+            return;
+          }
+          if (Math.abs(dx) < 10 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
+          swipe.horizontal = true;
+          if (!reduceMotion.matches) {
+            swipe.dragging = true;
+            swipe.panel.classList.add('is-dragging');
+            try {
+              stage.setPointerCapture(event.pointerId);
+            } catch (error) {
+              // Синтетический PointerEvent не регистрирует активный указатель.
+            }
+          }
+        }
+        swipe.dx = dx;
+        if (swipe.dragging && dragFrame === null) dragFrame = window.requestAnimationFrame(drawSwipe);
       });
       stage.addEventListener('pointerup', function (event) {
         if (!swipe || event.pointerId !== swipe.id) return;
         var dx = event.clientX - swipe.x;
         var dy = event.clientY - swipe.y;
-        swipe = null;
-        if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy)) {
-          setActive(active + (dx < 0 ? 1 : -1));
-        }
+        recordPoint(event);
+        var first = swipe.points[0];
+        var elapsed = event.timeStamp - first.time;
+        var speed = elapsed > 0 ? Math.abs(event.clientX - first.x) / elapsed : 0;
+        var threshold = Math.min(96, Math.max(48, .25 * swipe.width));
+        var change = !swipe.cancelled && (swipe.dragging
+          ? Math.abs(dx) >= threshold || (Math.abs(dx) >= 24 && speed >= .5)
+          : Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy));
+        if ((active === 0 && dx > 0) || (active === last && dx < 0)) change = false;
+        resetSwipe(!change);
+        if (change) setActive(active + (dx < 0 ? 1 : -1));
       });
-      stage.addEventListener('pointercancel', function () { swipe = null; });
+      function cancelSwipe(event) {
+        if (swipe && event.pointerId === swipe.id) resetSwipe(true);
+      }
+      stage.addEventListener('pointercancel', cancelSwipe);
+      stage.addEventListener('lostpointercapture', cancelSwipe);
+      stage.dataset.motion = 'idle';
     }
+
+    panels.forEach(function (panel, i) {
+      panel.hidden = i !== active;
+      panel.classList.toggle('is-active', i === active);
+      if (supportsInert) panel.inert = i !== active;
+      if (i === active) {
+        panel.removeAttribute('aria-hidden');
+      } else {
+        panel.setAttribute('aria-hidden', 'true');
+      }
+    });
 
     setActive(0);
   }
