@@ -853,7 +853,7 @@ picture { display: block; }
 
 .svc-title {
   margin: 0 0 16px;
-  padding-right: 48px;
+  padding-right: 0;
   font-family: var(--font-serif);
   font-style: normal;
   font-weight: 600;
@@ -908,12 +908,20 @@ picture { display: block; }
 .svc-media__person { display: flex; gap: 14px; align-items: center; }
 .svc-media__avatar {
   flex: none;
-  width: 54px;
-  height: 54px;
+  /* final-dev5, 2026-09-16: владелец просил крупнее (было 54px). Исходник 128px,
+     на 2x-экранах это предел резкости около 64px — крупнее нужен новый ассет. */
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   object-fit: cover;
   object-position: center 12%;
   border: 1px solid rgba(240, 174, 31, 0.35);
+}
+@media (min-width: 861px) {
+  /* final-dev5, 2026-09-16, владелец: фото крупнее и размещено в окне колонки «Ведёт».
+     Колонка 300 px шириной: фото 120 px над именем, подпись лицензии в одну строку. */
+  .svc-media__person { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .svc-media__avatar { width: 120px; height: 120px; }
 }
 .svc-media__name {
   font-family: var(--font-serif);
@@ -1672,7 +1680,7 @@ picture { display: block; }
   .svc-arrow { position: static; top: auto; right: auto; left: auto; transform: none; }
   .svc-arrow[data-dir="prev"] { left: auto; }
   .svc-arrow[data-dir="next"] { right: auto; }
-  .svc-title { padding-right: 48px; min-height: 0; min-width: 0; overflow-wrap: normal; }
+  .svc-title { padding-right: 0; min-height: 0; min-width: 0; overflow-wrap: normal; }
   .svc-media {
     display: grid;
     grid-template-columns: auto 1fr;
