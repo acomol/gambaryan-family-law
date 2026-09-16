@@ -674,31 +674,8 @@ picture { display: block; }
   text-wrap: pretty;
 }
 
-.facts-bar {
-  margin-top: 20px;
-  background: var(--bg-card);
-  border: 1px solid rgba(20, 25, 31, 0.07);
-  border-radius: 12px;
-  padding: 22px 32px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px 40px;
-}
-@media (min-width: 861px) {
-  /* final-dev5, 2026-09-16, указание владельца: адрес под кубиками остаётся только
-     на мобильном; на десктопе полоска убирается целиком (адрес есть в блоке контактов). */
-  .facts-bar { display: none; }
-}
-.facts-bar__item {
-  display: flex;
-  gap: 11px;
-  align-items: center;
-  font-size: 14px;
-  color: var(--ink);
-}
-.facts-bar__item svg { flex: none; }
-.facts-bar strong { font-weight: 600; }
+/* final-dev5, 2026-09-16, указание владельца: полоска с адресом под кубиками снята
+   на всех ширинах — адрес стоит на первом экране над заголовком. */
 
 /* --- 4. Услуги ----------------------------------------------------------- */
 
@@ -1652,8 +1629,6 @@ picture { display: block; }
 
 
   .hero__actions { margin-bottom: 16px; }
-
-  .facts-bar { flex-direction: column; align-items: flex-start; gap: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1708,5 +1683,4 @@ picture { display: block; }
   .facts-grid { gap: 12px; }
   .fact-card { padding: 18px 18px 16px; }
   .fact-card__title { font-size: 26px; line-height: 1.15; }
-  .facts-bar { margin-top: 14px; padding: 16px 18px; }
 }

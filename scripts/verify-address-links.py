@@ -45,7 +45,8 @@ DOM_CHECK = r"""({url, label}) => {
           `map-${i}-underline`);
   });
   check(document.querySelectorAll('a a').length === 0, 'nested-links');
-  check(document.querySelector('.facts-bar')?.children[2]?.tagName === 'A', 'facts-address-row');
+  check(document.querySelectorAll('.facts-bar').length === 0, 'facts-bar-removed');
+  check(document.querySelector('.hero-row a.hero-address.map-link') !== null, 'hero-address-row');
   check(document.querySelector('#contact .contact-list')?.children[2]?.tagName === 'A', 'contact-address-row');
   check(document.querySelectorAll('.site-footer__cols > div').length === 1, 'footer-columns');
   const footer = document.querySelector('footer');

@@ -196,7 +196,7 @@ class ClientCopyVerifierTests(unittest.TestCase):
                 self.assertTrue(any(f"owner:{owner_id}" in item for item in problems), problems)
 
     def test_fact_cards_have_no_paragraphs(self) -> None:
-        facts = self.source_html.split('class="facts"', 1)[1].split('class="facts-bar"', 1)[0]
+        facts = self.source_html.split('class="facts"', 1)[1].split('<!-- УСЛУГИ -->', 1)[0]
         self.assertNotIn('<p', facts)
 
     def test_frozen_client_block_2_14_remains_unchanged(self) -> None:
