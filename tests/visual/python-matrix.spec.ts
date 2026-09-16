@@ -152,14 +152,13 @@ test('Услуги: стрелки 44px, крайние остановки и в
       const frame = document.querySelector<HTMLElement>('.svc-frame')!;
       const tablist = document.querySelector<HTMLElement>('.svc-tabs')!;
       const active = document.querySelector<HTMLElement>('.svc-tab[aria-selected="true"]')!;
-      const title = document.querySelector('.svc-card:not([hidden]) .svc-title')!;
-      const range = document.createRange(); range.selectNodeContents(title);
-      const titleRects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+      const arrows = document.querySelector('.services__arrows')!;
       return {
-        frame: frame.getBoundingClientRect().toJSON(), headerTop: frame.getBoundingClientRect().top + parseFloat(getComputedStyle(frame).paddingTop),
-        titleRight: Math.max(...titleRects.map((r) => r.right)),
+        frame: frame.getBoundingClientRect().toJSON(),
+        arrowsPosition: getComputedStyle(arrows).position,
         arrows: [...document.querySelectorAll<HTMLButtonElement>('.svc-arrow')].map((arrow) => ({
-          direction: arrow.dataset.dir, disabled: arrow.disabled, rect: arrow.getBoundingClientRect().toJSON(),
+          direction: arrow.dataset.dir, disabled: arrow.disabled, position: getComputedStyle(arrow).position,
+          rect: arrow.getBoundingClientRect().toJSON(),
         })),
         tabsRows: new Set([...tablist.querySelectorAll('.svc-tab')].map((tab) => Math.round(tab.getBoundingClientRect().top))).size,
         tabsScrollable: tablist.scrollWidth > tablist.clientWidth, overflowX: getComputedStyle(tablist).overflowX,
@@ -172,6 +171,7 @@ test('Услуги: стрелки 44px, крайние остановки и в
     expect(Math.min(...metrics.panelHeights), 'Все панели сохраняют ненулевую высоту, включая hidden').toBeGreaterThan(0);
     expect(Math.max(...metrics.panelHeights) - Math.min(...metrics.panelHeights)).toBeLessThanOrEqual(1);
     expect(metrics.arrows).toHaveLength(2);
+    for (const arrow of await page.locator('.svc-arrow').all()) await expect(arrow).toBeVisible();
     for (const arrow of metrics.arrows) {
       expect(arrow.rect.width).toBeGreaterThanOrEqual(44);
       expect(arrow.rect.height).toBeGreaterThanOrEqual(44);
@@ -181,12 +181,19 @@ test('Услуги: стрелки 44px, крайние остановки и в
         if (arrow.direction === 'prev') expect(arrow.rect.right).toBeLessThanOrEqual(metrics.frame.left);
         else expect(arrow.rect.left).toBeGreaterThanOrEqual(metrics.frame.right);
       } else {
-        expect(Math.abs(arrow.rect.top - metrics.headerTop)).toBeLessThanOrEqual(2);
-        expect(arrow.rect.left).toBeGreaterThanOrEqual(metrics.titleRight - 1);
+        expect(metrics.arrowsPosition).toBe('static');
+        expect(arrow.position).toBe('static');
+        expect(arrow.rect.top).toBeGreaterThanOrEqual(metrics.tablist.bottom);
+        expect(arrow.rect.bottom).toBeLessThanOrEqual(metrics.frame.top - 20);
+        expect(arrow.rect.left).toBeGreaterThanOrEqual(metrics.frame.left - 1);
         expect(arrow.rect.right).toBeLessThanOrEqual(metrics.frame.right + 1);
       }
     }
     if (width <= 860) {
+      const [prev, next] = metrics.arrows;
+      expect(Math.abs(prev.rect.top - next.rect.top)).toBeLessThanOrEqual(1);
+      expect(next.rect.left - prev.rect.right).toBeCloseTo(8, 0);
+      expect(Math.abs(next.rect.right - metrics.frame.right)).toBeLessThanOrEqual(1);
       expect(metrics.tabsRows).toBe(1);
       expect(metrics.tabsScrollable).toBe(true);
       expect(['auto', 'scroll']).toContain(metrics.overflowX);
@@ -202,20 +209,30 @@ test('Услуги: свайп, порог, вертикальный жест и
   test.skip(page.viewportSize()!.width > 860, 'Свайп проверяется в мобильной раскладке');
   await gotoReady(page);
   await scrollSection(page, '#services');
-  await expect(page.locator('.svc-stage')).toHaveCSS('touch-action', 'pan-y');
+  await expect(page.locator('.svc-stage')).toHaveCSS('touch-action', 'pan-y pinch-zoom');
   const fixedRects = () => page.locator('.svc-media, .svc-card__cta').evaluateAll((elements) => elements.map((element) => {
     const rect = element.getBoundingClientRect();
     return [rect.left + scrollX, rect.top + scrollY, rect.width, rect.height];
   }));
-  const swipe = async (dx: number, dy = 0) => {
+  const swipe = async (dx: number, dy = 0, move = false, duration = 200) => {
     const before = await fixedRects();
     expect(before).toHaveLength(2);
     await page.locator('.svc-stage').evaluate((stage, delta) => {
       const r = stage.getBoundingClientRect();
       const options = { bubbles: true, pointerId: 7, pointerType: 'touch', isPrimary: true, clientX: r.left + r.width / 2, clientY: r.top + 20 };
-      stage.dispatchEvent(new PointerEvent('pointerdown', options));
-      stage.dispatchEvent(new PointerEvent('pointerup', { ...options, clientX: options.clientX + delta.dx, clientY: options.clientY + delta.dy }));
-    }, { dx, dy });
+      const dispatch = (type: string, fraction: number) => {
+        const event = new PointerEvent(type, { ...options,
+          clientX: options.clientX + delta.dx * fraction, clientY: options.clientY + delta.dy * fraction });
+        // Deterministic event times distinguish a slow drag from an 80ms flick.
+        Object.defineProperty(event, 'timeStamp', { value: 1000 + delta.duration * fraction });
+        stage.dispatchEvent(event);
+      };
+      dispatch('pointerdown', 0);
+      if (delta.move) dispatch('pointermove', 0.5);
+      dispatch('pointerup', 1);
+    }, { dx, dy, move, duration });
+    await expect(page.locator('.svc-stage')).toHaveAttribute('data-motion', 'idle');
+    await expect(page.locator('.svc-card:not([hidden])')).toHaveCount(1);
     await settle(page);
     const after = await fixedRects();
     expect(after).toHaveLength(2);
@@ -232,6 +249,25 @@ test('Услуги: свайп, порог, вертикальный жест и
   await selectService(page, 7);
   results.push(await swipe(-120));
   expect(results).toEqual([1, 0, 0, 0, 0, 7]);
+  // No pointermove: the compatibility threshold remains 40px, even for a flick.
+  await selectService(page, 0);
+  expect(await swipe(-39, 0, false, 20)).toBe(0);
+  expect(await swipe(-40)).toBe(1);
+  expect(await swipe(40)).toBe(0);
+  // Reduced motion intentionally disables dragging; exercise the drag threshold
+  // with normal motion while keeping gotoReady's animation suppression in place.
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const threshold = await page.locator('.svc-stage').evaluate((stage) => Math.min(96, Math.max(48, stage.getBoundingClientRect().width * 0.25)));
+  expect(await swipe(-threshold + 1, 0, true)).toBe(0);
+  expect(await swipe(-threshold, 0, true)).toBe(1);
+  expect(await swipe(threshold, 0, true)).toBe(0);
+  expect(await swipe(-23, 0, true, 40)).toBe(0);
+  expect(await swipe(-24, 0, true, 40)).toBe(1);
+  expect(await swipe(24, 0, true, 40)).toBe(0);
+  expect(await swipe(-120, 140, true)).toBe(0);
+  expect(await swipe(120, 0, true)).toBe(0);
+  await selectService(page, 7);
+  expect(await swipe(-120, 0, true)).toBe(7);
 });
 
 test('Action Bar: breakpoint, высота и равные колонки рабочего и закрытого режима', async ({ page }) => {
@@ -319,7 +355,11 @@ test('Action Bar: первый спуск, возврат, меню, фокус,
 });
 
 test('Рабочее время: точный контракт Hero и восстановление контактов после ошибки доставки', async ({ page }) => {
-  await page.route('**/api/lead', (route) => route.fulfill({ status: 503, json: { ok: false } }));
+  let requests = 0;
+  await page.route('**/api/lead', (route) => {
+    requests += 1;
+    return route.fulfill({ status: 503, json: { ok: false } });
+  });
   await gotoReady(page);
   const hero = page.locator('.hero--final-dev1 .hero__call--expanded');
   await expect(hero).toHaveCount(1);
@@ -336,8 +376,22 @@ test('Рабочее время: точный контракт Hero и восс�
   expect(await hero.locator('svg').evaluate((element) => element.innerHTML)).not.toBe(await iconMarkup());
   await page.locator('#lead-name').fill('Тест приёмки');
   await page.locator('#lead-phone').fill('+972500000000');
+  await page.locator('#lead-email').fill('visual@example.com');
   await page.locator('.lead-form__submit').click();
+  await expect(page.locator('.lead-form__confirm')).toBeVisible();
+  expect(requests, 'До подтверждения запрос не отправляется').toBe(0);
+  await page.locator('.lead-form__confirm-submit').click();
   await expect(page.locator('.lead-form__error-contact')).toBeVisible();
+  expect(requests).toBe(1);
+  await expect(page.locator('.lead-form__confirm')).toBeHidden();
+  await expect(page.locator('.lead-form__fields')).toBeVisible();
+  await expect(page.locator('#lead-name')).toHaveValue('Тест приёмки');
+  await expect(page.locator('#lead-phone')).toHaveValue('+972500000000');
+  await expect(page.locator('#lead-email')).toHaveValue('visual@example.com');
+  await expect(page.locator('input[name="channel"][value="phone"]')).toBeChecked();
+  await expect(page.locator('.lead-form__submit')).toHaveText('Повторить отправку');
+  await expect(page.locator('.lead-form__submit')).toBeEnabled();
+  await expect(page.locator('.lead-form__submit')).toBeFocused();
   if (page.viewportSize()!.width <= 860) await page.locator('.nav-burger').click();
   const restoredSelector = '[data-business-closed], [data-business-variant], .lead-form__error-contact';
   const before = await page.locator(restoredSelector).evaluateAll((elements) => elements.map((element) => element.outerHTML));
