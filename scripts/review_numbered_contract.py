@@ -1,6 +1,6 @@
 """Shared contract for the service-only numbered client review page."""
 
-REVIEW_NUMBERED_VERSION = "2.6.0"
+REVIEW_NUMBERED_VERSION = "2.7.0"
 REVIEW_NUMBERED_UPDATED = "2026-09-16"
 
 OWNER_REVIEW_IDS = {
@@ -27,6 +27,7 @@ OWNER_REVIEW_IDS = {
     "alexander-card-v1": "5.9–5.13",
     "yulia-card-v2": "5.18",
     "attorneys-note-v1": "5.19",
+    "contact-h2-v1": "7.4",
 }
 
 OWNER_REVIEW_ANCHORS = {

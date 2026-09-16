@@ -685,6 +685,10 @@ picture { display: block; }
   align-items: center;
   gap: 14px 40px;
 }
+@media (min-width: 861px) {
+  /* final-dev5, 2026-09-16: в полоске остался один элемент */
+  .facts-bar { justify-content: center; }
+}
 .facts-bar__item {
   display: flex;
   gap: 11px;

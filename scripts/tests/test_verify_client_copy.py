@@ -59,29 +59,53 @@ class ClientCopyVerifierTests(unittest.TestCase):
         self.assertTrue(any("неизвестный текст вне data-copy-id" in item for item in problems))
 
     def test_changed_approved_block_fails(self) -> None:
-        # После owner override Hero проверяем неизменённый клиентский H2.
+        # Проверяем owner override заголовка консультации, номер ревью 7.4.
         # Счётчик подмены не даёт тесту молча превратиться в no-op.
         html, count = re.subn(
-            r'(<h2\b[^>]*data-copy-id="7\.4"[^>]*>).*?(</h2>)',
-            r"\1Гарантируем развод без суда\2",
+            r'(<h2\b[^>]*data-owner-copy-id="contact-h2-v1"[^>]*>).*?(</h2>)',
+            r"\1Запись на консультацию\2",
             self.source_html,
             count=1,
             flags=re.DOTALL,
         )
-        self.assertEqual(count, 1, "заголовок 7.4 не найден в разметке")
+        self.assertEqual(count, 1, "заголовок contact-h2-v1 не найден в разметке")
         problems = self.verify_temp_html(html)
-        self.assertTrue(any("data-copy-id='7.4'" in item for item in problems))
+        self.assertTrue(any("data-copy-id='owner:contact-h2-v1'" in item for item in problems))
 
-    def test_unused_approved_block_is_allowed(self) -> None:
+    def test_missing_owner_approved_contact_heading_fails(self) -> None:
         html, count = re.subn(
-            r'<h2\b[^>]*data-copy-id="7\.4"[^>]*>.*?</h2>',
+            r'<h2\b[^>]*data-owner-copy-id="contact-h2-v1"[^>]*>.*?</h2>',
             "",
             self.source_html,
             count=1,
             flags=re.DOTALL,
         )
-        self.assertEqual(count, 1, "заголовок 7.4 не найден в разметке")
+        self.assertEqual(count, 1, "заголовок contact-h2-v1 не найден в разметке")
+        problems = self.verify_temp_html(html)
+        self.assertTrue(any("отсутствует data-owner-copy-id='contact-h2-v1'" in item for item in problems), problems)
+
+    def test_unused_approved_block_is_allowed(self) -> None:
+        html, count = re.subn(
+            r'<p\b[^>]*data-copy-id="7\.6"[^>]*>.*?</p>',
+            "",
+            self.source_html,
+            count=1,
+            flags=re.DOTALL,
+        )
+        self.assertEqual(count, 1, "клиентский блок 7.6 не найден в разметке")
         self.assertEqual(self.verify_temp_html(html), [])
+
+    def test_old_contact_form_heading_fails(self) -> None:
+        html, count = re.subn(
+            r'(<h3\b[^>]*class="lead-form__title"[^>]*>).*?(</h3>)',
+            r"\1Для ознакомительного разговора\2",
+            self.source_html,
+            count=1,
+            flags=re.DOTALL,
+        )
+        self.assertEqual(count, 1, "заголовок формы не найден в разметке")
+        problems = self.verify_temp_html(html)
+        self.assertTrue(any("неизвестный текст вне data-copy-id: 'Для ознакомительного разговора'" in item for item in problems), problems)
 
     def test_old_hero_title_without_copy_id_fails(self) -> None:
         html, count = re.subn(

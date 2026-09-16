@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Читает ЖИВЫЕ Preview и доказывает, что на них уехал текущий релиз.
 
-LIVE-PREVIEW-READBACK v1.3.2 | 2026-09-16
+LIVE-PREVIEW-READBACK v1.3.3 | 2026-09-16
 
 Зачем отдельно от verify-client-previews.py: тот проверяет собранные
 каталоги на диске. Здесь проверяются байты, которые реально отдаёт
@@ -30,7 +30,7 @@ from pathlib import Path
 
 from final_dev4_contract import MARKER as FINAL_DEV4_MARKER, BODY_CLASS as FINAL_DEV4_BODY_CLASS
 
-READBACK_VERSION = "1.3.2"
+READBACK_VERSION = "1.3.3"
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
 HOST = "https://{branch}.gambarian-landing.pages.dev/"
@@ -41,9 +41,9 @@ TIMEOUT = 30
 # заголовок утягивал CTA за первый экран. Обоснование — docs/TYPOGRAPHY-DASHES.md §7.
 # Замороженный опубликованный final-dev4 сохраняет 15 защищённых тире.
 NBSP_EXPECTED_DEFAULT = 23
-# final-dev5: 14 по build/variants/final-dev5/index.html после правки заголовка услуг.
+# final-dev5: 13 по build/variants/final-dev5/index.html после удаления двух элементов facts-bar.
 # Ожидание final-dev4 относится к замороженному опубликованному адресу.
-NBSP_EXPECTED = {"review-numbered": 22, "final-dev4": 15, "final-dev5": 14}
+NBSP_EXPECTED = {"review-numbered": 22, "final-dev4": 15, "final-dev5": 13}
 FACT_CARD_MARKERS = {
     "final-dev5": (
         'data-owner-copy-id="fact-30-v1"',
