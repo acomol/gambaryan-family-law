@@ -1,6 +1,6 @@
 """Точный контракт утверждённого клиентом текста лендинга.
 
-CLIENT-COPY-CONTRACT v1.13.0 | 2026-09-16
+CLIENT-COPY-CONTRACT v1.14.0 | 2026-09-16
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Final
 
 
-CONTRACT_VERSION: Final = "1.13.0"
+CONTRACT_VERSION: Final = "1.14.0"
 CONTRACT_DATE: Final = "2026-09-16"
 SOURCE_FILENAME: Final = "Копия LP - Короткая версия (1).txt"
 SOURCE_REPO_PATH: Final = "docs/sources/client-copy-short-v1.0.0.txt"
@@ -24,13 +24,10 @@ ALLOWED_OUTSIDE_COPY_TEXT: Final[frozenset[str]] = frozenset(
         "E-mail",
         "E-mail *",
         "Имя",
-        "Как удобнее связаться",
-        "Написать на e-mail",
         "Проверьте, как с вами связаться",
         "Всё верно, отправить",
         "Исправить",
         "Указать другие контакты",
-        "Связь",
         "Адвокат Израиля, лицензия № 30178",
         "Более 30 лет профессионального опыта в юридической сфере. Работа с клиентами на русском, иврите и английском языках.",
         "Прием — Тель-Авив / онлайн",
@@ -164,14 +161,10 @@ ALLOWED_DYNAMIC_UI_TEXT: Final[frozenset[str]] = frozenset(
         "Введите e-mail.",
         "E-mail должен быть не длиннее 120 символов.",
         "Введите e-mail в формате name@example.com.",
-        "Выберите удобный способ связи.",
-        "Как удобнее связаться",
         "Возможно, вы имели в виду ",
         "Всё верно, отправить",
         "Мы свяжемся с вами по телефону ",
-        "Мы напишем вам в WhatsApp: ",
-        "Мы ответим на e-mail: ",
-        ". Вы указали: ",
+        ". Ваш e-mail: ",
         " Поля: ",
         "Авто",
         "Введите имя.",

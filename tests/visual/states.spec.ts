@@ -50,7 +50,6 @@ function expectMockedLead(requests: Request[]): void {
     name: 'Визуальный тест',
     phone: '+972 50 000 0000',
     email: 'visual@example.com',
-    channel: 'phone',
   });
 }
 

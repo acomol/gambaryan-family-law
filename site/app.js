@@ -405,7 +405,7 @@
   /* --- Форма обращения --------------------------------------------------- */
 
   var LEAD_CONTRACT = window.GAMBARIAN_LEAD_CONTRACT;
-  var EXPECTED_LEAD_CONTRACT_VERSION = "2.2.0";
+  var EXPECTED_LEAD_CONTRACT_VERSION = "2.3.0";
   if (!LEAD_CONTRACT || LEAD_CONTRACT.version !== EXPECTED_LEAD_CONTRACT_VERSION) {
     var unavailableForm = document.querySelector(".lead-form");
     if (unavailableForm) {
@@ -614,8 +614,6 @@
     form.querySelector('[data-confirm="name"]').textContent = data.name;
     form.querySelector('[data-confirm="phone"]').textContent = displayPhone(data.phone);
     form.querySelector('[data-confirm="email"]').textContent = data.email;
-    form.querySelector('[data-confirm="channel"]').textContent =
-      form.querySelector('[name="channel"]:checked').closest("label").textContent.trim();
     hideFormError();
     formFields.hidden = true;
     submitButton.hidden = true;
@@ -624,15 +622,10 @@
   }
 
   function showSuccess(data) {
-    var message = data.channel === "whatsapp"
-      ? "Мы напишем вам в WhatsApp: " + displayPhone(data.phone)
-      : data.channel === "email"
-        ? "Мы ответим на e-mail: " + data.email
-        : "Мы свяжемся с вами по телефону " + displayPhone(data.phone);
     hideFormError();
     form.hidden = true;
     success.querySelector(".form-success__contacts").textContent =
-      message + ". Вы указали: " + displayPhone(data.phone) + ", " + data.email;
+      "Мы свяжемся с вами по телефону " + displayPhone(data.phone) + ". Ваш e-mail: " + data.email;
     success.hidden = false;
     // Фокус на результат: кнопка отправки уже скрыта.
     var title = success.querySelector(".form-success__title");
@@ -863,7 +856,6 @@
         name: form.elements.name.value.trim(),
         phone: form.elements.phone.value.trim(),
         email: form.elements.email.value.trim(),
-        channel: form.elements.channel.value,
       };
       var contactFingerprint = JSON.stringify(data);
       if (editingContacts && contactFingerprint === JSON.stringify(acceptedContacts)) {

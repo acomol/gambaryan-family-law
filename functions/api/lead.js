@@ -32,7 +32,6 @@ function validateLead(value) {
   var name = cleanString(value.name, limits.name + 1);
   var phone = cleanString(value.phone, limits.phone + 1);
   var email = cleanString(value.email, limits.email + 1);
-  var channel = value.channel === undefined ? "phone" : value.channel;
   var submissionId = cleanString(value.submission_id, 64);
   var correctsSubmissionId = value.corrects_submission_id === undefined
     ? "" : value.corrects_submission_id;
@@ -63,9 +62,6 @@ function validateLead(value) {
   } else if (email && !LEAD_CONTRACT.isValidEmail(email)) {
     fieldErrors.email = codes.invalidFormat;
   }
-  if (LEAD_CONTRACT.channels.indexOf(channel) === -1) {
-    fieldErrors.channel = codes.invalidFormat;
-  }
   if (correctsSubmissionId !== "" && !LEAD_CONTRACT.isValidSubmissionId(correctsSubmissionId)) {
     fieldErrors.corrects_submission_id = codes.invalidFormat;
   }
@@ -91,7 +87,6 @@ function validateLead(value) {
       name: name,
       phone: phone,
       email: email,
-      channel: channel,
       submissionId: validSubmissionId ? submissionId : crypto.randomUUID(),
       correctsSubmissionId: correctsSubmissionId,
       landingPath: landingPath || "/",
@@ -118,7 +113,6 @@ function buildPayload(lead) {
       name: lead.name,
       phone: lead.phone,
       email: lead.email,
-      channel: lead.channel,
       referrer_host: lead.referrerHost,
     },
     lead.attribution,

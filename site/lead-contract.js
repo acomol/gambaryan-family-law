@@ -1,7 +1,7 @@
 (function (root) {
   "use strict";
 
-  var schemaVersion = "2.2.0";
+  var schemaVersion = "2.3.0";
   root.GAMBARIAN_LEAD_CONTRACT = Object.freeze({
     // Требование владельца: при изменении схемы обновлять и версию, и дату.
     version: schemaVersion,
@@ -13,7 +13,6 @@
     formId: "family_law_contact",
     landingLanguage: "ru",
     attributionStorageKey: "gambarian_lead_attribution_v1",
-    channels: Object.freeze(["phone", "whatsapp", "email"]),
     // corrects_submission_id необязателен: пустая строка или UUID v4 принятой заявки.
     isValidSubmissionId: function (value) {
       return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -49,7 +48,6 @@
         name: "Имя",
         phone: "Телефон",
         email: "E-mail",
-        channel: "Как удобнее связаться",
       }),
       fields: Object.freeze({
         name: Object.freeze({
@@ -65,9 +63,6 @@
           required: "Введите e-mail.",
           tooLong: "E-mail должен быть не длиннее 120 символов.",
           invalidFormat: "Введите e-mail в формате name@example.com.",
-        }),
-        channel: Object.freeze({
-          invalidFormat: "Выберите удобный способ связи.",
         }),
       }),
       codes: Object.freeze({

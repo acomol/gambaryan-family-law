@@ -29,6 +29,8 @@ export async function verifyLeadForm(page, baseUrl) {
     await page.locator("#lead-email").fill(email);
   };
   await page.goto(baseUrl);
+  assert.deepEqual(await page.locator('.lead-form input[name]').evaluateAll(inputs => inputs.map(input => input.name)), ["name", "phone", "email"]);
+  assert.deepEqual(await page.locator('[data-confirm]').evaluateAll(fields => fields.map(field => field.dataset.confirm)), ["name", "phone", "email"]);
   await review();
   assert.equal(requests.length, 0);
   assert.equal(await focus(), "lead-name");
@@ -55,7 +57,6 @@ export async function verifyLeadForm(page, baseUrl) {
     assert.equal(requests.length, 0);
     assert.equal(await page.locator(".lead-form__fields").isVisible(), false);
     assert.equal(await page.locator('[data-confirm="phone"]').textContent(), "+972 50-000-0000");
-    assert.equal(await page.locator('[data-confirm="channel"]').textContent(), "Позвонить");
     assert.equal(await focus(), "lead-form__confirm-title");
     const overflow = await page.evaluate(() => {
       const box = document.querySelector(".lead-form__confirm");
@@ -69,9 +70,7 @@ export async function verifyLeadForm(page, baseUrl) {
     layouts.push(`${width}x${height}`);
   }
   await fill();
-  await page.locator('[name="channel"][value="whatsapp"]').check();
   await review();
-  assert.equal(await page.locator('[data-confirm="channel"]').textContent(), "WhatsApp");
   await page.locator(".lead-form__edit").click();
   assert.equal(await focus(), "lead-name");
   await review();
@@ -92,15 +91,13 @@ export async function verifyLeadForm(page, baseUrl) {
   hold = false;
   await visible(".form-success");
   assert.equal(requests[0].email, "changed@example.com");
-  assert.equal(requests[0].channel, "whatsapp");
-  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы напишем вам в WhatsApp: +972 50-000-0000. Вы указали: +972 50-000-0000, changed@example.com");
+  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы свяжемся с вами по телефону +972 50-000-0000. Ваш e-mail: changed@example.com");
   assert.equal(requests[0].corrects_submission_id, undefined);
   const acceptedId = requests[0].submission_id;
   const leadEvents = () => page.evaluate(() => (window.dataLayer || []).filter(event => event.event === "generate_lead").length);
   assert.equal(await leadEvents(), 1);
   await page.locator(".form-success__edit").click();
   assert.equal(await page.locator("#lead-email").inputValue(), "changed@example.com");
-  assert.equal(await page.locator('[name="channel"][value="whatsapp"]').isChecked(), true);
   assert.equal(await focus(), "lead-name");
   await review();
   await visible(".form-success");
@@ -128,34 +125,30 @@ export async function verifyLeadForm(page, baseUrl) {
   assert.notEqual(requests.at(-1).submission_id, failedId);
   status = 202;
   await page.locator("#lead-email").fill("good@example.com");
-  await page.locator('[name="channel"][value="email"]').check();
   await review();
-  assert.equal(await page.locator('[data-confirm="channel"]').textContent(), "Написать на e-mail");
   await send();
   await visible(".form-success");
-  assert.equal(requests.at(-1).channel, "email");
   assert.equal(requests.at(-1).corrects_submission_id, acceptedId);
   assert.notEqual(requests.at(-1).submission_id, failedId);
-  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы ответим на e-mail: good@example.com. Вы указали: +972 50-000-0000, good@example.com");
+  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы свяжемся с вами по телефону +972 50-000-0000. Ваш e-mail: good@example.com");
   // Each contact field independently starts a correction of the latest accepted request.
-  for (const field of ["name", "phone", "channel"]) {
+  const correctedContacts = { name: "Другое Имя", phone: "+972 54 000 0000", email: "updated@example.com" };
+  for (const field of ["name", "phone", "email"]) {
     const previousId = requests.at(-1).submission_id;
     const count = requests.length;
     await page.locator(".form-success__edit").click();
-    if (field === "channel") await page.locator('[name="channel"][value="phone"]').check();
-    else await page.locator(`#lead-${field}`).fill(field === "name" ? "Другое Имя" : "+972 54 000 0000");
+    await page.locator(`#lead-${field}`).fill(correctedContacts[field]);
     await review(); await send();
     await visible(".form-success");
     assert.equal(requests.length, count + 1);
     assert.equal(requests.at(-1).corrects_submission_id, previousId);
     assert.notEqual(requests.at(-1).submission_id, previousId);
   }
-  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы свяжемся с вами по телефону +972 54-000-0000. Вы указали: +972 54-000-0000, good@example.com");
+  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы свяжемся с вами по телефону +972 54-000-0000. Ваш e-mail: updated@example.com");
   const lastCorrectionId = requests.at(-1).submission_id;
   await page.locator(".form-success__again").click();
   assert.equal(await page.locator("#lead-email").inputValue(), "");
   assert.equal(await page.locator("#lead-name").inputValue(), "");
-  assert.equal(await page.locator('[name="channel"][value="phone"]').isChecked(), true);
   await fill();
   await review(); await send();
   await visible(".form-success");

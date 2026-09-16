@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const EXPECTED_VERSION = "2.2.0";
+const EXPECTED_VERSION = "2.3.0";
 const EXPECTED_DATE = "2026-09-16";
 const BASE_URL = "https://gambarian-landing.pages.dev/api/lead";
 
@@ -32,7 +32,6 @@ for (const script of ["lead-contract", "app"]) {
   assert.ok(index.includes(`<script src="${script}.js?v=${EXPECTED_VERSION}" defer></script>`));
 }
 assert.ok(app.includes(`var EXPECTED_LEAD_CONTRACT_VERSION = "${EXPECTED_VERSION}";`));
-assert.ok(index.includes('<dt>Связь</dt><dd data-confirm="channel"></dd>'));
 for (const token of ['autocomplete="name"', 'autocomplete="tel"', 'autocomplete="email"']) {
   assert.ok(index.includes(token), `Нет ${token}`);
 }
@@ -41,9 +40,7 @@ assert.ok(index.includes('placeholder="Ваше имя"'));
 assert.ok(index.includes('placeholder="Ваш e-mail"'));
 assert.equal(leadModule.LEAD_CONTRACT.limits.email, 120);
 assert.equal(leadModule.LEAD_CONTRACT.validation.fieldLabels.email, "E-mail");
-assert.deepEqual(leadModule.LEAD_CONTRACT.channels, ["phone", "whatsapp", "email"]);
 assert.ok(index.includes('class="lead-form__confirm" aria-live="polite" hidden'));
-assert.ok(index.includes('name="channel" value="phone" checked'));
 assert.ok(!index.includes('name="topic"'), "Поле topic не удалено");
 for (const field of ["name", "phone", "email"]) {
   assert.ok(index.includes(`id="lead-${field}-error"`));
@@ -54,7 +51,6 @@ assert.ok(app.includes("showValidationErrors"));
 assert.ok(app.includes("showServerValidationErrors"));
 assert.ok(!app.includes("LEAD_CONTRACT.topicOptions"));
 assert.ok(app.includes("email: form.elements.email.value.trim()"));
-assert.ok(app.includes("channel: form.elements.channel.value"));
 assert.ok(!app.includes("data.topic"));
 assert.ok(styles.includes('input[aria-invalid="true"]'));
 assert.ok(styles.includes(".field--invalid"));
@@ -138,7 +134,6 @@ const input = {
   phone: "+972 50 000 0000",
   topic: "международное дело",
   email: "  lead@example.com  ",
-  channel: "whatsapp",
   submission_id: submissionId,
   landing_path: "/",
   utm_source: "google",
@@ -170,13 +165,32 @@ try {
   assert.equal(payload.name, "Тестовый Лид");
   assert.equal(payload.topic, undefined);
   assert.equal(payload.email, "lead@example.com");
-  assert.equal(payload.channel, "whatsapp");
   assert.equal(payload.utm_source, "google");
   assert.equal(payload.utm_medium, "");
   assert.equal(payload.unknown, undefined);
   assert.equal(payload.corrects_submission_id, "");
   const keys = Object.keys(payload);
-  assert.equal(keys[keys.indexOf("submission_id") + 1], "corrects_submission_id");
+  assert.deepEqual(keys, [
+    "schema_version", "schema_date", "event_name", "source_system",
+    "submission_id", "corrects_submission_id", "submitted_at", "form_id",
+    "landing_path", "landing_language", "name", "phone", "email", "referrer_host",
+    "utm_source", "utm_medium", "utm_campaign", "utm_id", "utm_term", "utm_content",
+    "gclid", "gbraid", "wbraid", "fbclid",
+  ]);
+
+  // Older pages may send this removed field; any value must be ignored.
+  for (const channel of ["phone", "whatsapp", "email", "sms", "", null, 123, {}]) {
+    captured = undefined;
+    response = await call("POST", JSON.stringify({ ...input, channel }), {
+      ALBATO_WEBHOOK_URL: "https://example.invalid/albato-test",
+    });
+    assert.equal(response.status, 202);
+    assert.equal((await response.json()).submission_id, submissionId);
+    const delivered = JSON.parse(captured.options.body);
+    assert.equal(Object.hasOwn(delivered, "channel"), false);
+    assert.deepEqual(Object.keys(delivered), keys);
+    assert.equal(Object.hasOwn(leadModule.validateLead({ ...input, channel }).lead, "channel"), false);
+  }
 
   const correctionId = "b60b01bc-19ba-49a5-8c49-6d32f8d91bca";
   for (const corrects_submission_id of ["", submissionId]) {
@@ -208,7 +222,6 @@ try {
     assert.equal(response.status, 202, `Valid/legacy email: ${email}`);
     const delivered = JSON.parse(captured.options.body);
     assert.equal(delivered.email, email || "");
-    assert.equal(delivered.channel, "phone");
     assert.equal(delivered.corrects_submission_id, "");
   }
   for (const [email, code] of [
@@ -231,11 +244,6 @@ try {
     assert.deepEqual((await response.json()).field_errors, { email: code });
     assert.equal(captured, undefined, "Invalid email must not reach the webhook");
   }
-  for (const channel of ["phone", "whatsapp", "email"]) {
-    assert.equal(leadModule.validateLead({ ...input, channel }).lead.channel, channel);
-  }
-  assert.deepEqual(leadModule.validateLead({ ...input, channel: "sms" }).fieldErrors, { channel: "invalid_format" });
-
   console.error = function () {};
   globalThis.fetch = async () => new Response("failed", { status: 500 });
   response = await call("POST", JSON.stringify(input), {

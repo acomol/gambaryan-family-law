@@ -388,7 +388,6 @@ test('Рабочее время: точный контракт Hero и восс�
   await expect(page.locator('#lead-name')).toHaveValue('Тест приёмки');
   await expect(page.locator('#lead-phone')).toHaveValue('+972500000000');
   await expect(page.locator('#lead-email')).toHaveValue('visual@example.com');
-  await expect(page.locator('input[name="channel"][value="phone"]')).toBeChecked();
   await expect(page.locator('.lead-form__submit')).toHaveText('Повторить отправку');
   await expect(page.locator('.lead-form__submit')).toBeEnabled();
   await expect(page.locator('.lead-form__submit')).toBeFocused();
