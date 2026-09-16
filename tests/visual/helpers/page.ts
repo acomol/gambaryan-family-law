@@ -86,6 +86,7 @@ export async function selectService(page: Page, index: number) {
   const tab = page.locator('.svc-tab').nth(index);
   await tab.click();
   await expect(tab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.svc-stage[data-motion="idle"]')).toHaveCount(1);
   await expect(page.locator('.svc-card:not([hidden])')).toHaveCount(1);
   await settle(page);
 }
