@@ -35,7 +35,7 @@ from client_copy_contract import (
 
 VERIFIER_VERSION = "1.1.0"
 VERIFIER_DATE = "2026-09-07"
-EXPECTED_PREVIEW_ALIASES = 12
+EXPECTED_PREVIEW_ALIASES = 13
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
 SKIPPED_TEXT_TAGS = {"script", "style"}

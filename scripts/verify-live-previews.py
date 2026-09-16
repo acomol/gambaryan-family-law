@@ -39,11 +39,17 @@ TIMEOUT = 30
 
 # review-numbered снимает &nbsp; в H1: бейджи нумерации сужают колонку и
 # заголовок утягивал CTA за первый экран. Обоснование — docs/TYPOGRAPHY-DASHES.md §7.
-# Stage 5 keeps the facts aria-label; final-dev4 still has 15 protected dashes:
-# build/variants/final-dev4/index.html -> count("&nbsp;—").
+# Замороженный опубликованный final-dev4 сохраняет 15 защищённых тире.
 NBSP_EXPECTED_DEFAULT = 23
-NBSP_EXPECTED = {"review-numbered": 22, "final-dev4": 15}
+# final-dev5: 14 по build/variants/final-dev5/index.html после правки H1.
+# Ожидание final-dev4 относится к замороженному опубликованному адресу.
+NBSP_EXPECTED = {"review-numbered": 22, "final-dev4": 15, "final-dev5": 14}
 FACT_CARD_MARKERS = {
+    "final-dev5": (
+        'data-owner-copy-id="fact-30-v1"',
+        'data-owner-copy-id="fact-precedent-v1"',
+        'data-owner-copy-id="fact-900-v2"',
+    ),
     "final-dev4": (
         'data-owner-copy-id="fact-30-v1"',
         'data-owner-copy-id="fact-precedent-v1"',
@@ -51,6 +57,11 @@ FACT_CARD_MARKERS = {
     ),
 }
 FACT_CARD_FORBIDDEN = {
+    "final-dev5": (
+        'class="fact-card__num"',
+        'Профессиональный опыт в юриспруденции</h2>',
+        'data-owner-copy-id="fact-900-v1"',
+    ),
     "final-dev4": (
         'class="fact-card__num"',
         'Профессиональный опыт в юриспруденции</h2>',
@@ -58,6 +69,10 @@ FACT_CARD_FORBIDDEN = {
     ),
 }
 IDENTITY = {
+    "final-dev5": {
+        "html": (f"<!-- {FINAL_DEV4_MARKER} -->", FINAL_DEV4_BODY_CLASS),
+        "css": (f"/* {FINAL_DEV4_MARKER} */",),
+    },
     "final-dev4": {
         "html": (f"<!-- {FINAL_DEV4_MARKER} -->", FINAL_DEV4_BODY_CLASS),
         "css": (f"/* {FINAL_DEV4_MARKER} */",),

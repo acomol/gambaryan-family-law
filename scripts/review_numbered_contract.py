@@ -1,9 +1,10 @@
 """Shared contract for the service-only numbered client review page."""
 
-REVIEW_NUMBERED_VERSION = "2.3.0"
-REVIEW_NUMBERED_UPDATED = "2026-09-08"
+REVIEW_NUMBERED_VERSION = "2.4.0"
+REVIEW_NUMBERED_UPDATED = "2026-09-16"
 
 OWNER_REVIEW_IDS = {
+    "hero-title-v2": "1.7",
     "fact-30-v1": "2.6",
     "fact-precedent-v1": "2.10",
     "fact-900-v2": "2.14",

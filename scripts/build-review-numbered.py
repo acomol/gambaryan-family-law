@@ -216,6 +216,9 @@ def _relax_hero_title_nbsp(html: str) -> str:
     приемлемо. См. `docs/TYPOGRAPHY-DASHES.md` §7.
     """
 
+    # Владелец убрал тире из H1 в final-dev5; этому заголовку послабление не нужно.
+    if 'data-owner-copy-id="hero-title-v2"' in html:
+        return html
     marker = "семейному праву&nbsp;— на русском языке</h1>"
     if marker not in html:
         raise SystemExit("не найден H1 с защищённым тире — проверить site/index.html")

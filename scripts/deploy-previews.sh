@@ -45,6 +45,12 @@ if [ "$ONLY" = "final-dev3" ] && [ "${ALLOW_DEV3:-}" != "i-know" ]; then
   exit 2
 fi
 
+if [ "$ONLY" = "final-dev4" ] && [ "${ALLOW_DEV4:-}" != "i-know" ]; then
+  echo "Отказ: final-dev4 — эталон цикла final-dev5, по нему сверяют неизменность." >&2
+  echo "Если публикация эталона действительно нужна: ALLOW_DEV4=i-know bash $0 final-dev4" >&2
+  exit 2
+fi
+
 [ -f "$MAP" ] || { echo "Ошибка: $MAP не найден. Запускать из корня репозитория." >&2; exit 1; }
 command -v npx >/dev/null 2>&1 || { echo "Ошибка: не найден npx. Установите Node.js." >&2; exit 1; }
 

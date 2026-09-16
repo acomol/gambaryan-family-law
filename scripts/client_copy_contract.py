@@ -1,6 +1,6 @@
 """Точный контракт утверждённого клиентом текста лендинга.
 
-CLIENT-COPY-CONTRACT v1.6.0 | 2026-09-10
+CLIENT-COPY-CONTRACT v1.7.0 | 2026-09-16
 """
 
 from __future__ import annotations
@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import Final
 
 
-CONTRACT_VERSION: Final = "1.6.0"
-CONTRACT_DATE: Final = "2026-09-10"
+CONTRACT_VERSION: Final = "1.7.0"
+CONTRACT_DATE: Final = "2026-09-16"
 SOURCE_FILENAME: Final = "Копия LP - Короткая версия (1).txt"
 SOURCE_REPO_PATH: Final = "docs/sources/client-copy-short-v1.0.0.txt"
 SOURCE_BYTES: Final = 14_895
@@ -365,6 +365,8 @@ APPROVED_COPY_ITEMS: Final[tuple[tuple[str, str], ...]] = (
 APPROVED_COPY: Final[dict[str, str]] = dict(APPROVED_COPY_ITEMS)
 
 OWNER_APPROVED_COPY: Final[dict[str, str]] = {
+    # устное указание владельца 2026-09-16, final-dev5, заменяет 1.7
+    "hero-title-v2": "Развод в Израиле? Адвокат по семейному праву",
     # Строка 8; заменяет 2.6; решение №11: тире снято.
     "fact-30-v1": "30+ лет профессиональный опыт в юриспруденции",
     # Строка 9; заменяет 2.10; решение №11: тире снято.

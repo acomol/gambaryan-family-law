@@ -59,30 +59,41 @@ class ClientCopyVerifierTests(unittest.TestCase):
         self.assertTrue(any("неизвестный текст вне data-copy-id" in item for item in problems))
 
     def test_changed_approved_block_fails(self) -> None:
-        # Подмена идёт по разметке заголовка, а не по литеральному тексту:
-        # внутри h1 стоит &nbsp; перед тире (docs/TYPOGRAPHY-DASHES.md), и
-        # сверка по литералу молча превращалась бы в no-op — тест проходил бы,
-        # ничего не проверив.
+        # После owner override Hero проверяем неизменённый клиентский H2.
+        # Счётчик подмены не даёт тесту молча превратиться в no-op.
         html, count = re.subn(
-            r'(<h1\b[^>]*data-copy-id="1\.7"[^>]*>).*?(</h1>)',
+            r'(<h2\b[^>]*data-copy-id="7\.4"[^>]*>).*?(</h2>)',
             r"\1Гарантируем развод без суда\2",
             self.source_html,
             count=1,
             flags=re.DOTALL,
         )
-        self.assertEqual(count, 1, "заголовок 1.7 не найден в разметке")
+        self.assertEqual(count, 1, "заголовок 7.4 не найден в разметке")
         problems = self.verify_temp_html(html)
-        self.assertTrue(any("data-copy-id='1.7'" in item for item in problems))
+        self.assertTrue(any("data-copy-id='7.4'" in item for item in problems))
 
     def test_unused_approved_block_is_allowed(self) -> None:
-        html = re.sub(
-            r'<h1\b[^>]*data-copy-id="1\.7"[^>]*>.*?</h1>',
+        html, count = re.subn(
+            r'<h2\b[^>]*data-copy-id="7\.4"[^>]*>.*?</h2>',
             "",
             self.source_html,
             count=1,
             flags=re.DOTALL,
         )
+        self.assertEqual(count, 1, "заголовок 7.4 не найден в разметке")
         self.assertEqual(self.verify_temp_html(html), [])
+
+    def test_old_hero_title_without_copy_id_fails(self) -> None:
+        html, count = re.subn(
+            r'<h1\b[^>]*>.*?</h1>',
+            '<h1>Развод в Израиле? Адвокат по семейному праву&nbsp;— на русском языке</h1>',
+            self.source_html,
+            count=1,
+            flags=re.DOTALL,
+        )
+        self.assertEqual(count, 1)
+        problems = self.verify_temp_html(html)
+        self.assertTrue(any("неизвестный текст вне data-copy-id" in item for item in problems))
 
     def test_owner_approved_yulia_v2_drift_fails(self) -> None:
         html = self.source_html.replace("Более 17 лет профессионального опыта в юриспруденции", "Более 17 лет опыта", 1)
@@ -91,6 +102,7 @@ class ClientCopyVerifierTests(unittest.TestCase):
 
     def test_owner_approved_new_blocks_drift_fails(self) -> None:
         mutations = (
+            ('hero-title-v2', 'праву</h1>', 'праву&nbsp;— на русском языке</h1>'),
             ('svc-h2-v1', 'представительство в бракоразводных спорах', 'представительство в спорах'),
             ('svc-divorce-title-v1', 'Бракоразводные процессы</h3>', 'Развод</h3>'),
             ('svc-divorce-lead-v1', 'иных инстанциях', 'других инстанциях'),

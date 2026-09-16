@@ -111,6 +111,7 @@ PREVIEWS = (
     Target("final-dev1", "build/variants/final-dev1"),
     Target("final-dev3", "build/variants/final-dev3", True),
     Target("final-dev4", "build/variants/final-dev4", True),
+    Target("final-dev5", "build/variants/final-dev5", True),
     Target("v1-playfair-onest", "build/font-variants/v1-playfair-onest"),
     Target("v2-lora-inter", "build/font-variants/v2-lora-inter"),
     Target("v3-literata-manrope", "build/font-variants/v3-literata-manrope"),
@@ -891,7 +892,7 @@ def validate_metrics(
         if not hero["photoCurrentSrc"]:
             failures.append("v3-effective-width-photo-current-src-missing")
 
-    if target.name in {"final-dev3", "final-dev4"}:
+    if target.name in {"final-dev3", "final-dev4", "final-dev5"}:
         if width <= 860:
             if not form["present"]:
                 failures.append("final-dev3-mobile-form-missing")
@@ -1115,7 +1116,7 @@ def validate_metrics(
 
     if target.name == "final-dev1" and not metrics["variant"]["finalDev1"]:
         failures.append("final-dev1-marker-missing")
-    if target.name in {"final-dev3", "final-dev4"}:
+    if target.name in {"final-dev3", "final-dev4", "final-dev5"}:
         if not metrics["variant"]["finalDev1"]:
             failures.append("final-dev3-inherited-final-dev1-class-missing")
         if not metrics["markers"]["finalDev3"]:
@@ -1197,7 +1198,7 @@ def run_cell(
                 or (target.name in CLASSIC_SCROLLBAR_TARGETS and (width, height) in CLASSIC_SCROLLBAR_VIEWPORTS),
                 timeout_ms,
             )
-            if target.name in {"final-dev3", "final-dev4"} and width <= 960 and height > 400:
+            if target.name in {"final-dev3", "final-dev4", "final-dev5"} and width <= 960 and height > 400:
                 metrics["finalDev3BarVisibility"] = final_dev3_bar_visibility_metrics(page)
             metrics["platformFonts"] = platform_font_metrics(page)
             failures = validate_metrics(

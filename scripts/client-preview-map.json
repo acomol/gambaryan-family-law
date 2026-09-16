@@ -25,6 +25,10 @@
       "directory": "build/variants/final-dev4"
     },
     {
+      "branch": "final-dev5",
+      "directory": "build/variants/final-dev5"
+    },
+    {
       "branch": "v1-playfair-onest",
       "directory": "build/font-variants/v1-playfair-onest"
     },

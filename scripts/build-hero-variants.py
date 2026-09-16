@@ -318,11 +318,14 @@ VARIANTS = {
     "dev1": ("final-dev1", "Desktop Hero с расширенной конверсией", variant_final_dev1),
     "dev3": ("final-dev3", "Desktop Hero с расширенной конверсией", variant_final_dev3),
     "dev4": ("final-dev4", "final-dev4: наследник final-dev3 с правками владельцев 2026-09-06", variant_final_dev4),
+    "dev5": ("final-dev5", "final-dev5: рабочая копия final-dev4, правки с 2026-09-16", variant_final_dev4),
 }
 
 
 def build(key: str) -> Path:
     slug, name, fn = VARIANTS[key]
+    if key == "dev5":
+        name = VARIANTS["dev4"][1]  # Сохраняем HTML побайтной копией сборки dev4.
     dest = OUT / slug
     if dest.exists():
         shutil.rmtree(dest)
@@ -343,7 +346,7 @@ def build(key: str) -> Path:
         html_path = dest / "index.html"
         html = apply_final_dev3_script_contract(html_path.read_text(encoding="utf-8"))
         html_path.write_text(html, encoding="utf-8")
-    if key == "dev4":
+    if key in {"dev4", "dev5"}:
         source = FINAL_DEV4_ADDON / FINAL_DEV4_HERO_BUSINESS_SCRIPT
         shutil.copy(source, dest / FINAL_DEV4_HERO_BUSINESS_SCRIPT)
         html_path = dest / "index.html"
@@ -375,7 +378,7 @@ def verify(dest: Path, key: str) -> list[str]:
     # неразрывный пробел (&nbsp;), и сравнивать надо то, что видит читатель.
     hero_text = hero.replace("&nbsp;", " ").replace(" ", " ")
     for must in (
-        "Развод в Израиле? Адвокат по семейному праву — на русском языке",
+        'data-owner-copy-id="hero-title-v2">Развод в Израиле? Адвокат по семейному праву</h1>',
         "Записаться на консультацию",
         "054-549-0623",
     ):
@@ -387,7 +390,7 @@ def verify(dest: Path, key: str) -> list[str]:
     if key == "b" and 'class="hero hero--call-first"' not in hero:
         problems.append("Hero B не имеет изолирующего класса")
 
-    if key in {"dev1", "dev3", "dev4"}:
+    if key in {"dev1", "dev3", "dev4", "dev5"}:
         styles = (dest / "styles.css").read_text(encoding="utf-8")
         marker_text = f"/* FINAL-DEV1-HERO v{FINAL_DEV1_VERSION} | {FINAL_DEV1_DATE}"
         variant_css_position = styles.rfind(marker_text)
@@ -488,7 +491,7 @@ def verify(dest: Path, key: str) -> list[str]:
         )
         if any(token in script for token in forbidden_script_tokens):
             problems.append("final-dev3 Hero adapter не должен иметь второй источник состояния")
-    if key == "dev4":
+    if key in {"dev4", "dev5"}:
         styles = (dest / "styles.css").read_text(encoding="utf-8")
         script_path = dest / FINAL_DEV4_HERO_BUSINESS_SCRIPT
         source_path = FINAL_DEV4_ADDON / FINAL_DEV4_HERO_BUSINESS_SCRIPT
