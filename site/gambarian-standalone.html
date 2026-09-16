@@ -721,6 +721,15 @@ picture { display: block; }
   align-items: stretch;
 }
 
+/* final-dev5, 2026-09-16: указание владельца; DOM-порядок сохранён ради
+   контрактов и мобильной раскладки.
+   Две колонки auto-fit: 2 × 300px + 12px gap + 2 × 24px padding = 660px. */
+@media (min-width: 660px) {
+  .facts-grid > .fact-card:nth-child(1) { order: 3; }
+  .facts-grid > .fact-card:nth-child(2) { order: 2; }
+  .facts-grid > .fact-card:nth-child(3) { order: 1; }
+}
+
 .fact-card {
   position: relative;
   overflow: hidden;
@@ -1736,7 +1745,7 @@ picture { display: block; }
     <div class="hero-inner">
       <div class="hero-row"><span class="eyebrow">Адвокат Александр Гамбарян</span></div>
       <h1 class="hero__title" data-owner-copy-id="hero-title-v2">Развод в Израиле? Адвокат по семейному праву</h1>
-      <p class="hero__lede">Адвокат Александр Гамбарян поможет понять, какие вопросы требуют решения сейчас и с чего начать&nbsp;— на русском языке.</p>
+      <p class="hero__lede" data-owner-copy-id="hero-lede-v2">Адвокат Александр Гамбарян поможет понять, какие вопросы требуют решения сейчас и с чего начать.</p>
       <div class="hero-media">
         <picture>
           <!-- Мобильная полоса берёт свой кроп: в общем кадре запас над головами
@@ -1772,10 +1781,10 @@ picture { display: block; }
         <div class="notch"></div>
         <div class="fact-card__sub">возвращение похищенного ребёнка при незарегистрированных родительских правах.</div>
       </div>
-      <div class="fact-card" data-owner-copy-id="fact-900-v2">
+      <div class="fact-card" data-owner-copy-id="fact-900-v3">
         <div class="fact-card__title">Автор более 900 экспертных статей</div>
         <div class="notch"></div>
-        <div class="fact-card__sub">В области уголовного, семейного и миграционного права, основанных на многолетнем опыте адвокатской деятельности</div>
+        <div class="fact-card__sub">в области уголовного, семейного и миграционного права, основанных на многолетнем опыте адвокатской деятельности</div>
       </div>
     </div>
     <div class="facts-bar">

@@ -621,6 +621,15 @@ picture { display: block; }
   align-items: stretch;
 }
 
+/* final-dev5, 2026-09-16: указание владельца; DOM-порядок сохранён ради
+   контрактов и мобильной раскладки.
+   Две колонки auto-fit: 2 × 300px + 12px gap + 2 × 24px padding = 660px. */
+@media (min-width: 660px) {
+  .facts-grid > .fact-card:nth-child(1) { order: 3; }
+  .facts-grid > .fact-card:nth-child(2) { order: 2; }
+  .facts-grid > .fact-card:nth-child(3) { order: 1; }
+}
+
 .fact-card {
   position: relative;
   overflow: hidden;

@@ -95,6 +95,18 @@ class ClientCopyVerifierTests(unittest.TestCase):
         problems = self.verify_temp_html(html)
         self.assertTrue(any("неизвестный текст вне data-copy-id" in item for item in problems))
 
+    def test_old_hero_lede_without_copy_id_fails(self) -> None:
+        html, count = re.subn(
+            r'<p\b[^>]*class="hero__lede"[^>]*>.*?</p>',
+            '<p class="hero__lede">Адвокат Александр Гамбарян поможет понять, какие вопросы требуют решения сейчас и с чего начать&nbsp;— на русском языке.</p>',
+            self.source_html,
+            count=1,
+            flags=re.DOTALL,
+        )
+        self.assertEqual(count, 1)
+        problems = self.verify_temp_html(html)
+        self.assertTrue(any("неизвестный текст вне data-copy-id" in item for item in problems), problems)
+
     def test_owner_approved_yulia_v2_drift_fails(self) -> None:
         html = self.source_html.replace("Более 17 лет профессионального опыта в юриспруденции", "Более 17 лет опыта", 1)
         problems = self.verify_temp_html(html)
@@ -103,6 +115,7 @@ class ClientCopyVerifierTests(unittest.TestCase):
     def test_owner_approved_new_blocks_drift_fails(self) -> None:
         mutations = (
             ('hero-title-v2', 'праву</h1>', 'праву&nbsp;— на русском языке</h1>'),
+            ('hero-lede-v2', 'с чего начать.</p>', 'с чего начать&nbsp;— на русском языке.</p>'),
             ('svc-h2-v1', 'представительство в бракоразводных спорах', 'представительство в спорах'),
             ('svc-divorce-title-v1', 'Бракоразводные процессы</h3>', 'Развод</h3>'),
             ('svc-divorce-lead-v1', 'иных инстанциях', 'других инстанциях'),
@@ -125,10 +138,11 @@ class ClientCopyVerifierTests(unittest.TestCase):
                 problems = self.verify_temp_html(self.source_html.replace(old, new, 1))
                 self.assertTrue(any(f"owner:{owner_id}" in item for item in problems), problems)
 
-    def test_owner_approved_fact_900_v2_drift_fails(self) -> None:
-        html = self.source_html.replace("В области уголовного", "в области уголовного", 1)
+    def test_owner_approved_fact_900_v3_drift_fails(self) -> None:
+        self.assertIn("в области уголовного", self.source_html)
+        html = self.source_html.replace("в области уголовного", "в сфере уголовного", 1)
         problems = self.verify_temp_html(html)
-        self.assertTrue(any("owner:fact-900-v2" in item for item in problems))
+        self.assertTrue(any("owner:fact-900-v3" in item for item in problems), problems)
 
     def test_owner_approved_fact_cards_drift_fails(self) -> None:
         mutations = (
