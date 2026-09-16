@@ -1,6 +1,6 @@
 """Точный контракт утверждённого клиентом текста лендинга.
 
-CLIENT-COPY-CONTRACT v1.13.0 | 2026-09-16
+CLIENT-COPY-CONTRACT v1.14.0 | 2026-09-16
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Final
 
 
-CONTRACT_VERSION: Final = "1.13.0"
+CONTRACT_VERSION: Final = "1.14.0"
 CONTRACT_DATE: Final = "2026-09-16"
 SOURCE_FILENAME: Final = "Копия LP - Короткая версия (1).txt"
 SOURCE_REPO_PATH: Final = "docs/sources/client-copy-short-v1.0.0.txt"
@@ -34,6 +34,7 @@ ALLOWED_OUTSIDE_COPY_TEXT: Final[frozenset[str]] = frozenset(
         "Адвокат Израиля, лицензия № 30178",
         "Более 30 лет профессионального опыта в юридической сфере. Работа с клиентами на русском, иврите и английском языках.",
         "Прием — Тель-Авив / онлайн",
+        "Тель-Авив,",
         "Карлибах, 10",
         "&",
         "*",

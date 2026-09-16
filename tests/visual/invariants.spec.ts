@@ -27,8 +27,51 @@ test('2. Кнопка первого экрана видна без прокру
   await assertHeroButtonInFirstViewport(page);
 });
 
-test('3. Видимые отступы первого экрана и padding секций равны --section-pad @hero', async ({ page }, testInfo) => {
+test('3. Отступы Hero: адрес на 8 px выше на десктопе; остальные по --section-pad @hero', async ({ page }, testInfo) => {
   await assertSectionSpacing(page, Boolean(testInfo.project.metadata.heroOnly));
+});
+
+test('Hero: адрес в одну строку, зона нажатия 44 px и новая вкладка карты @hero', async ({ page, context }) => {
+  const address = page.locator('.hero-address');
+  await expect(address).toHaveText('Тель-Авив, Карлибах, 10');
+  await expect(address).toHaveAttribute('data-action', 'map_click');
+  await expect(address).toHaveAttribute('aria-label', 'Открыть адрес в Google Maps: Тель-Авив, Карлибах, 10');
+  await expect(address).toHaveAttribute('target', '_blank');
+  await expect(address).toHaveAttribute('rel', 'noopener');
+  await expect(address.locator('svg')).toHaveAttribute('aria-hidden', 'true');
+  const geometry = await address.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const zone = getComputedStyle(element, '::before');
+    const title = document.querySelector('.hero__title')!.getBoundingClientRect();
+    const header = document.querySelector('.site-header')!.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(element.querySelector('.hero-address__text')!);
+    const lines = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+    return {
+      lineSpread: Math.max(...lines.map((r) => r.top)) - Math.min(...lines.map((r) => r.top)),
+      hitHeight: parseFloat(zone.height), hitTop: box.top + parseFloat(zone.top),
+      hitBottom: box.top + parseFloat(zone.top) + parseFloat(zone.height), headerBottom: header.bottom, titleTop: title.top,
+      centered: Math.abs((box.left + box.right) / 2 - document.documentElement.clientWidth / 2),
+    };
+  });
+  expect(geometry.lineSpread).toBeLessThanOrEqual(1);
+  expect(geometry.hitHeight).toBeGreaterThanOrEqual(44);
+  expect(geometry.hitTop).toBeGreaterThanOrEqual(geometry.headerBottom);
+  expect(geometry.hitBottom).toBeLessThanOrEqual(geometry.titleTop);
+  if (page.viewportSize()!.width <= 860) expect(geometry.centered).toBeLessThanOrEqual(1);
+  // Context route intercepts the popup's first request: Google is never contacted.
+  await context.route('https://www.google.com/maps/search/**', (route) => route.fulfill({
+    status: 200, contentType: 'text/html', body: '<title>Map target intercepted</title>',
+  }));
+  const popupPromise = page.waitForEvent('popup');
+  await address.click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState();
+  const url = new URL(popup.url());
+  expect(url.origin + url.pathname).toBe('https://www.google.com/maps/search/');
+  expect(url.searchParams.get('api')).toBe('1');
+  expect(url.searchParams.get('query')).toBe('קרליבך 10, תל אביב');
+  await popup.close();
 });
 
 test('4. Все восемь услуг сохраняют высоту, позиции «Ведёт» и CTA, карточка центрирована', async ({ page }) => {
