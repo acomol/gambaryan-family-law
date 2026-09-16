@@ -40,6 +40,7 @@ async function mockLead(page: Page, status: 200 | 503): Promise<Request[]> {
 async function fillLead(page: Page): Promise<void> {
   await page.locator('#lead-name').fill('Визуальный тест');
   await page.locator('#lead-phone').fill('+972 50 000 0000');
+  await page.locator('#lead-email').fill('visual@example.com');
 }
 
 function expectMockedLead(requests: Request[]): void {
@@ -48,6 +49,8 @@ function expectMockedLead(requests: Request[]): void {
   expect(requests[0].postDataJSON()).toMatchObject({
     name: 'Визуальный тест',
     phone: '+972 50 000 0000',
+    email: 'visual@example.com',
+    channel: 'phone',
   });
 }
 
@@ -106,6 +109,7 @@ test.describe('Состояния страницы', { tag: '@capture' }, () => 
     await expect(page.locator('#lead-phone')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#lead-name-error')).toHaveText('Введите имя.');
     await expect(page.locator('#lead-phone-error')).toHaveText('Введите номер телефона.');
+    await expect(page.locator('#lead-email-error')).toHaveText('Введите e-mail.');
     await expect(page.locator('.lead-form__error-title')).toHaveText('Проверьте выделенные поля');
     await expect(page.locator('.lead-form__error')).toBeVisible();
     await expect(page.locator('.lead-form__error-contact')).toBeHidden();
@@ -123,6 +127,8 @@ test.describe('Состояния страницы', { tag: '@capture' }, () => 
     const requests = await mockLead(page, 200);
     await fillLead(page);
     await page.locator('.lead-form__submit').click();
+    expect(requests).toHaveLength(0);
+    await page.locator('.lead-form__confirm-submit').click();
     await expect(page.locator('.form-success')).toBeVisible();
     await expect(page.locator('.form-success__title')).toHaveText('Заявка получена');
     await expect(page.locator('.lead-form')).toBeHidden();
@@ -139,6 +145,8 @@ test.describe('Состояния страницы', { tag: '@capture' }, () => 
     const requests = await mockLead(page, 503);
     await fillLead(page);
     await page.locator('.lead-form__submit').click();
+    expect(requests).toHaveLength(0);
+    await page.locator('.lead-form__confirm-submit').click();
     await expect(page.locator('.lead-form__error')).toBeVisible();
     await expect(page.locator('.lead-form__error-title')).toHaveText('Сервис отправки временно недоступен');
     await expect(page.locator('.lead-form__error-text')).toHaveText('Введённые данные сохранены. Повторите отправку позже.');
@@ -149,6 +157,7 @@ test.describe('Состояния страницы', { tag: '@capture' }, () => 
     await expect(page.locator('.form-success')).toBeHidden();
     await expect(page.locator('#lead-name')).toHaveValue('Визуальный тест');
     await expect(page.locator('#lead-phone')).toHaveValue('+972 50 000 0000');
+    await expect(page.locator('#lead-email')).toHaveValue('visual@example.com');
     expectMockedLead(requests);
     await capture(page, testInfo, {
       section: 'contact',

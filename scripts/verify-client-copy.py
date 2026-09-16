@@ -33,8 +33,8 @@ from client_copy_contract import (
 )
 
 
-VERIFIER_VERSION = "1.1.0"
-VERIFIER_DATE = "2026-09-07"
+VERIFIER_VERSION = "1.2.0"
+VERIFIER_DATE = "2026-09-16"
 EXPECTED_PREVIEW_ALIASES = 13
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
@@ -428,7 +428,7 @@ def verify_html(path: Path) -> list[str]:
                 f"{path}: запрещён старый текст: {forbidden_normalized!r}"
             )
 
-    for field_name in ("email", "topic"):
+    for field_name in ("topic",):
         if re.search(rf'\bname=["\']{field_name}["\']', html, re.IGNORECASE):
             problems.append(f"{path}: запрещено поле формы name={field_name!r}")
 

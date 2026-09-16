@@ -520,11 +520,17 @@
   var form = document.querySelector(".lead-form");
   var success = document.querySelector(".form-success");
   var again = document.querySelector(".form-success__again");
+  var editContacts = document.querySelector(".form-success__edit");
   var errorBox = document.querySelector(".lead-form__error");
   var errorTitle = errorBox && errorBox.querySelector(".lead-form__error-title");
   var errorText = errorBox && errorBox.querySelector(".lead-form__error-text");
   var errorContact = errorBox && errorBox.querySelector(".lead-form__error-contact");
   var submitButton = form && form.querySelector('.lead-form__submit');
+  var formFields = form && form.querySelector(".lead-form__fields");
+  var confirmBox = form && form.querySelector(".lead-form__confirm");
+  var confirmButton = form && form.querySelector(".lead-form__confirm-submit");
+  var editButton = form && form.querySelector(".lead-form__edit");
+  var emailSuggestion = form && form.querySelector(".field__email-suggestion");
   var formInputs = form ? Array.from(form.querySelectorAll("input[name]")) : [];
   var submitButtonLabel = submitButton ? submitButton.textContent : "";
   var validation = LEAD_CONTRACT.validation;
@@ -534,6 +540,53 @@
   var submitting = false;
   var errorMode = "";
   var invalidBatchScheduled = false;
+  var confirmedFingerprint = "";
+  var emailDomainCorrections = {
+    "gmail.con": "gmail.com",
+    "gmali.com": "gmail.com",
+    "gmail.co": "gmail.com",
+    "gamil.com": "gmail.com",
+    "hotmail.con": "hotmail.com",
+    "outlook.con": "outlook.com",
+    "yahoo.con": "yahoo.com",
+    "walla.con": "walla.co.il",
+  };
+
+  function suggestedEmailDomain() {
+    var parts = form.elements.email.value.trim().toLowerCase().split("@");
+    return parts.length === 2 && Object.prototype.hasOwnProperty.call(emailDomainCorrections, parts[1])
+      ? emailDomainCorrections[parts[1]] : "";
+  }
+
+  function updateEmailSuggestion() {
+    var domain = suggestedEmailDomain();
+    emailSuggestion.hidden = !domain;
+    emailSuggestion.textContent = domain ? "Возможно, вы имели в виду " + domain + "?" : "";
+  }
+
+  function normalizedPhone(phone) {
+    return (phone.charAt(0) === "+" ? "+" : "") + phone.replace(/\D/g, "");
+  }
+
+  function showFields(focusFirst) {
+    confirmedFingerprint = "";
+    confirmBox.hidden = true;
+    formFields.hidden = false;
+    submitButton.hidden = false;
+    if (focusFirst) form.elements.name.focus();
+  }
+
+  function showConfirmation(data, fingerprint) {
+    confirmedFingerprint = fingerprint;
+    form.querySelector('[data-confirm="name"]').textContent = data.name;
+    form.querySelector('[data-confirm="phone"]').textContent = normalizedPhone(data.phone);
+    form.querySelector('[data-confirm="email"]').textContent = data.email;
+    hideFormError();
+    formFields.hidden = true;
+    submitButton.hidden = true;
+    confirmBox.hidden = false;
+    confirmBox.querySelector(".lead-form__confirm-title").focus();
+  }
 
   function fieldMessage(input) {
     var value = input.value.trim();
@@ -556,6 +609,12 @@
       ) {
         return validation.fields.phone.invalidFormat;
       }
+    }
+
+    if (input.name === "email") {
+      if (!value) return validation.fields.email.required;
+      if (value.length > limits.email) return validation.fields.email.tooLong;
+      if (!LEAD_CONTRACT.isValidEmail(value)) return validation.fields.email.invalidFormat;
     }
 
     return "";
@@ -673,10 +732,33 @@
     form.setAttribute("aria-busy", active ? "true" : "false");
     submitButton.disabled = active;
     submitButton.textContent = active ? "Отправляем…" : submitButtonLabel;
+    confirmButton.disabled = active;
+    confirmButton.textContent = active ? "Отправляем…" : "Всё верно, отправить";
+    editButton.disabled = active;
   }
 
   if (form && success) {
     success.hidden = true;
+    // Общая валидация работает и при скрытых на шаге проверки обязательных полях.
+    form.noValidate = true;
+    editButton.addEventListener("click", function () { showFields(true); });
+    form.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !confirmBox.hidden && !submitting) {
+        event.preventDefault();
+        showFields(true);
+      }
+    });
+    form.elements.email.addEventListener("input", updateEmailSuggestion);
+    form.elements.email.addEventListener("change", updateEmailSuggestion);
+    emailSuggestion.addEventListener("click", function () {
+      var domain = suggestedEmailDomain();
+      if (!domain) return;
+      var input = form.elements.email;
+      input.value = input.value.trim().split("@")[0] + "@" + domain;
+      updateEmailSuggestion();
+      setFieldError(input, fieldMessage(input));
+      input.focus();
+    });
 
     form.addEventListener("invalid", function (event) {
       if (!event.target.matches("input[name]")) return;
@@ -718,6 +800,7 @@
       if (submitting) return;
       var invalidInputs = validateForm();
       if (invalidInputs.length) {
+        showFields(false);
         showValidationErrors(invalidInputs);
         return;
       }
@@ -725,7 +808,14 @@
       var data = {
         name: form.elements.name.value.trim(),
         phone: form.elements.phone.value.trim(),
+        email: form.elements.email.value.trim(),
+        channel: form.elements.channel.value,
       };
+      var contactFingerprint = JSON.stringify(data);
+      if (confirmBox.hidden || confirmedFingerprint !== contactFingerprint) {
+        showConfirmation(data, contactFingerprint);
+        return;
+      }
       Object.assign(data, attribution, {
         landing_path: window.location.pathname,
       });
@@ -744,6 +834,8 @@
         function () {
           setSubmitting(false);
           form.hidden = true;
+          success.querySelector(".form-success__contacts").textContent =
+            "Мы свяжемся с вами по телефону " + normalizedPhone(data.phone) + " и e-mail " + data.email;
           success.hidden = false;
           pushFormEvent("generate_lead");
           // Фокус на заголовок результата — иначе после отправки фокус
@@ -756,6 +848,7 @@
         },
         function (error) {
           setSubmitting(false);
+          showFields(false);
           pushFormEvent("form_error");
           if (
             error.status === 422 &&
@@ -782,21 +875,24 @@
     });
   }
 
-  if (again && form && success) {
-    again.addEventListener("click", function () {
-      form.reset();
-      pendingSubmissionId = "";
-      pendingFingerprint = "";
-      formInputs.forEach(function (input) {
-        setFieldError(input, "");
-      });
-      if (submitButton) submitButton.textContent = submitButtonLabel;
-      hideFormError();
-      success.hidden = true;
-      form.hidden = false;
-      var first = form.querySelector("input");
-      if (first) first.focus();
+  function reopenForm(reset) {
+    if (reset) form.reset();
+    pendingSubmissionId = "";
+    pendingFingerprint = "";
+    formInputs.forEach(function (input) {
+      setFieldError(input, "");
     });
+    if (submitButton) submitButton.textContent = submitButtonLabel;
+    hideFormError();
+    success.hidden = true;
+    form.hidden = false;
+    updateEmailSuggestion();
+    showFields(true);
+  }
+
+  if (again && editContacts && form && success) {
+    again.addEventListener("click", function () { reopenForm(true); });
+    editContacts.addEventListener("click", function () { reopenForm(false); });
   }
 
 })();

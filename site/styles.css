@@ -1292,6 +1292,7 @@ picture { display: block; }
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
 }
 .lead-form[hidden], .form-success[hidden] { display: none; }
+.lead-form [hidden] { display: none; }
 
 .lead-form__title {
   margin: 0 0 6px;
@@ -1336,6 +1337,17 @@ picture { display: block; }
 }
 
 .field { display: block; }
+.lead-form__row--single { grid-template-columns: minmax(0, 1fr); }
+.lead-form__channel { margin: 0 0 18px; padding: 0; border: 0; min-width: 0; }
+.lead-form__channel legend { margin-bottom: 8px; font-weight: 600; color: var(--ink); }
+.lead-form__channel label { display: flex; align-items: center; gap: 8px; margin: 8px 0; color: var(--ink); }
+.lead-form__channel input[type="radio"] { width: 18px; height: 18px; flex: none; margin: 0; padding: 0; accent-color: var(--wine); }
+.field__email-suggestion { padding: 8px 0; border: 0; background: none; color: var(--wine); font: inherit; font-size: 13px; text-align: left; text-decoration: underline; cursor: pointer; }
+.lead-form__confirm-title { margin: 0 0 18px; font-size: 19px; color: var(--ink); }
+.lead-form__contacts { margin: 0 0 22px; color: var(--ink); }
+.lead-form__contacts dt { margin-top: 12px; font-size: 13px; color: var(--ink-3); }
+.lead-form__contacts dd { margin: 4px 0 0; font-size: 20px; font-weight: 600; overflow-wrap: anywhere; }
+.form-success__contacts { overflow-wrap: anywhere; }
 .field--last { margin-bottom: 22px; }
 .field__label {
   display: block;
@@ -1388,7 +1400,7 @@ picture { display: block; }
   .lead-form input[aria-invalid="true"] { border: 2px solid Mark; }
 }
 
-.lead-form__submit {
+.lead-form__submit, .lead-form__confirm-submit {
   width: 100%;
   border: none;
   background: var(--wine);
@@ -1401,7 +1413,8 @@ picture { display: block; }
   cursor: pointer;
 }
 .lead-form__submit:hover:not(:disabled) { background: var(--wine-hover); }
-.lead-form__submit:disabled { cursor: wait; opacity: 0.72; }
+.lead-form__confirm-submit:hover:not(:disabled) { background: var(--wine-hover); }
+.lead-form__submit:disabled, .lead-form__confirm-submit:disabled, .lead-form__edit:disabled { cursor: wait; opacity: 0.72; }
 
 .lead-form__legal {
   margin: 14px 0 0;
@@ -1442,12 +1455,13 @@ picture { display: block; }
   line-height: 1.65;
   color: var(--ink-2);
 }
-.form-success__again {
+.form-success__again, .form-success__edit, .lead-form__edit {
   border: 1px solid var(--input-line);
   background: #fff;
   color: var(--ink);
   font-weight: 600;
   font-size: 13.5px;
+  margin-top: 10px;
   font-family: var(--font-body);
   padding: 11px 22px;
   border-radius: 8px;

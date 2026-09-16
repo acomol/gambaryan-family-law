@@ -1,6 +1,6 @@
 """Shared contract for the service-only numbered client review page."""
 
-REVIEW_NUMBERED_VERSION = "2.7.0"
+REVIEW_NUMBERED_VERSION = "2.8.0"
 REVIEW_NUMBERED_UPDATED = "2026-09-16"
 
 OWNER_REVIEW_IDS = {
@@ -22,7 +22,7 @@ OWNER_REVIEW_IDS = {
     # Блок перестроен устным указанием владельца 2026-09-08; номера 4.5/4.6
     # сохранены за местом в макете, 4.7 — новый второй абзац.
     "precedent-title-v2": "4.5",
-    "precedent-body-v2": "4.6",
+    "precedent-body-v3": "4.6",
     "precedent-note-v1": "4.7",
     "alexander-card-v1": "5.9–5.13",
     "yulia-card-v2": "5.18",

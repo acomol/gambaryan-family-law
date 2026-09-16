@@ -167,7 +167,7 @@ class ClientCopyVerifierTests(unittest.TestCase):
             ('svc-prenup-lead-v1', 'Разработка брачного договора', 'Составление брачного договора'),
             ('svc-protection-lead-v1', 'не дожидаясь ответа через сайт', 'не ожидая ответа'),
             ('precedent-title-v2', 'разговору о разводе', 'беседе о разводе'),
-            ('precedent-body-v2', 'договориться об ипотеке', 'договориться про ипотеку'),
+            ('precedent-body-v3', 'Не принимайте решений без консультации с адвокатом', 'Не принимайте решений без адвоката'),
             ('precedent-note-v1', 'решение о разводе ещё не принято', 'решение ещё не принято'),
             ('alexander-card-v1', 'Более 30 лет профессионального опыта в юриспруденции</span>', 'Более 30 лет опыта</span>'),
             ('attorneys-note-v1', 'полное сопровождение, включающее', 'сопровождение, включающее'),
@@ -231,8 +231,14 @@ class ClientCopyVerifierTests(unittest.TestCase):
                 problems = self.verify_temp_html(self.source_html.replace(old, new, 1))
                 self.assertTrue(any("OWNER-APPROVED" in item or "JSON-LD Юлии" in item for item in problems))
 
-    def test_email_and_topic_fields_fail(self) -> None:
-        for field_name in ("email", "topic"):
+    def test_old_precedent_owner_id_fails(self) -> None:
+        self.assertIn('data-owner-copy-id="precedent-body-v3"', self.source_html)
+        html = self.source_html.replace('data-owner-copy-id="precedent-body-v3"', 'data-owner-copy-id="precedent-body-v2"', 1)
+        problems = self.verify_temp_html(html)
+        self.assertTrue(any("неизвестный data-copy-id='owner:precedent-body-v2'" in item for item in problems), problems)
+
+    def test_topic_field_fails(self) -> None:
+        for field_name in ("topic",):
             with self.subTest(field_name=field_name):
                 html = self.source_html.replace(
                     "</form>",
@@ -244,7 +250,7 @@ class ClientCopyVerifierTests(unittest.TestCase):
 
     def test_unknown_text_attributes_and_json_ld_fail(self) -> None:
         replacements = (
-            ("placeholder=\"Как к вам обращаться\"", "placeholder=\"Гарантируем победу в суде\""),
+            ("placeholder=\"Ваше имя\"", "placeholder=\"Гарантируем победу в суде\""),
             ("aria-label=\"Меню\"", "aria-label=\"Гарантируем победу в суде\""),
             (
                 'name="description" content="Адвокат Александр Гамбарян поможет понять, какие вопросы требуют решения сейчас и с чего начать — на русском языке."',

@@ -341,25 +341,52 @@
           <span class="lead-form__error-text"></span>
           <span class="lead-form__error-contact" hidden><span data-business-variant="open">Если ошибка повторяется, позвоните: <a href="tel:+972545490623">054-549-0623</a> или напишите в <a href="https://wa.me/972545490623" target="_blank" rel="noopener">WhatsApp</a>.</span><span data-business-variant="closed" hidden>Если ошибка повторяется, напишите в <a href="https://wa.me/972545490623" target="_blank" rel="noopener">WhatsApp</a>.</span></span>
         </div>
-        <div class="lead-form__row">
-          <div class="field">
-            <label class="field__label" for="lead-name"><span data-copy-id="7.15">Имя</span> *</label>
-            <input id="lead-name" required name="name" type="text" autocomplete="name" autocapitalize="words" minlength="2" maxlength="100" aria-describedby="lead-name-error" aria-errormessage="lead-name-error" spellcheck="false" placeholder="Как к вам обращаться">
-            <span class="field__error" id="lead-name-error" hidden></span>
+        <div class="lead-form__fields">
+          <div class="lead-form__row">
+            <div class="field">
+              <label class="field__label" for="lead-name"><span data-copy-id="7.15">Имя</span> *</label>
+              <input id="lead-name" required name="name" type="text" autocomplete="name" autocapitalize="words" minlength="2" maxlength="100" aria-describedby="lead-name-error" aria-errormessage="lead-name-error" spellcheck="false" placeholder="Ваше имя">
+              <span class="field__error" id="lead-name-error" hidden></span>
+            </div>
+            <div class="field">
+              <label class="field__label" for="lead-phone"><span data-copy-id="7.17">Телефон</span> *</label>
+              <input id="lead-phone" required name="phone" type="tel" inputmode="tel" autocomplete="tel" minlength="6" maxlength="40" pattern="(?=(?:\D*\d){6,15}\D*$)(?:\d|\+|\(|\)|\.|-|\s)+" aria-describedby="lead-phone-error" aria-errormessage="lead-phone-error" spellcheck="false" placeholder="+972 50 000 0000">
+              <span class="field__error" id="lead-phone-error" hidden></span>
+            </div>
           </div>
-          <div class="field">
-            <label class="field__label" for="lead-phone"><span data-copy-id="7.17">Телефон</span> *</label>
-            <input id="lead-phone" required name="phone" type="tel" inputmode="tel" autocomplete="tel" minlength="6" maxlength="40" pattern="(?=(?:\D*\d){6,15}\D*$)(?:\d|\+|\(|\)|\.|-|\s)+" aria-describedby="lead-phone-error" aria-errormessage="lead-phone-error" spellcheck="false" placeholder="+972 50 000 0000">
-            <span class="field__error" id="lead-phone-error" hidden></span>
+          <div class="lead-form__row lead-form__row--single">
+            <div class="field">
+              <label class="field__label" for="lead-email">E-mail *</label>
+              <input id="lead-email" required name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" aria-describedby="lead-email-error" aria-errormessage="lead-email-error" spellcheck="false" placeholder="Ваш e-mail">
+              <span class="field__error" id="lead-email-error" hidden></span>
+              <div class="field__suggestion" aria-live="polite"><button class="field__email-suggestion" type="button" hidden></button></div>
+            </div>
           </div>
+          <fieldset class="lead-form__channel">
+            <legend>Как удобнее связаться</legend>
+            <label><input type="radio" name="channel" value="phone" checked> Позвонить</label>
+            <label><input type="radio" name="channel" value="whatsapp"> WhatsApp</label>
+            <label><input type="radio" name="channel" value="email"> Написать на e-mail</label>
+          </fieldset>
         </div>
         <button class="lead-form__submit" type="submit" data-copy-id="7.21">Записаться на консультацию</button>
+        <div class="lead-form__confirm" aria-live="polite" hidden>
+          <h4 class="lead-form__confirm-title" tabindex="-1">Проверьте, как с вами связаться</h4>
+          <dl class="lead-form__contacts">
+            <dt>Имя</dt><dd data-confirm="name"></dd>
+            <dt>Телефон</dt><dd data-confirm="phone"></dd>
+            <dt>E-mail</dt><dd data-confirm="email"></dd>
+          </dl>
+          <button class="lead-form__confirm-submit" type="submit">Всё верно, отправить</button>
+          <button class="lead-form__edit" type="button">Исправить</button>
+        </div>
         <p class="lead-form__legal" data-copy-id="7.23">Не отправляйте документы и конфиденциальные сведения через форму для назначения консультации.</p>
       </form>
       <div class="form-success" role="status" hidden>
         <span class="form-success__icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F0AE1F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
         <div class="form-success__title">Заявка получена</div>
-        <p>Оставьте свои контактные данные&nbsp;— специалист офиса свяжется с вами, уточнит обстоятельства и тему обращения, а также согласует удобные дату и время консультации</p>
+        <p class="form-success__contacts"></p>
+        <button class="form-success__edit" type="button">Указать другие контакты</button>
         <button class="form-success__again" type="button">Отправить ещё одну заявку</button>
       </div>
     </div>

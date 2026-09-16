@@ -30,10 +30,7 @@ DEST = ROOT / "build" / "variants" / "review-numbered"
 # Эти строки относились к отменённым редакциям и не должны возвращаться в
 # клиентскую копию. Проверка выполняется по HTML после установки Action Bar.
 FORBIDDEN_TEXT = (
-    'name="email"',
     'name="topic"',
-    'type="email"',
-    "name@example.com",
     ">Email<",
     ">EMAIL<",
     "Адвокат по семейному праву в Израиле",
@@ -308,8 +305,6 @@ def verify(dest: Path) -> list[str]:
     for forbidden in FORBIDDEN_TEXT:
         if forbidden in html:
             problems.append(f"найден отменённый текст/поле: {forbidden!r}")
-    if re.search(r"\bemail\b", html, re.IGNORECASE):
-        problems.append("найдено отменённое поле/упоминание Email")
     if re.search(r'\bname=["\']topic["\']', html, re.IGNORECASE):
         problems.append("найдено отменённое поле topic")
 

@@ -3,14 +3,18 @@
 
   root.GAMBARIAN_LEAD_CONTRACT = Object.freeze({
     // Требование владельца: при изменении схемы обновлять и версию, и дату.
-    schemaVersion: "2.0.0",
-    schemaDate: "2026-08-11",
+    schemaVersion: "2.1.0",
+    schemaDate: "2026-09-16",
     endpoint: "/api/lead",
     eventName: "lead_form_submit",
     sourceSystem: "gambarian_family_law_landing",
     formId: "family_law_contact",
     landingLanguage: "ru",
     attributionStorageKey: "gambarian_lead_attribution_v1",
+    channels: Object.freeze(["phone", "whatsapp", "email"]),
+    isValidEmail: function (value) {
+      return /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(value);
+    },
     attributionFields: Object.freeze([
       "utm_source",
       "utm_medium",
@@ -27,6 +31,7 @@
       bodyBytes: 8192,
       name: 100,
       phone: 40,
+      email: 120,
       phoneDigitsMin: 6,
       phoneDigitsMax: 15,
       attribution: 255,
@@ -37,6 +42,8 @@
       fieldLabels: Object.freeze({
         name: "Имя",
         phone: "Телефон",
+        email: "E-mail",
+        channel: "Как удобнее связаться",
       }),
       fields: Object.freeze({
         name: Object.freeze({
@@ -47,6 +54,14 @@
         phone: Object.freeze({
           required: "Введите номер телефона.",
           invalidFormat: "Введите от 6 до 15 цифр. Можно использовать +, пробелы, скобки, точки и дефисы.",
+        }),
+        email: Object.freeze({
+          required: "Введите e-mail.",
+          tooLong: "E-mail должен быть не длиннее 120 символов.",
+          invalidFormat: "Введите e-mail в формате name@example.com.",
+        }),
+        channel: Object.freeze({
+          invalidFormat: "Выберите удобный способ связи.",
         }),
       }),
       codes: Object.freeze({
