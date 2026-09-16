@@ -917,6 +917,12 @@ picture { display: block; }
   object-position: center 12%;
   border: 1px solid rgba(240, 174, 31, 0.35);
 }
+@media (min-width: 861px) {
+  /* final-dev5, 2026-09-16, владелец: фото крупнее и размещено в окне колонки «Ведёт».
+     Колонка 300 px шириной: фото 120 px над именем, подпись лицензии в одну строку. */
+  .svc-media__person { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .svc-media__avatar { width: 120px; height: 120px; }
+}
 .svc-media__name {
   font-family: var(--font-serif);
   font-style: normal;
