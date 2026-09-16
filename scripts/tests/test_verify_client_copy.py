@@ -112,11 +112,27 @@ class ClientCopyVerifierTests(unittest.TestCase):
         problems = self.verify_temp_html(html)
         self.assertTrue(any("owner:yulia-card-v2" in item for item in problems))
 
+    def test_old_services_heading_fails_with_or_without_copy_id(self) -> None:
+        old_heading = "Развод по взаимному согласию и представительство в бракоразводных спорах при отсутствии соглашения между супругами"
+        for attribute in (' data-owner-copy-id="svc-h2-v1"', ''):
+            with self.subTest(attribute=attribute):
+                html, count = re.subn(
+                    r'<h2\b[^>]*data-owner-copy-id="svc-h2-v2"[^>]*>.*?</h2>',
+                    f'<h2{attribute}>{old_heading}</h2>',
+                    self.source_html,
+                    count=1,
+                    flags=re.DOTALL,
+                )
+                self.assertEqual(count, 1, "заголовок svc-h2-v2 не найден в разметке")
+                problems = self.verify_temp_html(html)
+                expected = "неизвестный data-copy-id='owner:svc-h2-v1'" if attribute else "неизвестный текст вне data-copy-id"
+                self.assertTrue(any(expected in item for item in problems), problems)
+
     def test_owner_approved_new_blocks_drift_fails(self) -> None:
         mutations = (
             ('hero-title-v2', 'праву</h1>', 'праву&nbsp;— на русском языке</h1>'),
             ('hero-lede-v2', 'с чего начать.</p>', 'с чего начать&nbsp;— на русском языке.</p>'),
-            ('svc-h2-v1', 'представительство в бракоразводных спорах', 'представительство в спорах'),
+            ('svc-h2-v2', 'защита ваших интересов', 'защита интересов'),
             ('svc-divorce-title-v1', 'Бракоразводные процессы</h3>', 'Развод</h3>'),
             ('svc-divorce-lead-v1', 'иных инстанциях', 'других инстанциях'),
             ('svc-children-lead-v1', 'незаконно удерживаемых', 'удерживаемых'),
