@@ -54,7 +54,7 @@ export async function verifyLeadForm(page, baseUrl) {
     await review();
     assert.equal(requests.length, 0);
     assert.equal(await page.locator(".lead-form__fields").isVisible(), false);
-    assert.equal(await page.locator('[data-confirm="phone"]').textContent(), "+972500000000");
+    assert.equal(await page.locator('[data-confirm="phone"]').textContent(), "+972 50-000-0000");
     assert.equal(await focus(), "lead-form__confirm-title");
     const overflow = await page.evaluate(() => {
       const box = document.querySelector(".lead-form__confirm");
@@ -91,7 +91,7 @@ export async function verifyLeadForm(page, baseUrl) {
   await visible(".form-success");
   assert.equal(requests[0].email, "changed@example.com");
   assert.equal(requests[0].channel, "whatsapp");
-  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы свяжемся с вами по телефону +972500000000 и e-mail changed@example.com");
+  assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы свяжемся с вами по телефону +972 50-000-0000 и e-mail changed@example.com");
   await page.locator(".form-success__edit").click();
   assert.equal(await page.locator("#lead-email").inputValue(), "changed@example.com");
   assert.equal(await page.locator('[name="channel"][value="whatsapp"]').isChecked(), true);
