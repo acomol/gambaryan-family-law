@@ -568,6 +568,18 @@
     return (phone.charAt(0) === "+" ? "+" : "") + phone.replace(/\D/g, "");
   }
 
+  // Показ номера человеку (шаг проверки и экран успеха): израильские номера
+  // группируются как +972 54-000-0000 / 054-000-0000, остальные — как ввёл
+  // пользователь. Слитная строка цифр глазами не проверяется, а проверка — цель шага.
+  function displayPhone(phone) {
+    var digits = normalizedPhone(phone);
+    var intl = /^\+972(\d{2})(\d{3})(\d{4})$/.exec(digits);
+    if (intl) return "+972 " + intl[1] + "-" + intl[2] + "-" + intl[3];
+    var local = /^0(\d{2})(\d{3})(\d{4})$/.exec(digits);
+    if (local) return "0" + local[1] + "-" + local[2] + "-" + local[3];
+    return phone.trim().replace(/\s+/g, " ");
+  }
+
   function showFields(focusFirst) {
     confirmedFingerprint = "";
     confirmBox.hidden = true;
@@ -579,7 +591,7 @@
   function showConfirmation(data, fingerprint) {
     confirmedFingerprint = fingerprint;
     form.querySelector('[data-confirm="name"]').textContent = data.name;
-    form.querySelector('[data-confirm="phone"]').textContent = normalizedPhone(data.phone);
+    form.querySelector('[data-confirm="phone"]').textContent = displayPhone(data.phone);
     form.querySelector('[data-confirm="email"]').textContent = data.email;
     hideFormError();
     formFields.hidden = true;
@@ -835,7 +847,7 @@
           setSubmitting(false);
           form.hidden = true;
           success.querySelector(".form-success__contacts").textContent =
-            "Мы свяжемся с вами по телефону " + normalizedPhone(data.phone) + " и e-mail " + data.email;
+            "Мы свяжемся с вами по телефону " + displayPhone(data.phone) + " и e-mail " + data.email;
           success.hidden = false;
           pushFormEvent("generate_lead");
           // Фокус на заголовок результата — иначе после отправки фокус
