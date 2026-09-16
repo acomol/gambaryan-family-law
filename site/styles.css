@@ -686,16 +686,9 @@ picture { display: block; }
   gap: 14px 40px;
 }
 @media (min-width: 861px) {
-  /* final-dev5, 2026-09-16: в полоске остался один элемент — адрес. Не растягиваем
-     карточку на всю ширину и не центрируем: компактная плашка по ширине содержимого,
-     у левого края под первым кубиком; адрес в одну строку через тонкий разделитель. */
-  .facts-bar { width: fit-content; justify-content: flex-start; padding: 16px 24px; }
-  .facts-bar .map-link br { display: none; }
-  .facts-bar .map-link__address {
-    margin-left: 14px;
-    padding-left: 14px;
-    border-left: 1px solid rgba(20, 25, 31, 0.18);
-  }
+  /* final-dev5, 2026-09-16, указание владельца: адрес под кубиками остаётся только
+     на мобильном; на десктопе полоска убирается целиком (адрес есть в блоке контактов). */
+  .facts-bar { display: none; }
 }
 .facts-bar__item {
   display: flex;
