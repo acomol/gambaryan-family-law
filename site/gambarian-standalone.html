@@ -140,7 +140,7 @@ body, :root[data-theme="light"] body, :root[data-theme="dark"] body { margin: 0;
   --pad-x: 24px;
   --section-pad: clamp(48px, 8vw, 80px);
   --hero-gap: 2px;
-  --precedent-reserve: 80px;
+  --precedent-reserve: clamp(40px, 6vw, 64px);
   /* Высота закреплённой шапки. Держится 77 px на всех шириных: 14+14 отступа
      .site-header__bar плюс логотип. Меняешь набивку шапки - поправь и здесь. */
   --header-h: 77px;
@@ -1086,13 +1086,20 @@ picture { display: block; }
 .precedent__container { padding-block: 0 var(--section-pad); }
 
 .precedent-card {
-  /* 48px выступа портрета + 32px воздуха; исходный замер
-     SPACING-MEASUREMENTS-2026-09-06: 235px пустоты при запасе 187px. */
+  /* final-dev5, 2026-09-16, указание владельца: голова в рамке, полоса и окантовка
+     толще на пару пикселей, блок выделен. Портрет больше не выступает над карточкой,
+     поэтому отступ сверху обычный межсекционный. Поле от полосы до текста равно
+     полю от краёв (на 390 было 12 px). */
+  --precedent-stripe: 18px;
+  --precedent-pad: clamp(28px, 4vw, 40px);
+  --precedent-photo-h: clamp(420px, 36vw, 488px);
   margin-top: var(--precedent-reserve);
   background: linear-gradient(120deg, #1a1c20 0%, #241a0c 100%);
-  border: 1px solid rgba(240, 174, 31, 0.18);
+  border: 2px solid rgba(240, 174, 31, 0.45);
   border-radius: 20px;
-  padding: clamp(28px, 4vw, 40px);
+  box-shadow: 0 28px 64px -24px rgba(0, 0, 0, 0.65), 0 0 56px rgba(240, 174, 31, 0.1);
+  padding: var(--precedent-pad);
+  padding-left: calc(var(--precedent-stripe) + var(--precedent-pad));
   position: relative;
   min-height: clamp(280px, 26vw, 360px);
   display: flex;
@@ -1104,10 +1111,10 @@ picture { display: block; }
 
 .precedent-edge {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 16px;
-  height: 100%;
+  top: -2px;
+  left: -2px;
+  width: var(--precedent-stripe);
+  height: calc(100% + 4px);
   background: linear-gradient(var(--gold), var(--gold-light), var(--gold));
   border-radius: 20px 0 0 20px;
 }
@@ -1117,7 +1124,7 @@ picture { display: block; }
   left: 60%;
   bottom: 0;
   transform: translateX(-50%);
-  height: clamp(360px, 40vw, 520px);
+  height: var(--precedent-photo-h);
   width: auto;
   max-width: none;
   object-fit: contain;
@@ -1155,6 +1162,14 @@ picture { display: block; }
 .precedent-card__title:first-child { margin-top: 0; }
 /* В карточке теперь два абзаца: без этого правила они слиплись бы, у p margin: 0. */
 .precedent-card__text p + p { margin-top: 12px; }
+/* Подзаголовок: главная поддерживающая мысль под заголовком (одна группа, 12 px),
+   поэтому крупнее и ярче примечания. Правило близости: до примечания 28 px. */
+.precedent-card__text p:not(.precedent-card__note) {
+  font-size: 18px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.86);
+  text-wrap: balance;
+}
 
 /* Заключительная строка — приглашение, а не продолжение абзаца: она снимает
    барьер «обращаться ещё рано». Отделена короткой золотой чертой СВЕРХУ, как
@@ -1164,8 +1179,8 @@ picture { display: block; }
    Селектор с двумя классами — чтобы перебить `p + p` выше. */
 .precedent-card__text p.precedent-card__note {
   position: relative;
-  margin-top: 22px;
-  padding-top: 18px;
+  margin-top: 28px;
+  padding-top: 16px;
   color: rgba(255, 255, 255, 0.94);
   font-weight: 500;
 }
@@ -1648,6 +1663,16 @@ picture { display: block; }
   .hero-inner { max-width: 440px; }
   /* Кадр обрезается сильнее — оставляем фигурам опору на нижнюю кромку */
   .hero-photo { object-position: 50% 92%; }
+}
+
+/* Голова в рамке: макушка на 9,4 % высоты кадра, значит высота карточки не меньше
+   0,906 высоты портрета плюс 32 px поля (минус внутренние отступы и рамка,
+   box-sizing здесь content-box). Замер 2026-09-16: поле над макушкой 30 px
+   на 1201, 1280 и 1440. */
+@media (min-width: 1201px) {
+  .precedent-card {
+    min-height: calc(var(--precedent-photo-h) * 0.906 + 32px - 2 * var(--precedent-pad) - 4px);
+  }
 }
 
 /* Портрет в баннере прецедента показывается только там, где для него есть место */
