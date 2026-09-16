@@ -34,6 +34,8 @@ function validateLead(value) {
   var email = cleanString(value.email, limits.email + 1);
   var channel = value.channel === undefined ? "phone" : value.channel;
   var submissionId = cleanString(value.submission_id, 64);
+  var correctsSubmissionId = value.corrects_submission_id === undefined
+    ? "" : value.corrects_submission_id;
   var landingPath = cleanString(value.landing_path, limits.landingPath);
   var referrerHost = cleanString(
     value.referrer_host,
@@ -64,13 +66,14 @@ function validateLead(value) {
   if (LEAD_CONTRACT.channels.indexOf(channel) === -1) {
     fieldErrors.channel = codes.invalidFormat;
   }
+  if (correctsSubmissionId !== "" && !LEAD_CONTRACT.isValidSubmissionId(correctsSubmissionId)) {
+    fieldErrors.corrects_submission_id = codes.invalidFormat;
+  }
   if (Object.keys(fieldErrors).length) {
     return { lead: null, fieldErrors: fieldErrors };
   }
 
-  var validSubmissionId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    submissionId,
-  );
+  var validSubmissionId = LEAD_CONTRACT.isValidSubmissionId(submissionId);
   if (!landingPath.startsWith("/") || landingPath.startsWith("//")) {
     landingPath = "/";
   }
@@ -90,6 +93,7 @@ function validateLead(value) {
       email: email,
       channel: channel,
       submissionId: validSubmissionId ? submissionId : crypto.randomUUID(),
+      correctsSubmissionId: correctsSubmissionId,
       landingPath: landingPath || "/",
       referrerHost: referrerHost,
       attribution: attribution,
@@ -106,6 +110,7 @@ function buildPayload(lead) {
       event_name: LEAD_CONTRACT.eventName,
       source_system: LEAD_CONTRACT.sourceSystem,
       submission_id: lead.submissionId,
+      corrects_submission_id: lead.correctsSubmissionId,
       submitted_at: new Date().toISOString(),
       form_id: LEAD_CONTRACT.formId,
       landing_path: lead.landingPath,

@@ -1,9 +1,11 @@
 (function (root) {
   "use strict";
 
+  var schemaVersion = "2.2.0";
   root.GAMBARIAN_LEAD_CONTRACT = Object.freeze({
     // Требование владельца: при изменении схемы обновлять и версию, и дату.
-    schemaVersion: "2.1.0",
+    version: schemaVersion,
+    schemaVersion: schemaVersion,
     schemaDate: "2026-09-16",
     endpoint: "/api/lead",
     eventName: "lead_form_submit",
@@ -12,6 +14,10 @@
     landingLanguage: "ru",
     attributionStorageKey: "gambarian_lead_attribution_v1",
     channels: Object.freeze(["phone", "whatsapp", "email"]),
+    // corrects_submission_id необязателен: пустая строка или UUID v4 принятой заявки.
+    isValidSubmissionId: function (value) {
+      return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    },
     isValidEmail: function (value) {
       return /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(value);
     },

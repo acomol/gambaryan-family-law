@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const EXPECTED_VERSION = "2.1.0";
+const EXPECTED_VERSION = "2.2.0";
 const EXPECTED_DATE = "2026-09-16";
 const BASE_URL = "https://gambarian-landing.pages.dev/api/lead";
 
@@ -23,11 +23,16 @@ const contract = fs.readFileSync("docs/LEAD-WEBHOOK-CONTRACT.md", "utf8");
 const routes = JSON.parse(fs.readFileSync("site/_routes.json", "utf8"));
 
 assert.equal(leadModule.LEAD_CONTRACT.schemaVersion, EXPECTED_VERSION);
+assert.equal(leadModule.LEAD_CONTRACT.version, EXPECTED_VERSION);
 assert.equal(leadModule.LEAD_CONTRACT.schemaDate, EXPECTED_DATE);
 assert.ok(contract.includes("**Версия схемы:** `" + EXPECTED_VERSION + "`"));
 assert.ok(contract.includes("**Дата требований:** `" + EXPECTED_DATE + "`"));
 assert.match(index, /<form class="lead-form" action="\/api\/lead" method="post">/);
-assert.ok(index.includes('<script src="lead-contract.js" defer></script>'));
+for (const script of ["lead-contract", "app"]) {
+  assert.ok(index.includes(`<script src="${script}.js?v=${EXPECTED_VERSION}" defer></script>`));
+}
+assert.ok(app.includes(`var EXPECTED_LEAD_CONTRACT_VERSION = "${EXPECTED_VERSION}";`));
+assert.ok(index.includes('<dt>Связь</dt><dd data-confirm="channel"></dd>'));
 for (const token of ['autocomplete="name"', 'autocomplete="tel"', 'autocomplete="email"']) {
   assert.ok(index.includes(token), `Нет ${token}`);
 }
@@ -169,6 +174,31 @@ try {
   assert.equal(payload.utm_source, "google");
   assert.equal(payload.utm_medium, "");
   assert.equal(payload.unknown, undefined);
+  assert.equal(payload.corrects_submission_id, "");
+  const keys = Object.keys(payload);
+  assert.equal(keys[keys.indexOf("submission_id") + 1], "corrects_submission_id");
+
+  const correctionId = "b60b01bc-19ba-49a5-8c49-6d32f8d91bca";
+  for (const corrects_submission_id of ["", submissionId]) {
+    response = await call("POST", JSON.stringify({ ...input, submission_id: correctionId, corrects_submission_id }), {
+      ALBATO_WEBHOOK_URL: "https://example.invalid/albato-test",
+    });
+    assert.equal(response.status, 202);
+    assert.equal((await response.json()).submission_id, correctionId);
+    const delivered = JSON.parse(captured.options.body);
+    assert.equal(delivered.submission_id, correctionId);
+    assert.equal(delivered.corrects_submission_id, corrects_submission_id);
+  }
+  for (const corrects_submission_id of ["not-a-uuid", " ", submissionId + "x", " " + submissionId,
+    submissionId.replace("4372", "1372"), submissionId.replace("a567", "7567"), 123, null, {}, [submissionId]]) {
+    captured = undefined;
+    response = await call("POST", JSON.stringify({ ...input, corrects_submission_id }), {
+      ALBATO_WEBHOOK_URL: "https://example.invalid/albato-test",
+    });
+    assert.equal(response.status, 422);
+    assert.deepEqual((await response.json()).field_errors, { corrects_submission_id: "invalid_format" });
+    assert.equal(captured, undefined, "Invalid correction ID must not reach the webhook");
+  }
 
   const legacy = { name: input.name, phone: input.phone };
   for (const email of [undefined, "", "person@yandex.ru", "person@mail.ru", "person@walla.co.il", "x".repeat(108) + "@example.com"]) {
@@ -179,6 +209,7 @@ try {
     const delivered = JSON.parse(captured.options.body);
     assert.equal(delivered.email, email || "");
     assert.equal(delivered.channel, "phone");
+    assert.equal(delivered.corrects_submission_id, "");
   }
   for (const [email, code] of [
     ["missing-at.example.com", "invalid_format"],
