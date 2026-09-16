@@ -380,7 +380,11 @@
         if (swipe && event.pointerId === swipe.id) resetSwipe(true);
       }
       stage.addEventListener('pointercancel', cancelSwipe);
-      stage.addEventListener('lostpointercapture', cancelSwipe);
+      // lostpointercapture жест НЕ отменяет: у touch неявный захват стоит на элементе под
+      // пальцем, и при setPointerCapture на сцену событие потери всплывает от потомка
+      // посреди свайпа — жест сбрасывался до pointerup, свайп пальцем не работал
+      // (замер на живой странице 2026-09-16). Отпускание и отмена приходят
+      // как pointerup / pointercancel.
       stage.dataset.motion = 'idle';
     }
 
