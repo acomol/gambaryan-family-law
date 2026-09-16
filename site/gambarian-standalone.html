@@ -786,8 +786,16 @@ picture { display: block; }
   gap: 14px 40px;
 }
 @media (min-width: 861px) {
-  /* final-dev5, 2026-09-16: в полоске остался один элемент */
-  .facts-bar { justify-content: center; }
+  /* final-dev5, 2026-09-16: в полоске остался один элемент — адрес. Не растягиваем
+     карточку на всю ширину и не центрируем: компактная плашка по ширине содержимого,
+     у левого края под первым кубиком; адрес в одну строку через тонкий разделитель. */
+  .facts-bar { width: fit-content; justify-content: flex-start; padding: 16px 24px; }
+  .facts-bar .map-link br { display: none; }
+  .facts-bar .map-link__address {
+    margin-left: 14px;
+    padding-left: 14px;
+    border-left: 1px solid rgba(20, 25, 31, 0.18);
+  }
 }
 .facts-bar__item {
   display: flex;
@@ -1831,34 +1839,42 @@ picture { display: block; }
         <div class="svc-frame__main">
           <div class="svc-stage">
           <div class="svc-card" role="tabpanel" id="svc-panel-1" aria-labelledby="svc-tab-1">
+            <span class="svc-card__num" aria-hidden="true">01</span>
             <h3 class="svc-title" data-owner-copy-id="svc-divorce-title-v1">Бракоразводные процессы</h3>
             <p class="svc-lead" data-owner-copy-id="svc-divorce-lead-v1">Консультация и полное юридическое сопровождение развода по взаимному согласию&nbsp;— без судебного спора между супругами. Когда соглашение между супругами невозможно, адвокат обеспечивает полное сопровождение бракоразводного процесса&nbsp;— от подготовки документов до представительства в суде и иных инстанциях.</p>
           </div>
           <div class="svc-card" role="tabpanel" id="svc-panel-2" aria-labelledby="svc-tab-2" hidden>
+            <span class="svc-card__num" aria-hidden="true">02</span>
             <h3 class="svc-title" data-copy-id="3.12">Алименты</h3>
             <p class="svc-lead" data-copy-id="3.13">Установление, взыскание и пересмотр алиментов на детей, включая временные выплаты на период рассмотрения дела.</p>
           </div>
           <div class="svc-card" role="tabpanel" id="svc-panel-3" aria-labelledby="svc-tab-3" hidden>
+            <span class="svc-card__num" aria-hidden="true">03</span>
             <h3 class="svc-title" data-copy-id="3.27">Раздел имущества</h3>
             <p class="svc-lead" data-owner-copy-id="svc-property-lead-v1">Раздел имущества и долгов супругов: недвижимость, ипотека, банковские счета, пенсионные накопления, бизнес, кредиты и иные обязательства&nbsp;— в переговорах, соглашении и судебном процессе.</p>
           </div>
           <div class="svc-card" role="tabpanel" id="svc-panel-4" aria-labelledby="svc-tab-4" hidden>
+            <span class="svc-card__num" aria-hidden="true">04</span>
             <h3 class="svc-title" data-copy-id="3.17">Дети, родительские права и международное возвращение</h3>
             <p class="svc-lead" data-owner-copy-id="svc-children-lead-v1">Споры о месте проживания ребенка и порядке общения. Международные дела о возвращении похищенных или незаконно удерживаемых детей, включая сложные случаи с неоформленными родительскими правами</p>
           </div>
           <div class="svc-card" role="tabpanel" id="svc-panel-5" aria-labelledby="svc-tab-5" hidden>
+            <span class="svc-card__num" aria-hidden="true">05</span>
             <h3 class="svc-title" data-owner-copy-id="svc-paternity-title-v1">Установление или оспаривание отцовства, <br>тест ДНК</h3>
             <p class="svc-lead" data-owner-copy-id="svc-paternity-lead-v1">Установление и оспаривание отцовства, получение судебного разрешения на проведение ДНК-теста и полное сопровождение процедуры. В Израиле генетическая экспертиза для установления родства проводится на основании постановления суда.</p>
           </div>
           <div class="svc-card" role="tabpanel" id="svc-panel-6" aria-labelledby="svc-tab-6" hidden>
+            <span class="svc-card__num" aria-hidden="true">06</span>
             <h3 class="svc-title" data-copy-id="3.32">Семейная медиация и соглашение</h3>
             <p class="svc-lead" data-owner-copy-id="svc-mediation-lead-v1">При готовности сторон к диалогу офис сопровождает медиацию, помогает достичь соглашения по вопросам детей, алиментов и имущества, а также оформляет договорённости в юридически грамотное соглашение для последующего утверждения.</p>
           </div>
           <div class="svc-card" role="tabpanel" id="svc-panel-7" aria-labelledby="svc-tab-7" hidden>
+            <span class="svc-card__num" aria-hidden="true">07</span>
             <h3 class="svc-title" data-copy-id="3.37">Брачный договор</h3>
             <p class="svc-lead" data-owner-copy-id="svc-prenup-lead-v1">Разработка брачного договора на индивидуальных условиях с учетом имущества, бизнеса, долговых и иных обязательств сторон. Защита интересов каждого супруга и сопровождение официального утверждения соглашения.</p>
           </div>
           <div class="svc-card" role="tabpanel" id="svc-panel-8" aria-labelledby="svc-tab-8" hidden>
+            <span class="svc-card__num" aria-hidden="true">08</span>
             <h3 class="svc-title" data-copy-id="3.42">Защита при угрозах и насилии</h3>
             <p class="svc-lead" data-owner-copy-id="svc-protection-lead-v1">Срочное обращение за защитным ордером и юридическое сопровождение процедуры. При непосредственной опасности следует немедленно обратиться в экстренные службы, не дожидаясь ответа через сайт.</p>
           </div>
@@ -1892,6 +1908,11 @@ picture { display: block; }
       <button class="svc-dot" type="button" aria-label="Брачный договор" aria-current="false"><span class="svc-dot__bar"></span></button>
       <button class="svc-dot" type="button" aria-label="Защита при угрозах" aria-current="false"><span class="svc-dot__bar"></span></button>
     </div>
+    <button class="svc-next-hint" type="button">
+      <span class="svc-next-hint__prefix">Далее:</span>
+      <span class="svc-next-hint__label">Алименты</span>
+      <svg class="svc-next-hint__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
 
   </div>
 </section>
