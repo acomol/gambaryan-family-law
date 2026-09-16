@@ -713,6 +713,7 @@ picture { display: block; }
   margin-bottom: 34px;
 }
 
+/* final-dev5, 2026-09-16: услуги как колода карт (указание владельца) */
 .svc-window { position: relative; padding-inline: 64px; }
 
 .svc-arrow {
@@ -766,6 +767,7 @@ picture { display: block; }
 
 .svc-frame {
   position: relative;
+  margin-top: 20px;
   background: var(--bg-card-dark);
   border: 1px solid rgba(240, 174, 31, 0.14);
   border-radius: 16px;
@@ -774,6 +776,18 @@ picture { display: block; }
   flex-wrap: wrap;
   gap: clamp(24px, 4vw, 56px);
 }
+.svc-frame::before, .svc-frame::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+  height: 10px;
+  border-radius: 12px 12px 0 0;
+  background: #181d25;
+  border-top: 2px solid var(--gold);
+  pointer-events: none;
+}
+.svc-frame::before { top: -10px; left: 14px; right: 14px; opacity: .9; }
+.svc-frame::after { top: -20px; left: 28px; right: 28px; opacity: .6; }
 
 .svc-frame__main {
   flex: 1 1 380px;
@@ -781,18 +795,65 @@ picture { display: block; }
   display: flex;
   flex-direction: column;
 }
-.svc-stage { display: grid; flex: 1 1 auto; min-width: 0; touch-action: pan-y; }
+.svc-stage {
+  position: relative;
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+}
 .svc-card {
+  position: relative;
   grid-area: 1 / 1;
   display: grid;
   align-content: center;
   min-width: 0;
-  transition: opacity .2s ease;
 }
 .svc-card[hidden] { display: grid; visibility: hidden; opacity: 0; pointer-events: none; }
+.svc-card.is-active { transform: none; opacity: 1; z-index: 2; }
+.svc-card.is-enter-next, .svc-card.is-leave-next,
+.svc-card.is-enter-prev, .svc-card.is-leave-prev {
+  animation-duration: .22s;
+  animation-timing-function: cubic-bezier(.4, 0, .2, 1);
+  animation-fill-mode: both;
+  z-index: 2;
+  will-change: transform, opacity;
+}
+.svc-card.is-enter-next { animation-name: svc-rise; }
+.svc-card.is-leave-next { animation-name: svc-shift-out; z-index: 3; }
+.svc-card.is-enter-prev { animation-name: svc-shift-out; animation-direction: reverse; z-index: 3; }
+.svc-card.is-leave-prev { animation-name: svc-rise; animation-direction: reverse; }
+.svc-card.is-dragging { animation: none; transition: none; will-change: transform, opacity; }
+.svc-card.is-settling {
+  transform: none;
+  opacity: 1;
+  transition: transform .18s cubic-bezier(.4, 0, .2, 1), opacity .18s cubic-bezier(.4, 0, .2, 1);
+}
+
+@keyframes svc-rise {
+  from { transform: translateY(6px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes svc-shift-out {
+  from { transform: none; opacity: 1; }
+  to { transform: translateX(-20px); opacity: 0; }
+}
+
+.svc-card__num {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: .08em;
+  color: var(--gold);
+}
 
 .svc-title {
   margin: 0 0 16px;
+  padding-right: 48px;
   font-family: var(--font-serif);
   font-style: normal;
   font-weight: 600;
@@ -900,6 +961,26 @@ picture { display: block; }
   background: rgba(255, 255, 255, 0.28);
 }
 .svc-dot[aria-current="true"] .svc-dot__bar { width: 26px; background: var(--gold); }
+
+.svc-next-hint {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  background: none;
+  border: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, .7);
+  cursor: pointer;
+}
+.svc-next-hint__label { color: var(--gold); font-weight: 600; }
+.svc-next-hint__icon { flex: none; }
+.svc-next-hint:hover .svc-next-hint__label { text-decoration: underline; }
+.svc-next-hint:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.svc-next-hint[hidden] { display: none; }
 
 /* --- 5. Прецедент -------------------------------------------------------- */
 
@@ -1560,7 +1641,9 @@ picture { display: block; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   a, button { transition: none; }
-  .svc-card { transition: none; }
+  .svc-card, .svc-card.is-settling { transition: none; }
+  .svc-card.is-enter-next, .svc-card.is-leave-next,
+  .svc-card.is-enter-prev, .svc-card.is-leave-prev { animation: none; }
 }
 
 @media (max-width: 720px) {
@@ -1571,10 +1654,11 @@ picture { display: block; }
   .svc-window { padding-inline: 0; }
   .svc-frame { flex-direction: column; flex-wrap: nowrap; gap: 24px; padding: 22px 20px 24px; }
   .svc-frame__main { flex: none; }
-  .svc-arrow { top: 22px; transform: none; }
-  .svc-arrow[data-dir="prev"] { left: auto; right: 72px; }
-  .svc-arrow[data-dir="next"] { right: 20px; }
-  .svc-title { padding-right: 104px; min-height: 44px; min-width: 0; overflow-wrap: anywhere; }
+  .services__arrows { position: static; display: flex; justify-content: flex-end; gap: 8px; margin: 0 0 32px; }
+  .svc-arrow { position: static; top: auto; right: auto; left: auto; transform: none; }
+  .svc-arrow[data-dir="prev"] { left: auto; }
+  .svc-arrow[data-dir="next"] { right: auto; }
+  .svc-title { padding-right: 48px; min-height: 0; min-width: 0; overflow-wrap: normal; }
   .svc-media {
     display: grid;
     grid-template-columns: auto 1fr;
