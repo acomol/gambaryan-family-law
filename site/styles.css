@@ -382,6 +382,12 @@ picture { display: block; }
   }
   .page--final-dev4 .hero--final-dev1 .hero__actions { margin-bottom: 8px; }
   .page--final-dev4 .hero--final-dev1 .hero__call { padding-block: 7px; }
+  /* final-dev5, 2026-09-17, указание владельца: текст «В ходе консультации…» стоит
+     посередине между низом кнопки «Позвонить» и следующим блоком. Было 14 px сверху
+     и 48–69 px снизу; теперь поля равны: 32 px на телефоне, до 40 px на планшете. */
+  .page--final-dev4 .hero--final-dev1 { --hero-note-gap: clamp(32px, 5vw, 40px); }
+  .page--final-dev4 .hero--final-dev1 .hero__contact-block { margin-bottom: var(--hero-note-gap); }
+  .page--final-dev4 .hero--final-dev1 .hero__body { padding-bottom: var(--hero-note-gap); }
 }
 
 .hero {
