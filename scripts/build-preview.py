@@ -27,6 +27,9 @@ STANDALONE = "--standalone" in sys.argv
 OUT = argv[0] if argv else "preview.html"
 
 mimetypes.add_type("font/woff2", ".woff2")
+# Фон первого экрана с 2026-09-17 отдаётся в AVIF; без явного типа data-URI
+# на части версий Python получил бы application/octet-stream.
+mimetypes.add_type("image/avif", ".avif")
 
 
 def data_uri(path):

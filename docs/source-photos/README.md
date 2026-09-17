@@ -37,8 +37,19 @@ self-contained bundle: файлы лежат внутри `<script type="__bundl
 docs/source-photos/duo-wide.jpg
   -> scripts/grade-hero-photo.py     # подсветить фигуры, не тронув чёрный фон
   -> scripts/extend-hero-canvas.py   # достроить холст сверху и справа
+  -> scripts/build-hero-background.py  # нарезка AVIF/WebP/JPEG, ссылки в index.html
   -> site/assets/hero-duo-air-*, hero-duo-mob-*
 ```
+
+Запуск одной командой: `python -B scripts/build-hero-background.py`.
+
+**2026-09-17, «пиксели» на фоне за заголовком.** Грейдинг читал не мастер, а веб-копию
+`site/assets/hero-duo-2623w.020f19ef.jpg` (102 КБ, квантование ~6x грубее), и результат
+ещё раз сжимался в WebP q88: на тёмном градиенте получалась сетка 8x8/16x16. Теперь вход —
+`duo-wide.jpg`, основной формат — AVIF 4:4:4 q75 с синтезом плёночного зерна (без плоских
+пятен при весе 29–82 КБ), WebP и JPEG — запасные. Мобильная вырезка (858, 398, 1872x1592)
+восстановлена сопоставлением прежних файлов и зафиксирована в скрипте. Замеры — в шапке
+`scripts/build-hero-background.py`. Точка отката — `docs/BACKUP-POINTS.md`.
 
 ## Пайплайн карточек адвокатов — подготовлен, заблокирован
 

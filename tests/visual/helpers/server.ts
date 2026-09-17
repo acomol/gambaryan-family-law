@@ -8,7 +8,7 @@ const port = Number(process.env.VISUAL_PORT || 4174);
 const mime: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8', '.json': 'application/json',
-  '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg',
+  '.avif': 'image/avif', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ico': 'image/x-icon',
 };
 
