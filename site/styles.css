@@ -799,6 +799,7 @@ picture { display: block; }
   overflow: hidden;
   touch-action: pan-y pinch-zoom;
 }
+.svc-frame { touch-action: pan-y pinch-zoom; }
 .svc-card {
   position: relative;
   grid-area: 1 / 1;
@@ -810,7 +811,7 @@ picture { display: block; }
 .svc-card.is-active { transform: none; opacity: 1; z-index: 2; }
 .svc-card.is-enter-next, .svc-card.is-leave-next,
 .svc-card.is-enter-prev, .svc-card.is-leave-prev {
-  animation-duration: .22s;
+  animation-duration: .28s;
   animation-timing-function: cubic-bezier(.4, 0, .2, 1);
   animation-fill-mode: both;
   z-index: 2;
@@ -827,13 +828,16 @@ picture { display: block; }
   transition: transform .18s cubic-bezier(.4, 0, .2, 1), opacity .18s cubic-bezier(.4, 0, .2, 1);
 }
 
+/* Смена направления должна читаться: текст уезжает на 56 px и гаснет, новый
+   приходит с 40 px. Двигается только текст — рамка карточки, кнопка и «Ведёт»
+   стоят на месте (указание владельца 2026-09-17). */
 @keyframes svc-rise {
-  from { transform: translateY(6px); opacity: 0; }
+  from { transform: translateX(40px); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
 @keyframes svc-shift-out {
   from { transform: none; opacity: 1; }
-  to { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(-56px); opacity: 0; }
 }
 
 .svc-card__num {
@@ -1698,7 +1702,8 @@ picture { display: block; }
   .svc-window { padding-inline: 0; }
   .svc-frame { flex-direction: column; flex-wrap: nowrap; gap: 24px; padding: 22px 20px 24px; }
   .svc-frame__main { flex: none; }
-  .services__arrows { position: static; display: flex; justify-content: flex-end; gap: 8px; margin: 0 0 32px; }
+  /* На мобильном листают свайпом, кнопки-стрелки не нужны (указание владельца). */
+  .services__arrows { display: none; }
   .svc-arrow { position: static; top: auto; right: auto; left: auto; transform: none; }
   .svc-arrow[data-dir="prev"] { left: auto; }
   .svc-arrow[data-dir="next"] { right: auto; }

@@ -137,6 +137,9 @@
     var last = panels.length - 1;
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     var stage = document.querySelector('.svc-stage');
+    // Свайп ловится по всей карточке, включая блок «Ведёт» (указание владельца
+    // 2026-09-17): жест начинается где угодно, двигается только текст.
+    var frame = document.querySelector('.svc-frame') || stage;
     var tablist = document.querySelector('.svc-tabs');
     var prev = document.querySelector('.svc-arrow[data-dir="prev"]');
     var next = document.querySelector('.svc-arrow[data-dir="next"]');
@@ -179,7 +182,7 @@
         settleTimer = window.setTimeout(clearSettling, 180);
       }
       clearDragStyles(gesture.panel);
-      if (stage.hasPointerCapture(gesture.id)) stage.releasePointerCapture(gesture.id);
+      if (frame.hasPointerCapture(gesture.id)) frame.releasePointerCapture(gesture.id);
     }
 
     function transitionTo(prevIndex, nextIndex, dir) {
@@ -252,8 +255,9 @@
         transitionTo(previous, active, dirHint || (active > previous ? 'next' : 'prev'));
       }
 
-      if (prev) prev.disabled = active === 0;
-      if (next) next.disabled = active === last;
+      // Кольцо: на краях стрелки не гаснут, листание продолжается.
+      if (prev) prev.disabled = false;
+      if (next) next.disabled = false;
       if (hintLabel) hintLabel.textContent = tabs[active + 1] ? tabs[active + 1].textContent : '';
       if (hint) hint.hidden = active === last;
       if (moveFocus) tabs[active].focus({ preventScroll: true });
@@ -302,8 +306,8 @@
       });
     }
 
-    if (prev) prev.addEventListener("click", function () { setActive(active - 1); });
-    if (next) next.addEventListener("click", function () { setActive(active + 1); });
+    if (prev) prev.addEventListener("click", function () { setActive(active - 1, false, true, 'prev'); });
+    if (next) next.addEventListener("click", function () { setActive(active + 1, false, true, 'next'); });
     if (hint) hint.addEventListener("click", function () { setActive(active + 1); });
 
     if (stage) {
@@ -318,12 +322,11 @@
         dragFrame = null;
         if (!swipe || !swipe.dragging) return;
         var dx = swipe.dx;
-        if ((active === 0 && dx > 0) || (active === last && dx < 0)) dx *= .3;
         swipe.panel.style.transform = 'translateX(' + dx + 'px)';
         swipe.panel.style.opacity = Math.max(0, 1 - Math.abs(dx) / swipe.width * .5);
       }
 
-      stage.addEventListener('pointerdown', function (event) {
+      frame.addEventListener('pointerdown', function (event) {
         if (event.pointerType === 'mouse' || !event.isPrimary || swipe) return;
         if (event.target.closest('a, button, input')) return;
         if (finishTransition) finishTransition();
@@ -335,7 +338,7 @@
           points: [{ x: event.clientX, time: event.timeStamp }]
         };
       });
-      stage.addEventListener('pointermove', function (event) {
+      frame.addEventListener('pointermove', function (event) {
         if (!swipe || event.pointerId !== swipe.id || swipe.cancelled) return;
         var dx = event.clientX - swipe.x;
         var dy = event.clientY - swipe.y;
@@ -351,7 +354,7 @@
             swipe.dragging = true;
             swipe.panel.classList.add('is-dragging');
             try {
-              stage.setPointerCapture(event.pointerId);
+              frame.setPointerCapture(event.pointerId);
             } catch (error) {
               // Синтетический PointerEvent не регистрирует активный указатель.
             }
@@ -360,7 +363,7 @@
         swipe.dx = dx;
         if (swipe.dragging && dragFrame === null) dragFrame = window.requestAnimationFrame(drawSwipe);
       });
-      stage.addEventListener('pointerup', function (event) {
+      frame.addEventListener('pointerup', function (event) {
         if (!swipe || event.pointerId !== swipe.id) return;
         var dx = event.clientX - swipe.x;
         var dy = event.clientY - swipe.y;
@@ -372,14 +375,13 @@
         var change = !swipe.cancelled && (swipe.dragging
           ? Math.abs(dx) >= threshold || (Math.abs(dx) >= 24 && speed >= .5)
           : Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy));
-        if ((active === 0 && dx > 0) || (active === last && dx < 0)) change = false;
         resetSwipe(!change);
-        if (change) setActive(active + (dx < 0 ? 1 : -1));
+        if (change) setActive(active + (dx < 0 ? 1 : -1), false, true, dx < 0 ? 'next' : 'prev');
       });
       function cancelSwipe(event) {
         if (swipe && event.pointerId === swipe.id) resetSwipe(true);
       }
-      stage.addEventListener('pointercancel', cancelSwipe);
+      frame.addEventListener('pointercancel', cancelSwipe);
       // lostpointercapture жест НЕ отменяет: у touch неявный захват стоит на элементе под
       // пальцем, и при setPointerCapture на сцену событие потери всплывает от потомка
       // посреди свайпа — жест сбрасывался до pointerup, свайп пальцем не работал

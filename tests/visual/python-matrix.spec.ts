@@ -141,7 +141,7 @@ test('Hero и мобильная форма: размеры, композици�
   }
 });
 
-test('Услуги: стрелки 44px, крайние остановки и видимая активная вкладка', async ({ page }) => {
+test('Услуги: стрелки 44px на десктопе, кольцо и видимая активная вкладка', async ({ page }) => {
   await gotoReady(page);
   const width = page.viewportSize()!.width;
   await expect(page.locator('.svc-tab')).toHaveCount(8);
@@ -155,7 +155,7 @@ test('Услуги: стрелки 44px, крайние остановки и в
       const arrows = document.querySelector('.services__arrows')!;
       return {
         frame: frame.getBoundingClientRect().toJSON(),
-        arrowsPosition: getComputedStyle(arrows).position,
+        arrowsPosition: getComputedStyle(arrows).position, arrowsDisplay: getComputedStyle(arrows).display,
         arrows: [...document.querySelectorAll<HTMLButtonElement>('.svc-arrow')].map((arrow) => ({
           direction: arrow.dataset.dir, disabled: arrow.disabled, position: getComputedStyle(arrow).position,
           rect: arrow.getBoundingClientRect().toJSON(),
@@ -171,29 +171,25 @@ test('Услуги: стрелки 44px, крайние остановки и в
     expect(Math.min(...metrics.panelHeights), 'Все панели сохраняют ненулевую высоту, включая hidden').toBeGreaterThan(0);
     expect(Math.max(...metrics.panelHeights) - Math.min(...metrics.panelHeights)).toBeLessThanOrEqual(1);
     expect(metrics.arrows).toHaveLength(2);
-    for (const arrow of await page.locator('.svc-arrow').all()) await expect(arrow).toBeVisible();
+    // Владелец 2026-09-17: на мобильном листают свайпом, кнопки-стрелки скрыты.
+    for (const arrow of await page.locator('.svc-arrow').all()) {
+      if (width >= 861) await expect(arrow).toBeVisible();
+      else await expect(arrow).toBeHidden();
+    }
     for (const arrow of metrics.arrows) {
-      expect(arrow.rect.width).toBeGreaterThanOrEqual(44);
-      expect(arrow.rect.height).toBeGreaterThanOrEqual(44);
-      expect(arrow.disabled).toBe(arrow.direction === 'prev' ? index === 0 : index === 7);
+      // Кольцо: стрелка не гаснет ни на первой, ни на последней карточке.
+      expect(arrow.disabled).toBe(false);
       if (width >= 861) {
+        expect(arrow.rect.width).toBeGreaterThanOrEqual(44);
+        expect(arrow.rect.height).toBeGreaterThanOrEqual(44);
         expect(Math.abs(arrow.rect.top + arrow.rect.height / 2 - metrics.frame.top - metrics.frame.height / 2)).toBeLessThanOrEqual(2);
         if (arrow.direction === 'prev') expect(arrow.rect.right).toBeLessThanOrEqual(metrics.frame.left);
         else expect(arrow.rect.left).toBeGreaterThanOrEqual(metrics.frame.right);
       } else {
-        expect(metrics.arrowsPosition).toBe('static');
-        expect(arrow.position).toBe('static');
-        expect(arrow.rect.top).toBeGreaterThanOrEqual(metrics.tablist.bottom);
-        expect(arrow.rect.bottom).toBeLessThanOrEqual(metrics.frame.top - 20);
-        expect(arrow.rect.left).toBeGreaterThanOrEqual(metrics.frame.left - 1);
-        expect(arrow.rect.right).toBeLessThanOrEqual(metrics.frame.right + 1);
+        expect(metrics.arrowsDisplay).toBe('none');
       }
     }
     if (width <= 860) {
-      const [prev, next] = metrics.arrows;
-      expect(Math.abs(prev.rect.top - next.rect.top)).toBeLessThanOrEqual(1);
-      expect(next.rect.left - prev.rect.right).toBeCloseTo(8, 0);
-      expect(Math.abs(next.rect.right - metrics.frame.right)).toBeLessThanOrEqual(1);
       expect(metrics.tabsRows).toBe(1);
       expect(metrics.tabsScrollable).toBe(true);
       expect(['auto', 'scroll']).toContain(metrics.overflowX);
@@ -205,11 +201,13 @@ test('Услуги: стрелки 44px, крайние остановки и в
   }
 });
 
-test('Услуги: свайп, порог, вертикальный жест и остановка по краям', async ({ page }) => {
+test('Услуги: свайп по всей карточке, порог, вертикальный жест и кольцо', async ({ page }) => {
   test.skip(page.viewportSize()!.width > 860, 'Свайп проверяется в мобильной раскладке');
   await gotoReady(page);
   await scrollSection(page, '#services');
   await expect(page.locator('.svc-stage')).toHaveCSS('touch-action', 'pan-y pinch-zoom');
+  // Жест ловит вся карточка: обработчики на рамке, поэтому свайп работает и по «Ведёт».
+  await expect(page.locator('.svc-frame')).toHaveCSS('touch-action', 'pan-y pinch-zoom');
   const fixedRects = () => page.locator('.svc-media, .svc-card__cta').evaluateAll((elements) => elements.map((element) => {
     const rect = element.getBoundingClientRect();
     return [rect.left + scrollX, rect.top + scrollY, rect.width, rect.height];
@@ -245,10 +243,11 @@ test('Услуги: свайп, порог, вертикальный жест и
     return page.locator('.svc-tab').evaluateAll((tabs) => tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'));
   };
   await selectService(page, 0);
+  // Кольцо: с первой карточки назад — на последнюю, с последней вперёд — на первую.
   const results = [await swipe(-120), await swipe(120), await swipe(120), await swipe(0, 100), await swipe(-30)];
   await selectService(page, 7);
   results.push(await swipe(-120));
-  expect(results).toEqual([1, 0, 0, 0, 0, 7]);
+  expect(results).toEqual([1, 0, 7, 7, 7, 0]);
   // No pointermove: the compatibility threshold remains 40px, even for a flick.
   await selectService(page, 0);
   expect(await swipe(-39, 0, false, 20)).toBe(0);
@@ -265,9 +264,9 @@ test('Услуги: свайп, порог, вертикальный жест и
   expect(await swipe(-24, 0, true, 40)).toBe(1);
   expect(await swipe(24, 0, true, 40)).toBe(0);
   expect(await swipe(-120, 140, true)).toBe(0);
-  expect(await swipe(120, 0, true)).toBe(0);
+  expect(await swipe(120, 0, true)).toBe(7);
   await selectService(page, 7);
-  expect(await swipe(-120, 0, true)).toBe(7);
+  expect(await swipe(-120, 0, true)).toBe(0);
 });
 
 test('Action Bar: breakpoint, высота и равные колонки рабочего и закрытого режима', async ({ page }) => {
