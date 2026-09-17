@@ -437,8 +437,8 @@ OWNER_APPROVED_COPY: Final[dict[str, str]] = {
 
 OWNER_APPROVED_HTML_TOKENS: Final[tuple[str, ...]] = (
     'data-owner-copy-id="yulia-card-v2"',
-    'src="assets/yulia-card-v4-760w.e05bc5d6.jpg"',
-    'srcset="assets/yulia-card-v4-320w.e1ea92a3.webp 320w, assets/yulia-card-v4-560w.fabe7634.webp 560w, assets/yulia-card-v4-760w.56414b57.webp 760w, assets/yulia-card-v4-812w.cc052c0e.webp 812w"',
+    'src="assets/yulia-card-v5-760w.e6c9bd9b.jpg"',
+    'srcset="assets/yulia-card-v5-320w.025ea2cb.webp 320w, assets/yulia-card-v5-560w.16780d1d.webp 560w, assets/yulia-card-v5-760w.6fb7bc3d.webp 760w, assets/yulia-card-v5-1120w.8ef72d23.webp 1120w, assets/yulia-card-v5-1520w.deaa96d9.webp 1520w"',
     'alt="Адвокат Юлия Саакян"',
 )
 
