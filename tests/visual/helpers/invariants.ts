@@ -51,12 +51,20 @@ export async function assertSectionSpacing(page: Page, heroOnly: boolean) {
     };
     const first = hero.querySelector('.hero-address')!;
     const note = hero.querySelector('.hero__note')!;
+    const call = hero.querySelector('.hero__call');
     const header = document.querySelector('.site-header')!.getBoundingClientRect();
     const token = tokenAt(hero);
     const result = [
       { name: 'Hero: верхний видимый отступ адреса', value: first.getBoundingClientRect().top - header.bottom, token: token - (innerWidth > 860 ? 8 : 0) },
-      { name: 'Hero: нижний видимый отступ', value: hero.getBoundingClientRect().bottom - note.getBoundingClientRect().bottom, token },
     ];
+    if (innerWidth > 860 || !call) {
+      result.push({ name: 'Hero: нижний видимый отступ', value: hero.getBoundingClientRect().bottom - note.getBoundingClientRect().bottom, token });
+    } else {
+      // До 860 px (указание владельца 2026-09-17): текст «В ходе консультации…» посередине
+      // между кнопкой звонка и следующим блоком — поля сверху и снизу равны.
+      const above = note.getBoundingClientRect().top - call.getBoundingClientRect().bottom;
+      result.push({ name: 'Hero: поле под текстом равно полю над ним', value: hero.getBoundingClientRect().bottom - note.getBoundingClientRect().bottom, token: above });
+    }
     if (!onlyHero) {
       for (const selector of ['#services > .container', '#attorney > .container', '#contact > .container', '.site-footer__inner']) {
         const element = document.querySelector(selector)!;
