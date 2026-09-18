@@ -1522,10 +1522,14 @@ picture { display: block; }
   justify-content: space-between;
   margin-bottom: 32px;
 }
+/* Колонки «Услуги · Подготовка · Офис» (указание владельца 2026-09-18): общая
+   верхняя линия подписей и первой строки, услуги — сетка 2×4 с одним шагом строк. */
 .site-footer__cols {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 36px;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  column-gap: clamp(40px, 5vw, 72px);
+  row-gap: 28px;
+  align-items: start;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.6);
 }
@@ -1537,9 +1541,37 @@ picture { display: block; }
   letter-spacing: 0.2em;
   color: var(--gold);
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .site-footer__cols a { color: rgba(255, 255, 255, 0.85); }
+.site-footer__cols > div > .map-link {
+  display: inline-block;
+  padding-top: 5px;
+  line-height: 1.45;
+}
+.site-footer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  row-gap: 2px;
+}
+.site-footer__links--services {
+  grid-template-columns: repeat(2, max-content);
+  grid-template-rows: repeat(4, auto);
+  grid-auto-flow: column;
+  column-gap: 40px;
+}
+.site-footer__cols .site-footer__links a {
+  display: inline-block;
+  padding-block: 5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+  transition: color 0.15s ease-out;
+}
+.site-footer__cols .site-footer__links a:hover,
+.site-footer__cols .site-footer__links a:focus-visible { color: var(--gold); }
 .site-footer__divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.07);
@@ -1550,6 +1582,19 @@ picture { display: block; }
   font-size: 12px;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.4);
+}
+/* Телефон: группы друг под другом, услуги в две колонки, строка-ссылка 44 px. */
+@media (max-width: 860px) {
+  .site-footer__cols { grid-template-columns: 1fr; width: 100%; }
+  .site-footer__links { row-gap: 0; }
+  .site-footer__links--services { grid-template-columns: 1fr 1fr; column-gap: 16px; }
+  .site-footer__cols .site-footer__links a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 0;
+    font-size: 15px;
+  }
 }
 
 /* ==========================================================================

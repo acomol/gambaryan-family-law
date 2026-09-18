@@ -1622,10 +1622,14 @@ picture { display: block; }
   justify-content: space-between;
   margin-bottom: 32px;
 }
+/* Колонки «Услуги · Подготовка · Офис» (указание владельца 2026-09-18): общая
+   верхняя линия подписей и первой строки, услуги — сетка 2×4 с одним шагом строк. */
 .site-footer__cols {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 36px;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  column-gap: clamp(40px, 5vw, 72px);
+  row-gap: 28px;
+  align-items: start;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.6);
 }
@@ -1637,9 +1641,37 @@ picture { display: block; }
   letter-spacing: 0.2em;
   color: var(--gold);
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .site-footer__cols a { color: rgba(255, 255, 255, 0.85); }
+.site-footer__cols > div > .map-link {
+  display: inline-block;
+  padding-top: 5px;
+  line-height: 1.45;
+}
+.site-footer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  row-gap: 2px;
+}
+.site-footer__links--services {
+  grid-template-columns: repeat(2, max-content);
+  grid-template-rows: repeat(4, auto);
+  grid-auto-flow: column;
+  column-gap: 40px;
+}
+.site-footer__cols .site-footer__links a {
+  display: inline-block;
+  padding-block: 5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+  transition: color 0.15s ease-out;
+}
+.site-footer__cols .site-footer__links a:hover,
+.site-footer__cols .site-footer__links a:focus-visible { color: var(--gold); }
 .site-footer__divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.07);
@@ -1650,6 +1682,19 @@ picture { display: block; }
   font-size: 12px;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.4);
+}
+/* Телефон: группы друг под другом, услуги в две колонки, строка-ссылка 44 px. */
+@media (max-width: 860px) {
+  .site-footer__cols { grid-template-columns: 1fr; width: 100%; }
+  .site-footer__links { row-gap: 0; }
+  .site-footer__links--services { grid-template-columns: 1fr 1fr; column-gap: 16px; }
+  .site-footer__cols .site-footer__links a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 0;
+    font-size: 15px;
+  }
 }
 
 /* ==========================================================================
@@ -2201,6 +2246,25 @@ picture { display: block; }
         <span class="logo__rule"><span class="logo__line"></span><span class="logo__sub">Адвокаты</span></span>
       </div>
       <div class="site-footer__cols">
+        <nav class="site-footer__nav" aria-labelledby="footer-nav-services">
+          <span class="site-footer__label" id="footer-nav-services">Услуги</span>
+          <ul class="site-footer__links site-footer__links--services">
+            <li><a href="#services" data-svc-target="0">Развод</a></li>
+            <li><a href="#services" data-svc-target="1">Алименты</a></li>
+            <li><a href="#services" data-svc-target="2">Раздел имущества</a></li>
+            <li><a href="#services" data-svc-target="3">Дети</a></li>
+            <li><a href="#services" data-svc-target="4">Отцовство</a></li>
+            <li><a href="#services" data-svc-target="5">Медиация</a></li>
+            <li><a href="#services" data-svc-target="6">Брачный договор</a></li>
+            <li><a href="#services" data-svc-target="7">Защита при угрозах</a></li>
+          </ul>
+        </nav>
+        <nav class="site-footer__nav" aria-labelledby="footer-nav-prep">
+          <span class="site-footer__label" id="footer-nav-prep">Подготовка</span>
+          <ul class="site-footer__links">
+            <li><a href="#precedent">Подготовьтесь к разговору о&nbsp;разводе</a></li>
+          </ul>
+        </nav>
         <div><span class="site-footer__label">Офис</span><a class="map-link" href="https://www.google.com/maps/search/?api=1&amp;query=%D7%A7%D7%A8%D7%9C%D7%99%D7%91%D7%9A+10%2C+%D7%AA%D7%9C+%D7%90%D7%91%D7%99%D7%91" target="_blank" rel="noopener" data-action="map_click" aria-label="Открыть адрес в Google Maps: Тель-Авив, Карлибах, 10"><span class="map-link__address">Карлибах,&nbsp;10</span><br>Прием&nbsp;— Тель-Авив / онлайн</a></div>
       </div>
     </div>
@@ -2616,6 +2680,13 @@ picture { display: block; }
     dots.forEach(function (dot, i) {
       dot.addEventListener("click", function () {
         setActive(i);
+      });
+    });
+
+    // Ссылки подвала открывают свою тему (указание владельца 2026-09-18).
+    Array.prototype.forEach.call(document.querySelectorAll("[data-svc-target]"), function (link) {
+      link.addEventListener("click", function () {
+        setActive(Number(link.getAttribute("data-svc-target")));
       });
     });
 

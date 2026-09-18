@@ -281,6 +281,13 @@
       });
     });
 
+    // Ссылки подвала открывают свою тему (указание владельца 2026-09-18).
+    Array.prototype.forEach.call(document.querySelectorAll("[data-svc-target]"), function (link) {
+      link.addEventListener("click", function () {
+        setActive(Number(link.getAttribute("data-svc-target")));
+      });
+    });
+
     if (tablist) {
       tablist.addEventListener("keydown", function (event) {
         var handled = true;

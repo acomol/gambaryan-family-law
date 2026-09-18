@@ -53,7 +53,7 @@ DOM_CHECK = r"""({url, label}) => {
   check(!!footer && footer.querySelectorAll('a[href^="tel:"], a[href*="wa.me"]').length === 0,
         'footer-phone-whatsapp');
   check(!!footer && !text(footer).includes('Связь'), 'footer-contact-label');
-  check(!!footer && text(footer.querySelector('.site-footer__label')) === 'Офис', 'footer-office');
+  check(!!footer && text(footer.querySelector('.site-footer__cols > div .site-footer__label')) === 'Офис', 'footer-office');
   const legal = document.querySelector('[data-copy-id="8.9"]');
   check(document.querySelectorAll('[data-copy-id="8.9"]').length === 1, 'legal-copy-id');
   const rangeFor = phrase => {
