@@ -1226,6 +1226,14 @@ picture { display: block; }
 
 .attorney-card .notch--wide { margin-bottom: 18px; }
 
+/* final-dev5, 2026-09-18: подзаголовок перед списком направлений в карточке Александра. */
+.attorney-card__lead {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
 .checklist {
   display: flex;
   flex-direction: column;
