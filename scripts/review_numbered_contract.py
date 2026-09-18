@@ -1,6 +1,6 @@
 """Shared contract for the service-only numbered client review page."""
 
-REVIEW_NUMBERED_VERSION = "2.9.0"
+REVIEW_NUMBERED_VERSION = "2.10.0"
 REVIEW_NUMBERED_UPDATED = "2026-09-18"
 
 OWNER_REVIEW_IDS = {
@@ -24,13 +24,13 @@ OWNER_REVIEW_IDS = {
     "precedent-title-v2": "4.5",
     "precedent-body-v3": "4.6",
     "precedent-note-v1": "4.7",
-    "alexander-card-v2": "5.6–5.15",
-    "yulia-card-v2": "5.18",
+    "alexander-card-v3": "5.6–5.15",
+    "yulia-card-v3": "5.18",
     "attorneys-note-v1": "5.19",
     "contact-h2-v1": "7.4",
 }
 
 OWNER_REVIEW_ANCHORS = {
-    "alexander-card-v2": '<h3 class="attorney-card__name">Александр Гамбарян&nbsp;— семейное право</h3>',
-    "yulia-card-v2": '<h3 class="attorney-card__name">Юлия Саакян</h3>',
+    "alexander-card-v3": '<h3 class="attorney-card__name">Александр Гамбарян&nbsp;— семейное право</h3>',
+    "yulia-card-v3": '<h3 class="attorney-card__name">Юлия Саакян</h3>',
 }

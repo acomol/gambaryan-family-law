@@ -134,7 +134,7 @@ class ClientCopyVerifierTests(unittest.TestCase):
     def test_owner_approved_yulia_v2_drift_fails(self) -> None:
         html = self.source_html.replace("Более 17 лет профессионального опыта в юриспруденции", "Более 17 лет опыта", 1)
         problems = self.verify_temp_html(html)
-        self.assertTrue(any("owner:yulia-card-v2" in item for item in problems))
+        self.assertTrue(any("owner:yulia-card-v3" in item for item in problems))
 
     def test_old_services_heading_fails_with_or_without_copy_id(self) -> None:
         old_heading = "Развод по взаимному согласию и представительство в бракоразводных спорах при отсутствии соглашения между супругами"
@@ -169,7 +169,7 @@ class ClientCopyVerifierTests(unittest.TestCase):
             ('precedent-title-v2', 'разговору о разводе', 'беседе о разводе'),
             ('precedent-body-v3', 'Не принимайте решений без консультации с адвокатом', 'Не принимайте решений без адвоката'),
             ('precedent-note-v1', 'решение о разводе ещё не принято', 'решение ещё не принято'),
-            ('alexander-card-v2', 'выявление и розыск активов;', 'розыск активов;'),
+            ('alexander-card-v3', 'Выявление и розыск активов<', 'Розыск активов<'),
             ('attorneys-note-v1', 'полное сопровождение, включающее', 'сопровождение, включающее'),
         )
         for owner_id, old, new in mutations:
