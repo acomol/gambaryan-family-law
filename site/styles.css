@@ -996,20 +996,18 @@ picture { display: block; }
 .precedent__container { padding-block: 0 var(--section-pad); }
 
 .precedent-card {
-  /* final-dev5, 2026-09-16, указание владельца: голова в рамке, полоса и окантовка
-     толще на пару пикселей, блок выделен. Портрет больше не выступает над карточкой,
-     поэтому отступ сверху обычный межсекционный. Поле от полосы до текста равно
-     полю от краёв (на 390 было 12 px). */
-  --precedent-stripe: 18px;
+  /* final-dev5, 2026-09-18, указание владельца: блок выделен, но в стиле сайта и не
+     грубо. Язык сайта — тонкие золотые линии: карточка услуг с рамкой 1 px и радиусом
+     16, штрихи 40×2. Поэтому вместо полосы 18 px, рамки 2 px и свечения — рамка 1 px
+     ярче, чем у карточки услуг, и золотая черта 3 px у левой кромки. Голова в рамке. */
   --precedent-pad: clamp(28px, 4vw, 40px);
   --precedent-photo-h: clamp(420px, 36vw, 488px);
   margin-top: var(--precedent-reserve);
   background: linear-gradient(120deg, #1a1c20 0%, #241a0c 100%);
-  border: 2px solid rgba(240, 174, 31, 0.45);
-  border-radius: 20px;
-  box-shadow: 0 28px 64px -24px rgba(0, 0, 0, 0.65), 0 0 56px rgba(240, 174, 31, 0.1);
+  border: 1px solid rgba(240, 174, 31, 0.36);
+  border-radius: 16px;
+  box-shadow: 0 24px 56px -32px rgba(0, 0, 0, 0.8);
   padding: var(--precedent-pad);
-  padding-left: calc(var(--precedent-stripe) + var(--precedent-pad));
   position: relative;
   min-height: clamp(280px, 26vw, 360px);
   display: flex;
@@ -1021,12 +1019,12 @@ picture { display: block; }
 
 .precedent-edge {
   position: absolute;
-  top: -2px;
-  left: -2px;
-  width: var(--precedent-stripe);
-  height: calc(100% + 4px);
-  background: linear-gradient(var(--gold), var(--gold-light), var(--gold));
-  border-radius: 20px 0 0 20px;
+  top: 28px;
+  bottom: 28px;
+  left: -1px;
+  width: 3px;
+  background: linear-gradient(var(--gold-light), var(--gold));
+  border-radius: 0 3px 3px 0;
 }
 
 .precedent-photo {
@@ -1084,8 +1082,8 @@ picture { display: block; }
 /* Заключительная строка — приглашение, а не продолжение абзаца: она снимает
    барьер «обращаться ещё рано». Отделена короткой золотой чертой СВЕРХУ, как
    линия в логотипе. Вертикальную черту слева пришлось убрать: у карточки своя
-   золотая кромка шириной 16 px, и две параллельные вертикали в 12 px друг от
-   друга на 390 читались как случайное задвоение (замер 2026-09-08).
+   золотая черта у кромки, и две параллельные вертикали рядом на 390 читались
+   как случайное задвоение (замер 2026-09-08).
    Селектор с двумя классами — чтобы перебить `p + p` выше. */
 .precedent-card__text p.precedent-card__note {
   position: relative;
@@ -1138,6 +1136,13 @@ picture { display: block; }
      (инвариант 10, 360x640). Поля 20 px и подзаголовок 16 px возвращают высоту. */
   .precedent-card { --precedent-pad: 20px; }
   .precedent-card__text p:not(.precedent-card__note) { font-size: 16px; }
+}
+
+/* Кнопки под текстом (перенос начинается около 692 px) — во всю ширину колонки
+   текста. Иначе справа оставалось пустое поле втрое шире левого (замер 2026-09-18
+   на 390: кнопки 261 px из 300). */
+@media (max-width: 700px) {
+  .precedent-card__actions { flex: 1 1 100%; max-width: 432px; }
 }
 
 .btn--gold-lg {
@@ -1639,7 +1644,7 @@ picture { display: block; }
    на 1201, 1280 и 1440. */
 @media (min-width: 1201px) {
   .precedent-card {
-    min-height: calc(var(--precedent-photo-h) * 0.906 + 32px - 2 * var(--precedent-pad) - 4px);
+    min-height: calc(var(--precedent-photo-h) * 0.906 + 32px - 2 * var(--precedent-pad) - 2px);
   }
 }
 
