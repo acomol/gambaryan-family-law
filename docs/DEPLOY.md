@@ -1,7 +1,7 @@
 # Куда публикуется сайт
 
-**Версия документа:** `1.6.0`
-**Обновлено:** `2026-08-17`
+**Версия документа:** `1.7.0`
+**Обновлено:** `2026-09-19`
 
 Читать **до** любых попыток развернуть проект. Отдельная площадка не
 заводится: если развёртывание уже существует — обновляется оно.
@@ -10,15 +10,16 @@
 
 | | |
 |---|---|
-| Временный адрес | **https://gambarian-landing.pages.dev/** |
+| Внутренний адрес (тот же деплой) | **https://gambarian-landing.pages.dev/** |
+| Рекламный домен (публичный, с 2026-09-19) | **https://lp.gambarian.com/** — подключён как Custom domain проекта, см. `docs/LAUNCH-LP-GAMBARIAN.md` |
 | Платформа | Cloudflare Pages |
-| Что публикуется | папка `site/` + корневая `functions/` (`/api/lead`) |
-| Боевой домен клиента | www.gambarian.com — **ещё не подключён** |
+| Что публикуется | `build/production` — та же `site/`, собранная `scripts/build-production.py` (без демо-переключателя рабочего времени; `og:url` и картинка превью — на `lp`) + корневая `functions/` (`/api/lead`) |
+| Боевой домен клиента | www.gambarian.com — отдельный, уже существующий сайт, продвигаемый по SEO; к этому проекту **не подключается и не заменяется** |
 
-Пока сайт живёт на `pages.dev`, в `site/index.html` стоит
-`<meta name="robots" content="noindex">`: боевой домен продвигается по
-SEO, и индексация временного адреса создала бы дубль контента. **Снять
-noindex только при переезде на настоящий домен.**
+`site/index.html` держит `<meta name="robots" content="noindex">` **постоянно, не временно**:
+`lp.gambarian.com` — рекламная посадочная страница, а не замена www.gambarian.com, и не
+должна с ним конкурировать в поиске. Снимать noindex не планируется; если план изменится —
+явное решение владельца, а не следствие подключения домена.
 
 ## Как обновить
 
@@ -40,6 +41,13 @@ Preview: Settings → Variables and Secrets → Add → Encrypt. Для лока
 `GET /api/lead` возвращает `405` и `Allow: POST`. Полная приёмка требует
 контрольный POST, Albato Automation Log и readback конечной записи; контракт и
 версия описаны в `docs/LEAD-WEBHOOK-CONTRACT.md`.
+
+🔴 **С 2026-09-19 боевая версия собирается, а не публикуется как есть.**
+`scripts/deploy-pages.ps1`/`.sh` ниже публикуют сырую `site/` — в ней ещё есть
+демо-переключатель рабочего времени и `og:url`/картинка превью на `pages.dev`.
+Правильный порядок для боевого деплоя — `scripts/build-production.py`, затем
+`wrangler pages deploy build/production ...`, см. `docs/LAUNCH-LP-GAMBARIAN.md`
+шаг 2. Скрипты ниже подходят, только если `lp.gambarian.com` отключён совсем.
 
 **Windows / PowerShell** (основной путь у владельца):
 
@@ -69,7 +77,8 @@ bash scripts/deploy-pages.sh
 
 ```bash
 npx wrangler login                                    # один раз
-npx --yes wrangler@4.120.0 pages deploy site \
+python -B scripts/build-production.py                 # site/ -> build/production, боевые правки
+npx --yes wrangler@4.120.0 pages deploy build/production \
   --project-name=gambarian-landing \
   --branch=main
 ```
