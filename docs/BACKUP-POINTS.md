@@ -6,6 +6,16 @@
 неизменяемый деплой Cloudflare Pages и отдельный адрес-копия. Любого из трёх достаточно,
 чтобы вернуть сайт.
 
+## 2026-09-19 — запуск lp.gambarian.com (основная версия)
+
+| Что | Значение |
+|---|---|
+| Прежняя основная версия (ветка `main`) | деплой `af10299b-1257-4f65-b66d-4b1e3041bf74` от 2026-08-10 — старая сборка |
+| Новая основная версия | деплой `6d3c48d9` → https://6d3c48d9.gambarian-landing.pages.dev — `build/production` из коммита `d1ace3e` (`scripts/build-production.py`) |
+
+Вернуть: Cloudflare Pages → `gambarian-landing` → Deployments → Production → `af10299b` → Rollback.
+Снять адрес: убрать `lp.gambarian.com` из Custom domains или запись `lp` у DNS-администратора.
+
 ## 2026-09-17 — final-dev5 до пересборки фона первого экрана
 
 Все правки владельца от 2026-09-16 и 2026-09-17, опубликованные на `final-dev5`.

@@ -1,6 +1,10 @@
 # Запуск lp.gambarian.com
 
-**Версия:** `LAUNCH-LP v1.0.0 | 2026-09-18`
+**Версия:** `LAUNCH-LP v1.1.0 | 2026-09-19`
+
+**Статус 2026-09-19:** шаг 5 сделан владельцем (запись `lp` → `gambarian-landing.pages.dev`,
+видна на 1.1.1.1, 8.8.8.8 и ns1.webprom.net); шаги 2–4 выполнены после «да» владельца;
+шаг 1 (секрет Albato) — за владельцем; шаг 6 — см. отчёт запуска; шаг 7 — после шага 1.
 
 Цель: лендинг final-dev5 открывается по адресу `https://lp.gambarian.com`, форма доставляет
 заявки. Порядок важен: шаги 1–4 делаются **до** письма DNS-администратору.
@@ -22,8 +26,8 @@
 | № | Действие | Кто | Проверка |
 |---|---|---|---|
 | 1 | Задать `ALBATO_WEBHOOK_URL` (тип Secret) для **Production** и **Preview**: Cloudflare → Workers & Pages → gambarian-landing → Settings → Variables and Secrets | владелец (секрет не передаётся через чат) | тестовая заявка с именем «ТЕСТ» → ответ 202 и строка в Albato |
-| 2 | Опубликовать final-dev5 как основную версию: `wrangler pages deploy build/variants/final-dev5 --project-name=gambarian-landing --branch=main` | оператор, после «да» владельца | HTML `gambarian-landing.pages.dev` = сборка final-dev5 |
-| 3 | `og:url` → `https://lp.gambarian.com/`; `noindex` оставить (рекламная страница не конкурирует с www.gambarian.com) | оператор | readback тегов |
+| 2 | Опубликовать основную версию: `python -B scripts/build-production.py`, затем `wrangler pages deploy build/production --project-name=gambarian-landing --branch=main` из корня репозитория (так уходит и `functions/`). Сборка = final-dev5 без демо-переключателя «Авто / Демо» | оператор, после «да» владельца | HTML `gambarian-landing.pages.dev` = `build/production/index.html`; `/api/lead` GET → 405 |
+| 3 | `og:url` и картинка превью ссылки → `https://lp.gambarian.com/`; `noindex` оставить (рекламная страница не конкурирует с www.gambarian.com) — делает `build-production.py` | оператор | readback тегов |
 | 4 | Добавить `lp.gambarian.com` в Custom domains проекта | оператор (API) или владелец в панели | статус домена «Pending / Verifying» |
 | 5 | Письмо DNS-администратору (текст ниже) | владелец | ответ «запись создана» |
 | 6 | Проверка после записи | оператор | `lp.gambarian.com CNAME gambarian-landing.pages.dev`; статус домена Active; HTTPS без ошибок; HTML = основная версия; тестовая заявка 202 |
