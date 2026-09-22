@@ -29,7 +29,7 @@ export async function verifyLeadForm(page, baseUrl) {
     await page.locator("#lead-email").fill(email);
   };
   await page.goto(baseUrl);
-  assert.deepEqual(await page.locator('.lead-form input[name]').evaluateAll(inputs => inputs.map(input => input.name)), ["name", "phone", "email"]);
+  assert.deepEqual(await page.locator('.lead-form input[name]').evaluateAll(inputs => inputs.map(input => input.name)), ["company", "name", "phone", "email"]);
   assert.deepEqual(await page.locator('[data-confirm]').evaluateAll(fields => fields.map(field => field.dataset.confirm)), ["name", "phone", "email"]);
   await review();
   assert.equal(requests.length, 0);

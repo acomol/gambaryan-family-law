@@ -1798,3 +1798,12 @@ picture { display: block; }
   .fact-card { padding: 18px 18px 16px; }
   .fact-card__title { font-size: 26px; line-height: 1.15; }
 }
+
+/* Ловушка вне потока: не меняет геометрию формы. */
+.lead-form input.lead-form__company {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}

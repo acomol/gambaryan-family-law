@@ -1,12 +1,12 @@
 (function (root) {
   "use strict";
 
-  var schemaVersion = "2.3.0";
+  var schemaVersion = "2.4.0";
   root.GAMBARIAN_LEAD_CONTRACT = Object.freeze({
     // Требование владельца: при изменении схемы обновлять и версию, и дату.
     version: schemaVersion,
     schemaVersion: schemaVersion,
-    schemaDate: "2026-09-16",
+    schemaDate: "2026-09-22",
     endpoint: "/api/lead",
     eventName: "lead_form_submit",
     sourceSystem: "gambarian_family_law_landing",

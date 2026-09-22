@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const EXPECTED_VERSION = "2.3.0";
-const EXPECTED_DATE = "2026-09-16";
+const EXPECTED_VERSION = "2.4.0";
+const EXPECTED_DATE = "2026-09-22";
 const BASE_URL = "https://gambarian-landing.pages.dev/api/lead";
 
 const functionSource = fs.readFileSync("functions/api/lead.js", "utf8");
@@ -168,6 +168,7 @@ try {
   assert.equal(payload.utm_source, "google");
   assert.equal(payload.utm_medium, "");
   assert.equal(payload.unknown, undefined);
+  assert.equal(payload.company, undefined);
   assert.equal(payload.corrects_submission_id, "");
   const keys = Object.keys(payload);
   assert.deepEqual(keys, [
@@ -177,6 +178,37 @@ try {
     "utm_source", "utm_medium", "utm_campaign", "utm_id", "utm_term", "utm_content",
     "gclid", "gbraid", "wbraid", "fbclid",
   ]);
+
+  // Ловушка не вызывает upstream и не логирует заявку даже без секрета/контактов.
+  const botLogs = [];
+  const originalLog = console.log;
+  console.error = (...args) => botLogs.push(args);
+  console.log = (...args) => botLogs.push(args);
+  try {
+    for (const company of ["Bot Ltd", " "]) {
+      for (const env of [{}, { ALBATO_WEBHOOK_URL: "https://example.invalid/albato-test" }]) {
+        captured = undefined;
+        response = await call("POST", JSON.stringify({ company, submission_id: submissionId }), env);
+        assert.equal(response.status, 202);
+        assert.deepEqual(await response.json(), { ok: true, status: "accepted", submission_id: submissionId });
+        assert.equal(captured, undefined, "Ловушка не должна вызывать webhook");
+      }
+    }
+    captured = undefined;
+    response = await call("POST", JSON.stringify({ company: "Bot Ltd" }));
+    assert.equal(response.status, 202);
+    assert.ok(leadModule.LEAD_CONTRACT.isValidSubmissionId((await response.json()).submission_id));
+    assert.equal(captured, undefined);
+    assert.deepEqual(botLogs, []);
+  } finally {
+    console.log = originalLog;
+    console.error = originalConsoleError;
+  }
+  response = await call("POST", JSON.stringify({ ...input, company: "" }), {
+    ALBATO_WEBHOOK_URL: "https://example.invalid/albato-test",
+  });
+  assert.equal(response.status, 202);
+  assert.deepEqual(Object.keys(JSON.parse(captured.options.body)), keys);
 
   // Older pages may send this removed field; any value must be ignored.
   for (const channel of ["phone", "whatsapp", "email", "sms", "", null, 123, {}]) {

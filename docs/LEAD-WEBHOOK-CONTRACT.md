@@ -1,7 +1,7 @@
 # Albato lead webhook contract
 
-**Версия схемы:** `2.3.0`
-**Дата требований:** `2026-09-16`
+**Версия схемы:** `2.4.0`
+**Дата требований:** `2026-09-22`
 **Статус:** `LOCAL PASS / LIVE PENDING`; live-доставка не
 включена до установки secret, контрольного catch, downstream-dedupe и
 утверждённого privacy notice.
@@ -10,6 +10,7 @@
 
 | Версия | Дата | Изменение |
 | --- | --- | --- |
+| `2.4.0` | `2026-09-22` | Ловушка `company` только browser → API; без доставки и конверсии. Исправление контактов → `lead_corrected` |
 | `2.3.0` | `2026-09-16` | поле channel снято по указанию владельца 2026-09-16 |
 | `2.2.0` | `2026-09-16` | Связанные исправления контактов через `corrects_submission_id`, тексты по каналу связи и согласованные версии скриптов |
 | `2.1.0` | `2026-09-16` | Обязательный e-mail в форме, необязательный в API для старых клиентов; канал связи, подтверждение и исправление контактов |
@@ -45,15 +46,15 @@
 lead-form → POST /api/lead → Cloudflare Pages Function → Albato Incoming Webhook
 ```
 
-## Payload `2.3.0`
+## Payload `2.4.0`
 
 Albato получает плоский JSON. Все ключи присутствуют; для отсутствующей
 attribution передаётся пустая строка.
 
 | Поле | Тип | Источник |
 | --- | --- | --- |
-| `schema_version` | string | сервер, `2.3.0` |
-| `schema_date` | date string | сервер, `2026-09-16` |
+| `schema_version` | string | сервер, `2.4.0` |
+| `schema_date` | date string | сервер, `2026-09-22` |
 | `event_name` | string | сервер, `lead_form_submit` |
 | `source_system` | string | сервер, `gambarian_family_law_landing` |
 | `submission_id` | UUID v4 | браузер; сервер создаёт fallback |
@@ -83,6 +84,17 @@ topic и свободный текст дела. Payload и webhook URL не л�
 В Albato-payload ключ всегда идёт сразу после `submission_id` (шестой ключ).
 Исправление получает новый `submission_id`; повтор неудачной доставки того же
 исправления сохраняет этот ID и ссылку на предыдущую принятую заявку.
+
+### Ловушка для ботов
+
+`company` — необязательная строка только входящего browser API, скрытое поле
+без label, вне потока, `tabindex=-1`, `autocomplete=off`, `aria-hidden=true`.
+Пустая строка/отсутствие сохраняют обычную доставку. Любая непустая строка
+(включая пробел) после проверки origin, типа и размера тела возвращает
+`202 {ok: true, status: "accepted", submission_id}` до валидации контактов
+и проверки секрета. Валидный UUID v4 сохраняется; иначе сервер создаёт новый.
+Webhook не вызывается, заявка не логируется, `company` не входит в Albato-payload.
+Браузер показывает успех, но не пишет `generate_lead` или `lead_corrected`.
 
 ### Ошибки browser API
 
@@ -119,8 +131,8 @@ topic и свободный текст дела. Payload и webhook URL не л�
   успех без POST и повторного `generate_lead`; изменённые проходят проверку и уходят
   с новым `submission_id` и `corrects_submission_id` последней принятой заявки.
   «Отправить ещё одну заявку» очищает форму и связь; следующая заявка независима.
-- `lead-contract.js?v=2.3.0` и `app.js?v=2.3.0` подключаются согласованно;
-  `version` и `schemaVersion` общей карты равны `2.3.0`. Несовпадение `version`
+- `lead-contract.js?v=2.4.0` и `app.js?v=2.4.0` подключаются согласованно;
+  `version` и `schemaVersion` общей карты равны `2.4.0`. Несовпадение `version`
   с ожидаемой в `app.js` (включая отсутствующую карту) блокирует submit и показывает
   существующую общую ошибку с контактами; новые методы карты не вызываются.
 - success показывается только после HTTP `2xx` от `/api/lead`;
@@ -131,8 +143,11 @@ topic и свободный текст дела. Payload и webhook URL не л�
 - двойная отправка блокируется; ручный повтор неизменённых данных сохраняет
   тот же `submission_id`; сам endpoint не хранит состояние — dedup обязан быть
   настроен в Albato/destination;
-- после принятия отправляется `generate_lead`, при ошибке — `form_error`;
-  PII в `dataLayer` не передаётся.
+- новая принятая заявка → `generate_lead` с `form_id`, `submission_id`,
+  `seconds_to_lead` (видимое время); исправление → `lead_corrected` с новым ID
+  и `corrects_submission_id`. Ошибка → `form_error` с `error_type` и `http_status`
+  (`0` для локальной валидации/сети). Все события несут `design_version=final-dev5`,
+  PII в `dataLayer` не передаётся. Карта — [TRACKING-REQUIREMENTS.md](TRACKING-REQUIREMENTS.md).
 
 ## Секреты и приёмка
 
@@ -141,7 +156,7 @@ Production и Preview должны использовать разные Albato 
 
 Минимальная приёмка перед production:
 
-1. Albato `Catch a Webhook` получает полный синтетический payload `2.3.0`:
+1. Albato `Catch a Webhook` получает полный синтетический payload `2.4.0`:
    присутствуют `name`, `phone`, `email`, `corrects_submission_id`; `topic` отсутствует.
 2. Невалидная форма создаёт `0` запросов.
 3. Каждое неверное поле визуально выделено, содержит точное сообщение и
@@ -155,7 +170,8 @@ Production и Preview должны использовать разные Albato 
    показывает success.
 7. В live HTML/JS/Network нет `ALBATO_WEBHOOK_URL`.
 
-HTTP `202 accepted` подтверждает только приём webhook Albato. Создание записи
+Для обычной заявки HTTP `202 accepted` подтверждает только приём webhook Albato
+(ловушка возвращает такой же ответ без доставки). Создание записи
 в CRM/Sheet подтверждается отдельно через Albato Automation Log и readback
 конечного объекта.
 

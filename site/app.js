@@ -8,6 +8,135 @@
 (function () {
   "use strict";
 
+  /* --- События страницы: только параметры из карты аналитики ------------ */
+
+  function track(name, params) {
+    var event = { event: name, design_version: 'final-dev5' };
+    Object.keys(params || {}).forEach(function (key) { event[key] = params[key]; });
+    (window.dataLayer = window.dataLayer || []).push(event);
+  }
+
+  function serviceSlug(index) {
+    return tabs[index].textContent.trim().toLowerCase().replace(/\s+/g, '-');
+  }
+
+  var visibleMillis = 0;
+  var lastTick = performance.now();
+  var wasVisible = document.visibilityState === 'visible';
+  var timeThresholds = [30, 60, 120, 180];
+  var timeSent = {};
+
+  function visibleSeconds() {
+    var now = performance.now();
+    if (wasVisible) visibleMillis += now - lastTick;
+    lastTick = now;
+    wasVisible = document.visibilityState === 'visible';
+    return Math.floor(visibleMillis / 1000);
+  }
+
+  function checkTime() {
+    var seconds = visibleSeconds();
+    timeThresholds.forEach(function (threshold) {
+      if (seconds >= threshold && !timeSent[threshold]) {
+        timeSent[threshold] = true;
+        track('time_on_page', { seconds: threshold });
+      }
+    });
+  }
+  document.addEventListener('visibilitychange', checkTime);
+  window.setInterval(checkTime, 1000);
+
+  var scrollSent = {};
+  var scrollPending = false;
+  function checkScroll() {
+    scrollPending = false;
+    var percent = (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight * 100;
+    [25, 50, 75, 90].forEach(function (threshold) {
+      if (percent >= threshold && !scrollSent[threshold]) {
+        scrollSent[threshold] = true;
+        track('scroll_depth', { percent: threshold });
+      }
+    });
+  }
+  window.addEventListener('scroll', function () {
+    if (scrollPending) return;
+    scrollPending = true;
+    window.requestAnimationFrame(checkScroll);
+  }, { passive: true });
+
+  var sectionSelectors = {
+    hero: 'section#top', facts: 'section.facts', services: 'section#services',
+    precedent: 'section#precedent', attorneys: 'section#attorney',
+    contact: 'section#contact', footer: 'footer.site-footer'
+  };
+  var sectionSeen = {};
+  var sectionObservers = [];
+  function observeSections() {
+    sectionObservers.forEach(function (observer) { observer.disconnect(); });
+    sectionObservers = [];
+    Object.keys(sectionSelectors).forEach(function (section) {
+      var block = document.querySelector(sectionSelectors[section]);
+      if (!block || sectionSeen[section]) return;
+      var height = block.getBoundingClientRect().height;
+      // У длинной секции половина высоты экрана: 50% всего блока недостижимы.
+      var threshold = 0.5 * Math.min(height, window.innerHeight) / Math.max(1, height);
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!sectionSeen[section] && entry.isIntersecting && entry.intersectionRatio >= threshold) {
+            sectionSeen[section] = true;
+            track('section_view', { section: section });
+            observer.disconnect();
+          }
+        });
+      }, { threshold: [threshold, 0.5] });
+      observer.observe(block);
+      sectionObservers.push(observer);
+    });
+  }
+  if ('IntersectionObserver' in window) {
+    window.addEventListener('load', observeSections);
+    window.addEventListener('resize', observeSections);
+  }
+
+  document.addEventListener('click', function (event) {
+    var link = event.target.closest('a');
+    if (!link || link.closest('.mobile-bar')) return;
+    var block = link.closest('.lead-form__error, .nav-drawer, .mobile-menu, header.site-header, section, footer.site-footer');
+    if (!block) return;
+    var placement = block.matches('.lead-form__error') ? 'form_error'
+      : block.matches('.nav-drawer, .mobile-menu') ? 'menu'
+      : block.matches('header.site-header') ? 'header'
+      : block.matches('footer.site-footer') ? 'footer'
+      : block.id === 'top' ? 'hero'
+      : block.id === 'attorney' ? 'attorneys'
+      : block.id === 'contact' ? 'contacts'
+      : block.matches('.facts') ? 'facts' : block.id;
+    var href = link.getAttribute('href') || '';
+    var method = href.indexOf('tel:') === 0 ? 'phone'
+      : href.indexOf('wa.me') !== -1 ? 'whatsapp'
+      : link.matches('.map-link') ? 'google_maps' : '';
+    if (method) {
+      var bar = document.querySelector('.mobile-bar');
+      track('contact_click', {
+        method: method, placement: placement,
+        business_state: bar ? bar.getAttribute('data-business-state') : 'closed'
+      });
+    } else if (link.hasAttribute('data-svc-target')) {
+      // Ссылку услуги учитывает setActive, второго события навигации нет.
+      return;
+    } else if (href.charAt(0) === '#' && ['header', 'menu', 'footer'].indexOf(placement) !== -1) {
+      track('nav_click', { target: href.slice(1), placement: placement });
+    } else if (href === '#contact') {
+      var params = { placement: placement };
+      if (placement === 'services') params.service = serviceSlug(active);
+      if (placement === 'attorneys') {
+        var card = link.closest('.attorney-card');
+        params.attorney = card.getAttribute('data-owner-copy-id').split('-')[0];
+      }
+      track('form_anchor_click', params);
+    }
+  });
+
   /* --- Бургер-меню ------------------------------------------------------- */
 
   var burger = document.querySelector(".nav-burger");
@@ -236,7 +365,7 @@
       }
     }
 
-    function setActive(index, moveFocus, wrap, dirHint) {
+    function setActive(index, moveFocus, wrap, dirHint, via) {
       var previous = active;
       active = wrap ? (index + panels.length) % panels.length : Math.max(0, Math.min(index, last));
 
@@ -253,6 +382,7 @@
 
       if (previous !== active) {
         transitionTo(previous, active, dirHint || (active > previous ? 'next' : 'prev'));
+        track('service_select', { service: serviceSlug(active), via: via || 'tab' });
       }
 
       // Кольцо: на краях стрелки не гаснут, листание продолжается.
@@ -277,14 +407,14 @@
 
     dots.forEach(function (dot, i) {
       dot.addEventListener("click", function () {
-        setActive(i);
+        setActive(i, false, false, null, 'dot');
       });
     });
 
     // Ссылки подвала открывают свою тему (указание владельца 2026-09-18).
     Array.prototype.forEach.call(document.querySelectorAll("[data-svc-target]"), function (link) {
       link.addEventListener("click", function () {
-        setActive(Number(link.getAttribute("data-svc-target")));
+        setActive(Number(link.getAttribute("data-svc-target")), false, false, null, 'footer');
       });
     });
 
@@ -313,9 +443,9 @@
       });
     }
 
-    if (prev) prev.addEventListener("click", function () { setActive(active - 1, false, true, 'prev'); });
-    if (next) next.addEventListener("click", function () { setActive(active + 1, false, true, 'next'); });
-    if (hint) hint.addEventListener("click", function () { setActive(active + 1); });
+    if (prev) prev.addEventListener("click", function () { setActive(active - 1, false, true, 'prev', 'arrow'); });
+    if (next) next.addEventListener("click", function () { setActive(active + 1, false, true, 'next', 'arrow'); });
+    if (hint) hint.addEventListener("click", function () { setActive(active + 1, false, false, 'next', 'arrow'); });
 
     if (stage) {
       function recordPoint(event) {
@@ -383,7 +513,7 @@
           ? Math.abs(dx) >= threshold || (Math.abs(dx) >= 24 && speed >= .5)
           : Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy));
         resetSwipe(!change);
-        if (change) setActive(active + (dx < 0 ? 1 : -1), false, true, dx < 0 ? 'next' : 'prev');
+        if (change) setActive(active + (dx < 0 ? 1 : -1), false, true, dx < 0 ? 'next' : 'prev', 'swipe');
       });
       function cancelSwipe(event) {
         if (swipe && event.pointerId === swipe.id) resetSwipe(true);
@@ -414,7 +544,7 @@
   /* --- Форма обращения --------------------------------------------------- */
 
   var LEAD_CONTRACT = window.GAMBARIAN_LEAD_CONTRACT;
-  var EXPECTED_LEAD_CONTRACT_VERSION = "2.3.0";
+  var EXPECTED_LEAD_CONTRACT_VERSION = "2.4.0";
   if (!LEAD_CONTRACT || LEAD_CONTRACT.version !== EXPECTED_LEAD_CONTRACT_VERSION) {
     var unavailableForm = document.querySelector(".lead-form");
     if (unavailableForm) {
@@ -503,11 +633,10 @@
     ].join("-");
   }
 
-  function pushFormEvent(eventName) {
-    (window.dataLayer = window.dataLayer || []).push({
-      event: eventName,
-      form_id: LEAD_FORM_ID,
-    });
+  function pushFormEvent(eventName, params) {
+    var fields = { form_id: LEAD_FORM_ID };
+    Object.keys(params || {}).forEach(function (key) { fields[key] = params[key]; });
+    track(eventName, fields);
   }
 
   function submitLead(data) {
@@ -558,7 +687,8 @@
   var confirmButton = form && form.querySelector(".lead-form__confirm-submit");
   var editButton = form && form.querySelector(".lead-form__edit");
   var emailSuggestion = form && form.querySelector(".field__email-suggestion");
-  var formInputs = form ? Array.from(form.querySelectorAll("input[name]")) : [];
+  var formInputs = form ? Array.from(form.querySelectorAll("input[name]:not([name=company])")) : [];
+  var formStarted = false;
   var submitButtonLabel = submitButton ? submitButton.textContent : "";
   var validation = LEAD_CONTRACT.validation;
   var attribution = readFirstTouchAttribution();
@@ -628,6 +758,7 @@
     submitButton.hidden = true;
     confirmBox.hidden = false;
     confirmBox.querySelector(".lead-form__confirm-title").focus();
+    pushFormEvent('form_confirm');
   }
 
   function showSuccess(data) {
@@ -797,7 +928,10 @@
     success.hidden = true;
     // Общая валидация работает и при скрытых на шаге проверки обязательных полях.
     form.noValidate = true;
-    editButton.addEventListener("click", function () { showFields(true); });
+    editButton.addEventListener("click", function () {
+      pushFormEvent('form_correct');
+      showFields(true);
+    });
     form.addEventListener("keydown", function (event) {
       if (event.key === "Escape" && !confirmBox.hidden && !submitting) {
         event.preventDefault();
@@ -824,12 +958,17 @@
       invalidBatchScheduled = true;
       window.setTimeout(function () {
         invalidBatchScheduled = false;
+        pushFormEvent('form_error', { error_type: 'validation', http_status: 0 });
         showValidationErrors(validateForm());
       }, 0);
     }, true);
 
     formInputs.forEach(function (input) {
       input.addEventListener("input", function () {
+        if (!formStarted) {
+          formStarted = true;
+          pushFormEvent('form_start');
+        }
         if (input.getAttribute("aria-invalid") === "true") {
           setFieldError(input, fieldMessage(input));
           if (errorMode === "validation") {
@@ -857,6 +996,7 @@
       var invalidInputs = validateForm();
       if (invalidInputs.length) {
         showFields(false);
+        pushFormEvent('form_error', { error_type: 'validation', http_status: 0 });
         showValidationErrors(invalidInputs);
         return;
       }
@@ -877,6 +1017,7 @@
       }
       Object.assign(data, attribution, {
         landing_path: window.location.pathname,
+        company: form.elements.company.value,
       });
       if (editingContacts) data.corrects_submission_id = acceptedSubmissionId;
 
@@ -895,14 +1036,31 @@
           setSubmitting(false);
           acceptedSubmissionId = response.submission_id || data.submission_id;
           acceptedContacts = JSON.parse(contactFingerprint);
+          if (!data.company) {
+            if (editingContacts) {
+              track('lead_corrected', {
+                submission_id: acceptedSubmissionId,
+                corrects_submission_id: data.corrects_submission_id
+              });
+            } else {
+              pushFormEvent('generate_lead', {
+                submission_id: acceptedSubmissionId,
+                seconds_to_lead: visibleSeconds()
+              });
+            }
+          }
           editingContacts = false;
           showSuccess(acceptedContacts);
-          pushFormEvent("generate_lead");
         },
         function (error) {
           setSubmitting(false);
           showFields(false);
-          pushFormEvent("form_error");
+          pushFormEvent('form_error', {
+            error_type: error.status === 422 ? 'validation'
+              : error.status === 503 ? 'unavailable'
+              : !error.status ? 'network' : 'server',
+            http_status: error.status || 0
+          });
           if (
             error.status === 422 &&
             Object.keys(error.fieldErrors).length &&

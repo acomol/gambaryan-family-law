@@ -23,6 +23,7 @@ server=$!
 trap 'kill $server 2>/dev/null' EXIT
 until curl -fsS -o /dev/null http://127.0.0.1:8098/build/variants/final-dev5/; do sleep 1; done
 node scripts/verify-lead-form.mjs | grep -E "status|layouts"
+node scripts/verify-tracking.mjs
 git diff --check && echo "git diff --check: чисто"
 
 if [ "${1:-}" = "--visual" ]; then

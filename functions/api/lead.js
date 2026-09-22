@@ -186,6 +186,16 @@ export async function onRequest(context) {
     return json(400, { ok: false, error: "invalid_json" });
   }
 
+  // Ловушка возвращает обычный успех без валидации, доставки и записи заявки.
+  if (input && typeof input.company === "string" && input.company !== "") {
+    return json(202, {
+      ok: true,
+      status: "accepted",
+      submission_id: LEAD_CONTRACT.isValidSubmissionId(input.submission_id)
+        ? input.submission_id : crypto.randomUUID(),
+    });
+  }
+
   var validation = validateLead(input);
   if (!validation.lead) {
     return json(422, {
