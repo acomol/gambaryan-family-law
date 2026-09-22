@@ -1,6 +1,6 @@
 # Запуск lp.gambarian.com
 
-**Версия:** `LAUNCH-LP v1.2.0 | 2026-09-22`
+**Версия:** `LAUNCH-LP v1.3.0 | 2026-09-23`
 
 **Статус 2026-09-22:** шаги 2–5 сделаны, домен активен и отдаёт основную версию (отчёт запуска
 19.09). Шаг 1 (секрет Albato) — за владельцем, форма пока отвечает 503. Шаг 7 теперь требует
@@ -8,6 +8,8 @@
 созданы (доступа под ADFIX нет ни к одному GA4-ресурсу и ни к одному контейнеру GTM клиента),
 план — `docs/TRACKING-REQUIREMENTS.md` v2.0.0, решения владельца — там же §1. Google Ads
 подтверждён и проверен: `gambarian#2`, `994-218-4821`.
+
+**SEO-слой 2026-09-23 (`PRODUCTION-BUILD v1.3.0`, в сборке, на Cloudflare ещё не опубликован):** canonical, author, hreflang ru/x-default, favicon 32×32 и apple-touch-icon 180×180, квадрат превью 1254×1254 первым `og:image` (1200×630 — вторым, twitter без изменений), JSON-LD + url/alternateName/logo/image/geo `32.06923, 34.78314` (Nominatim/Photon и ArcGIS, расхождение 14.8 м); `noindex` остаётся — `meta robots` действует на поисковые краулеры, не на AdsBot (developers.google.com/search/docs/crawling-indexing/robots-meta-tag).
 
 Цель: лендинг final-dev5 открывается по адресу `https://lp.gambarian.com`, форма доставляет
 заявки. Порядок важен: шаги 1–4 делаются **до** письма DNS-администратору.
