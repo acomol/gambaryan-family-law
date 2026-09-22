@@ -28,6 +28,16 @@ assert.equal(leadModule.LEAD_CONTRACT.schemaDate, EXPECTED_DATE);
 assert.ok(contract.includes("**Версия схемы:** `" + EXPECTED_VERSION + "`"));
 assert.ok(contract.includes("**Дата требований:** `" + EXPECTED_DATE + "`"));
 assert.match(index, /<form class="lead-form" action="\/api\/lead" method="post">/);
+const honeypot = index.match(/<input\b[^>]*\bname="lf_hp"[^>]*>/)?.[0];
+assert.ok(honeypot, "Нет несемантического поля-ловушки lf_hp");
+for (const attribute of ['autocomplete="off"', 'tabindex="-1"', 'aria-hidden="true"']) {
+  assert.ok(honeypot.includes(attribute), `Ловушка: нет ${attribute}`);
+}
+for (const attribute of ["name", "id", "class"]) {
+  const value = honeypot.match(new RegExp(`\\b${attribute}="([^"]*)"`))?.[1] || "";
+  assert.doesNotMatch(value, /company|name|email|phone|address|org|website/i);
+}
+assert.ok(styles.includes(".lead-form input.lf_hp {"));
 for (const script of ["lead-contract", "app"]) {
   assert.ok(index.includes(`<script src="${script}.js?v=${EXPECTED_VERSION}" defer></script>`));
 }
@@ -168,7 +178,7 @@ try {
   assert.equal(payload.utm_source, "google");
   assert.equal(payload.utm_medium, "");
   assert.equal(payload.unknown, undefined);
-  assert.equal(payload.company, undefined);
+  assert.equal(payload.lf_hp, undefined);
   assert.equal(payload.corrects_submission_id, "");
   const keys = Object.keys(payload);
   assert.deepEqual(keys, [
@@ -185,17 +195,17 @@ try {
   console.error = (...args) => botLogs.push(args);
   console.log = (...args) => botLogs.push(args);
   try {
-    for (const company of ["Bot Ltd", " "]) {
+    for (const lf_hp of ["Bot Ltd", " "]) {
       for (const env of [{}, { ALBATO_WEBHOOK_URL: "https://example.invalid/albato-test" }]) {
         captured = undefined;
-        response = await call("POST", JSON.stringify({ company, submission_id: submissionId }), env);
+        response = await call("POST", JSON.stringify({ lf_hp, submission_id: submissionId }), env);
         assert.equal(response.status, 202);
         assert.deepEqual(await response.json(), { ok: true, status: "accepted", submission_id: submissionId });
         assert.equal(captured, undefined, "Ловушка не должна вызывать webhook");
       }
     }
     captured = undefined;
-    response = await call("POST", JSON.stringify({ company: "Bot Ltd" }));
+    response = await call("POST", JSON.stringify({ lf_hp: "Bot Ltd" }));
     assert.equal(response.status, 202);
     assert.ok(leadModule.LEAD_CONTRACT.isValidSubmissionId((await response.json()).submission_id));
     assert.equal(captured, undefined);
@@ -204,7 +214,7 @@ try {
     console.log = originalLog;
     console.error = originalConsoleError;
   }
-  response = await call("POST", JSON.stringify({ ...input, company: "" }), {
+  response = await call("POST", JSON.stringify({ ...input, lf_hp: "" }), {
     ALBATO_WEBHOOK_URL: "https://example.invalid/albato-test",
   });
   assert.equal(response.status, 202);

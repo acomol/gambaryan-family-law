@@ -190,6 +190,118 @@ Tracking: map §3 / funnel / honeypot / PII / design_version PASS
 - `221b818568ab9d53892cfc2ea3e2637761267c11` — реализация, контракты и проверки.
 - Этот отчёт и актуализация статусов §3/§4/§6 сохранены отдельным документационным коммитом.
 
+## Доработка по ревью
+
+Версия дополнения: `V01`. Дата: `2026-09-22`. База: `5fc54b5`.
+Ветка: `codex/deck-b`. Основание: `brief-tracking-stage1-fix.md` и
+`brief-tracking-stage1-review-report.md` из scratchpad сессии
+`e147268f-ad98-4156-8273-9bbcd5820109`.
+Ранее в этом документе описана первичная приёмка; текущие результаты ниже.
+
+1. **PII и структура событий.** В `verify-tracking.mjs` значения и запрещённые
+   ключи проверяются рекурсивно, включая массивы. Имя/e-mail сравниваются без
+   учёта регистра; в сериализации после удаления всех нецифровых символов
+   ищутся оба тестовых номера `972501234567` и `0501234567`. Allowlist параметров
+   сверена отдельным разбором таблицы §4: совпадают все 13 событий. Неизвестные
+   события/параметры и вложенная структура вместо скалярного параметра дают FAIL.
+   До исправления воспроизведён пропуск вложенного форматированного телефона,
+   e-mail в верхнем регистре и неизвестного параметра. После исправления
+   отдельный вызов настоящего `checkPrivacy` через Node VM отклонил восемь
+   невалидных примеров и принял валидное событие.
+2. **Успешный повтор новой заявки.** На каждом из 360×640, 390×844, 1440×900
+   добавлены отдельные просмотры `network → 202` и `503 → 202`. Проверены:
+   ровно два POST, равенство всего payload и `submission_id`, отсутствие
+   `corrects_submission_id`, ноль лидов после ошибки и ровно один
+   `generate_lead` после успеха с исходным ID; `lead_corrected` отсутствует.
+3. **Четыре намеренные поломки.** Каждый красный прогон завершился exit 1
+   по ожидаемому ассерту; каждый следующий зелёный — exit 0. Исходные байты
+   восстанавливались в `finally`, после правки app.js варианты пересобирались
+   штатным `build-hero-variants.py`. Временный runner и логи находятся в
+   игнорируемом `build/tracking-fix/`; поломки в коммит не включаются.
+4. **Ловушка.** Имя и класс заменены на `lf_hp`; id у поля отсутствует.
+   Синхронизированы HTML/CSS, app.js, Function, lead-hook/tracking и ожидаемый
+   список полей в `verify-lead-form.mjs`. Добавлен статический гейт на
+   несемантические name/id/class и атрибуты `autocomplete="off"`, `tabindex="-1"`,
+   `aria-hidden="true"`. Контракт и дата остаются `2.4.0` / `2026-09-22` по брифу;
+   причина имени записана в контракте. Standalone пересобран штатным скриптом.
+
+Две опоры выводов: сверка исходников/словаря/контракта и runtime браузера/Function
+с подменой сети. После поломок отдельно доказано сравнением с HEAD: изменения
+`site/app.js`, `site/index.html`, `site/styles.css`, `functions/api/lead.js`
+сводятся ровно к переименованию ловушки. Проверены маркеры пересобранного standalone.
+
+### Красные и зелёные прогоны
+
+**Лишний лид:** в ветку успешного исправления контактов добавлен второй
+`generate_lead` рядом с `lead_corrected`.
+
+```text
+Красный: exit 1 — AssertionError: Исправление контактов не создаёт лишний generate_lead
+  actual: 2,
+  expected: 1,
+Зелёный: exit 0 — Tracking: map §3 / funnel / honeypot / PII / design_version PASS
+```
+
+**Вложенный PII:** в одно событие `section_view` для hero добавлен
+`detail.entries[0].label = "+972 50-123-4567"`; ошибка именно PII-проверки.
+
+```text
+Красный: exit 1 — AssertionError: PII: телефон в dataLayer: 972501234567
+  actual: false,
+  expected: true,
+Зелёный: exit 0 — Tracking: map §3 / funnel / honeypot / PII / design_version PASS
+```
+
+**Ловушка → лид:** условие `if (!data.lf_hp)` временно заменено на `if (true)`.
+
+```text
+Красный: exit 1 — AssertionError: Ловушка не создаёт generate_lead
+  actual: 1,
+  expected: 0,
+Зелёный: exit 0 — Tracking: map §3 / funnel / honeypot / PII / design_version PASS
+```
+
+**Ловушка → webhook:** внутри ветки непустого `lf_hp` добавлен вызов fetch
+при наличии тестового секрета. Fetch подменён в `verify-lead-hook.mjs`;
+внешнего запроса нет, красный прогон фиксирует захваченный вызов вместо undefined.
+
+```text
+Красный: exit 1 — AssertionError: Ловушка не должна вызывать webhook
+  actual: {
+  expected: undefined,
+Зелёный: exit 0 — Lead hook 2.4.0 (2026-09-22): contract/static/runtime PASS
+```
+
+### Итоговая проверка
+
+`bash scripts/full-checks.sh --visual` — **exit 0**, 358 секунд.
+`verify-client-copy` PASS без правок allowlist; визуальный набор —
+**466 passed / 31 skipped**, `unexpected=0` в JSON-отчёте Playwright.
+`updateSnapshots: none`; эталоны не обновлялись.
+
+Последние 15 строк полного прогона:
+
+```text
+{"viewport":"1440x900","status":"PASS","sections":7,"scroll":[25,50,75,90],"mockedRequests":12,"swipe":"N/A desktop","pageErrors":0}
+1440x900: PASS visible 30/60/120/180; hidden excluded; seconds_to_lead=190
+Tracking: map §3 / funnel / honeypot / PII / design_version PASS
+warning: in the working copy of 'docs/LEAD-WEBHOOK-CONTRACT.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'functions/api/lead.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/verify-lead-form.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/verify-lead-hook.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/verify-tracking.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'site/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'site/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'site/styles.css', LF will be replaced by CRLF the next time Git touches it
+git diff --check: чисто
+  31 skipped
+  466 passed (4.8m)
+Полные проверки за 358 с
+```
+
+Не проверены реальное автозаполнение Chrome/менеджеров паролей и живые
+GTM/GA4/Albato. Публикации, push и реальные заявки не выполнялись.
+
 ## Related
 
 - [План аналитики](../TRACKING-REQUIREMENTS.md)

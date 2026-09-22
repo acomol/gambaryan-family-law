@@ -187,7 +187,7 @@ export async function onRequest(context) {
   }
 
   // Ловушка возвращает обычный успех без валидации, доставки и записи заявки.
-  if (input && typeof input.company === "string" && input.company !== "") {
+  if (input && typeof input.lf_hp === "string" && input.lf_hp !== "") {
     return json(202, {
       ok: true,
       status: "accepted",

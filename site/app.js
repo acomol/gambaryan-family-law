@@ -687,7 +687,7 @@
   var confirmButton = form && form.querySelector(".lead-form__confirm-submit");
   var editButton = form && form.querySelector(".lead-form__edit");
   var emailSuggestion = form && form.querySelector(".field__email-suggestion");
-  var formInputs = form ? Array.from(form.querySelectorAll("input[name]:not([name=company])")) : [];
+  var formInputs = form ? Array.from(form.querySelectorAll("input[name]:not([name=lf_hp])")) : [];
   var formStarted = false;
   var submitButtonLabel = submitButton ? submitButton.textContent : "";
   var validation = LEAD_CONTRACT.validation;
@@ -1017,7 +1017,7 @@
       }
       Object.assign(data, attribution, {
         landing_path: window.location.pathname,
-        company: form.elements.company.value,
+        lf_hp: form.elements.lf_hp.value,
       });
       if (editingContacts) data.corrects_submission_id = acceptedSubmissionId;
 
@@ -1036,7 +1036,7 @@
           setSubmitting(false);
           acceptedSubmissionId = response.submission_id || data.submission_id;
           acceptedContacts = JSON.parse(contactFingerprint);
-          if (!data.company) {
+          if (!data.lf_hp) {
             if (editingContacts) {
               track('lead_corrected', {
                 submission_id: acceptedSubmissionId,

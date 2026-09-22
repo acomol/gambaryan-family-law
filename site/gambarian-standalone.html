@@ -1900,7 +1900,7 @@ picture { display: block; }
 }
 
 /* Ловушка вне потока: не меняет геометрию формы. */
-.lead-form input.lead-form__company {
+.lead-form input.lf_hp {
   position: absolute;
   left: -9999px;
   width: 1px;
@@ -2196,7 +2196,7 @@ picture { display: block; }
     </div>
     <div class="contact__form-col">
       <form class="lead-form" action="/api/lead" method="post">
-        <input class="lead-form__company" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <input class="lf_hp" type="text" name="lf_hp" tabindex="-1" autocomplete="off" aria-hidden="true">
         <h3 class="lead-form__title">Записаться на консультацию</h3>
         <p class="lead-form__note">Поля со звёздочкой (*) обязательны.</p>
         <div class="lead-form__error" role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" hidden>
@@ -3104,7 +3104,7 @@ picture { display: block; }
   var confirmButton = form && form.querySelector(".lead-form__confirm-submit");
   var editButton = form && form.querySelector(".lead-form__edit");
   var emailSuggestion = form && form.querySelector(".field__email-suggestion");
-  var formInputs = form ? Array.from(form.querySelectorAll("input[name]:not([name=company])")) : [];
+  var formInputs = form ? Array.from(form.querySelectorAll("input[name]:not([name=lf_hp])")) : [];
   var formStarted = false;
   var submitButtonLabel = submitButton ? submitButton.textContent : "";
   var validation = LEAD_CONTRACT.validation;
@@ -3434,7 +3434,7 @@ picture { display: block; }
       }
       Object.assign(data, attribution, {
         landing_path: window.location.pathname,
-        company: form.elements.company.value,
+        lf_hp: form.elements.lf_hp.value,
       });
       if (editingContacts) data.corrects_submission_id = acceptedSubmissionId;
 
@@ -3453,7 +3453,7 @@ picture { display: block; }
           setSubmitting(false);
           acceptedSubmissionId = response.submission_id || data.submission_id;
           acceptedContacts = JSON.parse(contactFingerprint);
-          if (!data.company) {
+          if (!data.lf_hp) {
             if (editingContacts) {
               track('lead_corrected', {
                 submission_id: acceptedSubmissionId,

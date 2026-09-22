@@ -7,6 +7,22 @@ const SERVICES = ["развод", "алименты", "раздел-имущес
 const SECTIONS = { hero: "#top", facts: ".facts", services: "#services", precedent: "#precedent", attorneys: "#attorney", contact: "#contact", footer: ".site-footer" };
 const PASSIVE = ["section_view", "scroll_depth", "time_on_page"];
 const PII = ["Трекинг Проверка", "+972 50 123 4567", "972501234567", "tracking-probe@example.com", "corrected-probe@example.com", "Bot Company", "tracking-probe@gmail.con", "tracking-probe@gmail.com"];
+// Параметры из §4 TRACKING-REQUIREMENTS; все события имеют плоскую структуру.
+const EVENT_KEYS = {
+  generate_lead: ["form_id", "submission_id", "seconds_to_lead"],
+  lead_corrected: ["submission_id", "corrects_submission_id"],
+  form_error: ["form_id", "error_type", "http_status"],
+  form_start: ["form_id"],
+  form_confirm: ["form_id"],
+  form_correct: ["form_id"],
+  contact_click: ["method", "placement", "business_state"],
+  form_anchor_click: ["placement", "service", "attorney"],
+  nav_click: ["target", "placement"],
+  service_select: ["service", "via"],
+  section_view: ["section"],
+  scroll_depth: ["percent"],
+  time_on_page: ["seconds"],
+};
 const event = (name, params = {}) => ({ event: name, design_version: DESIGN, ...params });
 const formEvent = (name, params = {}) => event(name, { form_id: FORM_ID, ...params });
 const events = page => page.evaluate(() => window.dataLayer || []);
@@ -14,12 +30,30 @@ const named = async (page, name) => (await events(page)).filter(item => item.eve
 
 async function checkPrivacy(page) {
   const layer = await events(page);
-  const serialized = JSON.stringify(layer);
-  for (const value of PII) assert.ok(!serialized.includes(value), `PII в dataLayer: ${value}`);
+  const digits = JSON.stringify(layer).replace(/\D/g, "");
+  for (const phone of ["972501234567", "0501234567"]) {
+    assert.ok(!digits.includes(phone), `PII: телефон в dataLayer: ${phone}`);
+  }
+  const inspect = value => {
+    if (value && typeof value === "object") {
+      for (const [key, nested] of Object.entries(value)) {
+        assert.ok(!["name", "phone", "email", "company", "lf_hp", "source", "medium", "campaign"].includes(key.toLowerCase()), `Запрещённый параметр ${key}`);
+        inspect(nested);
+      }
+    } else if (typeof value === "string") {
+      for (const pii of PII) {
+        assert.ok(!value.toLowerCase().includes(pii.toLowerCase()), `PII в dataLayer: ${pii}`);
+      }
+    }
+  };
+  inspect(layer);
   for (const item of layer) {
     assert.equal(item.design_version, DESIGN, JSON.stringify(item));
-    for (const key of ["name", "phone", "email", "company", "source", "medium", "campaign"]) {
-      assert.equal(Object.hasOwn(item, key), false, `Запрещённый параметр ${key}`);
+    assert.ok(Object.hasOwn(EVENT_KEYS, item.event), `Неизвестное событие ${item.event}`);
+    const allowed = ["event", "design_version", ...EVENT_KEYS[item.event]];
+    for (const [key, value] of Object.entries(item)) {
+      assert.ok(allowed.includes(key), `Неизвестный параметр ${item.event}.${key}`);
+      assert.ok(["string", "number"].includes(typeof value), `Неплоский параметр ${item.event}.${key}`);
     }
   }
 }
@@ -56,6 +90,7 @@ export async function verifyTracking(page, baseUrl) {
   let status = 202;
   page.on("pageerror", error => errors.push(error.message));
   await page.route("**/api/lead", async route => {
+    assert.equal(route.request().method(), "POST");
     const payload = route.request().postDataJSON();
     requests.push(payload);
     if (status === "network") return route.abort("failed");
@@ -213,7 +248,7 @@ export async function verifyTracking(page, baseUrl) {
   await action(page, review, formEvent("form_confirm"));
   await send(); await success();
   assert.deepEqual(await named(page, "lead_corrected"), [event("lead_corrected", { submission_id: requests.at(-1).submission_id, corrects_submission_id: first })]);
-  assert.equal((await named(page, "generate_lead")).length, 1);
+  assert.equal((await named(page, "generate_lead")).length, 1, "Исправление контактов не создаёт лишний generate_lead");
   assert.notEqual(requests.at(-1).submission_id, first);
   await click(".form-success__again", null);
   assert.equal(await page.locator("#lead-name").inputValue(), "");
@@ -246,6 +281,31 @@ export async function verifyTracking(page, baseUrl) {
   assert.equal((await named(page, "generate_lead")).length, 2);
   await checkPrivacy(page);
 
+  // Новая неизменённая заявка после ошибки: тот же ID и одна конверсия.
+  for (const responseStatus of ["network", 503]) {
+    await setup(page, baseUrl);
+    const requestStart = requests.length;
+    status = responseStatus;
+    await fill(page);
+    await review(); await send();
+    await page.locator(".lead-form__error").waitFor({ state: "visible" });
+    assert.equal(requests.length - requestStart, 1);
+    assert.equal((await named(page, "generate_lead")).length, 0);
+    const failed = requests.at(-1);
+    assert.equal(failed.corrects_submission_id, undefined, "Повторяется новая заявка");
+    status = 202;
+    await review(); await send(); await success();
+    assert.equal(requests.length - requestStart, 2, `${responseStatus} → 202: ровно два POST`);
+    assert.equal(requests.at(-1).submission_id, failed.submission_id, "Повтор сохраняет submission_id");
+    assert.deepEqual(requests.at(-1), failed, "Повтор отправляет неизменённую заявку");
+    const retryLeads = await named(page, "generate_lead");
+    assert.equal(retryLeads.length, 1, `${responseStatus} → 202: ровно один generate_lead`);
+    assert.equal(retryLeads[0].submission_id, failed.submission_id);
+    assert.equal((await named(page, "lead_corrected")).length, 0);
+    await checkPrivacy(page);
+    console.log(`${width}: PASS retry ${responseStatus} → 202; POST=2; same submission_id; generate_lead=1`);
+  }
+
   // Отдельный просмотр: ловушка показывает успех, событий заявок нет.
   const returningUrl = new URL(baseUrl);
   returningUrl.searchParams.set("utm_source", "qa-later-touch");
@@ -253,12 +313,12 @@ export async function verifyTracking(page, baseUrl) {
   await setup(page, returningUrl.href);
   status = 202;
   await fill(page);
-  await page.locator('[name="company"]').evaluate((input, value) => { input.value = value; }, PII[5]);
+  await page.locator('[name="lf_hp"]').evaluate((input, value) => { input.value = value; }, PII[5]);
   await review(); await send(); await success();
-  assert.equal(requests.at(-1).company, PII[5]);
+  assert.equal(requests.at(-1).lf_hp, PII[5]);
   assert.equal(requests.at(-1).utm_source, "qa-first-touch", "First touch сохраняется при повторном входе");
   assert.equal(requests.at(-1).gclid, "qa-click-id");
-  assert.equal((await named(page, "generate_lead")).length, 0);
+  assert.equal((await named(page, "generate_lead")).length, 0, "Ловушка не создаёт generate_lead");
   assert.equal((await named(page, "lead_corrected")).length, 0);
   await checkPrivacy(page);
   assert.deepEqual(errors, []);

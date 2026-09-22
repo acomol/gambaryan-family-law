@@ -1800,7 +1800,7 @@ picture { display: block; }
 }
 
 /* Ловушка вне потока: не меняет геометрию формы. */
-.lead-form input.lead-form__company {
+.lead-form input.lf_hp {
   position: absolute;
   left: -9999px;
   width: 1px;
