@@ -224,6 +224,15 @@ GTM только раздаёт их по платформам; прежняя �
 | Клик по телефону на сайте | `contact_click` {phone} | вторичная (наблюдение) | одна на клик |
 | Квалифицированная заявка | из CRM по `gclid` | этап 4: основная вместо «Заявки» | — |
 
+- **Настройки отслеживания аккаунта** (Admin → Account settings → Tracking): Auto-tagging —
+  Yes; Tracking template — пусто; Call reporting — on; Final URL suffix:
+  `utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_content={adgroupid}&utm_term={keyword}`.
+  GA4 при `gclid` берёт данные авто-разметки
+  ([справка](https://support.google.com/google-ads/answer/3095550)), UTM нужны для CRM:
+  страница пишет эти поля в заявку. Названия кампании в ValueTrack нет, только номер
+  ([ValueTrack](https://support.google.com/google-ads/answer/6305348)). Вставлять простым
+  текстом и проверять кнопкой Test — скобки не должны закодироваться в `%7B…%7D` (E41);
+  суффикс на уровне кампании, группы и объявления не задавать — он перебивает аккаунтный (E40).
 - **Enhanced conversions — не из браузера.** Телефон и e-mail в dataLayer не кладём (P7);
   сопоставление по хешу — позже, с сервера или выгрузкой из CRM (этап 4).
 - **Ремаркетинг запрещён.** Google относит «Divorce services» к категории «Relationship
