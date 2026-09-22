@@ -1,6 +1,6 @@
 """Сборка основной версии (production) для lp.gambarian.com из final-dev5.
 
-PRODUCTION-BUILD v1.1.0 | 2026-09-22
+PRODUCTION-BUILD v1.2.0 | 2026-09-23
 
 Основная версия = утверждённое превью final-dev5 с четырьмя отличиями:
   1. без демо-переключателя «Авто / Демо» рабочего времени — это инструмент показа
@@ -8,7 +8,8 @@ PRODUCTION-BUILD v1.1.0 | 2026-09-22
      без кнопки: все обращения под `if (demoToggle)`);
   2. og:url = https://lp.gambarian.com/;
   3. картинка превью ссылки (og:image, twitter:image) — с lp, а не с alias final-dev.
-  4. GTM загружается только на lp.gambarian.com; на pages.dev не выполняется.
+  4. GTM загружается только на lp.gambarian.com; на pages.dev не выполняется;
+  5. перед GTM — согласие по умолчанию: EEA/UK/CH denied, остальным granted, ad_personalization denied везде.
 gambarian-standalone.html в основную версию не входит: это копия страницы для
 согласования, отдельный адрес ей на lp не нужен. noindex остаётся (docs/LAUNCH-LP-GAMBARIAN.md).
 
@@ -25,10 +26,22 @@ SRC = Path('build/variants/final-dev5')
 DST = Path('build/production')
 OG_URL = 'https://lp.gambarian.com/'
 SKIP = {'gambarian-standalone.html'}
+# Согласие по умолчанию — до GTM (developers.google.com/tag-platform/security/guides/consent:
+# «If your consent code is called out of order, consent defaults won't work»).
+# EEA/UK/CH — всё denied (баннера нет, эти посетители не измеряются); остальным — granted,
+# кроме ad_personalization: для темы развода персонализация рекламы запрещена политикой
+# Google («Relationship hardships»), поэтому denied везде. План: docs/TRACKING-REQUIREMENTS.md §8.
+CONSENT_REGIONS = ("AT BE BG HR CY CZ DK EE FI FR DE GR HU IS IE IT LV LI LT LU MT NL NO PL "
+                   "PT RO SK SI ES SE GB CH").split()
 GTM_SNIPPET = """<!-- Google Tag Manager -->
 <script>
 if (location.hostname === 'lp.gambarian.com') {
-  (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  window.dataLayer = window.dataLayer || [];
+  var gtag = window.gtag || function(){dataLayer.push(arguments);};
+  window.gtag = gtag;
+  gtag('consent', 'default', {ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', region: [%s]});
+  gtag('consent', 'default', {ad_storage: 'granted', ad_user_data: 'granted', ad_personalization: 'denied', analytics_storage: 'granted'});
+  (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':""" % ", ".join("'%s'" % r for r in CONSENT_REGIONS) + """
   new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
   j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
@@ -60,6 +73,8 @@ html, n_img = re.subn(r'https://[a-z0-9-]+\.gambarian-landing\.pages\.dev/(socia
 errors = []
 if n_gtm != 1 or html.count(GTM_SNIPPET) != 1 or html.count('GTM-MFLHW63Q') != 1:
     errors.append('GTM: ожидался ровно один сниппет в head')
+if html.count("gtag('consent', 'default'") != 2 or html.find("gtag('consent', 'default'") > html.find('gtm.js'):
+    errors.append('согласие: ожидались 2 значения по умолчанию, оба до загрузки gtm.js')
 if n_toggle != 1:
     errors.append('демо-переключатель: удалено %d, ожидался 1' % n_toggle)
 if n_og != 1:
@@ -79,5 +94,5 @@ if errors:
 
 io.open(page, 'w', encoding='utf-8', newline='').write(html)
 digest = hashlib.sha256(html.encode('utf-8')).hexdigest()[:16]
-print('PASS PRODUCTION-BUILD v1.1.0: %s -> %s; без демо-переключателя; GTM ровно 1, только lp.gambarian.com; og:url и картинка превью на %s; index.html sha256 %s'
+print('PASS PRODUCTION-BUILD v1.2.0: %s -> %s; без демо-переключателя; GTM ровно 1, только lp.gambarian.com; og:url и картинка превью на %s; index.html sha256 %s'
       % (SRC, DST, OG_URL, digest))

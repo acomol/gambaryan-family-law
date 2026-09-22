@@ -289,9 +289,15 @@ GTM только раздаёт их по платформам; прежняя �
   ([источник](https://www.google.com/about/company/user-consent-policy/)) — к Израилю не
   относится.
 - Consent Mode v2 по регионам: для EEA/UK/CH четыре сигнала `denied` по умолчанию, для
-  остальных `granted`. Тег значения по умолчанию срабатывает на Consent Initialization —
-  раньше всех тегов (Google считает «не выставлено» как «разрешено», E19). Баннера нет,
-  поэтому посетители из ЕС не измеряются — это допустимо.
+  остальных `granted`, **кроме `ad_personalization` — `denied` везде**: персонализация рекламы
+  для темы развода запрещена политикой Google (§5), сигнал не даёт Ads строить списки
+  ремаркетинга. Баннера нет, поэтому посетители из ЕС не измеряются — это допустимо.
+- **Где выставляется (решение 2026-09-23):** кодом страницы, в `<head>` перед сниппетом GTM
+  (`scripts/build-production.py` v1.2.0), а не тегом в GTM. Google: «If your consent code is
+  called out of order, consent defaults won't work» — код до GTM надёжнее тега Consent
+  Initialization ([источник](https://developers.google.com/tag-platform/security/guides/consent)).
+  Проверяется сборкой: ровно два `default`, оба раньше `gtm.js`.
+- Clarity в GTM ждёт `analytics_storage` (для EEA/UK/CH не запускается).
 - Израильская поправка 13 — **не проверено**, решение 8.
 
 ## 9. Автоматические проверки (ставятся на этапе 1)
