@@ -1,8 +1,8 @@
 # План аналитики lp.gambarian.com
 
-**Версия документа:** `2.0.0`
-**Обновлено:** `2026-09-21`
-**Статус:** `ПЛАН — ждёт решений владельца (§1); этап 1 (код) от них не зависит`
+**Версия документа:** `2.1.0`
+**Обновлено:** `2026-09-22`
+**Статус:** `ЭТАП 1 — LOCAL PASS (full-checks + visual), не опубликован; порог длинных секций уточнён в §4. Этапы 2–4 ждут решений владельца (§1)`
 
 Сайт: `https://lp.gambarian.com` = основная версия проекта `gambarian-landing`, собранная из
 final-dev5 (`docs/LAUNCH-LP-GAMBARIAN.md`). Метод и каталог ошибок —
@@ -27,7 +27,7 @@ GTM только раздаёт их по платформам; прежняя �
 | Номер в ассете звонка Ads | **058-780-3188**, на сайте везде **054-549-0623** — расхождение | API Google Ads |
 | Meta | пиксель `1778762598801726` на www, на `lp` нет | там же |
 | Серверный GTM (Stape) | не подключён и в этом плане не используется: только Google, браузерный GTM | решение плана; при Meta CAPI — отдельный этап |
-| Что уже пишет код | `generate_lead`, `form_error` (форма); `contact_click` (только нижняя панель) | `site/app.js`, `site-addons/action-bar/action-bar.js` |
+| Локальный код этапа 1 (не опубликован) | полный словарь §4, исправления §6; текущая ветка `codex/deck-b` | `site/app.js`, `site-addons/action-bar/action-bar.js`, `scripts/verify-tracking.mjs` |
 | Атрибуция заявки | `utm_*`, `gclid`, `gbraid`, `wbraid`, `fbclid`, `referrer_host` уходят в заявку | `site/lead-contract.js` |
 | Путь заявки | страница → `/api/lead` (Cloudflare) → Albato → ? | `functions/api/lead.js`; конечная точка — вопрос 3 в §1 |
 
@@ -82,46 +82,46 @@ GTM только раздаёт их по платформам; прежняя �
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| Логотип «Гамбарян & Партнёры» | возврат к началу | `nav_click` {target=top, placement=header} | GA4 | добавить |
-| «Услуги» | переход к услугам | `nav_click` {target=services, placement=header} | GA4 | добавить |
-| «Подготовка» | переход к «Подготовьтесь…» | `nav_click` {target=precedent, placement=header} | GA4 | добавить |
-| «Адвокаты» | переход к адвокатам | `nav_click` {target=attorney, placement=header} | GA4 | добавить |
-| «Контакты» | переход к форме и контактам | `nav_click` {target=contact, placement=header} | GA4 | добавить |
+| Логотип «Гамбарян & Партнёры» | возврат к началу | `nav_click` {target=top, placement=header} | GA4 | есть |
+| «Услуги» | переход к услугам | `nav_click` {target=services, placement=header} | GA4 | есть |
+| «Подготовка» | переход к «Подготовьтесь…» | `nav_click` {target=precedent, placement=header} | GA4 | есть |
+| «Адвокаты» | переход к адвокатам | `nav_click` {target=attorney, placement=header} | GA4 | есть |
+| «Контакты» | переход к форме и контактам | `nav_click` {target=contact, placement=header} | GA4 | есть |
 | Кнопка меню (телефон) | открывает меню | не отслеживаем: важно, что выбрали в меню | — | — |
 
 ### 3.2 Мобильное меню
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| «Услуги», «Подготовка», «Адвокаты», «Контакты» | переход к блоку | `nav_click` {target, placement=menu} | GA4 | добавить |
-| «Позвонить 054-549-0623» | звонок | `contact_click` {method=phone, placement=menu, business_state} | GA4 + Ads вторичная | добавить (есть только разметка) |
+| «Услуги», «Подготовка», «Адвокаты», «Контакты» | переход к блоку | `nav_click` {target, placement=menu} | GA4 | есть |
+| «Позвонить 054-549-0623» | звонок | `contact_click` {method=phone, placement=menu, business_state} | GA4 + Ads вторичная | есть |
 
 ### 3.3 Первый экран `#top`
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| Адрес «Тель-Авив, Карлибах, 10» | открывает Google Maps | `contact_click` {method=google_maps, placement=hero} | GA4 | добавить (есть разметка) |
-| «Записаться на консультацию» | переход к форме | `form_anchor_click` {placement=hero} | GA4 | добавить |
-| «Позвонить: 054-549-0623» — рабочее время | звонок | `contact_click` {method=phone, placement=hero, business_state=open} | GA4 + Ads вторичная | добавить |
-| Та же кнопка в нерабочее время — «Написать в WhatsApp» | WhatsApp | `contact_click` {method=whatsapp, placement=hero, business_state=closed} | GA4 + Ads «Обращение» | добавить |
-| Блок наполовину в кадре | — | `section_view` {section=hero} | GA4 | добавить |
+| Адрес «Тель-Авив, Карлибах, 10» | открывает Google Maps | `contact_click` {method=google_maps, placement=hero} | GA4 | есть |
+| «Записаться на консультацию» | переход к форме | `form_anchor_click` {placement=hero} | GA4 | есть |
+| «Позвонить: 054-549-0623» — рабочее время | звонок | `contact_click` {method=phone, placement=hero, business_state=open} | GA4 + Ads вторичная | есть |
+| Та же кнопка в нерабочее время — «Написать в WhatsApp» | WhatsApp | `contact_click` {method=whatsapp, placement=hero, business_state=closed} | GA4 + Ads «Обращение» | есть |
+| Блок наполовину в кадре | — | `section_view` {section=hero} | GA4 | есть |
 
 ### 3.4 Кубики фактов
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| Три карточки | только читает | `section_view` {section=facts} | GA4 | добавить |
+| Три карточки | только читает | `section_view` {section=facts} | GA4 | есть |
 
 ### 3.5 Услуги `#services`
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| 8 вкладок тем (Развод … Защита при угрозах) | выбирает тему | `service_select` {service, via=tab} | GA4 | добавить |
-| Свайп по карточке (телефон) | листает темы | `service_select` {service, via=swipe} | GA4 | добавить в `setActive` (свайп — не клик) |
-| 8 точек под карточкой | выбирает тему | `service_select` {service, via=dot} | GA4 | добавить |
-| Стрелки «назад» / «вперёд» | листает темы | `service_select` {service, via=arrow} | GA4 | добавить |
-| «Записаться на консультацию» в карточке | переход к форме | `form_anchor_click` {placement=services, service} | GA4 | добавить |
-| Блок наполовину в кадре | — | `section_view` {section=services} | GA4 | добавить |
+| 8 вкладок тем (Развод … Защита при угрозах) | выбирает тему | `service_select` {service, via=tab} | GA4 | есть |
+| Свайп по карточке (телефон) | листает темы | `service_select` {service, via=swipe} | GA4 | есть |
+| 8 точек под карточкой | выбирает тему | `service_select` {service, via=dot} | GA4 | есть |
+| Стрелки «назад» / «вперёд» | листает темы | `service_select` {service, via=arrow} | GA4 | есть |
+| «Записаться на консультацию» в карточке | переход к форме | `form_anchor_click` {placement=services, service} | GA4 | есть |
+| Блок наполовину в кадре | — | `section_view` {section=services} | GA4 | есть |
 
 Первая тема («Развод») открыта при загрузке — `service_select` пишется только при смене темы.
 
@@ -129,71 +129,72 @@ GTM только раздаёт их по платформам; прежняя �
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| «Записаться на консультацию» | переход к форме | `form_anchor_click` {placement=precedent} | GA4 | добавить |
-| «Написать в WhatsApp» | WhatsApp | `contact_click` {method=whatsapp, placement=precedent} | GA4 + Ads «Обращение» | добавить |
-| Блок наполовину в кадре | — | `section_view` {section=precedent} | GA4 | добавить |
+| «Записаться на консультацию» | переход к форме | `form_anchor_click` {placement=precedent} | GA4 | есть |
+| «Написать в WhatsApp» | WhatsApp | `contact_click` {method=whatsapp, placement=precedent} | GA4 + Ads «Обращение» | есть |
+| Блок наполовину в кадре | — | `section_view` {section=precedent} | GA4 | есть |
 
 ### 3.7 Адвокаты `#attorney`
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| «Записаться на консультацию» в карточке Александра | переход к форме | `form_anchor_click` {placement=attorneys, attorney=alexander} | GA4 | добавить |
-| «Записаться на консультацию» в карточке Юлии | переход к форме | `form_anchor_click` {placement=attorneys, attorney=yulia} | GA4 | добавить |
-| Блок наполовину в кадре | — | `section_view` {section=attorneys} | GA4 | добавить |
+| «Записаться на консультацию» в карточке Александра | переход к форме | `form_anchor_click` {placement=attorneys, attorney=alexander} | GA4 | есть |
+| «Записаться на консультацию» в карточке Юлии | переход к форме | `form_anchor_click` {placement=attorneys, attorney=yulia} | GA4 | есть |
+| Блок наполовину в кадре | — | `section_view` {section=attorneys} | GA4 | есть |
 
 ### 3.8 Консультация `#contact` — контакты
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| «Телефон · Позвонить: 054-549-0623» — рабочее время | звонок | `contact_click` {method=phone, placement=contacts, business_state=open} | GA4 + Ads вторичная | добавить |
-| Та же строка в нерабочее время — WhatsApp | WhatsApp | `contact_click` {method=whatsapp, placement=contacts, business_state=closed} | GA4 + Ads «Обращение» | добавить |
-| «WhatsApp · Написать в WhatsApp» — рабочее время | WhatsApp | `contact_click` {method=whatsapp, placement=contacts, business_state=open} | GA4 + Ads «Обращение» | добавить |
-| «Заявка · Записаться на консультацию» — нерабочее время | переход к форме | `form_anchor_click` {placement=contacts} | GA4 | добавить (есть разметка) |
-| Адрес «Прием — Тель-Авив / Карлибах, 10» | открывает Google Maps | `contact_click` {method=google_maps, placement=contacts} | GA4 | добавить (есть разметка) |
-| Блок наполовину в кадре | — | `section_view` {section=contact} | GA4 | добавить |
+| «Телефон · Позвонить: 054-549-0623» — рабочее время | звонок | `contact_click` {method=phone, placement=contacts, business_state=open} | GA4 + Ads вторичная | есть |
+| Та же строка в нерабочее время — WhatsApp | WhatsApp | `contact_click` {method=whatsapp, placement=contacts, business_state=closed} | GA4 + Ads «Обращение» | есть |
+| «WhatsApp · Написать в WhatsApp» — рабочее время | WhatsApp | `contact_click` {method=whatsapp, placement=contacts, business_state=open} | GA4 + Ads «Обращение» | есть |
+| «Заявка · Записаться на консультацию» — нерабочее время | переход к форме | `form_anchor_click` {placement=contacts} | GA4 | есть |
+| Адрес «Прием — Тель-Авив / Карлибах, 10» | открывает Google Maps | `contact_click` {method=google_maps, placement=contacts} | GA4 | есть |
+| Блок наполовину в кадре | — | `section_view` {section=contact} | GA4 | есть |
 
 ### 3.9 Консультация `#contact` — форма
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| Поля «Имя», «Телефон», «E-mail» | первый ввод в любое поле | `form_start` {form_id} | GA4 | добавить |
+| Поля «Имя», «Телефон», «E-mail» | первый ввод в любое поле | `form_start` {form_id} | GA4 | есть |
 | Подсказка исправить e-mail | принимает подсказку | не отслеживаем: на решения не влияет | — | — |
-| «Записаться на консультацию» с ошибками в полях | видит ошибки полей | `form_error` {form_id, error_type=validation} | GA4 | добавить |
-| «Записаться на консультацию» без ошибок | видит шаг «Проверьте, как с вами связаться» | `form_confirm` {form_id} | GA4 | добавить |
-| «Исправить» на шаге проверки | возвращается к полям | `form_correct` {form_id} | GA4 | добавить |
-| «Всё верно, отправить» → сервер принял | заявка ушла | `generate_lead` {form_id, submission_id, seconds_to_lead} | GA4 (ключевое) + Ads «Заявка» | есть; добавить `submission_id`, `seconds_to_lead` |
-| «Всё верно, отправить» → ошибка (503, сеть) | видит сообщение об ошибке | `form_error` {form_id, error_type=unavailable/network/server, http_status} | GA4 | есть без параметров |
-| В сообщении об ошибке: «позвоните: 054-549-0623» | звонок | `contact_click` {method=phone, placement=form_error} | GA4 + Ads вторичная | добавить |
-| В сообщении об ошибке: «напишите в WhatsApp» | WhatsApp | `contact_click` {method=whatsapp, placement=form_error} | GA4 + Ads «Обращение» | добавить |
-| «Указать другие контакты» → отправлено | правит контакты той же заявки | `lead_corrected` {submission_id, corrects_submission_id} — **не** `generate_lead` | GA4 | сейчас пишет `generate_lead` — дефект §6 |
+| «Записаться на консультацию» с ошибками в полях | видит ошибки полей | `form_error` {form_id, error_type=validation} | GA4 | есть |
+| «Записаться на консультацию» без ошибок | видит шаг «Проверьте, как с вами связаться» | `form_confirm` {form_id} | GA4 | есть |
+| «Исправить» на шаге проверки | возвращается к полям | `form_correct` {form_id} | GA4 | есть |
+| «Всё верно, отправить» → сервер принял | заявка ушла | `generate_lead` {form_id, submission_id, seconds_to_lead} | GA4 (ключевое) + Ads «Заявка» | есть |
+| «Всё верно, отправить» → ошибка (503, сеть) | видит сообщение об ошибке | `form_error` {form_id, error_type=unavailable/network/server, http_status} | GA4 | есть |
+| В сообщении об ошибке: «позвоните: 054-549-0623» | звонок | `contact_click` {method=phone, placement=form_error} | GA4 + Ads вторичная | есть |
+| В сообщении об ошибке: «напишите в WhatsApp» | WhatsApp | `contact_click` {method=whatsapp, placement=form_error} | GA4 + Ads «Обращение» | есть |
+| «Указать другие контакты» → отправлено | правит контакты той же заявки | `lead_corrected` {submission_id, corrects_submission_id} — **не** `generate_lead` | GA4 | есть |
 | «Отправить ещё одну заявку» → отправлено | новая заявка с пустой формы | `generate_lead` с новым `submission_id` | GA4 (ключевое) + Ads «Заявка» | есть |
 
 ### 3.10 Подвал
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
-| 8 ссылок услуг (Развод … Защита при угрозах) | открывает тему в `#services` | `service_select` {service, via=footer} | GA4 | добавить |
-| «Подготовьтесь к разговору о разводе» | переход к блоку | `nav_click` {target=precedent, placement=footer} | GA4 | добавить |
-| Адрес «Прием — Тель-Авив / Карлибах, 10» | открывает Google Maps | `contact_click` {method=google_maps, placement=footer} | GA4 | добавить (есть разметка) |
-| Блок наполовину в кадре | — | `section_view` {section=footer} | GA4 | добавить |
+| 8 ссылок услуг (Развод … Защита при угрозах) | открывает тему в `#services` | `service_select` {service, via=footer} | GA4 | есть |
+| «Подготовьтесь к разговору о разводе» | переход к блоку | `nav_click` {target=precedent, placement=footer} | GA4 | есть |
+| Адрес «Прием — Тель-Авив / Карлибах, 10» | открывает Google Maps | `contact_click` {method=google_maps, placement=footer} | GA4 | есть |
+| Блок наполовину в кадре | — | `section_view` {section=footer} | GA4 | есть |
 
 ### 3.11 Нижняя панель (телефон)
 
 | Элемент | Что делает посетитель | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
 | «Записаться» | переход к форме | `contact_click` {method=form_anchor, placement=action_bar} | GA4 | есть |
-| «Позвонить» (рабочее время) | звонок | `contact_click` {method=phone, placement=action_bar} | GA4 + Ads вторичная | есть; добавить `business_state` |
-| «WhatsApp» | WhatsApp | `contact_click` {method=whatsapp, placement=action_bar} | GA4 + Ads «Обращение» | есть; добавить `business_state` |
+| «Позвонить» (рабочее время) | звонок | `contact_click` {method=phone, placement=action_bar} | GA4 + Ads вторичная | есть |
+| «WhatsApp» | WhatsApp | `contact_click` {method=whatsapp, placement=action_bar} | GA4 + Ads «Обращение» | есть |
 
 ### 3.12 Вся страница
 
 | Сигнал | Когда | Событие {параметры} | Куда | В коде |
 |---|---|---|---|---|
 | Просмотр | загрузка | `page_view` | GA4 автоматически | — |
-| Глубина прокрутки | 25 / 50 / 75 / 90 %, каждый раз за просмотр | `scroll_depth` {percent} | GA4 | добавить; автособытие GA4 `scroll` выключить |
-| Время на странице | 30 / 60 / 120 / 180 с **видимого** времени | `time_on_page` {seconds} | GA4 | добавить (таймер GTM тикает и в фоне — не подходит) |
+| Глубина прокрутки | 25 / 50 / 75 / 90 %, каждый раз за просмотр | `scroll_depth` {percent} | GA4 | есть |
+| Время на странице | 30 / 60 / 120 / 180 с **видимого** времени | `time_on_page` {seconds} | GA4 | есть |
 | Время вовлечения | пока вкладка активна | `engagement_time_msec` | GA4 автоматически | — |
 | Источник визита | вход на страницу | `utm_*`, `gclid` — в заявку | CRM | есть |
+
 
 ## 4. Словарь событий
 
@@ -201,25 +202,40 @@ GTM только раздаёт их по платформам; прежняя �
 редизайне). Запрещено: имя, телефон, e-mail и любые данные формы в событиях (P7);
 зарезервированные параметры GA4 `source`, `medium`, `campaign` (E02).
 
-| Событие | Когда пушится | Параметры | Уровень |
-|---|---|---|---|
-| `generate_lead` | `/api/lead` ответил 202 на **новую** заявку | `form_id`, `submission_id` (→ ID транзакции в Ads), `seconds_to_lead` | MACRO |
-| `lead_corrected` | успешное исправление контактов после заявки | `submission_id`, `corrects_submission_id` | FUNNEL |
-| `form_error` | ошибка полей или отправки | `form_id`, `error_type` (`validation`/`unavailable`/`network`/`server`), `http_status` | FUNNEL |
-| `form_start` | первый ввод в любое поле | `form_id` | NOISE |
-| `form_confirm` | показан шаг проверки контактов | `form_id` | FUNNEL |
-| `form_correct` | «Исправить» на шаге проверки | `form_id` | FUNNEL |
-| `contact_click` | клик по `tel:`, `wa.me`, Google Maps, «Записаться» в панели | `method` (`phone`/`whatsapp`/`google_maps`/`form_anchor`), `placement`, `business_state` (`open`/`closed`) | MICRO |
-| `form_anchor_click` | клик по ссылке на `#contact` | `placement`, `service`, `attorney` | FUNNEL |
-| `nav_click` | пункт меню шапки, мобильного меню, подвала | `target`, `placement` | FUNNEL |
-| `service_select` | смена темы в услугах | `service`, `via` (`tab`/`swipe`/`dot`/`arrow`/`footer`) | FUNNEL |
-| `section_view` | блок наполовину в кадре, раз за просмотр | `section` | FUNNEL |
-| `scroll_depth` | 25 / 50 / 75 / 90 % | `percent` | FUNNEL |
-| `time_on_page` | 30 / 60 / 120 / 180 с видимого времени | `seconds` | FUNNEL |
+| Событие | Когда пушится | Параметры | Уровень | В коде |
+|---|---|---|---|---|
+| `generate_lead` | `/api/lead` ответил 202 на **новую** заявку | `form_id`, `submission_id` (→ ID транзакции в Ads), `seconds_to_lead` | MACRO | есть |
+| `lead_corrected` | успешное исправление контактов после заявки | `submission_id`, `corrects_submission_id` | FUNNEL | есть |
+| `form_error` | ошибка полей или отправки | `form_id`, `error_type` (`validation`/`unavailable`/`network`/`server`), `http_status` | FUNNEL | есть |
+| `form_start` | первый ввод в любое поле | `form_id` | NOISE | есть |
+| `form_confirm` | показан шаг проверки контактов | `form_id` | FUNNEL | есть |
+| `form_correct` | «Исправить» на шаге проверки | `form_id` | FUNNEL | есть |
+| `contact_click` | клик по `tel:`, `wa.me`, Google Maps, «Записаться» в панели | `method` (`phone`/`whatsapp`/`google_maps`/`form_anchor`), `placement`, `business_state` (`open`/`closed`) | MICRO | есть |
+| `form_anchor_click` | клик по ссылке на `#contact` | `placement`, `service`, `attorney` | FUNNEL | есть |
+| `nav_click` | пункт меню шапки, мобильного меню, подвала | `target`, `placement` | FUNNEL | есть |
+| `service_select` | смена темы в услугах | `service`, `via` (`tab`/`swipe`/`dot`/`arrow`/`footer`) | FUNNEL | есть |
+| `section_view` | блок наполовину в кадре, раз за просмотр | `section` | FUNNEL | есть |
+| `scroll_depth` | 25 / 50 / 75 / 90 % | `percent` | FUNNEL | есть |
+| `time_on_page` | 30 / 60 / 120 / 180 с видимого времени | `seconds` | FUNNEL | есть |
+
+`service` — slug текста вкладки (нижний регистр, пробелы → дефисы):
+`развод`, `алименты`, `раздел-имущества`, `дети`, `отцовство`, `медиация`,
+`брачный-договор`, `защита-при-угрозах`. Повтор активной темы событие не создаёт.
+
+`section_view`: IntersectionObserver, один раз за просмотр. Для блока не выше
+экрана порог 0.5; для длинного блока — половина высоты экрана
+(`0.5 × min(высота блока, высота экрана) / высота блока`). Это отклонение от
+буквальных 50% всей секции: на 360×640 блок адвокатов имеет высоту 2121 px,
+максимально видны 30.2%; исходный порог недостижим. Уточнение отправлено
+владельцу; при отсутствии ответа применён описанный вариант без изменения вёрстки.
+
+`http_status=0` для клиентской валидации и сетевой ошибки без HTTP-ответа;
+422 с ошибками полей → `validation`; 503 → `unavailable`; остальные HTTP-сбои → `server`.
 
 `placement` = блок, где стоит элемент: `header`, `menu`, `hero`, `services`, `precedent`,
 `attorneys`, `contacts`, `form_error`, `footer`, `action_bar`. Берётся из ближайшего блока
 страницы, а не из текста ссылки.
+
 
 ## 5. Google Ads
 
@@ -251,10 +267,10 @@ GTM только раздаёт их по платформам; прежняя �
 
 ## 6. Дефекты формы, закрыть до рекламы
 
-| Дефект (проверено в коде 2026-09-21) | Чем грозит | Исправление |
-|---|---|---|
-| Нет ловушки для ботов — ни в форме, ни в `/api/lead` | заявка бота = конверсия в Ads (E32) | скрытое поле; сервер отвечает «успех», но не пересылает; страница не пишет `generate_lead` |
-| «Указать другие контакты» после заявки пишет второй `generate_lead`; в событии нет номера заявки | в GA4 одна заявка = два ключевых события; в Ads дубль отсекает только счёт «одна на клик» | исправление → `lead_corrected`; в `generate_lead` — `submission_id` как ID транзакции |
+| Дефект (проверено в коде 2026-09-21) | Чем грозит | Исправление | Статус |
+|---|---|---|---|
+| Нет ловушки для ботов — ни в форме, ни в `/api/lead` | заявка бота = конверсия в Ads (E32) | скрытое поле; сервер отвечает «успех», но не пересылает; страница не пишет `generate_lead` | закрыто локально, коммит `221b818568ab9d53892cfc2ea3e2637761267c11` |
+| «Указать другие контакты» после заявки пишет второй `generate_lead`; в событии нет номера заявки | в GA4 одна заявка = два ключевых события; в Ads дубль отсекает только счёт «одна на клик» | исправление → `lead_corrected`; в `generate_lead` — `submission_id` как ID транзакции | закрыто локально, коммит `221b818568ab9d53892cfc2ea3e2637761267c11` |
 
 ## 7. GA4
 
@@ -317,6 +333,8 @@ GTM только раздаёт их по платформам; прежняя �
 - Требования израильской поправки 13 к cookies и уведомлению — решение 8.
 - Ремаркетинг в Meta для этой ниши — проверить, если будет реклама в Meta.
 - Каталог ошибок плейбука — черновик v1, сверка Codex с первоисточниками ещё не пройдена.
+
+Локальные доказательства этапа 1: [отчёт приёмки](reviews/2026-09-22-tracking-stage1.md).
 
 ## Related
 
