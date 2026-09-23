@@ -43,7 +43,20 @@ export function loadGasContext(fileNames, overrides) {
   }, overrides || {});
   vm.createContext(sandbox);
 
-  const files = fileNames || fs.readdirSync(srcDir).filter((f) => f.endsWith('.gs')).sort();
+  const available = fs.readdirSync(srcDir).filter((f) => f.endsWith('.gs')).sort();
+  const requested = fileNames || available;
+
+  // Bundle support (scripts/bundle-apps-script.mjs): GAS_SRC_DIR can point at
+  // apps-script/dist, which holds every src/*.gs file concatenated into one
+  // Code.gs — that single file already defines everything the per-file
+  // requested list (e.g. ['Utils.gs', 'Config.gs']) would load individually.
+  // If any requested file is missing AND srcDir contains exactly one .gs
+  // file, load that one file instead of the (non-existent) subset — it is
+  // the equivalence case the bundle is meant to prove, not a fallback that
+  // should paper over a genuinely missing file otherwise.
+  const missing = requested.filter((f) => !available.includes(f));
+  const files = (missing.length > 0 && available.length === 1) ? available : requested;
+
   for (const file of files) {
     const fullPath = path.join(srcDir, file);
     const code = fs.readFileSync(fullPath, 'utf8');

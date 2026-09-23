@@ -131,47 +131,74 @@ Property в старой версии этого README, см. «Установ�
 Design §12.3: владелец скрипта — **alex@adfix.co.il** (явный редактор таблицы
 `1_jhfr7ucoKkbrwWlUQoS9wyw7uHYhe_oOutKpTlcoV4`; у ADFIX нет доступа к gambarian@gmail.com).
 
-1. **Доступ по ссылке на таблице должен быть закрыт** (design §12.6, обязательное
-   условие установки) — проверить в «Настройки доступа» перед следующим шагом.
-2. Создать **отдельный** (не привязанный к таблице) проект Apps Script от аккаунта
+Закрытие доступа по ссылке на таблице (design §12.6) — **решение владельца, отложено
+им самим 2026-09-23**, не блокер этой установки: STANDALONE-проект (ниже) открывается
+по своему собственному URL в script.google.com, а не через таблицу, и открывает
+таблицу по ID (`SPREADSHEET_ID_`, Config.gs) независимо от того, закрыт доступ по
+ссылке или нет. Проверить/закрыть доступ по ссылке можно до или после установки —
+это отдельная задача владельца, не шаг этого раздела.
+
+### Установка (ручная вставка — путь для этого раунда, owner загружает сам)
+
+Собранный **один файл** для вставки — `apps-script/dist/Code.gs` (генерируется
+`node scripts/bundle-apps-script.mjs` из всех `src/*.gs` в фиксированном порядке;
+шапка файла называет исходный commit) — и `apps-script/dist/appsscript.json`.
+Пересобрать перед установкой, если `src/*.gs` менялись после последней генерации
+(`git log -1 --format=%H` должен совпадать с "Source commit" в шапке `dist/Code.gs`).
+
+1. Создать **отдельный** (не привязанный к таблице) проект Apps Script от аккаунта
    alex@adfix.co.il: script.google.com -> New project.
-3. Скопировать содержимое `appsscript.json` в манифест проекта (Project Settings ->
-   "Show appsscript.json" должен быть включён), и каждый файл из `src/*.gs` — отдельным
-   файлом с тем же именем. Через `clasp`: `clasp create --type standalone`, затем
-   `clasp push` из этой папки (`.clasp.json` с `scriptId` в репозиторий не кладём —
-   секрет проекта, заводится локально при установке).
-4. Авторизовать при первом запуске `setupCrm()` — потребует подтверждения scope'ов из
-   `appsscript.json` (`spreadsheets`, `script.send_mail`, `script.scriptapp`).
-5. Script Properties (Project Settings -> Script Properties):
+2. Project Settings -> включить "Show appsscript.json". Открыть появившийся файл
+   `appsscript.json` в редакторе проекта и заменить его содержимое на
+   `apps-script/dist/appsscript.json`.
+3. Открыть `Code.gs` (файл, который создаётся в новом проекте по умолчанию) и
+   заменить ВСЁ его содержимое на `apps-script/dist/Code.gs` целиком (это уже все
+   15 модулей `src/*.gs`, склеенные в один файл — второй файл заводить не нужно).
+4. Script Properties (Project Settings -> Script Properties):
    - `healthEndpointToken` — случайная строка для `doGet` (внешний наблюдатель, §5.7).
    - `albato_editor_email` здесь НЕ заводится (review находка №5 — раньше этот пункт
      противоречил коду): это строка листа «Настройки» (пустой дефолт создаёт
      `setupCrm()`), не Script Property. Заполняется прямо в таблице при подключении
      Albato. Пока пусто — `protectIntakeSheet_` держит «Входящие» в режиме
      предупреждения (`Protection.setWarningOnly(true)`), не блокирует Albato молча.
-6. Запустить `setupCrm()` вручную один раз (Run -> setupCrm). Проверить: лист «2026»
-   переименован в «Входящие» (если «Входящие» ещё не было), появились «Заявки»,
-   «Сегодня», «Сводка», «Настройки» с дефолтами, «Журнал».
-7. Запустить `installTriggers()` вручную один раз — создаст `tick` (каждые 5 мин) и
-   `handleEdit_` (installable onEdit) триггеры.
-8. Меню «CRM» в таблице НЕ появляется (review находка №2 — сознательно убрано, не
-   баг): скрипт — standalone-проект (design §5.1), а официальная документация Google
-   однозначна — `SpreadsheetApp.getUi()`/меню работают только у скрипта, привязанного
-   к таблице:
-   > "Only bound scripts can create menus. To display the menu when the user opens
-   > a file, write the menu code within an onOpen function."
-   — [Custom menus](https://developers.google.com/apps-script/guides/menus)
-   > "A script can only interact with the UI for the current instance of an open
-   > spreadsheet, and only if the script is bound to the spreadsheet."
-   — [SpreadsheetApp.getUi()](https://developers.google.com/apps-script/reference/spreadsheet/spreadsheet-app#getui())
+5. Run -> `setupCrm` — авторизовать доступ при первом запуске (scopes из
+   `appsscript.json`: `spreadsheets`, `script.send_mail`, `script.scriptapp`).
+   Проверить: лист «2026» переименован в «Входящие» (если ещё не было), появились
+   «Заявки», «Сегодня», «Сводка», «Настройки» с дефолтами, «Журнал».
+6. Run -> `installTriggers` — создаст `tick` (каждые 5 мин) и `handleEdit_`
+   (installable onEdit) триггеры.
 
-   Это не зависит от типа триггера (простой `onOpen(e)` или installable) — дело в
-   bound/standalone статусе самого проекта. Административные действия ADFIX выполняет
-   вручную из редактора Apps Script: открыть проект -> выбрать функцию
-   `menuSendTestNotification_` или `menuArchiveClosed_` в выпадающем списке -> Run;
-   результат смотреть в логе выполнения (View -> Executions / Logger), не во
-   всплывающем диалоге. Проверить, что тестовое письмо реально приходит на
-   `system_alert_recipients`.
+### Установка через clasp (альтернатива для разработки — не используется owner'ом в этом раунде)
+
+```
+clasp create --type standalone
+clasp push
+```
+из папки `apps-script/` (файлы `src/*.gs` заводятся отдельными файлами с теми же
+именами, не через `dist/`). `.clasp.json` с `scriptId` в репозиторий не кладём —
+секрет проекта, заводится локально при установке. Шаги 4-6 выше (Script Properties,
+`setupCrm`, `installTriggers`) одинаковы для обоих путей установки.
+
+### После установки (оба пути)
+
+Меню «CRM» в таблице НЕ появляется (review находка №2 — сознательно убрано, не
+баг): скрипт — standalone-проект (design §5.1), а официальная документация Google
+однозначна — `SpreadsheetApp.getUi()`/меню работают только у скрипта, привязанного
+к таблице:
+> "Only bound scripts can create menus. To display the menu when the user opens
+> a file, write the menu code within an onOpen function."
+— [Custom menus](https://developers.google.com/apps-script/guides/menus)
+> "A script can only interact with the UI for the current instance of an open
+> spreadsheet, and only if the script is bound to the spreadsheet."
+— [SpreadsheetApp.getUi()](https://developers.google.com/apps-script/reference/spreadsheet/spreadsheet-app#getui())
+
+Это не зависит от типа триггера (простой `onOpen(e)` или installable) — дело в
+bound/standalone статусе самого проекта. Административные действия ADFIX выполняет
+вручную из редактора Apps Script: открыть проект -> выбрать функцию
+`menuSendTestNotification_` или `menuArchiveClosed_` в выпадающем списке -> Run;
+результат смотреть в логе выполнения (View -> Executions / Logger), не во
+всплывающем диалоге. Проверить, что тестовое письмо реально приходит на
+`system_alert_recipients`.
 
 **Не проверено вживую** (см. также раздел отчёта задачи «не проверено»):
 - Точные тексты ошибок `MailApp.sendEmail` при квотах/невалидных адресах —
