@@ -2,7 +2,7 @@
 //
 // Built by scripts/bundle-apps-script.mjs from apps-script/src/*.gs
 // (fixed order — see FILE_ORDER in that script).
-// Source commit: bf7fb88c4e4c87e49e88aabbabdbe669f2723d31
+// Source commit: 6796c9eb60552baf14bc3f94a2523103a6f25308
 // Generated: 2026-09-23
 //
 // To change behavior, edit the corresponding file under apps-script/src/
@@ -1090,6 +1090,11 @@ function renderSlaEscalationEmail_(data) {
 var SPREADSHEET_ID_ = '1_jhfr7ucoKkbrwWlUQoS9wyw7uHYhe_oOutKpTlcoV4';
 var SETTINGS_SHEET_NAME_ = 'Настройки';
 
+// v1 (владелец 2026-09-23: «запустить сейчас», «не усложняй»): лист «Сводка» и
+// воскресная сводка владельцу отложены до v2 — в день запуска данных нет,
+// графики пустые. Код сохранён: включить = true и повторно запустить setupCrm().
+var SUMMARY_SHEET_ENABLED_ = false;
+
 var DEFAULT_SETTINGS_ = {
   tz: 'Asia/Jerusalem',
   business_days: '0,1,2,3,4', // 0=вс..6=сб (design §5.5: вс-чт)
@@ -1667,7 +1672,7 @@ function setupCrm() {
   var requests = ensureSheet_(ss, SHEET_REQUESTS_);
   var service = ensureSheet_(ss, SHEET_SERVICE_);
   var today = ensureSheet_(ss, SHEET_TODAY_);
-  var summary = ensureSheet_(ss, SHEET_SUMMARY_);
+  var summary = SUMMARY_SHEET_ENABLED_ ? ensureSheet_(ss, SHEET_SUMMARY_) : null;
   var journal = ensureSheet_(ss, SHEET_JOURNAL_);
   var settings = ensureSheet_(ss, SETTINGS_SHEET_NAME_);
 
@@ -1698,7 +1703,7 @@ function setupCrm() {
   // (тот же приём, что buildRequestRowLink_ в Notifications.gs, design item
   // "resolved at send time" — здесь "resolved at setup time").
   ensureTodayFormulas_(today, requests);
-  ensureSummaryFormulas_(summary, requests, service);
+  if (summary) ensureSummaryFormulas_(summary, requests, service);
   // P1 (build-round blocker "data reaches a sheet the office sees"): «Сводка» и
   // «Сегодня» — весь лист только для чтения офисом (design docs/MINI-CRM-DESIGN.md
   // §2 «Защита: весь лист»). Раньше ни один код не защищал их вовсе — любой
@@ -1706,7 +1711,7 @@ function setupCrm() {
   // ЦЕЛИКОМ формулами SORT/FILTER — случайная сортировка/правка офисом здесь
   // разрушает диапазон (P1 "office sheet breaks when sorted/filtered").
   protectOwnerOnlySheet_(today, 'Сегодня — только для чтения офисом, весь лист формулы (design docs/MINI-CRM-DESIGN.md §2)');
-  protectOwnerOnlySheet_(summary, 'Сводка — только владелец скрипта, весь лист формулы/графики (design docs/MINI-CRM-DESIGN.md §2)');
+  if (summary) protectOwnerOnlySheet_(summary, 'Сводка — только владелец скрипта, весь лист формулы/графики (design docs/MINI-CRM-DESIGN.md §2)');
 
   Logger.log('setupCrm: готово. Входящие=%s строк, Заявки=%s строк, Служебное=%s строк',
     intake.getLastRow(), requests.getLastRow(), service.getLastRow());
@@ -2878,7 +2883,9 @@ function tick() {
 
     stepResults.sla = runStepSafely_('sla', function () { processSla_(ss, config, now, reqValues, reqHeaderMap); });
     stepResults.digest = runStepSafely_('digest', function () { maybeSendDigest_(ss, config, now, reqValues, reqHeaderMap); });
-    stepResults.weekly_summary = runStepSafely_('weekly_summary', function () { maybeSendWeeklySummary_(ss, config, now); });
+    if (SUMMARY_SHEET_ENABLED_) {
+      stepResults.weekly_summary = runStepSafely_('weekly_summary', function () { maybeSendWeeklySummary_(ss, config, now); });
+    }
 
     // design fix item5: письма, которые не удалось отправить (pending/unknown/
     // failed в «Журнале»), больше не теряются навсегда — независимый ретрай.
