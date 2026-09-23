@@ -1,6 +1,6 @@
 """Сборка основной версии (production) для lp.gambarian.com из final-dev5.
 
-PRODUCTION-BUILD v1.3.0 | 2026-09-23
+PRODUCTION-BUILD v1.3.1 | 2026-09-23
 
 Основная версия = утверждённое превью final-dev5 с шестью отличиями:
   1. без демо-переключателя «Авто / Демо» рабочего времени — это инструмент показа
@@ -48,9 +48,13 @@ GEO = {'@type': 'GeoCoordinates', 'latitude': 32.06923, 'longitude': 34.78314}
 LD_ADD = {'alternateName': ['Gambarian & Partners'], 'url': OG_URL, 'logo': SQUARE_URL, 'image': SQUARE_URL}
 # Согласие по умолчанию — до GTM (developers.google.com/tag-platform/security/guides/consent:
 # «If your consent code is called out of order, consent defaults won't work»).
-# EEA/UK/CH — всё denied (баннера нет, эти посетители не измеряются); остальным — granted,
-# кроме ad_personalization: для темы развода персонализация рекламы запрещена политикой
-# Google («Relationship hardships»), поэтому denied везде. План: docs/TRACKING-REQUIREMENTS.md §8.
+# EEA/UK/CH — четыре сигнала denied по умолчанию; остальным — granted, кроме
+# ad_personalization: для темы развода персонализация рекламы запрещена политикой Google
+# («Relationship hardships»), поэтому denied везде. Баннера нет, но GTM грузится безусловно
+# (Consent Mode v2 «advanced», не «basic») — теги для EEA/UK/CH всё равно загружаются с
+# отказом по умолчанию и шлют cookieless-пинги без установки куки
+# (developers.google.com/tag-platform/security/concepts/consent-mode). План:
+# docs/TRACKING-REQUIREMENTS.md §8.
 CONSENT_REGIONS = ("AT BE BG HR CY CZ DK EE FI FR DE GR HU IS IE IT LV LI LT LU MT NL NO PL "
                    "PT RO SK SI ES SE GB CH").split()
 GTM_SNIPPET = """<!-- Google Tag Manager -->
@@ -205,6 +209,6 @@ if errors:
 
 io.open(page, 'w', encoding='utf-8', newline='').write(html)
 digest = hashlib.sha256(html.encode('utf-8')).hexdigest()[:16]
-print('PASS PRODUCTION-BUILD v1.3.0: %s -> %s; без демо-переключателя; GTM ровно 1, только lp.gambarian.com; og:url и картинка превью на %s; '
+print('PASS PRODUCTION-BUILD v1.3.1: %s -> %s; без демо-переключателя; GTM ровно 1, только lp.gambarian.com; og:url и картинка превью на %s; '
       'SEO: canonical 1, og:image 2 (квадрат первым), hreflang ru/x-default, favicon PNG, JSON-LD url/alternateName/geo; index.html sha256 %s'
       % (SRC, DST, OG_URL, digest))

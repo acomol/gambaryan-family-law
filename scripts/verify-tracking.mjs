@@ -25,8 +25,27 @@ const EVENT_KEYS = {
 };
 const event = (name, params = {}) => ({ event: name, design_version: DESIGN, ...params });
 const formEvent = (name, params = {}) => event(name, { form_id: FORM_ID, ...params });
-const events = page => page.evaluate(() => window.dataLayer || []);
+// track() (site/app.js) явно обнуляет каждый неиспользуемый параметр словаря на КАЖДОМ
+// push (undefined), чтобы GTM Data Layer Variable не унаследовала значение из более
+// раннего push — GTM читает объединённую модель dataLayer, не только последний push
+// (developers.google.com/tag-platform/tag-manager/datalayer; подтверждено живьём:
+// Playwright сохраняет ключ со значением undefined через page.evaluate, в отличие от
+// JSON.stringify). rawEvents — как реально лежит в window.dataLayer (с undefined-ключами,
+// нужно для проверки утечки между событиями); events — то же самое без undefined-ключей,
+// для сравнения с ожидаемым набором параметров конкретного push.
+const stripUndefined = item => Object.fromEntries(Object.entries(item).filter(([, value]) => value !== undefined));
+const rawEvents = page => page.evaluate(() => window.dataLayer || []);
+const events = async page => (await rawEvents(page)).map(stripUndefined);
 const named = async (page, name) => (await events(page)).filter(item => item.event === name);
+// Значение ключа, которое реально прочитает GTM DLV на месте push с индексом uptoIndex:
+// последний (самый близкий назад) push, где ключ присутствует как own-свойство, включая
+// явный undefined — именно он и означает «сброшено», а не «не установлено никогда».
+const resolveKey = (layer, uptoIndex, key) => {
+  for (let i = uptoIndex; i >= 0; i -= 1) {
+    if (Object.hasOwn(layer[i], key)) return layer[i][key];
+  }
+  return undefined;
+};
 
 async function checkPrivacy(page) {
   const layer = await events(page);
@@ -359,6 +378,37 @@ async function verifyVisibleTime(page, baseUrl) {
   return "PASS visible 30/60/120/180; hidden excluded; seconds_to_lead=190";
 }
 
+// GTM Data Layer Variable читает объединённую модель, не только последний push (см.
+// комментарий у resolveKey). Живая последовательность из ревью: смена темы услуги (пишет
+// service) → CTA карточки адвоката (пишет attorney) → CTA героя (ни service, ни attorney
+// не актуальны). Без явного сброса Hero-событие унаследовало бы оба стухших значения.
+async function verifyNoStaleParams(page, baseUrl) {
+  await setup(page, baseUrl);
+  const activeTab = await page.evaluate(() => {
+    var tabs = document.querySelectorAll(".svc-tab");
+    for (var i = 0; i < tabs.length; i += 1) {
+      if (tabs[i].getAttribute("aria-selected") === "true") return i;
+    }
+    return 0;
+  });
+  const otherTab = (activeTab + 1) % 8;
+  await page.locator(".svc-tab").nth(otherTab).click();
+  await page.locator('[data-owner-copy-id="alexander-card-v3"] a[href="#contact"]').click();
+  await page.locator('#top a[href="#contact"]').click();
+
+  const layer = await rawEvents(page);
+  let heroIndex = -1;
+  for (let i = layer.length - 1; i >= 0; i -= 1) {
+    if (layer[i].event === "form_anchor_click" && layer[i].placement === "hero") { heroIndex = i; break; }
+  }
+  assert.ok(heroIndex >= 0, "form_anchor_click(hero) не найден в dataLayer");
+  assert.equal(resolveKey(layer, heroIndex, "service"), undefined,
+    "form_anchor_click(hero) унаследовал service из более раннего service_select");
+  assert.equal(resolveKey(layer, heroIndex, "attorney"), undefined,
+    "form_anchor_click(hero) унаследовал attorney из более раннего CTA карточки адвоката");
+  return "PASS no stale service/attorney on form_anchor_click(hero) after service_select + attorney CTA";
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { chromium } = await import("@playwright/test");
   const baseUrl = process.argv[2] || "http://127.0.0.1:8098/build/variants/final-dev5/";
@@ -369,6 +419,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       try {
         console.log(JSON.stringify(await verifyTracking(await context.newPage(), baseUrl)));
         console.log(`${width}x${height}: ${await verifyVisibleTime(await context.newPage(), baseUrl)}`);
+        console.log(`${width}x${height}: ${await verifyNoStaleParams(await context.newPage(), baseUrl)}`);
       } finally { await context.close(); }
     }
     console.log("Tracking: map §3 / funnel / honeypot / PII / design_version PASS");

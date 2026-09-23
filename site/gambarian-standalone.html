@@ -2427,8 +2427,25 @@ picture { display: block; }
 
   /* --- События страницы: только параметры из карты аналитики ------------ */
 
+  // GTM Data Layer Variables читают объединённую модель dataLayer, а не только
+  // последний push: ключ, отсутствующий в текущем push, сохраняет значение из
+  // более раннего события (developers.google.com/tag-platform/tag-manager/datalayer —
+  // «if you push a variable with the same name… the existing value will be
+  // overwritten by the new value», то есть НЕ overwritten, если ключа нет вовсе;
+  // simoahava.com/gtm-tips/remember-to-flush-unused-data-layer-variables — явный
+  // push key:undefined «drops the parameter… entirely»). Поэтому каждое событие
+  // явно обнуляет все опциональные параметры словаря (docs/TRACKING-REQUIREMENTS.md
+  // §4), кроме тех, что передал вызывающий код.
+  var EVENT_PARAM_KEYS = [
+    'method', 'placement', 'business_state', 'service', 'via', 'section',
+    'percent', 'seconds', 'error_type', 'target', 'attorney',
+    'form_id', 'submission_id', 'seconds_to_lead', 'corrects_submission_id', 'http_status'
+  ];
+
   function track(name, params) {
-    var event = { event: name, design_version: 'final-dev5' };
+    var event = { event: name };
+    EVENT_PARAM_KEYS.forEach(function (key) { event[key] = undefined; });
+    event.design_version = 'final-dev5';
     Object.keys(params || {}).forEach(function (key) { event[key] = params[key]; });
     (window.dataLayer = window.dataLayer || []).push(event);
   }
