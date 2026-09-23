@@ -2,7 +2,7 @@
 //
 // Built by scripts/bundle-apps-script.mjs from apps-script/src/*.gs
 // (fixed order — see FILE_ORDER in that script).
-// Source commit: 6796c9eb60552baf14bc3f94a2523103a6f25308
+// Source commit: b589d5ada4858e44c39a7a360b24e32133cf042f
 // Generated: 2026-09-23
 //
 // To change behavior, edit the corresponding file under apps-script/src/
@@ -118,7 +118,13 @@ function buildContactLinks_(phone) {
  *   опасного символа; иначе та же строка с ведущим апострофом.
  */
 function sheetSafeValue_(value) {
-  return typeof value === 'string' && /^[=+\-@\t\r]/.test(value) ? "'" + value : value;
+  if (typeof value !== 'string') return value;
+  if (/^[=+\-@\t\r]/.test(value)) return "'" + value;
+  // Живой прогон 2026-09-23: «0509998877» записался числом 509998877 — таблица
+  // превращает текст из одних цифр в число и теряет ведущий ноль телефона.
+  // Апостроф заставляет хранить текст (в ячейке не виден).
+  if (/^0[\d\s\-()]*$/.test(value) && value.length > 1) return "'" + value;
+  return value;
 }
 
 /**
@@ -1192,6 +1198,21 @@ function splitList_(s) {
  * (миграция схемы — buildDefaultSettingsRows_ дописывает новые ключи одной
  * строкой, ensureSettingsSheet_ в Sheets.gs).
  */
+/**
+ * Живой прогон 2026-09-23: таблица сама превращает «09:00» во время (Date на
+ * 30.12.1899), а числа — в Number. Приводим обратно к строке настройки:
+ * время → «HH:mm» в часовом поясе скрипта (Asia/Jerusalem, appsscript.json),
+ * ведущий апостроф (им пишется текст) снимаем.
+ */
+function settingsCellToString_(value) {
+  if (value === undefined || value === null) return '';
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm');
+  }
+  var s = String(value);
+  return s.charAt(0) === "'" ? s.slice(1) : s;
+}
+
 function parseSettingsRows_(rows) {
   var raw = {};
   Object.keys(DEFAULT_SETTINGS_).forEach(function (k) { raw[k] = DEFAULT_SETTINGS_[k]; });
@@ -1200,8 +1221,7 @@ function parseSettingsRows_(rows) {
     if (!key) return;
     key = String(key).trim();
     if (!key) return;
-    var value = row[1];
-    raw[key] = value === undefined || value === null ? '' : String(value);
+    raw[key] = settingsCellToString_(row[1]);
   });
   return raw;
 }
@@ -1755,7 +1775,13 @@ function ensureSettingsSheet_(sheet) {
     var data = sheet.getRange(1, 1, lastRow, 1).getValues();
     data.forEach(function (r) { if (r[0]) existingKeys[String(r[0]).trim()] = true; });
   }
-  var allRows = buildDefaultSettingsRows_();
+  // Живой прогон 2026-09-23: «09:00»/«08:30» таблица превращала во время, и
+  // рабочие часы читались как «Sat Dec 30 1899 …» — письма о новых заявках
+  // уходили в дайджест даже днём. Значения пишем текстом (апостроф).
+  var allRows = buildDefaultSettingsRows_().map(function (row, i) {
+    if (i === 0 || typeof row[1] !== 'string' || row[1] === '') return row;
+    return [row[0], "'" + row[1], row[2]];
+  });
   if (lastRow === 0) {
     sheet.getRange(1, 1, allRows.length, 3).setValues(allRows);
   } else {
@@ -2096,6 +2122,11 @@ function getOrCreateRangeProtectionByDescription_(sheet, description, makeRange)
  * @param {string[]} emails
  */
 function resetEditorsTo_(protection, emails) {
+  // Живой прогон 2026-09-23 (приватная копия таблицы): у защиты «только
+  // предупреждение» Google не даёт менять редакторов — removeEditor/addEditor
+  // бросают исключение, и setupCrm падал на protectOfficeScriptColumns_.
+  // Список редакторов у такой защиты не действует — пропускаем.
+  if (protection.isWarningOnly()) return;
   protection.removeEditors(protection.getEditors());
   var valid = (emails || []).filter(function (e) { return !!e; });
   if (valid.length) protection.addEditors(valid);
