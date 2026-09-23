@@ -61,6 +61,31 @@ test('установка на боевой таблице: скрипт не у�
   assert.ok(!editors.includes('stranger@example.com'), 'посторонний убран');
 });
 
+test('установка на боевой таблице: «Сегодня» НОВЫЕ не берёт пустые строки (#REF!), блоки ограничены, повторный setupCrm обновляет формулы', () => {
+  const src = ctx.ensureTodayFormulas_.toString();
+  assert.match(src, /' <> \\'\\''/, 'условие «№ не пуст» в блоке НОВЫЕ');
+  assert.equal((src.match(/limit ' \+ TODAY_BLOCK_CAPACITY_/g) || []).length, 3, 'limit во всех трёх блоках');
+  const cells = {};
+  const today = {
+    getRange: (r, c) => ({
+      getValue: () => (r === 1 && c === 1 ? 'Сегодня: 0 просрочки · 0 новых · 0 консультация(й)' : ''),
+      setFormula: (f) => { cells[r + ':' + c] = f; }
+    })
+  };
+  const headers = ['№', 'Статус', 'Получена', 'Имя', 'Телефон', 'Связаться', 'Email', 'Ответственный',
+    'Первая попытка', 'Попыток дозвона', 'Следующий шаг', 'Консультация', 'Причина закрытия', 'Комментарий'];
+  const requests = {
+    getSheetId: () => 123,
+    getLastColumn: () => headers.length,
+    getRange: () => ({ getValues: () => [headers] })
+  };
+  ctx.ensureTodayFormulas_(today, requests);
+  const newCell = cells[(ctx.TODAY_HEADER_ROW_NEW_ + 2) + ':1'];
+  assert.ok(newCell, 'повторный вызов переписал формулу блока НОВЫЕ');
+  assert.match(newCell, /Col1 <> ''/);
+  assert.match(newCell, /limit 200/);
+});
+
 test('живой прогон: setupCrm пишет значения «Настроек» текстом (апостроф), заголовок и пустые — без изменений', () => {
   const sheet = makeFakeSheet('Настройки');
   ctx.ensureSettingsSheet_(sheet);
