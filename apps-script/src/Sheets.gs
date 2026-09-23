@@ -523,9 +523,22 @@ function resetEditorsTo_(protection, emails) {
   // бросают исключение, и setupCrm падал на protectOfficeScriptColumns_.
   // Список редакторов у такой защиты не действует — пропускаем.
   if (protection.isWarningOnly()) return;
-  protection.removeEditors(protection.getEditors());
   var valid = (emails || []).filter(function (e) { return !!e; });
+  // Установка 2026-09-24 на боевой таблице (скрипт запускает редактор, не
+  // владелец): «Вы не можете удалить себя из списка редакторов». Поэтому
+  // сначала добавляем нужных (как в примере Google: текущий пользователь
+  // должен остаться редактором), затем убираем остальных ПО ОДНОМУ, никогда
+  // не себя; тех, кого Google убрать не даёт (владелец таблицы), пропускаем.
   if (valid.length) protection.addEditors(valid);
+  var keep = {};
+  valid.forEach(function (e) { keep[String(e).toLowerCase()] = true; });
+  var me = Session.getEffectiveUser().getEmail();
+  if (me) keep[String(me).toLowerCase()] = true;
+  protection.getEditors().forEach(function (user) {
+    var email = String(user.getEmail ? user.getEmail() : user).toLowerCase();
+    if (!email || keep[email]) return;
+    try { protection.removeEditor(user); } catch (e) { /* владелец таблицы — Google не даёт убрать */ }
+  });
 }
 
 /**

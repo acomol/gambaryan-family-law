@@ -15,6 +15,7 @@ function makeFakeProtection(initialEmails, type) {
   var protection = {
     _type: type || 'SHEET',
     getEditors: function () { return emails.map(userObj); },
+    removeEditor: function (e) { return protection.removeEditors([e]); },
     removeEditors: function (list) {
         // Real run 2026-09-23 (private copy): "Exception: The method 'removeEditor' is not
         // available on Protection objects where isWarningOnly is true."

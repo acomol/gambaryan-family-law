@@ -39,6 +39,28 @@ test('живой прогон: рабочие часы из «Настроек»
   assert.equal(raw.business_days, '0,1,2,3,4');
 });
 
+test('установка на боевой таблице: скрипт не убирает себя и владельца из редакторов защиты («Вы не можете удалить себя…»)', () => {
+  // Настоящая защита: в редакторах уже есть запускающий (alex@adfix.co.il) и владелец
+  // таблицы; убрать себя Google не даёт, владельца — тоже.
+  let editors = ['alex@adfix.co.il', 'owner@gmail.com', 'stranger@example.com'];
+  const user = (e) => ({ getEmail: () => e });
+  const prot = {
+    isWarningOnly: () => false,
+    getEditors: () => editors.map(user),
+    addEditors: (list) => { list.forEach((e) => { if (!editors.includes(e)) editors.push(e); }); },
+    removeEditors: () => { throw new Error('Вы не можете удалить себя из списка редакторов.'); },
+    removeEditor: (u) => {
+      const e = u.getEmail();
+      if (e === 'alex@adfix.co.il') throw new Error('Вы не можете удалить себя из списка редакторов.');
+      if (e === 'owner@gmail.com') throw new Error('Cannot remove the owner.');
+      editors = editors.filter((x) => x !== e);
+    }
+  };
+  assert.doesNotThrow(() => ctx.resetEditorsTo_(prot, ['alex@adfix.co.il']));
+  assert.ok(editors.includes('alex@adfix.co.il'), 'запускающий остаётся редактором');
+  assert.ok(!editors.includes('stranger@example.com'), 'посторонний убран');
+});
+
 test('живой прогон: setupCrm пишет значения «Настроек» текстом (апостроф), заголовок и пустые — без изменений', () => {
   const sheet = makeFakeSheet('Настройки');
   ctx.ensureSettingsSheet_(sheet);
