@@ -180,6 +180,22 @@ try {
   assert.equal(payload.unknown, undefined);
   assert.equal(payload.lf_hp, undefined);
   assert.equal(payload.corrects_submission_id, "");
+  // Albato пишет в Google Sheets как ввод с клавиатуры: «+972…» становится формулой (#ERROR!),
+  // «=…» из поля формы выполнился бы. Значения из формы/URL с первым символом = + - @ получают
+  // апостроф (OWASP formula injection); таблица его не показывает и хранит значение текстом.
+  assert.equal(payload.phone, "'+972 50 000 0000");
+  captured = undefined;
+  response = await call("POST", JSON.stringify({
+    ...input, name: "=1+1 Иван", utm_campaign: "@cmd", utm_term: "-x", landing_path: "/",
+  }), { ALBATO_WEBHOOK_URL: "https://example.invalid/albato-test" });
+  assert.equal(response.status, 202);
+  const unsafePayload = JSON.parse(captured.options.body);
+  assert.equal(unsafePayload.name, "'=1+1 Иван");
+  assert.equal(unsafePayload.utm_campaign, "'@cmd");
+  assert.equal(unsafePayload.utm_term, "'-x");
+  assert.equal(unsafePayload.email, "lead@example.com");
+  assert.equal(unsafePayload.landing_path, "/");
+  assert.equal(unsafePayload.submitted_at.startsWith("'"), false);
   const keys = Object.keys(payload);
   assert.deepEqual(keys, [
     "schema_version", "schema_date", "event_name", "source_system",
