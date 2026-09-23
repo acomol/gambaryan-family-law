@@ -24,6 +24,7 @@ const testFiles = [
   './email-templates.test.mjs',
   './codex-review-fixes.test.mjs',
   './dashboard.test.mjs',
+  './fix-b.test.mjs',
   './pipeline-health.test.mjs'
 ];
 
