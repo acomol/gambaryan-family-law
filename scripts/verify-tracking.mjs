@@ -409,6 +409,112 @@ async function verifyNoStaleParams(page, baseUrl) {
   return "PASS no stale service/attorney on form_anchor_click(hero) after service_select + attorney CTA";
 }
 
+// Прямые ссылки на тему (#svc-*): якорь переключает вкладку и держит блок услуг
+// в кадре — при загрузке и при смене hash без перезагрузки (владелец, 2026-09-23).
+// Обычный #services тему не меняет. Заодно проверяются контактные номера:
+// WhatsApp и звонок с этой даты разведены (docs/CONTACT-LINKS-SPEC.md v1.2.0).
+const ANCHOR_SERVICES = ["svc-divorce", "svc-alimony", "svc-property", "svc-children", "svc-paternity", "svc-mediation", "svc-prenup", "svc-protection"];
+const WHATSAPP_NUMBER = "972587803188";
+const PHONE_NUMBER = "972545490623";
+
+async function activeTabState(page) {
+  return page.evaluate(() => {
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(".svc-tab"));
+    var active = tabs.findIndex(function (tab) { return tab.getAttribute("aria-selected") === "true"; });
+    var panels = document.querySelectorAll(".svc-card");
+    var rect = document.getElementById("services").getBoundingClientRect();
+    return {
+      active: active,
+      panelHidden: panels[active] ? panels[active].hidden : null,
+      focusedIsActiveTab: document.activeElement === tabs[active],
+      inView: rect.top < window.innerHeight && rect.bottom > 0,
+    };
+  });
+}
+
+async function waitTabInView(page, index) {
+  await page.waitForFunction(function (i) {
+    var tab = document.querySelectorAll(".svc-tab")[i];
+    if (!tab || tab.getAttribute("aria-selected") !== "true") return false;
+    var rect = document.getElementById("services").getBoundingClientRect();
+    return rect.top < window.innerHeight && rect.bottom > 0;
+  }, index);
+}
+
+export async function verifyAnchorTabs(page, baseUrl) {
+  page.setDefaultTimeout(7000);
+  const base = new URL(baseUrl);
+
+  // Контактные номера разведены: WhatsApp — стажёр, звонок — Александр.
+  await setup(page, base.href);
+  const numbers = await page.evaluate(() => ({
+    wa: Array.from(document.querySelectorAll('a[href*="wa.me/"]')).map(a => a.getAttribute("href")),
+    tel: Array.from(document.querySelectorAll('a[href^="tel:"]')).map(a => a.getAttribute("href")),
+  }));
+  assert.ok(numbers.wa.length > 0, "на странице нет ни одной ссылки wa.me");
+  assert.ok(numbers.tel.length > 0, "на странице нет ни одной ссылки tel:");
+  numbers.wa.forEach(href => assert.equal(href, `https://wa.me/${WHATSAPP_NUMBER}`, `WhatsApp: ${href}`));
+  numbers.tel.forEach(href => assert.equal(href, `tel:+${PHONE_NUMBER}`, `tel: ${href}`));
+
+  // Каждый из 8 якорей при загрузке (со сторонним query-параметром до #) открывает свою тему.
+  // qa_i меняется на каждой итерации, иначе смена URL только якорем — навигация в том же
+  // документе (hashchange), а не свежая загрузка, и dataLayer предыдущей темы не обнулится.
+  for (let index = 0; index < ANCHOR_SERVICES.length; index += 1) {
+    const url = new URL(base);
+    url.searchParams.set("utm_source", "qa-anchor");
+    url.searchParams.set("utm_campaign", "svc-deep-link");
+    url.searchParams.set("qa_i", String(index));
+    url.hash = ANCHOR_SERVICES[index];
+    await setup(page, url.href);
+    await waitTabInView(page, index);
+    const state = await activeTabState(page);
+    assert.equal(state.active, index, `#${ANCHOR_SERVICES[index]}: должна открыться тема ${index}`);
+    assert.equal(state.panelHidden, false, `#${ANCHOR_SERVICES[index]}: панель темы скрыта`);
+    assert.ok(state.focusedIsActiveTab, `#${ANCHOR_SERVICES[index]}: фокус не на активной вкладке`);
+    const selects = await named(page, "service_select");
+    if (index === 0) {
+      assert.deepEqual(selects, [], "#svc-divorce уже активна по умолчанию — событие не нужно");
+    } else {
+      assert.deepEqual(selects, [event("service_select", { service: SERVICES[index], via: "anchor" })],
+        `#${ANCHOR_SERVICES[index]}: ровно одно service_select via=anchor`);
+    }
+  }
+
+  // hashchange без перезагрузки переключает тему и не даёт лишних событий.
+  await setup(page, base.href);
+  assert.equal((await named(page, "service_select")).length, 0);
+  await page.evaluate(hash => { window.location.hash = hash; }, ANCHOR_SERVICES[4]);
+  await waitTabInView(page, 4);
+  assert.deepEqual(await named(page, "service_select"), [event("service_select", { service: SERVICES[4], via: "anchor" })],
+    "hashchange: ровно одно service_select via=anchor");
+
+  await page.evaluate(hash => { window.location.hash = hash; }, ANCHOR_SERVICES[6]);
+  await waitTabInView(page, 6);
+  const afterSecond = await named(page, "service_select");
+  assert.equal(afterSecond.length, 2, "hashchange: вторая смена якоря должна дать ровно одно новое событие");
+  assert.deepEqual(afterSecond[1], event("service_select", { service: SERVICES[6], via: "anchor" }));
+
+  // Клик по уже активной (после anchor) вкладке не должен давать второе событие —
+  // это и есть «без двойного события от hash + click».
+  await page.locator(".svc-tab").nth(6).click();
+  await page.waitForTimeout(50);
+  assert.equal((await named(page, "service_select")).length, 2,
+    "клик по вкладке, уже активированной якорем, не должен дублировать событие");
+
+  // Обычный #services поведение не меняет: первая тема, без переключения.
+  // qa_i=plain — гарантирует свежую загрузку (иначе смена только якоря после
+  // предыдущего блока была бы hashchange в том же документе, см. комментарий выше).
+  const plainServicesUrl = new URL(base);
+  plainServicesUrl.searchParams.set("qa_i", "plain");
+  plainServicesUrl.hash = "services";
+  await setup(page, plainServicesUrl.href);
+  const defaultState = await activeTabState(page);
+  assert.equal(defaultState.active, 0, "#services должен оставлять первую тему");
+  assert.equal((await named(page, "service_select")).length, 0, "#services не должен переключать тему");
+
+  return `PASS anchors #svc-* x8 + hashchange + #services default; WhatsApp=${WHATSAPP_NUMBER}; tel=${PHONE_NUMBER}`;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { chromium } = await import("@playwright/test");
   const baseUrl = process.argv[2] || "http://127.0.0.1:8098/build/variants/final-dev5/";
@@ -420,6 +526,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         console.log(JSON.stringify(await verifyTracking(await context.newPage(), baseUrl)));
         console.log(`${width}x${height}: ${await verifyVisibleTime(await context.newPage(), baseUrl)}`);
         console.log(`${width}x${height}: ${await verifyNoStaleParams(await context.newPage(), baseUrl)}`);
+        console.log(`${width}x${height}: ${await verifyAnchorTabs(await context.newPage(), baseUrl)}`);
       } finally { await context.close(); }
     }
     console.log("Tracking: map §3 / funnel / honeypot / PII / design_version PASS");

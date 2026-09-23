@@ -1,6 +1,6 @@
 # План аналитики lp.gambarian.com
 
-**Версия документа:** `2.1.1`
+**Версия документа:** `2.2.0`
 **Обновлено:** `2026-09-23`
 **Статус:** `ЭТАП 1 — LOCAL PASS (full-checks + visual), не опубликован; порог длинных секций утверждён владельцем 2026-09-23 (§4). Этапы 2–4 ждут решений владельца (§1)`
 
@@ -120,10 +120,15 @@ GTM только раздаёт их по платформам; прежняя �
 | Свайп по карточке (телефон) | листает темы | `service_select` {service, via=swipe} | GA4 | есть |
 | 8 точек под карточкой | выбирает тему | `service_select` {service, via=dot} | GA4 | есть |
 | Стрелки «назад» / «вперёд» | листает темы | `service_select` {service, via=arrow} | GA4 | есть |
+| Прямая ссылка с якорем `#svc-<тема>` (реклама, sitelinks) | открывает страницу с темой или меняет её без перезагрузки | `service_select` {service, via=anchor} | GA4 | есть |
 | «Записаться на консультацию» в карточке | переход к форме | `form_anchor_click` {placement=services, service} | GA4 | есть |
 | Блок наполовину в кадре | — | `section_view` {section=services} | GA4 | есть |
 
-Первая тема («Развод») открыта при загрузке — `service_select` пишется только при смене темы.
+Первая тема («Развод») открыта при загрузке — `service_select` пишется только при смене темы. Это
+касается и якорей: `#svc-divorce` и обычный `#services` темы не меняют, событие не пишется; остальные
+семь якорей (`#svc-alimony` … `#svc-protection`) переключают тему и блок услуг оказывается в кадре —
+как при загрузке страницы с якорем в URL, так и при смене hash без перезагрузки (владелец,
+2026-09-23). Событие пишется ровно один раз на переключение, отдельного события от клика не будет.
 
 ### 3.6 Подготовка `#precedent`
 
@@ -213,7 +218,7 @@ GTM только раздаёт их по платформам; прежняя �
 | `contact_click` | клик по `tel:`, `wa.me`, Google Maps, «Записаться» в панели | `method` (`phone`/`whatsapp`/`google_maps`/`form_anchor`), `placement`, `business_state` (`open`/`closed`) | MICRO | есть |
 | `form_anchor_click` | клик по ссылке на `#contact` | `placement`, `service`, `attorney` | FUNNEL | есть |
 | `nav_click` | пункт меню шапки, мобильного меню, подвала | `target`, `placement` | FUNNEL | есть |
-| `service_select` | смена темы в услугах | `service`, `via` (`tab`/`swipe`/`dot`/`arrow`/`footer`) | FUNNEL | есть |
+| `service_select` | смена темы в услугах | `service`, `via` (`tab`/`swipe`/`dot`/`arrow`/`footer`/`anchor`) | FUNNEL | есть |
 | `section_view` | блок наполовину в кадре, раз за просмотр | `section` | FUNNEL | есть |
 | `scroll_depth` | 25 / 50 / 75 / 90 % | `percent` | FUNNEL | есть |
 | `time_on_page` | 30 / 60 / 120 / 180 с видимого времени | `seconds` | FUNNEL | есть |
@@ -355,4 +360,5 @@ GTM только раздаёт их по платформам; прежняя �
 - `docs/LAUNCH-LP-GAMBARIAN.md` — запуск `lp`
 - `docs/HERO-CTA-RESEARCH.md` — откуда паттерн «событие до перехода»
 - История: v1.1.1 (2026-09-07) описывала схему с триггером GTM по адресу ссылки — заменена
-  dataLayer-first в v2.0.0.
+  dataLayer-first в v2.0.0. v2.2.0 (2026-09-23, владелец): якоря `#svc-*` переключают тему услуг
+  по прямой ссылке — новое значение `via=anchor` у `service_select`.

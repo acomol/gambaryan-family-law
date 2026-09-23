@@ -246,7 +246,7 @@ def verify(
             problems.append(f"{name} не подключён в index.html")
         if not (dest / name).exists():
             problems.append(f"{name} не скопирован в сборку")
-    if "wa.me/972545490623" not in html:
+    if "wa.me/972587803188" not in html:
         problems.append("номер WhatsApp должен быть без плюса и пробелов")
     if "?text=" in html:
         problems.append("у WhatsApp остался неутверждённый предзаполненный текст")
