@@ -556,6 +556,37 @@
     });
 
     setActive(0);
+
+    /* --- Прямые ссылки на тему: #svc-* открывает вкладку и вид на блок ---- */
+
+    var ANCHOR_SERVICE_INDEX = {
+      'svc-divorce': 0, 'svc-alimony': 1, 'svc-property': 2, 'svc-children': 3,
+      'svc-paternity': 4, 'svc-mediation': 5, 'svc-prenup': 6, 'svc-protection': 7
+    };
+    var servicesSection = document.getElementById('services');
+
+    function scrollToServices(instant) {
+      if (!servicesSection) return;
+      servicesSection.scrollIntoView({
+        behavior: (instant || reduceMotion.matches) ? 'instant' : 'smooth',
+        block: 'start'
+      });
+    }
+
+    // Якорь применяется и при загрузке, и при смене hash без перезагрузки
+    // (владелец, 2026-09-23). Обычный "#services" сюда не попадает — тема
+    // остаётся первой по умолчанию, как раньше.
+    function applyServiceHash(hash, instant) {
+      var id = (hash || '').replace(/^#/, '');
+      if (!Object.prototype.hasOwnProperty.call(ANCHOR_SERVICE_INDEX, id)) return;
+      setActive(ANCHOR_SERVICE_INDEX[id], true, false, null, 'anchor');
+      scrollToServices(instant);
+    }
+
+    applyServiceHash(window.location.hash, true);
+    window.addEventListener('hashchange', function () {
+      applyServiceHash(window.location.hash);
+    });
   }
 
   /* --- Форма обращения --------------------------------------------------- */
