@@ -19,7 +19,13 @@ P0 — теги живые на lp и проверены. Пока P0 не за�
 
 P0-LEAD — сохранение лидов по плейбуку (ADFIX-SITE-SYSTEM v2 §1.6 L1–L15), **блокер запуска рекламы**:
 - Аудит 2026-09-23: `functions/api/lead.js` только пересылает в Albato, 0 копий; нет outbox, ретраев, KV/D1/R2, крона, бэкапа, `/admin`, алертов; в проекте CF нет ни биндингов, ни секретов → форма сейчас 503
-- [ ] Перенос эталона Assuta (`feature/luxemed-new-lending` @ 613cdd30) → ветка `claude/gambarian-lead-pipeline` (агент, без деплоя)
+- [x] Перенос эталона Assuta → `claude/gambarian-lead-pipeline`; 4 раунда Codex; `6034203` (87/87 + 41/41)
+- [x] **Активировано 2026-09-23:** биндинги Pages Production+Preview (LEADS_KV/LEADS_DB/LEADS_ARCHIVE) через API, секреты не тронуты; `943320b` → `codex/final-dev5`; деплой `f76780ee`; HTML = сборка (b30026ff27b0d6bc); `/api/admin` 401 Basic; контрольный лид `9e758bea…` → 202 → D1 delivered + KV + R2 → строка во «Входящих» (телефон текстом)
+- [x] cron-worker `gambarian-lead-cron` задеплоен; **лимит Workers Free = 5 cron на аккаунт** (Assuta 3) → временно `*/5` + `30 2`; целевые `*/5` + `0 *` (бэкап ежечасно — требование владельца)
+- [ ] Раунд 5 (агент): гонка удаление↔запись (janitor, P1 по Codex, не блокер по правилу «теряет заявку / открывает данные»), ежечасный бэкап, `/health` (контракт pipeline-health v1) → Codex + ревью → деплой worker + миграция D1 `cron_health`
+- [ ] Владелец: вход в `/api/admin` + удалить «ТЕСТ Активация хранилища» (проверка входа и удаления)
+- [ ] Владелец: секрет `ALBATO_WEBHOOK_URL` в Worker `gambarian-lead-cron` (без него зависшие заявки ждут, не теряются)
+- [ ] CRM: проверка `/health` раз в час → письмо alex@adfix.co.il (единственный канал тревог; Telegram нет)
 - [x] Ресурсы CF созданы 2026-09-23 (аккаунт 4799e9f7…, новые и пустые, Assuta не затронута):
   prod — KV `gambarian-leads` 10bb8fd2315248139fe95118affc1515 · D1 `gambarian-leads` da00d8e3-477c-4863-a677-dcad24868893 · R2 `gambarian-leads-archive`;
   preview — KV `gambarian-leads-preview` 552a56110ca742aa879ca06c8f4dffe4 · D1 `gambarian-leads-preview` b57f842a-b498-4071-83a7-cee7d9aeb80b · R2 `gambarian-leads-archive-preview`
@@ -36,8 +42,9 @@ Albato → «Входящие» (2026-09-23):
 - [x] GAMB_ADV (389465, группа GAMBARIAN): Gmail с получателями Assuta удалён; 24 поля → «Входящие», дубли по submission_id; запущен владельцем
 - [x] Контрольные заявки: браузерная — 202 → строка → generate_lead (GA4 Realtime) → Ads «Заявка» (oid = submission_id); телефон `#ERROR!` → сервер ставит `'` перед = + - @ (`0c299e2`, деплой `ab007c50`) → телефон текстом
 - ⚠️ Заявка, пришедшая при паузе сценария, **теряется** (Albato ответил 200, после Start не обработал) — не ставить GAMB_ADV на паузу; закрывает контур сохранения лидов
-- [ ] Удалить тест-строки во «Входящих» (dd9da8b8, 5c16e8aa, dbdf0083) ДО установки CRM
-- [ ] Влить `sheetSafe` (0c299e2) в ветку `claude/gambarian-lead-pipeline` при слиянии (конфликт в buildPayload)
+- [ ] Удалить тест-строки во «Входящих» (dd9da8b8, 5c16e8aa, dbdf0083, 9e758bea) ДО установки CRM
+- [x] `sheetSafe` влит в пайплайн (только на выходе в Albato, `ed4033f`)
+- [ ] CRM перед установкой: получатели офиса (cityr.ta@, justicetelaviv@ — «ждут подтверждения», MINI-CRM-DESIGN §12 п.2) подтвердить у владельца
 
 P1 — после P0: правки агента (хвосты параметров, ранний `design_version`) → передеплой; аудитории по потоку lp; фильтр внутреннего трафика → Active; Codex по итогу; документы.
 P2 — вторичное: карточки WhatsApp/Telegram, Rich Results, чистка комментариев в head.
