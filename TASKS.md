@@ -4,6 +4,22 @@
 длинной сессии, история диалога — нет (`~/.claude/rules/opus-5-5-working-rules.md` §4).
 Подробности — в документах по ссылкам; здесь только состояние.
 
+## ПРИОРИТЕТ (владелец, 2026-09-23: «опубликуй все теги, чтобы мы протестировали»)
+
+P0 — теги живые на lp и проверены. Пока P0 не закрыт, P1/P2 не трогать.
+1. [x] GTM: workspace 3 vs живая v2 — +18 тегов, 15 триггеров, 19 переменных, Clarity → consent `analytics_storage`, конфликтов 0
+2. [x] GTM: версия 3 «v3 — GA4 + Ads lp (этап 2)» опубликована 2026-09-23; `gtm.js?id=GTM-MFLHW63Q` = version 3, внутри G-P4MQ85ME2D и 3 метки Ads
+3. [x] Сайт: сборка `a5d4b04` из чистого worktree → Cloudflare деплой `a5791b9a` (main); HTML lp = сборка байт в байт (sha256 602d06310dc3b4c3), consent до GTM, `/api/lead` GET 405
+4. [x] Живая проверка: gtm.js 1 раз, хиты GA4 только в G-P4MQ85ME2D, `traffic_type=internal`, Clarity пишет; GA4 Realtime видит поток 15824242008
+5. [x] Прогон на lp (Playwright, обычный UA — headless GA4 отбрасывает как бота): page_view, section_view ×7, scroll_depth ×4, service_select, contact_click whatsapp → Ads `HEcnC…`, contact_click phone (часы 10:00) → Ads `RTTHC…`; всё в GA4 Realtime
+6. [ ] Заявка: секретов в Production **нет** → `/api/lead` 503 → `generate_lead` и Ads «Заявка» не проверить. **Владелец:** задать `ALBATO_WEBHOOK_URL`
+7. [ ] Владелец с телефона: звонок и WhatsApp в рабочее время; заявка — после секрета
+- Кнопки «Позвонить» показываются только в рабочее время (задумано) — проверять днём
+- `page_view` пока без `design_version` (ранний push в сборке — P1)
+
+P1 — после P0: правки агента (хвосты параметров, ранний `design_version`) → передеплой; аудитории по потоку lp; фильтр внутреннего трафика → Active; Codex по итогу; документы.
+P2 — вторичное: карточки WhatsApp/Telegram, Rich Results, чистка комментариев в head.
+
 ## Запуск lp.gambarian.com — `docs/LAUNCH-LP-GAMBARIAN.md`
 
 - [x] Основная версия = final-dev5 без демо-переключателя (деплой `6d3c48d9`)
