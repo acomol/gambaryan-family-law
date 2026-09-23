@@ -805,6 +805,95 @@ const baseLead = (id, extra = {}) => ({
       db._get(id)?.status === 'forwarding' && db._get(id)?.delivered_at === leaseStart, JSON.stringify(db._get(id)));
   }
 
+  /* ============ Round 5 re-review (base 6034203) — admin-delete race,
+     found by Codex. See docs/LEAD-PIPELINE.md "Review 2026-09-23 — round
+     5" for the decision (eventual + bounded deletion, no Durable Object). */
+
+  // T23 [round 5, scenario 1] Our completion CAS commits (changes=1), THEN
+  // a concurrent admin delete wins the race — flips D1 to 'deleted' and
+  // wipes KV — and OUR OWN completion KV write still lands right after,
+  // resurrecting PII. The post-write re-check must undo that within the
+  // same call and report non-ownership so the caller never notifies.
+  {
+    telegramHits = 0;
+    const kv = makeKV();
+    const db = makeD1();
+    const id = crypto.randomUUID();
+    const leaseStart = new Date().toISOString();
+    const receivedAt = new Date().toISOString();
+    db._insert({
+      submission_id: id, received_at: receivedAt, status: 'forwarding', delivered_at: leaseStart,
+      name: 'Race5', phone: '+972500000022', email: 'race5@x.com', payload_json: '{}',
+    });
+    const env = { LEADS_KV: kv, LEADS_DB: db, TELEGRAM_TOKEN: 't', TELEGRAM_CHAT_ID: 'c' };
+    const key = 'lead:' + id;
+    const originalPut = kv.put.bind(kv);
+    let sideEffectFired = false;
+    kv.put = async (k, v, opts) => {
+      if (!sideEffectFired && k === key) {
+        sideEffectFired = true;
+        // Concurrent admin DELETE wins the race, right between our CAS
+        // commit and this KV write landing: D1→deleted, PII scrubbed.
+        await db.prepare(
+          "UPDATE leads SET status='deleted', delivered_at=?1, name=NULL, phone=NULL, email=NULL, payload_json='{}' WHERE submission_id=?2",
+        ).bind(new Date().toISOString(), id).run();
+      }
+      return originalPut(k, v, opts);
+    };
+    const rec = {
+      submission_id: id, fields: { name: 'Race5', phone: '+972500000022', email: 'race5@x.com' },
+      status: 'forwarding', received_at: receivedAt, forwarding_started_at: leaseStart,
+    };
+    const result = await markLeadDelivered(env, key, rec);
+    console.log('\nT23 [round 5, scenario 1] Completion race with a concurrent admin delete must not leave PII resurrected in KV');
+    ok('markLeadDelivered reports failure once the post-write re-check finds the row deleted',
+      result === false, String(result));
+    ok('KV stays wiped (the resurrection our own write caused is undone)', !(await kv.get(key)), await kv.get(key));
+    ok('D1 row stays deleted, PII stays scrubbed', db._get(id)?.status === 'deleted' && db._get(id)?.name == null,
+      JSON.stringify(db._get(id)));
+  }
+
+  // T24 [round 5, scenario 2] Intake's deletion check reads "active", THEN
+  // a concurrent admin delete wins the race — flips D1 to 'deleted' — and
+  // intake's OWN first-ever KV+R2 write for this id still lands right
+  // after, resurrecting fresh PII. The post-write re-check must undo it,
+  // and intake must stop there: no D1 lease claim, no Albato POST.
+  {
+    albatoHits = 0; telegramHits = 0;
+    const kv = makeKV();
+    const db = makeD1();
+    const r2 = makeR2();
+    const id = crypto.randomUUID();
+    const key = 'lead:' + id;
+    // A D1 row already exists (e.g. from an earlier partial attempt) so
+    // the admin UI could see and delete it; intake itself has no KV/R2
+    // copy yet — this is a genuine first-ever write for this key.
+    db._insert({ submission_id: id, received_at: new Date().toISOString(), status: 'pending', payload_json: '{}' });
+    const env = { LEADS_KV: kv, LEADS_DB: db, LEADS_ARCHIVE: r2, ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = true;
+    const originalPut = kv.put.bind(kv);
+    let sideEffectFired = false;
+    kv.put = async (k, v, opts) => {
+      if (!sideEffectFired && k === key) {
+        sideEffectFired = true;
+        await db.prepare(
+          "UPDATE leads SET status='deleted', delivered_at=?1, name=NULL, phone=NULL, email=NULL, payload_json='{}' WHERE submission_id=?2",
+        ).bind(new Date().toISOString(), id).run();
+      }
+      return originalPut(k, v, opts);
+    };
+    const before = albatoHits;
+    const r = await post(env, baseLead(id));
+    console.log('\nT24 [round 5, scenario 2] Intake race with a concurrent admin delete must not leave PII resurrected in KV/R2');
+    ok('D1 row stays deleted, PII stays scrubbed', db._get(id)?.status === 'deleted' && db._get(id)?.name == null,
+      JSON.stringify(db._get(id)));
+    ok('KV stays wiped after the post-write re-check', !kv._has(key));
+    ok('R2 stays wiped too (no re-archived PII)', !r2._keys().some(function (k) { return k.endsWith(id + '.md'); }));
+    ok('no Albato POST fired for a deleted lead', albatoHits === before, 'hits=' + (albatoHits - before));
+    ok('response is a harmless dedup-style 202, not a client-facing error', r.status === 202 && r.body.dedup === true,
+      JSON.stringify(r.body));
+  }
+
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('HARNESS ERROR:', e); process.exit(2); });

@@ -37,3 +37,19 @@ CREATE TABLE IF NOT EXISTS leads (
 CREATE INDEX IF NOT EXISTS idx_leads_received ON leads(received_at DESC);
 CREATE INDEX IF NOT EXISTS idx_leads_status   ON leads(status);
 CREATE INDEX IF NOT EXISTS idx_leads_phone    ON leads(phone);
+
+-- Review 2026-09-23, round 5 addition 2: pipeline-health v1 bookkeeping.
+-- This client has no Telegram configured, so backup/sweep failures were
+-- otherwise silent; the mini-CRM Apps Script polls GET /health (cron-worker)
+-- hourly and emails alex@adfix.co.il on failure. Deliberately NOT in KV —
+-- the account-wide KV free-tier write budget (1000/day) is shared with
+-- Assuta. `job` is 'backup' | 'sweep'; `last_run_at` is set on every run of
+-- that job, `last_ok_at` only when it succeeded (backup: dump wrote AND
+-- integrity_ok; sweep: the run completed without throwing); `detail` is a
+-- small free-form field (e.g. backup's integrity_ok as text) — never PII.
+CREATE TABLE IF NOT EXISTS cron_health (
+  job          TEXT PRIMARY KEY,
+  last_run_at  TEXT,
+  last_ok_at   TEXT,
+  detail       TEXT
+);

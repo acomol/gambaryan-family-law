@@ -1,8 +1,23 @@
 /* gambarian-lead-cron — standalone Cloudflare Worker (Pages Functions have NO Cron).
-   Three scheduled jobs against the SAME KV + D1/R2 stores as /api/lead:
-     • every 5 min  → sweepPending(): D1 probe + lease-protected re-forward, oldest-first
-     • daily 18:00  → reconcile(): four independent storage/delivery checks
-     • daily 02:30  → backupRun(): verify yesterday, dump D1 to R2, purge, heartbeat
+   TWO scheduled jobs against the SAME KV + D1/R2 stores as /api/lead (review
+   round 5 addition: Cloudflare Workers Free allows at most 5 cron triggers
+   PER ACCOUNT — assuta-lead-cron already uses 3, leaving exactly 2 here; a
+   3-cron deploy failed with error 10072):
+     • every 5 min  → sweepPending(): D1 probe + lease-protected re-forward,
+       oldest-first (plus the janitor step inside reconcile(), see below)
+     • hourly       → hourlyRun(): ALWAYS dumps D1→R2 (owner wants an
+       at-most-1h-old snapshot); at UTC hour 2 ALSO runs the once-daily
+       backup extras (verify yesterday, purge expired, Sunday heartbeat);
+       at UTC hour 18 ALSO runs reconcile() (four storage/delivery checks
+       plus the round-5 janitor leg) — gated by event.scheduledTime, not
+       wall-clock time, so a slightly-late invocation still resolves the
+       SCHEDULED hour correctly. See docs/LEAD-PIPELINE.md §11.
+
+   Also exposes GET /health (review round 5, pipeline-health v1 contract) —
+   a JSON status endpoint an external reader (the mini-CRM Apps Script)
+   polls hourly, since this client has no Telegram configured and would
+   otherwise never see a silent backup/sweep failure. See
+   docs/LEAD-PIPELINE.md §12.
 
    Ported from clients/luxemed/New Lending/cron-worker/src/index.js
    (digitalhook-os-, feature/luxemed-new-lending@613cdd30; contract:
@@ -20,6 +35,7 @@ const JSON_HEADERS = { "content-type": "application/json" };
 const BACKUP_PREFIX = "backups/d1/";
 const BACKUP_RETENTION_DAYS = 30;
 const R2_GAP_TTL_SECONDS = 30 * 24 * 60 * 60;
+const JANITOR_WINDOW_DAYS = 30; // review round 5: only chase leftovers for recently-deleted rows
 const D1_COLUMNS = [
   "submission_id", "received_at", "status", "delivered_at", "name", "phone", "email",
   "corrects_submission_id", "form_id", "landing_path", "referrer_host",
@@ -64,6 +80,37 @@ async function queryD1(env, sql, args = []) {
   const prepared = env.LEADS_DB.prepare(sql);
   const statement = args.length ? prepared.bind(...args) : prepared;
   return rowsFrom(await statement.all());
+}
+// Review round 5 addition 2 (pipeline-health v1, owner-approved): records
+// into D1's cron_health table — NEVER KV, the account-wide KV free-tier
+// write budget (1000/day) is shared with Assuta. `last_run_at` is set on
+// EVERY call; `last_ok_at` only when `ok` is true (so a failing run leaves
+// the last KNOWN-GOOD timestamp untouched for the health endpoint to
+// report). Best-effort: health bookkeeping must never break the job it
+// tracks — a D1 error here is swallowed, not rethrown.
+async function recordCronHealth(env, job, ok, detail) {
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return;
+  const now = new Date().toISOString();
+  const detailText = detail == null ? null : String(detail);
+  try {
+    if (ok) {
+      // Numbered placeholders kept in ASCENDING TEXTUAL order matching the
+      // .bind() argument order — the test harness's mock D1 strips numbers
+      // and binds anonymous `?` POSITIONALLY, so reusing ?2 for both
+      // last_run_at and last_ok_at (valid on real D1/SQLite) would silently
+      // shift every later positional bind by one there. `now` is bound
+      // twice, once per placeholder, instead.
+      await env.LEADS_DB.prepare(
+        "INSERT INTO cron_health (job, last_run_at, last_ok_at, detail) VALUES (?1, ?2, ?3, ?4)"
+        + " ON CONFLICT(job) DO UPDATE SET last_run_at=excluded.last_run_at, last_ok_at=excluded.last_ok_at, detail=excluded.detail",
+      ).bind(job, now, now, detailText).run();
+    } else {
+      await env.LEADS_DB.prepare(
+        "INSERT INTO cron_health (job, last_run_at, last_ok_at, detail) VALUES (?1, ?2, NULL, ?3)"
+        + " ON CONFLICT(job) DO UPDATE SET last_run_at=excluded.last_run_at, detail=excluded.detail",
+      ).bind(job, now, detailText).run();
+    }
+  } catch (e) { /* best-effort — never let health bookkeeping break the job it tracks */ }
 }
 async function r2Text(object) {
   if (!object) return null;
@@ -381,7 +428,12 @@ async function isDeleted(env, submissionId) {
 }
 
 async function sweepPending(env) {
-  if (!(await probeD1(env))) return;
+  // Review round 5 addition 2 (pipeline-health v1): last_ok_at records
+  // "this run completed without throwing" — sweepPending's own sections are
+  // already self-contained (each wrapped in its own best-effort try/catch,
+  // see below), so in practice every reached return/end is a success by
+  // this simple, literal contract.
+  if (!(await probeD1(env))) { await recordCronHealth(env, "sweep", true); return; }
 
   // Review round 2, finding D (P2): a KV-phase failure (e.g. LEADS_KV.list()
   // throwing) must not prevent the independent D1-sourced retry loop below
@@ -528,6 +580,7 @@ async function sweepPending(env) {
       }
     } catch (e) { /* best-effort */ }
   }
+  await recordCronHealth(env, "sweep", true);
 }
 
 async function verifyPreviousDump(env) {
@@ -667,22 +720,53 @@ async function weeklyBackupHeartbeat(env, dumpResult, integrityOk) {
   await notifyTelegram(env, `${prefix}: ${count}/7 дампов за неделю, последний ${last}, ${rows} строк`);
 }
 
-async function backupRun(env) {
-  const previous = await verifyPreviousDump(env);
+// Review round 5 addition (owner requirement): Cloudflare Workers Free
+// allows a MAXIMUM of 5 cron triggers PER ACCOUNT, not per worker —
+// assuta-lead-cron already uses 3, leaving exactly 2 for this worker. A
+// 3-cron deploy failed with error 10072. The daily backup extras (verify
+// yesterday, purge expired, Sunday heartbeat — formerly their own
+// "30 2 * * *" trigger) and reconcile (formerly "0 18 * * *") are folded
+// into the SAME hourly "0 * * * *" trigger and gated by the UTC hour of
+// THIS firing (event.scheduledTime, not wall-clock "now" — deterministic
+// even if a scheduled invocation runs slightly late).
+//
+// dumpD1ToR2 runs FIRST, unconditionally, every hour — the owner wants an
+// at-most-1h-old snapshot, and an exception in a daily-only step must never
+// skip it. Each daily-only step keeps its own try/catch (dumpD1ToR2 and
+// verifyPreviousDump are already self-contained and never throw; reconcile
+// wraps each of its own legs) so one failing step cannot block another.
+async function hourlyRun(env, now) {
+  now = now || new Date();
+  const utcHour = now.getUTCHours();
   const dumpResult = await dumpD1ToR2(env);
-  try {
-    await purgeExpiredDumps(env);
-  } catch (error) {
-    await notifyTelegram(env, `⚠️ не удалось удалить просроченные бэкапы: ${esc(error && error.message)}`);
-  }
-  if (isJerusalemSunday()) {
+  // Review round 5 addition 2 (pipeline-health v1): "backup" is ok only
+  // when the dump itself succeeded AND its same-run integrity check passed
+  // — matching the coordinator's exact contract, not merely "dumpD1ToR2 was
+  // called". Runs every hour, same cadence as the dump itself.
+  await recordCronHealth(env, "backup", !!dumpResult && dumpResult.integrity_ok === true,
+    dumpResult ? `integrity_ok=${dumpResult.integrity_ok}` : "dump_failed");
+
+  if (utcHour === 2) {
+    const previous = await verifyPreviousDump(env);
     try {
-      await weeklyBackupHeartbeat(env, dumpResult,
-        previous.state === 0 && !!dumpResult && dumpResult.integrity_ok === true);
+      await purgeExpiredDumps(env);
     } catch (error) {
-      await notifyTelegram(env, `⚠️ не удалось проверить недельный бэкап: ${esc(error && error.message)}`);
+      await notifyTelegram(env, `⚠️ не удалось удалить просроченные бэкапы: ${esc(error && error.message)}`);
+    }
+    if (isJerusalemSunday(now)) {
+      try {
+        await weeklyBackupHeartbeat(env, dumpResult,
+          previous.state === 0 && !!dumpResult && dumpResult.integrity_ok === true);
+      } catch (error) {
+        await notifyTelegram(env, `⚠️ не удалось проверить недельный бэкап: ${esc(error && error.message)}`);
+      }
     }
   }
+
+  if (utcHour === 18) {
+    await reconcile(env);
+  }
+
   return dumpResult;
 }
 
@@ -800,12 +884,59 @@ async function reconcileR2Presence(env) {
   }
 }
 
+// Review round 5 (Codex-found race on 6034203, mirrors
+// functions/api/lead.js's wipeIfDeletedAfterWrite): admin DELETE is not
+// serialized against a concurrent writer for the same submission_id, so a
+// narrow race can resurrect a KV/R2 copy even after lead.js's own
+// request-time re-checks (e.g. the writer's KV put and lead.js's re-check
+// both landed inside the SAME instant the janitor cannot subdivide further
+// — vanishingly rare, but not provably zero without a Durable Object).
+// DECISION (documented in docs/LEAD-PIPELINE.md): no full serialization —
+// deletion is EVENTUAL and BOUNDED to one reconcile cycle instead. For
+// every D1 row marked 'deleted' within JANITOR_WINDOW_DAYS, make sure the
+// KV key and R2 archive object are ABSENT — an idempotent no-op wipe, safe
+// to re-run every cycle. The alert reports COUNTS ONLY, never a
+// submission_id or any field value: the row is a deletion tombstone by
+// definition, and an ops alert must not become a second PII leak.
+async function janitorPurgeDeletedLeads(env) {
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return;
+  const since = new Date(Date.now() - JANITOR_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const rows = await queryD1(env,
+    "SELECT submission_id, received_at FROM leads WHERE status='deleted' AND delivered_at >= ?1", [since]);
+  let kvWiped = 0;
+  let r2Wiped = 0;
+  for (const row of rows) {
+    const id = String(row.submission_id);
+    if (env.LEADS_KV && typeof env.LEADS_KV.get === "function" && typeof env.LEADS_KV.delete === "function") {
+      try {
+        if ((await env.LEADS_KV.get(`lead:${id}`)) != null) {
+          await env.LEADS_KV.delete(`lead:${id}`);
+          kvWiped++;
+        }
+      } catch (e) { /* best-effort — this row is retried on the next cycle */ }
+    }
+    if (row.received_at && env.LEADS_ARCHIVE && typeof env.LEADS_ARCHIVE.get === "function" && typeof env.LEADS_ARCHIVE.delete === "function") {
+      const r2Key = `leads/${String(row.received_at).slice(0, 10)}/${id}.md`;
+      try {
+        if ((await env.LEADS_ARCHIVE.get(r2Key)) != null) {
+          await env.LEADS_ARCHIVE.delete(r2Key);
+          r2Wiped++;
+        }
+      } catch (e) { /* best-effort */ }
+    }
+  }
+  if (kvWiped > 0 || r2Wiped > 0) {
+    await notifyTelegram(env, `🧹 janitor: очищено ${kvWiped} KV + ${r2Wiped} R2 копий удалённых лидов`);
+  }
+}
+
 async function reconcile(env) {
   const legs = [
     ["KV↔Sheet", reconcileSheetKv],
     ["KV→D1", reconcileKvToD1],
     ["D1 pending|forwarding→KV", reconcileD1ToKv],
     ["R2 presence", reconcileR2Presence],
+    ["Janitor: удалённые лиды", janitorPurgeDeletedLeads],
   ];
   for (const [name, run] of legs) {
     try {
@@ -816,12 +947,82 @@ async function reconcile(env) {
   }
 }
 
+// Review round 5 addition 2 (pipeline-health v1, owner-approved contract):
+// this client has no Telegram configured, so backup/sweep failures were
+// otherwise silent. The mini-CRM Apps Script polls GET /health hourly and
+// emails alex@adfix.co.il on failure — the CRM-side reader is built against
+// this EXACT shape, so it must not drift without updating both sides.
+const HEALTH_JSON_HEADERS = { "content-type": "application/json", "cache-control": "no-store" };
+function healthJson(status, body) {
+  return new Response(JSON.stringify(body), { status, headers: HEALTH_JSON_HEADERS });
+}
+async function stuckLeadsCount(env) {
+  const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const rows = await queryD1(env,
+    "SELECT COUNT(*) AS n FROM leads WHERE status IN ('pending','forwarding') AND received_at < ?1", [cutoff]);
+  return rows && rows[0] ? Number(rows[0].n) || 0 : 0;
+}
+async function cronHealthRow(env, job) {
+  const rows = await queryD1(env, "SELECT last_run_at, last_ok_at, detail FROM cron_health WHERE job=?1", [job]);
+  return (rows && rows[0]) || null;
+}
+// backup's `detail` is written by recordCronHealth as "integrity_ok=true" /
+// "integrity_ok=false" / "dump_failed" on EVERY run (success or failure),
+// so this reflects the LATEST attempt's integrity result — not just the
+// last successful one, which last_ok_at already covers separately.
+function parseIntegrityOk(detail) {
+  if (detail === "integrity_ok=true") return true;
+  if (detail === "integrity_ok=false") return false;
+  return null;
+}
+async function buildHealthResponse(env) {
+  let backupRow;
+  let sweepRow;
+  let stuckLeads;
+  try {
+    backupRow = await cronHealthRow(env, "backup");
+    sweepRow = await cronHealthRow(env, "sweep");
+    stuckLeads = await stuckLeadsCount(env);
+  } catch (e) {
+    return healthJson(503, { schema: 1, error: "d1_unavailable" });
+  }
+  return healthJson(200, {
+    schema: 1,
+    generated_at: new Date().toISOString(),
+    backup: {
+      last_ok_at: (backupRow && backupRow.last_ok_at) || null,
+      last_run_at: (backupRow && backupRow.last_run_at) || null,
+      integrity_ok: parseIntegrityOk(backupRow && backupRow.detail),
+    },
+    sweep: {
+      last_ok_at: (sweepRow && sweepRow.last_ok_at) || null,
+      last_run_at: (sweepRow && sweepRow.last_run_at) || null,
+    },
+    stuck_leads: stuckLeads,
+    albato_configured: !!env.ALBATO_WEBHOOK_URL,
+  });
+}
+
 export default {
   async scheduled(event, env, ctx) {
-    if (event.cron === "0 18 * * *") ctx.waitUntil(reconcile(env));
-    else if (event.cron === "30 2 * * *") ctx.waitUntil(backupRun(env));
-    else if (event.cron === "*/5 * * * *") ctx.waitUntil(sweepPending(env));
+    if (event.cron === "*/5 * * * *") ctx.waitUntil(sweepPending(env));
+    // Round 5 addition: the daily backup/reconcile crons were merged into
+    // this single hourly trigger (5-cron-per-account limit) — hourlyRun
+    // gates its own daily-only steps by the UTC hour of event.scheduledTime.
+    else if (event.cron === "0 * * * *") ctx.waitUntil(hourlyRun(env, new Date(event.scheduledTime)));
     else ctx.waitUntil(notifyTelegram(env, "⚠️ незнакомый cron: " + event.cron));
+  },
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname !== "/health") {
+      return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+    }
+    if (request.method !== "GET") {
+      return new Response("method not allowed", {
+        status: 405, headers: { "content-type": "text/plain; charset=utf-8", allow: "GET" },
+      });
+    }
+    return buildHealthResponse(env);
   },
 };
 
@@ -835,4 +1036,5 @@ export {
   claimD1Lease,
   insertD1IfMissing,
   upsertD1Guarded,
+  hourlyRun,
 };
