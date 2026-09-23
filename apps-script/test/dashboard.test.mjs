@@ -347,6 +347,13 @@ test('setupCrm(): «Сегодня» и «Сводка» защищены цел
   assert.deepEqual(todayProt._emails(), ['alex@adfix.co.il'], 'только владелец скрипта — офис не может отредактировать/отсортировать');
   assert.equal(todayProt.isWarningOnly(), false, 'жёсткая защита (не warning-only) — иначе офис может сломать формулы');
 
+  // v1: «Сводка» отложена (SUMMARY_SHEET_ENABLED_ = false) — setupCrm её не трогает.
+  assert.equal(ctx.SUMMARY_SHEET_ENABLED_, false, 'v1: «Сводка» выключена');
+  assert.equal(summary.getProtections('SHEET').length, 0, 'v1: setupCrm не строит и не защищает «Сводку»');
+
+  // С включённым флагом (v2) — прежнее требование: защита всего листа.
+  ctx.SUMMARY_SHEET_ENABLED_ = true;
+  ctx.setupCrm();
   const summaryProt = summary.getProtections('SHEET')[0];
   assert.ok(summaryProt, '«Сводка» должна получить защиту всего листа');
   assert.deepEqual(summaryProt._emails(), ['alex@adfix.co.il']);

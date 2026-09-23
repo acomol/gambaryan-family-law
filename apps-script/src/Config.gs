@@ -12,6 +12,11 @@
 var SPREADSHEET_ID_ = '1_jhfr7ucoKkbrwWlUQoS9wyw7uHYhe_oOutKpTlcoV4';
 var SETTINGS_SHEET_NAME_ = 'Настройки';
 
+// v1 (владелец 2026-09-23: «запустить сейчас», «не усложняй»): лист «Сводка» и
+// воскресная сводка владельцу отложены до v2 — в день запуска данных нет,
+// графики пустые. Код сохранён: включить = true и повторно запустить setupCrm().
+var SUMMARY_SHEET_ENABLED_ = false;
+
 var DEFAULT_SETTINGS_ = {
   tz: 'Asia/Jerusalem',
   business_days: '0,1,2,3,4', // 0=вс..6=сб (design §5.5: вс-чт)

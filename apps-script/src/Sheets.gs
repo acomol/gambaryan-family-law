@@ -86,7 +86,7 @@ function setupCrm() {
   var requests = ensureSheet_(ss, SHEET_REQUESTS_);
   var service = ensureSheet_(ss, SHEET_SERVICE_);
   var today = ensureSheet_(ss, SHEET_TODAY_);
-  var summary = ensureSheet_(ss, SHEET_SUMMARY_);
+  var summary = SUMMARY_SHEET_ENABLED_ ? ensureSheet_(ss, SHEET_SUMMARY_) : null;
   var journal = ensureSheet_(ss, SHEET_JOURNAL_);
   var settings = ensureSheet_(ss, SETTINGS_SHEET_NAME_);
 
@@ -117,7 +117,7 @@ function setupCrm() {
   // (тот же приём, что buildRequestRowLink_ в Notifications.gs, design item
   // "resolved at send time" — здесь "resolved at setup time").
   ensureTodayFormulas_(today, requests);
-  ensureSummaryFormulas_(summary, requests, service);
+  if (summary) ensureSummaryFormulas_(summary, requests, service);
   // P1 (build-round blocker "data reaches a sheet the office sees"): «Сводка» и
   // «Сегодня» — весь лист только для чтения офисом (design docs/MINI-CRM-DESIGN.md
   // §2 «Защита: весь лист»). Раньше ни один код не защищал их вовсе — любой
@@ -125,7 +125,7 @@ function setupCrm() {
   // ЦЕЛИКОМ формулами SORT/FILTER — случайная сортировка/правка офисом здесь
   // разрушает диапазон (P1 "office sheet breaks when sorted/filtered").
   protectOwnerOnlySheet_(today, 'Сегодня — только для чтения офисом, весь лист формулы (design docs/MINI-CRM-DESIGN.md §2)');
-  protectOwnerOnlySheet_(summary, 'Сводка — только владелец скрипта, весь лист формулы/графики (design docs/MINI-CRM-DESIGN.md §2)');
+  if (summary) protectOwnerOnlySheet_(summary, 'Сводка — только владелец скрипта, весь лист формулы/графики (design docs/MINI-CRM-DESIGN.md §2)');
 
   Logger.log('setupCrm: готово. Входящие=%s строк, Заявки=%s строк, Служебное=%s строк',
     intake.getLastRow(), requests.getLastRow(), service.getLastRow());

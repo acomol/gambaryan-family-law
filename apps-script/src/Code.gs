@@ -70,7 +70,9 @@ function tick() {
 
     stepResults.sla = runStepSafely_('sla', function () { processSla_(ss, config, now, reqValues, reqHeaderMap); });
     stepResults.digest = runStepSafely_('digest', function () { maybeSendDigest_(ss, config, now, reqValues, reqHeaderMap); });
-    stepResults.weekly_summary = runStepSafely_('weekly_summary', function () { maybeSendWeeklySummary_(ss, config, now); });
+    if (SUMMARY_SHEET_ENABLED_) {
+      stepResults.weekly_summary = runStepSafely_('weekly_summary', function () { maybeSendWeeklySummary_(ss, config, now); });
+    }
 
     // design fix item5: письма, которые не удалось отправить (pending/unknown/
     // failed в «Журнале»), больше не теряются навсегда — независимый ретрай.
