@@ -379,11 +379,13 @@ function protectIntakeSheet_(sheet, journal) {
   protection.setDescription('Входящие — только Albato и владелец скрипта (design §2)');
   var albatoEmail = readSingleSetting_('albato_editor_email');
   var owner = Session.getEffectiveUser().getEmail(); // review №4: может быть '' без scope userinfo.email
-  resetEditorsTo_(protection, [owner, albatoEmail]);
-  if (protection.canDomainEdit()) protection.setDomainEdit(false);
-
+  // Живой прогон №2 2026-09-23: на защите «только предупреждение» Google
+  // запрещает и setDomainEdit (как removeEditor) — сначала режим, потом
+  // редакторы и домен, и только для жёсткой защиты.
   if (albatoEmail) {
     protection.setWarningOnly(false);
+    resetEditorsTo_(protection, [owner, albatoEmail]);
+    if (protection.canDomainEdit()) protection.setDomainEdit(false);
   } else {
     protection.setWarningOnly(true);
     if (journal) {

@@ -169,9 +169,11 @@ test('protectIntakeSheet_: albato_editor_email пуст -> защита в ре�
   const prot = intake._protections.filter((p) => p._type === 'SHEET')[0];
   assert.ok(prot, 'защита листа должна быть создана');
   assert.equal(prot.isWarningOnly(), true, 'без albato_editor_email защита должна быть warning-only — иначе Albato молча теряет доступ и лид');
-  assert.deepEqual(prot._emails(), ['alex@adfix.co.il']);
   assert.equal(journal._data.length, 1, 'предупреждение должно быть записано в Журнал');
   assert.match(String(journal._data[0][3]), /albato_editor_email/);
+  // Живой прогон №2 2026-09-23: у warning-only защиты редакторов и домен не трогаем
+  // (Google бросает на removeEditor/setDomainEdit). Повторный setupCrm не падает:
+  assert.doesNotThrow(() => ctx.protectIntakeSheet_(intake, journal), 'повторный вызов на уже warning-only защите');
 });
 
 test('protectIntakeSheet_: albato_editor_email заполнен -> жёсткая защита (не warning-only), оба редактора', () => {

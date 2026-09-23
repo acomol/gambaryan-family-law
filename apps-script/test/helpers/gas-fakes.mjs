@@ -41,8 +41,14 @@ function makeFakeProtection(initialEmails, type) {
     },
     setDescription: function (d) { description = d; return protection; },
     getDescription: function () { return description; },
-    canDomainEdit: function () { return domainEdit; },
-    setDomainEdit: function (v) { domainEdit = v; return protection; },
+    // Real run #2 2026-09-23: on a warning-only protection canDomainEdit() reported true
+    // (everyone may edit after a warning), which is why setDomainEdit was reached and threw.
+    canDomainEdit: function () { return warningOnly ? true : domainEdit; },
+    setDomainEdit: function (v) {
+        // Real run #2 2026-09-23: same restriction as removeEditor on warning-only protections.
+      if (warningOnly) throw new Error("The method 'setDomainEdit' is not available on Protection objects where isWarningOnly is true.");
+      domainEdit = v; return protection;
+    },
     setWarningOnly: function (v) { warningOnly = v; return protection; },
     isWarningOnly: function () { return warningOnly; },
     _emails: function () { return emails.slice(); }
