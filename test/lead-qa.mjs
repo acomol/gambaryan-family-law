@@ -160,11 +160,18 @@ const baseLead = (id, extra = {}) => ({
     ok('202 accepted (not lost)', r.status === 202 && r.body.ok === true, JSON.stringify(r.body));
     ok('D1 row status=pending (recoverable)', env.LEADS_DB._get(idDown)?.status === 'pending');
     ok('KV retained the pending lead', env.LEADS_KV._size() === 1);
-    // sweep (triggered by the NEXT request's waitUntil, excluding its own key) delivers the earlier pending lead
+    // Review round 7, finding (a): the opportunistic per-request sweep was
+    // removed from onRequest's waitUntil — it ignored cron-worker's own
+    // exponential backoff and could add its own extra Albato attempts +
+    // KV.put on top of cron-worker's separate 5-minute sweep, contributing
+    // to the KV write budget overrun. Recovery of an EARLIER pending lead
+    // is cron-worker's job exclusively now; a later, unrelated POST must
+    // NOT also sweep it.
     albatoUp = true;
     const trigger = await post(env, baseLead(idDown2));
-    await trigger.wait();
-    ok('sweep delivered the earlier pending lead', env.LEADS_DB._get(idDown)?.status === 'delivered');
+    await trigger.wait(); // await any background waitUntil work before asserting — a real repro, not a timing artifact
+    ok('a later unrelated POST does not opportunistically sweep the earlier pending lead (recovery is cron-worker’s job now)',
+      env.LEADS_DB._get(idDown)?.status === 'pending', JSON.stringify(env.LEADS_DB._get(idDown)));
   }
 
   // T3 — Idempotency: same submission_id twice → 1 row, no dup, no 2nd Albato hit

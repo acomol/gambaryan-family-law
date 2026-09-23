@@ -170,7 +170,15 @@ async function readBodyWithLimit(request, maxBytes) {
    KV(pending, no TTL) → R2 archive → D1 insert-if-missing → D1 lease
    (cross-isolate, exactly-one-forward) → Albato (timeout) → markDelivered
    (D1 + KV TTL 7d) → optional Telegram; 502 only if BOTH the KV write and the
-   delivery failed. `waitUntil(sweepPendingLeads)` re-forwards stragglers.
+   delivery failed. ONE delivery attempt per request — no opportunistic
+   waitUntil(sweepPendingLeads) here (removed in review round 7, finding a:
+   it ignored cron-worker's exponential backoff and could add its own extra
+   Albato attempts + KV.put on top of cron-worker's own 5-minute sweep,
+   contributing to the KV write budget overrun). A lead left 'pending' is
+   durably persisted for cron-worker/src/index.js's sweepPending to retry
+   on its own schedule — sweepPendingLeads below still exists and is
+   exercised directly by test/lead-qa.mjs, but is no longer called from any
+   production request path.
 
    Bindings (Cloudflare Pages dashboard):
      • KV namespace bound as   LEADS_KV       (required to activate — durable store)
@@ -1019,9 +1027,14 @@ export async function onRequest(context) {
     if (activeLeadForwards.get(key) === work) activeLeadForwards.delete(key);
   }
 
-  if (typeof context.waitUntil === "function") {
-    context.waitUntil(sweepPendingLeads(env, key));
-  }
+  // Review round 7, finding (a) (Codex gpt-6-sol on live 0aaf9e1): this
+  // opportunistic per-request sweep ignored the exponential backoff
+  // cron-worker's OWN sweep respects — one pending lead could rack up 2
+  // extra Albato attempts and 4 KV.put within a SINGLE request's waitUntil,
+  // on top of whatever cron-worker was already doing on its own 5-minute
+  // schedule. Retries belong to cron-worker exclusively now; intake keeps
+  // its own single delivery attempt (processDurableLead above), which
+  // already durably persists a pending lead for cron-worker to pick up.
   return json(result.status, result.body);
 }
 

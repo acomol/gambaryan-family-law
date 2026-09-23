@@ -499,6 +499,23 @@ async function recordFailedAttempt(env, submissionId, priorAttemptCount) {
   }
   return { attemptCount, nextAttemptAt };
 }
+// Review round 7, finding P1(b) (Codex gpt-6-sol on live 0aaf9e1): D1 is
+// the SOLE source of truth for backoff. KV metadata's own next_attempt_at
+// (round 6) could silently fail to persist — see the removed claim-write
+// note in sweepPending's KV loop below — so the KV-loop candidate filter
+// must no longer trust it at all; every candidate's backoff is read here,
+// directly from D1, before any claim or KV write.
+async function readBackoffState(env, submissionId) {
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return null;
+  try {
+    const found = await env.LEADS_DB.prepare(
+      "SELECT attempt_count, next_attempt_at FROM leads WHERE submission_id=?1",
+    ).bind(submissionId).all();
+    const row = found && found.results && found.results[0];
+    if (!row) return null;
+    return { attemptCount: row.attempt_count || 0, nextAttemptAt: row.next_attempt_at || null };
+  } catch (e) { return null; } // can't confirm — proceed; claimD1Lease's own CAS still protects correctness, worst case one wasted claim attempt
+}
 
 async function sweepPending(env) {
   // Review round 6, finding 4: sweep's health must reflect EVERY phase, not
@@ -527,8 +544,10 @@ async function sweepPending(env) {
       const candidates = keys
         .filter(k => {
           const m = k.metadata || {};
-          // Round 6, finding 3c: skip a lead still inside its backoff window.
-          if (m.next_attempt_at && new Date(m.next_attempt_at).getTime() > now) return false;
+          // Round 7, finding P1(b): the KV-metadata next_attempt_at check
+          // that lived here in round 6 is REMOVED — it could never be
+          // trusted (see the note below on the removed claim-write); D1 is
+          // read per-candidate instead, right before any claim.
           if (m.status === "pending") return true;
           const started = new Date(m.forwarding_started_at || 0).getTime();
           return m.status === "forwarding" && started > 0 && (now - started) >= FORWARD_LEASE_MS;
@@ -559,6 +578,22 @@ async function sweepPending(env) {
         // (2 wasted KV.put) every single sweep forever.
         if (!env.ALBATO_WEBHOOK_URL) continue;
 
+        // Review round 7, finding P1(b) (Codex gpt-6-sol on live 0aaf9e1):
+        // read the backoff state from D1 — the source of truth — BEFORE
+        // any claim or KV write. Repro: the round-6 KV-loop wrote
+        // 'forwarding' (claim) and then, on a FAST Albato failure,
+        // 'pending'+next_attempt_at (release) to the SAME key within the
+        // same second — Cloudflare KV allows only 1 write/sec/key
+        // (https://developers.cloudflare.com/kv/platform/limits/), so the
+        // second write was silently rejected and the backoff never landed
+        // in KV at all (12 sweeps -> 12 accepted + 12 rejected puts,
+        // attempt_count stuck at 1 in D1). Trusting KV metadata for
+        // backoff was therefore unsafe; D1 always has it (recordFailedAttempt
+        // writes there directly, no KV involved).
+        const backoffState = await readBackoffState(env, submissionId);
+        if (backoffState && backoffState.nextAttemptAt && new Date(backoffState.nextAttemptAt).getTime() > now) continue;
+        rec.attempt_count = (backoffState && backoffState.attemptCount) || 0;
+
         const startedAt = new Date().toISOString();
         const claim = await claimD1Lease(env, rec, startedAt);
         if (claim === "delivered") {
@@ -568,11 +603,19 @@ async function sweepPending(env) {
           continue;
         }
         if (claim !== "claimed") continue;
+        attempts++;
 
+        // Review round 7, finding P1(b): NO separate "forwarding" KV write
+        // here anymore. claimD1Lease just above is already the atomic
+        // cross-isolate arbiter — a KV write here, followed by a SECOND
+        // write below once the outcome is known, is exactly the
+        // same-key-same-second double write that silently lost the
+        // backoff write to Cloudflare's 1-write/sec/key limit (see the
+        // note above readBackoffState's call). Track the in-flight state
+        // in memory only; exactly ONE KV.put happens below, for the FINAL
+        // outcome of this attempt.
         rec.status = "forwarding";
         rec.forwarding_started_at = startedAt;
-        await putRecord(env, key.name, rec);
-        attempts++;
 
         // Review round 6, finding 2 (Codex "send-after-delete"): the claim
         // above only proves ownership AT CLAIM TIME — re-check right before
@@ -675,9 +718,14 @@ async function sweepPending(env) {
           const claim = await claimD1Lease(env, rec, startedAt);
           if (claim !== "claimed") continue;
           d1Attempts++;
+          // Review round 7, finding P1(b): same fix as the KV loop above —
+          // no standalone "forwarding" KV write here; exactly ONE KV.put
+          // for this candidate, reflecting the final outcome below. This
+          // loop's OWN candidate query already reads next_attempt_at
+          // straight from D1 (see the WHERE clause above), so it never had
+          // the backoff-source bug — only the double-write-per-run one.
           rec.status = "forwarding";
           rec.forwarding_started_at = startedAt;
-          await putRecord(env, key, rec);
 
           // Review round 6, finding 2: same pre-POST re-check as the KV loop.
           if (await wipeIfDeletedAfterWrite(env, key, submissionId, rec.received_at)) continue;
