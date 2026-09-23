@@ -142,8 +142,15 @@ Webhook не вызывается, заявка не логируется, `lf_h
 - ошибки ввода, отсутствие сети, timeout, временная недоступность и прочие
   сбои доставки показываются как разные причины; поля всегда сохраняются;
 - двойная отправка блокируется; ручный повтор неизменённых данных сохраняет
-  тот же `submission_id`; сам endpoint не хранит состояние — dedup обязан быть
-  настроен в Albato/destination;
+  тот же `submission_id`. С `2026-09-23` в `functions/api/lead.js` есть
+  опциональный write-through пайплайн (`docs/LEAD-PIPELINE.md`): пока
+  Cloudflare KV/D1/R2 не привязаны (текущее состояние — **не активировано**),
+  endpoint по-прежнему не хранит состояние и dedup обязан быть настроен в
+  Albato/destination, как раньше. После активации endpoint сам дедуплицирует
+  повторные POST с тем же `submission_id` (не форвардит в Albato второй раз),
+  а браузер получает write-ahead outbox (localStorage) с автоматическими
+  ретраями и dead-letter маяком `POST /api/lead-dead-letter` (агрегатный
+  счётчик, без PII) при потере записи по TTL;
 - новая принятая заявка → `generate_lead` с `form_id`, `submission_id`,
   `seconds_to_lead` (видимое время); исправление → `lead_corrected` с новым ID
   и `corrects_submission_id`. Ошибка → `form_error` с `error_type` и `http_status`

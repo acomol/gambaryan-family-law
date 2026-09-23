@@ -142,6 +142,389 @@ async function readBodyWithLimit(request, maxBytes) {
   return { text: text, tooLarge: false };
 }
 
+/* ==========================================================================
+   Durable lead pipeline — ported from the ADFIX "never lose a lead" reference
+   (clients/luxemed/New Lending/functions/lead.js, digitalhook-os-,
+   feature/luxemed-new-lending@613cdd30; contract:
+   knowledge/web-dev/ADFIX-SITE-SYSTEM-PLAYBOOK.md §1.6-1.7). Order per §1.6 L4:
+   KV(pending, no TTL) → R2 archive → D1 insert-if-missing → D1 lease
+   (cross-isolate, exactly-one-forward) → Albato (timeout) → markDelivered
+   (D1 + KV TTL 7d) → optional Telegram; 502 only if BOTH the KV write and the
+   delivery failed. `waitUntil(sweepPendingLeads)` re-forwards stragglers.
+
+   Bindings (Cloudflare Pages dashboard):
+     • KV namespace bound as   LEADS_KV       (required to activate — durable store)
+     • D1 database bound as    LEADS_DB       (optional — queryable mirror + forward lease)
+     • R2 bucket bound as      LEADS_ARCHIVE  (optional — append-only Markdown audit trail)
+     • env  ALBATO_WEBHOOK_URL  (existing Gambaryan secret name — unchanged)
+     • env  TELEGRAM_TOKEN / TELEGRAM_CHAT_ID  (optional — enables alerts)
+   Until LEADS_KV is bound, onRequest() below forwards EXACTLY as it did before
+   this change (see hasDurableStorage()) — the current deploy cannot get worse. */
+
+const LEAD_TTL_SECONDS = 7 * 24 * 60 * 60;       // delivered leads kept 7d; pending kept WITHOUT TTL
+const LEAD_SWEEP_LIMIT = 10;                      // re-forwards per request-triggered sweep
+const LEAD_ALERT_AFTER_MS = 15 * 60 * 1000;       // pending longer than this → undelivered alert (once)
+const LEAD_FORWARD_LEASE_MS = 15 * 1000;          // > Albato timeout; expired leases may be taken over
+const HP_COUNTER_TTL_SECONDS = 90 * 24 * 60 * 60; // aggregate-only honeypot visibility
+const activeLeadForwards = new Map();             // same-isolate guard; D1 is the cross-isolate guard
+const deliveredLeadsInProcess = new Set();        // protects this isolate if both final KV/D1 writes fail
+
+const D1_COLUMNS = [
+  "submission_id", "received_at", "status", "delivered_at", "name", "phone", "email",
+  "corrects_submission_id", "form_id", "landing_path", "referrer_host",
+  "utm_source", "utm_medium", "utm_campaign", "utm_id", "utm_term", "utm_content",
+  "gclid", "gbraid", "wbraid", "fbclid", "payload_json",
+];
+
+function hasDurableStorage(env) {
+  return !!(env && env.LEADS_KV && typeof env.LEADS_KV.put === "function");
+}
+
+function escTelegram(s) {
+  return String(s == null ? "" : s).replace(/[<>&]/g, function (c) {
+    return { "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c];
+  });
+}
+
+/* ---- Telegram notify (no-op until TELEGRAM_TOKEN + TELEGRAM_CHAT_ID are set) ---- */
+async function notifyTelegram(env, text) {
+  if (!env.TELEGRAM_TOKEN || !env.TELEGRAM_CHAT_ID) return false;
+  try {
+    var res = await fetch("https://api.telegram.org/bot" + env.TELEGRAM_TOKEN + "/sendMessage", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chat_id: env.TELEGRAM_CHAT_ID, text: text, parse_mode: "HTML", disable_web_page_preview: true,
+      }),
+    });
+    return !!(res && res.ok);
+  } catch (e) { return false; }
+}
+function newLeadTelegramMessage(f) {
+  return "🔥 <b>Новая заявка — Гамбарян</b>\n"
+    + "📞 <b>" + escTelegram(f.phone) + "</b>\n"
+    + "👤 " + escTelegram(f.name) + "\n"
+    + (f.email ? "✉️ " + escTelegram(f.email) + "\n" : "")
+    + "Источник: " + escTelegram(f.utm_source || "(direct)") + "\nID: " + escTelegram(f.submission_id);
+}
+function undeliveredTelegramMessage(rec) {
+  var f = rec.fields || {};
+  return "⚠️ <b>НЕДОСТАВКА лида в Albato</b>\n"
+    + "Лид сохранён у нас, но Albato его не принял.\n"
+    + "📞 " + escTelegram(f.phone) + " · 👤 " + escTelegram(f.name) + "\nID: " + escTelegram(f.submission_id) + "\n"
+    + "Получен: " + escTelegram(rec.received_at) + ". Проверьте интеграцию Albato.";
+}
+
+/* ---- D1 mirror + atomic forwarding lease. KV remains the durable source of
+   truth; D1 arbitrates cross-isolate forwarding so exactly one isolate POSTs
+   to Albato per lead. A bound-D1 query failure leaves the KV lead pending for
+   a later sweep instead of risking a duplicate Albato POST. ---- */
+function leadD1Values(rec) {
+  var f = rec.fields || {};
+  return [
+    rec.submission_id, rec.received_at, rec.status,
+    rec.delivered_at || (rec.status === "forwarding" ? rec.forwarding_started_at : null) || null,
+    f.name || null, f.phone || null, f.email || null,
+    f.corrects_submission_id || null, f.form_id || null, f.landing_path || null, f.referrer_host || null,
+    f.utm_source || null, f.utm_medium || null, f.utm_campaign || null,
+    f.utm_id || null, f.utm_term || null, f.utm_content || null,
+    f.gclid || null, f.gbraid || null, f.wbraid || null, f.fbclid || null,
+    JSON.stringify(f),
+  ];
+}
+function d1Changes(result) {
+  return Number((result && result.meta && result.meta.changes) ?? (result && result.changes) ?? 0);
+}
+async function insertLeadD1IfMissing(env, rec) {
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return null;
+  try {
+    var result = await env.LEADS_DB.prepare(
+      "INSERT INTO leads (" + D1_COLUMNS.join(", ") + ")"
+      + " VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)"
+      + " ON CONFLICT(submission_id) DO NOTHING"
+    ).bind(...leadD1Values(rec)).run();
+    return d1Changes(result);
+  } catch (e) { return null; }
+}
+async function upsertLeadD1(env, rec) {
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return false;
+  try {
+    await env.LEADS_DB.prepare(
+      "INSERT INTO leads (" + D1_COLUMNS.join(", ") + ")"
+      + " VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)"
+      + " ON CONFLICT(submission_id) DO UPDATE SET"
+      + " status=CASE WHEN leads.status='delivered' THEN leads.status ELSE excluded.status END,"
+      + " delivered_at=CASE WHEN leads.status='delivered' THEN leads.delivered_at ELSE excluded.delivered_at END"
+    ).bind(...leadD1Values(rec)).run();
+    return true;
+  } catch (e) { return false; }
+}
+async function claimLeadD1Lease(env, submissionId, startedAt) {
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return null;
+  var expiredBefore = new Date(new Date(startedAt).getTime() - LEAD_FORWARD_LEASE_MS).toISOString();
+  try {
+    var result = await env.LEADS_DB.prepare(
+      "UPDATE leads SET status='forwarding', delivered_at=?1"
+      + " WHERE submission_id=?2"
+      + "   AND (status='pending' OR (status='forwarding' AND delivered_at<=?3))"
+    ).bind(startedAt, submissionId, expiredBefore).run();
+    if (d1Changes(result) > 0) return "claimed";
+    var found = await env.LEADS_DB.prepare(
+      "SELECT status, delivered_at FROM leads WHERE submission_id=?1"
+    ).bind(submissionId).all();
+    var row = found && found.results && found.results[0];
+    if (row && row.status === "delivered") return "delivered";
+    if (row && row.status === "forwarding" && row.delivered_at === startedAt) return "claimed";
+    if (row && row.status === "forwarding") return "pending";
+    return null;
+  } catch (e) { return null; }
+}
+
+/* ---- R2 immutable archive: one Markdown file per lead. NO-OP until an R2
+   bucket is bound as LEADS_ARCHIVE. Append-only audit trail (human-readable). ---- */
+function leadToMarkdown(rec) {
+  var f = rec.fields || {};
+  var row = function (k, v) { return v ? "- **" + k + ":** " + String(v) + "\n" : ""; };
+  return "# Лид " + rec.submission_id + "\n\n"
+    + row("Получен", rec.received_at) + row("Статус", rec.status) + row("Доставлен", rec.delivered_at)
+    + row("Имя", f.name) + row("Телефон", f.phone) + row("Email", f.email)
+    + row("Форма", f.form_id) + row("Страница", f.landing_path) + row("Referrer", f.referrer_host)
+    + row("Исправляет заявку", f.corrects_submission_id)
+    + row("utm_source", f.utm_source) + row("utm_campaign", f.utm_campaign)
+    + row("gclid", f.gclid) + row("gbraid", f.gbraid) + row("wbraid", f.wbraid) + row("fbclid", f.fbclid)
+    + "\n<details><summary>Полный payload</summary>\n\n```json\n" + JSON.stringify(f, null, 2) + "\n```\n</details>\n";
+}
+async function archiveLeadR2(env, rec) {
+  if (!env.LEADS_ARCHIVE || typeof env.LEADS_ARCHIVE.put !== "function") return;
+  try {
+    var d = (rec.received_at || new Date().toISOString()).slice(0, 10);
+    await env.LEADS_ARCHIVE.put("leads/" + d + "/" + rec.submission_id + ".md", leadToMarkdown(rec),
+      { httpMetadata: { contentType: "text/markdown; charset=utf-8" } });
+  } catch (e) { /* best-effort */ }
+}
+
+/* ---- forward to Albato as JSON — same wire format as before this change
+   (Gambaryan's Albato scenario is not being touched), now with the shared
+   LEAD_CONTRACT.upstreamTimeoutMs hard timeout. ---- */
+async function forwardToAlbato(env, fields) {
+  if (!env.ALBATO_WEBHOOK_URL) return false;
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function () { controller.abort(); }, LEAD_CONTRACT.upstreamTimeoutMs);
+  try {
+    var res = await fetch(env.ALBATO_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify(fields),
+      signal: controller.signal,
+    });
+    return !!(res && res.ok);
+  } catch (e) { return false; }
+  finally { clearTimeout(timeoutId); }
+}
+
+function leadKvMetadata(rec) {
+  return {
+    status: rec.status,
+    received_at: rec.received_at,
+    forwarding_started_at: rec.forwarding_started_at || "",
+    albato_delivered_at: rec.albato_delivered_at || "",
+  };
+}
+async function putLeadRecord(env, key, rec, deliveredTtl) {
+  if (!env.LEADS_KV || typeof env.LEADS_KV.put !== "function") return false;
+  var options = { metadata: leadKvMetadata(rec) };
+  if (deliveredTtl) options.expirationTtl = LEAD_TTL_SECONDS;
+  try {
+    await env.LEADS_KV.put(key, JSON.stringify(rec), options);
+    return true;
+  } catch (e) { return false; }
+}
+async function putLeadRecordWithRetry(env, key, rec, deliveredTtl) {
+  if (await putLeadRecord(env, key, rec, deliveredTtl)) return true;
+  return putLeadRecord(env, key, rec, deliveredTtl);
+}
+async function readLeadRecord(env, key) {
+  if (!env.LEADS_KV || typeof env.LEADS_KV.get !== "function") return null;
+  try {
+    var raw = await env.LEADS_KV.get(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function leadLeaseIsLive(rec, now) {
+  now = now === undefined ? Date.now() : now;
+  var started = new Date((rec && rec.forwarding_started_at) || 0).getTime();
+  return !!(rec && rec.status === "forwarding" && started > 0 && (now - started) < LEAD_FORWARD_LEASE_MS);
+}
+function newLeaseId() {
+  try { return crypto.randomUUID(); } catch (e) {
+    return "lease_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+}
+async function claimLeadForwarding(env, key, rec) {
+  if (rec.status === "delivered" || rec.albato_delivered_at || deliveredLeadsInProcess.has(key)) return "delivered";
+  if (leadLeaseIsLive(rec)) return "pending";
+
+  var startedAt = new Date().toISOString();
+  var d1Claim = await claimLeadD1Lease(env, rec.submission_id, startedAt);
+  if (d1Claim === "delivered" || d1Claim === "pending") return d1Claim;
+  // D1 is the atomic cross-isolate arbiter. If its bound query failed, fail
+  // closed: leave the durable lead pending for a later sweep instead of
+  // risking two Albato POSTs.
+  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function" && d1Claim === null) return "pending";
+
+  var id = newLeaseId();
+  rec.status = "forwarding";
+  rec.forwarding_started_at = startedAt;
+  rec.forwarding_lease_id = id;
+
+  if (d1Claim === "claimed") {
+    await putLeadRecord(env, key, rec);
+    return "claimed";
+  }
+  if (!env.LEADS_KV || typeof env.LEADS_KV.put !== "function") return "claimed";
+  if (!(await putLeadRecord(env, key, rec))) return "pending";
+  var check = await readLeadRecord(env, key);
+  if (check && check.forwarding_lease_id === id) return "claimed";
+  if (check && (check.status === "delivered" || check.albato_delivered_at)) return "delivered";
+  return "pending";
+}
+async function markLeadDelivered(env, key, rec) {
+  var deliveredAt = new Date().toISOString();
+  rec.status = "delivered";
+  rec.delivered_at = deliveredAt;
+  rec.albato_delivered_at = deliveredAt;
+  delete rec.forwarding_started_at;
+  delete rec.forwarding_lease_id;
+  deliveredLeadsInProcess.add(key);
+  var d1Ok = await upsertLeadD1(env, rec);
+  var kvOk = await putLeadRecordWithRetry(env, key, rec, true);
+  return kvOk || d1Ok;
+}
+async function releaseLeadToPending(env, key, rec) {
+  rec.status = "pending";
+  delete rec.forwarding_started_at;
+  delete rec.forwarding_lease_id;
+  await putLeadRecord(env, key, rec);
+  await upsertLeadD1(env, rec);
+}
+
+function jerusalemDay(date) {
+  date = date === undefined ? new Date() : date;
+  var parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(date);
+  var get = function (type) { return (parts.find(function (p) { return p.type === type; }) || {}).value || ""; };
+  return get("year") + "-" + get("month") + "-" + get("day");
+}
+async function countLeadHoneypot(env) {
+  if (!env.LEADS_KV || typeof env.LEADS_KV.put !== "function") return false;
+  var day = jerusalemDay();
+  var key = "hp:" + day;
+  try {
+    var raw = typeof env.LEADS_KV.get === "function" ? await env.LEADS_KV.get(key) : null;
+    var count = Math.max(0, Number(raw) || 0) + 1;
+    await env.LEADS_KV.put(key, String(count), {
+      expirationTtl: HP_COUNTER_TTL_SECONDS, metadata: { type: "honeypot_count", day: day },
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---- re-forward still-pending leads, OLDEST FIRST. Uses KV list metadata to
+   skip delivered leads WITHOUT a get() — keeps reads within free tier. ---- */
+async function sweepPendingLeads(env, excludeKey) {
+  excludeKey = excludeKey || "";
+  if (!env.LEADS_KV || typeof env.LEADS_KV.list !== "function") return;
+  try {
+    var listed = await env.LEADS_KV.list({ prefix: "lead:", limit: 1000 });
+    var pending = listed.keys
+      .filter(function (k) {
+        return k.name !== excludeKey && k.metadata
+          && (k.metadata.status === "pending" || k.metadata.status === "forwarding");
+      })
+      .sort(function (a, b) { return new Date(a.metadata.received_at || 0) - new Date(b.metadata.received_at || 0); });
+    var attempts = 0;
+    var now = Date.now();
+    for (const k of pending) {
+      if (attempts >= LEAD_SWEEP_LIMIT) break;
+      const rec = await readLeadRecord(env, k.name);
+      if (!rec || rec.status === "delivered") continue;
+      if (rec.albato_delivered_at) {
+        await markLeadDelivered(env, k.name, rec);
+        continue;
+      }
+      await insertLeadD1IfMissing(env, rec);
+      const claim = await claimLeadForwarding(env, k.name, rec);
+      if (claim !== "claimed") continue;
+      attempts++;
+      if (await forwardToAlbato(env, rec.fields)) {
+        await markLeadDelivered(env, k.name, rec);
+        await notifyTelegram(env, newLeadTelegramMessage(rec.fields));
+      } else {
+        await releaseLeadToPending(env, k.name, rec);
+        const age = now - new Date(rec.received_at || now).getTime();
+        if (age > LEAD_ALERT_AFTER_MS && !rec.alerted) {
+          const notified = await notifyTelegram(env, undeliveredTelegramMessage(rec));
+          if (notified) {
+            rec.alerted = true;
+            await putLeadRecord(env, k.name, rec);
+          }
+        }
+      }
+    }
+  } catch (e) { /* best-effort */ }
+}
+
+async function processDurableLead(env, payload, submissionId, key) {
+  var record = await readLeadRecord(env, key);
+  if (record && (record.status === "delivered" || record.albato_delivered_at || deliveredLeadsInProcess.has(key))) {
+    return json(202, { ok: true, status: "accepted", submission_id: submissionId, dedup: true });
+  }
+
+  var kvOk = !!record;
+  if (!record) {
+    var received_at = new Date().toISOString();
+    record = { submission_id: submissionId, fields: payload, status: "pending", received_at: received_at };
+    kvOk = await putLeadRecord(env, key, record);
+    await archiveLeadR2(env, record);
+  }
+  var d1Insert = await insertLeadD1IfMissing(env, record);
+  // "Durably recorded somewhere" — kvOk covers the common case; a
+  // non-null D1 insert result means D1 itself is reachable (0 or 1 changed
+  // rows are both a real answer), so a KV-less-but-D1-bound deploy still
+  // counts as persisted.
+  var persisted = kvOk || d1Insert !== null;
+
+  var claim = await claimLeadForwarding(env, key, record);
+  if (claim === "delivered") {
+    return json(202, { ok: true, status: "accepted", submission_id: submissionId, dedup: true });
+  }
+  if (claim === "pending") {
+    if (persisted) {
+      // Someone else (another isolate via D1, or a live KV lease) is
+      // confirmed to be handling delivery — durable, nothing more to do here.
+      return json(202, { ok: true, status: "accepted", submission_id: submissionId, dedup: true });
+    }
+    // Nothing durably recorded AND no one else can be confirmed to be
+    // handling it (this only happens when KV exists but every write to it
+    // is failing, with no D1 to fall back on) — a "pending" lease claim
+    // here would just mean "silently tell the client accepted and lose the
+    // lead". Fall through and attempt delivery directly instead: no cross-
+    // isolate coordination is possible anyway once storage is this broken.
+    claim = "claimed";
+  }
+
+  var delivered = await forwardToAlbato(env, record.fields);
+  if (delivered) await markLeadDelivered(env, key, record);
+  else await releaseLeadToPending(env, key, record);
+  if (delivered) await notifyTelegram(env, newLeadTelegramMessage(record.fields));
+
+  if (!persisted && !delivered) {
+    return json(502, { ok: false, error: "not_persisted" });
+  }
+  return json(202, { ok: true, status: "accepted", submission_id: submissionId });
+}
+
 export async function onRequest(context) {
   var request = context.request;
 
@@ -186,8 +569,12 @@ export async function onRequest(context) {
     return json(400, { ok: false, error: "invalid_json" });
   }
 
+  var env = context.env;
+
   // Ловушка возвращает обычный успех без валидации, доставки и записи заявки.
+  // Аггрегатный счётчик (без PII) — best-effort и только если LEADS_KV привязан.
   if (input && typeof input.lf_hp === "string" && input.lf_hp !== "") {
+    if (hasDurableStorage(env)) await countLeadHoneypot(env);
     return json(202, {
       ok: true,
       status: "accepted",
@@ -206,7 +593,7 @@ export async function onRequest(context) {
   }
   var lead = validation.lead;
 
-  var configuredUrl = context.env.ALBATO_WEBHOOK_URL;
+  var configuredUrl = env.ALBATO_WEBHOOK_URL;
   var webhookUrl;
   try {
     webhookUrl = new URL(configuredUrl);
@@ -216,38 +603,68 @@ export async function onRequest(context) {
   }
 
   var payload = buildPayload(lead);
-  var upstream;
-  var controller = new AbortController();
-  var timeoutId = setTimeout(function () {
-    controller.abort();
-  }, LEAD_CONTRACT.upstreamTimeoutMs);
-  try {
-    upstream = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (error && error.name === "AbortError") {
-      return json(504, { ok: false, error: "delivery_timeout" });
+
+  // Graceful degradation: until LEADS_KV is bound, forward exactly as this
+  // function did before the durable pipeline existed. Verified byte-for-byte
+  // by scripts/verify-lead-hook.mjs, which never binds LEADS_KV.
+  if (!hasDurableStorage(env)) {
+    var upstream;
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () {
+      controller.abort();
+    }, LEAD_CONTRACT.upstreamTimeoutMs);
+    try {
+      upstream = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        return json(504, { ok: false, error: "delivery_timeout" });
+      }
+      console.error("Lead webhook network failure");
+      return json(502, { ok: false, error: "delivery_failed" });
+    } finally {
+      clearTimeout(timeoutId);
     }
-    console.error("Lead webhook network failure");
-    return json(502, { ok: false, error: "delivery_failed" });
+
+    if (!upstream.ok) {
+      console.error("Lead webhook non-2xx status", upstream.status);
+      return json(502, { ok: false, error: "delivery_failed" });
+    }
+
+    return json(202, {
+      ok: true,
+      status: "accepted",
+      submission_id: lead.submissionId,
+    });
+  }
+
+  // Durable pipeline (§1.6): KV(pending) → R2 → D1 insert-if-missing → lease
+  // → Albato → markDelivered/releaseToPending. Same-isolate de-dup by key;
+  // D1 (when bound) is the cross-isolate arbiter for exactly-one-forward.
+  var key = "lead:" + lead.submissionId;
+  if (activeLeadForwards.has(key)) {
+    return json(202, { ok: true, status: "accepted", submission_id: lead.submissionId, dedup: true });
+  }
+  var work = processDurableLead(env, payload, lead.submissionId, key);
+  activeLeadForwards.set(key, work);
+  var response;
+  try {
+    response = await work;
   } finally {
-    clearTimeout(timeoutId);
+    if (activeLeadForwards.get(key) === work) activeLeadForwards.delete(key);
   }
 
-  if (!upstream.ok) {
-    console.error("Lead webhook non-2xx status", upstream.status);
-    return json(502, { ok: false, error: "delivery_failed" });
+  if (typeof context.waitUntil === "function") {
+    context.waitUntil(sweepPendingLeads(env, key));
   }
-
-  return json(202, {
-    ok: true,
-    status: "accepted",
-    submission_id: lead.submissionId,
-  });
+  return response;
 }
 
-export { LEAD_CONTRACT, buildPayload, readBodyWithLimit, validateLead };
+export {
+  LEAD_CONTRACT, buildPayload, readBodyWithLimit, validateLead,
+  hasDurableStorage, sweepPendingLeads, D1_COLUMNS,
+};

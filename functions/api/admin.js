@@ -1,0 +1,261 @@
+/* Cloudflare Pages Function — GET/POST /api/admin
+   Lightweight lead admin over the D1 mirror (LEADS_DB): filterable table + CSV/MD export.
+
+   🔒 SECURITY — PII (name/phone/email). Secure-by-default: serves ONLY if
+   authenticated by EITHER (A) Cloudflare Access (self-hosted policy on
+   /api/admin → CF-Access email header) OR (B) HTTP Basic Auth against env
+   ADMIN_PASSWORD. If neither is configured → refuse (403), never open.
+
+   Ported from clients/luxemed/New Lending/functions/admin.js (digitalhook-os-,
+   feature/luxemed-new-lending@613cdd30; contract:
+   knowledge/web-dev/ADFIX-SITE-SYSTEM-PLAYBOOK.md §1.8). Route note: this
+   repo's site/_routes.json restricts Pages Functions to "/api/*"
+   (verified by scripts/verify-lead-hook.mjs) — so the admin page lives at
+   /api/admin instead of the reference's /admin. Change _routes.json only if
+   the owner explicitly wants the bare /admin path.
+
+   Bindings / env (Cloudflare Pages):
+     • D1 database bound as  LEADS_DB                 (required — the queryable store)
+     • env  ADMIN_PASSWORD            password for Basic-Auth login (set via API/dashboard)
+     • env  ADMIN_USER     (optional) Basic-Auth username (default: any)
+     • env  ADMIN_ALLOWED_EMAILS (optional) = "a@x.com,b@y.com"  extra allowlist for CF Access
+   Until LEADS_DB is bound this shows a friendly "not configured" page (no error). */
+
+const DB_COLS = [
+  "received_at", "status", "name", "phone", "email", "corrects_submission_id",
+  "form_id", "landing_path", "referrer_host", "utm_source", "gclid", "gbraid",
+  "wbraid", "fbclid", "submission_id", "payload_json",
+];
+const COLS = [
+  "received_at", "status", "name", "phone", "email", "corrects_submission_id",
+  "form_id", "landing_path", "referrer_host", "utm_source", "gclid", "gbraid",
+  "wbraid", "fbclid", "submission_id",
+];
+
+function esc(s) { return String(s == null ? "" : s).replace(/[<>&"]/g, function (c) { return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]; }); }
+function csvCell(s) { var v = String(s == null ? "" : s); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+
+function authAdmin(request, env) {
+  var email = null;
+
+  var accessEmail = request.headers.get("Cf-Access-Authenticated-User-Email");
+  if (accessEmail) {
+    var allow = (env.ADMIN_ALLOWED_EMAILS || "").split(",").map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
+    if (allow.length && allow.indexOf(accessEmail.toLowerCase()) === -1) {
+      return { response: new Response("403 — " + accessEmail + " не в списке допуска админки.", { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } }) };
+    }
+    email = accessEmail;
+  }
+
+  if (!email && env.ADMIN_PASSWORD) {
+    var m = /^Basic\s+(.+)$/i.exec(request.headers.get("Authorization") || "");
+    if (m) {
+      var user = "", pass = "";
+      try {
+        var dec = atob(m[1]);
+        var i = dec.indexOf(":");
+        user = dec.slice(0, i);
+        pass = dec.slice(i + 1);
+      } catch (e) { /* malformed header — treated as wrong credentials below */ }
+      var okUser = !env.ADMIN_USER || user === env.ADMIN_USER;
+      var okPass = pass.length === env.ADMIN_PASSWORD.length;
+      for (var k = 0; k < pass.length; k++) okPass = okPass && (pass.charCodeAt(k) === env.ADMIN_PASSWORD.charCodeAt(k));
+      if (okUser && okPass) email = "admin:" + (user || "admin");
+    }
+    if (!email) {
+      return {
+        response: new Response("Требуется вход в админку Гамбарян.", {
+          status: 401,
+          headers: { "www-authenticate": 'Basic realm="Gambarian Admin", charset="UTF-8"', "content-type": "text/plain; charset=utf-8" },
+        }),
+      };
+    }
+  }
+
+  if (!email) {
+    return {
+      response: new Response(
+        "403 — /api/admin не защищён. Включите Cloudflare Access на этот маршрут ИЛИ задайте env ADMIN_PASSWORD.",
+        { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } },
+      ),
+    };
+  }
+
+  return { email: email };
+}
+
+function htmlPage(title, inner) {
+  return new Response(
+    '<!doctype html><html lang="ru"><head><meta charset="utf-8">'
+    + '<meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    + "<title>" + esc(title) + "</title><style>"
+    + "body{font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#F4F6F8;color:#1A2340}"
+    + ".bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:14px 18px;background:#fff;border-bottom:1px solid #E2E6EE;position:sticky;top:0;z-index:2}"
+    + ".bar input,.bar select{padding:8px 10px;border:1px solid #c9d3e0;border-radius:8px;font:inherit}"
+    + ".bar button{padding:8px 14px;border:0;border-radius:8px;background:#1A2340;color:#fff;cursor:pointer}"
+    + ".bar .exp{padding:8px 12px;border:1px solid #2E7D32;border-radius:8px;color:#2E7D32;text-decoration:none}"
+    + ".bar .who{margin-left:auto;color:#5b6b8a;font-size:12px}"
+    + ".count{padding:10px 18px;color:#5b6b8a}"
+    + ".wrap{overflow:auto;max-height:calc(100dvh - 110px);padding:0 18px 40px}"
+    + "table{border-collapse:collapse;width:100%;background:#fff;font-size:12.5px}"
+    + "th,td{border:1px solid #E2E6EE;padding:6px 9px;text-align:left;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}"
+    + "th{background:#1A2340;color:#fff;position:sticky;top:0}"
+    + "tbody tr:nth-child(even){background:#FAFBFD}"
+    + ".st{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}"
+    + ".st-delivered{background:#E6F4DD;color:#2E7D32}.st-pending{background:#FFF3D6;color:#8a6d00}"
+    + ".del{padding:5px 9px;border:1px solid #B3261E;border-radius:7px;background:#fff;color:#B3261E;cursor:pointer;font:inherit;font-size:12px}"
+    + ".flash{margin:12px 18px 0;padding:10px 12px;border-radius:8px}"
+    + ".flash.ok{background:#E6F4DD;color:#2E7D32}.flash.err{background:#FDE7E9;color:#B3261E}"
+    + "a{color:#1A2340}"
+    + "p{padding:14px 18px}"
+    + "</style></head><body>" + inner + "</body></html>",
+    { headers: { "content-type": "text/html; charset=utf-8" } },
+  );
+}
+
+async function deleteLead(env, submissionId) {
+  var receivedAt = "";
+  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function") {
+    try {
+      var r = await env.LEADS_DB.prepare("SELECT received_at FROM leads WHERE submission_id = ?").bind(submissionId).all();
+      receivedAt = (r.results && r.results[0] && r.results[0].received_at) || "";
+    } catch (e) { /* best-effort */ }
+    await env.LEADS_DB.prepare("DELETE FROM leads WHERE submission_id = ?").bind(submissionId).run();
+  }
+  if (env.LEADS_KV && typeof env.LEADS_KV.delete === "function") {
+    try { await env.LEADS_KV.delete("lead:" + submissionId); } catch (e) { /* best-effort */ }
+  }
+  if (env.LEADS_ARCHIVE && typeof env.LEADS_ARCHIVE.delete === "function" && receivedAt) {
+    try { await env.LEADS_ARCHIVE.delete("leads/" + receivedAt.slice(0, 10) + "/" + submissionId + ".md"); } catch (e) { /* best-effort */ }
+  }
+}
+
+export async function onRequestPost(context) {
+  var request = context.request;
+  var env = context.env;
+  var auth = authAdmin(request, env);
+  if (auth.response) return auth.response;
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") {
+    return htmlPage("Лиды — не настроено", "<p>D1-биндинг <code>LEADS_DB</code> ещё не привязан к Pages-проекту.</p>");
+  }
+
+  var form;
+  try { form = await request.formData(); }
+  catch (e) { return new Response("bad request", { status: 400, headers: { "content-type": "text/plain; charset=utf-8" } }); }
+
+  var action = String(form.get("action") || "");
+  var submissionId = String(form.get("submission_id") || "").trim();
+  var back = new URL(request.url);
+  back.searchParams.delete("deleted");
+  back.searchParams.delete("error");
+
+  if (action !== "delete" || !submissionId) {
+    back.searchParams.set("error", "bad_delete_request");
+    return new Response(null, { status: 303, headers: { location: back.pathname + back.search } });
+  }
+
+  try {
+    await deleteLead(env, submissionId);
+    back.searchParams.set("deleted", submissionId);
+  } catch (e) {
+    back.searchParams.set("error", "delete_failed");
+  }
+  return new Response(null, { status: 303, headers: { location: back.pathname + back.search } });
+}
+
+export async function onRequestGet(context) {
+  var request = context.request;
+  var env = context.env;
+  var auth = authAdmin(request, env);
+  if (auth.response) return auth.response;
+  var email = auth.email;
+
+  // Not configured yet — inert, friendly.
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") {
+    return htmlPage("Лиды — не настроено", "<p>D1-биндинг <code>LEADS_DB</code> ещё не привязан к Pages-проекту. Привяжите D1, примените схему <code>db/leads-schema.sql</code> и обновите страницу.</p>");
+  }
+
+  var url = new URL(request.url);
+  var status = url.searchParams.get("status") || "";
+  var q = (url.searchParams.get("q") || "").trim();
+  var fmt = url.searchParams.get("format") || "";
+  var limit = Math.min(2000, Math.max(1, parseInt(url.searchParams.get("limit") || "200", 10) || 200));
+  var deleted = url.searchParams.get("deleted") || "";
+  var error = url.searchParams.get("error") || "";
+
+  var sql = "SELECT " + DB_COLS.join(", ") + " FROM leads";
+  var where = []; var binds = [];
+  if (status === "pending" || status === "delivered") { where.push("status = ?"); binds.push(status); }
+  if (q) { where.push("(phone LIKE ? OR name LIKE ? OR email LIKE ?)"); binds.push("%" + q + "%", "%" + q + "%", "%" + q + "%"); }
+  if (where.length) sql += " WHERE " + where.join(" AND ");
+  sql += " ORDER BY received_at DESC LIMIT " + limit; // limit is a sanitized int
+
+  var rows = [];
+  try {
+    var r = await env.LEADS_DB.prepare(sql).bind(...binds).all();
+    rows = r.results || [];
+  } catch (e) {
+    return htmlPage("Лиды — ошибка", "<p>Ошибка запроса D1: " + esc(e.message || e) + ". Проверьте, что применена схема <code>db/leads-schema.sql</code>.</p>");
+  }
+
+  if (fmt === "csv") {
+    var head = COLS.join(",");
+    var body = rows.map(function (row) { return COLS.map(function (c) { return csvCell(row[c]); }).join(","); }).join("\n");
+    return new Response("﻿" + head + "\n" + body, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="gambarian-leads.csv"' } });
+  }
+  if (fmt === "md") {
+    var md = "# Лиды Гамбарян (" + rows.length + ")\n\n" + rows.map(function (row) {
+      return "## " + esc(row.received_at) + " · " + esc(row.status) + " · " + esc(row.name || "—") + "\n"
+        + "- **Телефон:** " + esc(row.phone || "—") + "\n"
+        + "- **Email:** " + esc(row.email || "—") + "\n"
+        + "- **Страница:** " + esc(row.landing_path || "—") + " · **Referrer:** " + esc(row.referrer_host || "—") + "\n"
+        + "- **Источник:** " + esc(row.utm_source || "(direct)") + " · gclid:" + esc(row.gclid || "—") + " · gbraid:" + esc(row.gbraid || "—") + " · wbraid:" + esc(row.wbraid || "—") + "\n"
+        + "- **Исправляет заявку:** " + esc(row.corrects_submission_id || "—") + "\n"
+        + "- **ID:** " + esc(row.submission_id) + "\n";
+    }).join("\n");
+    return new Response(md, { headers: { "content-type": "text/markdown; charset=utf-8", "content-disposition": 'attachment; filename="gambarian-leads.md"' } });
+  }
+
+  // HTML table view
+  var qs = function (extra) {
+    var u = new URL(url);
+    Object.entries(extra).forEach(function (entry) { entry[1] == null ? u.searchParams.delete(entry[0]) : u.searchParams.set(entry[0], entry[1]); });
+    return esc(u.pathname + u.search);
+  };
+  var thead = "<th>actions</th>" + COLS.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("");
+  var tbody = rows.map(function (row) {
+    return "<tr>" + '<td>'
+      + '<form method="post" action="' + qs({ format: null, deleted: null, error: null }) + '" onsubmit="return confirm(\'Удалить лид из админки и хранилищ ADFIX? Уже доставленную строку в Albato/Sheet это не удалит.\');">'
+      + '<input type="hidden" name="action" value="delete" />'
+      + '<input type="hidden" name="submission_id" value="' + esc(row.submission_id) + '" />'
+      + '<button class="del" type="submit">Удалить</button>'
+      + "</form></td>"
+      + COLS.map(function (c) {
+        var v = row[c] == null ? "" : String(row[c]);
+        if (c === "phone" && v) return '<td><a href="tel:' + esc(v) + '">' + esc(v) + "</a></td>";
+        if (c === "status") return '<td><span class="st st-' + esc(v) + '">' + esc(v) + "</span></td>";
+        if (v.length > 40) v = v.slice(0, 40) + "…";
+        return "<td>" + esc(v) + "</td>";
+      }).join("")
+      + "</tr>";
+  }).join("");
+
+  var body = '\n  <form method="get" class="bar">\n'
+    + '    <input name="q" value="' + esc(q) + '" placeholder="поиск: телефон / имя / email" />\n'
+    + '    <select name="status">\n'
+    + '      <option value="">все статусы</option>\n'
+    + '      <option value="pending"' + (status === "pending" ? " selected" : "") + ">pending</option>\n"
+    + '      <option value="delivered"' + (status === "delivered" ? " selected" : "") + ">delivered</option>\n"
+    + "    </select>\n"
+    + '    <input name="limit" value="' + limit + '" size="5" title="лимит строк" />\n'
+    + '    <button type="submit">Фильтр</button>\n'
+    + '    <a class="exp" href="' + qs({ format: "csv" }) + '">⬇ CSV</a>\n'
+    + '    <a class="exp" href="' + qs({ format: "md" }) + '">⬇ MD</a>\n'
+    + '    <span class="who">' + esc(email) + "</span>\n"
+    + "  </form>\n"
+    + (deleted ? '  <p class="flash ok">Удалено из админки/хранилищ ADFIX: <code>' + esc(deleted) + "</code>. Если лид уже ушёл в Albato/Sheet, строку там нужно удалить отдельно.</p>\n" : "")
+    + (error ? '  <p class="flash err">Не удалось выполнить действие: <code>' + esc(error) + "</code>.</p>\n" : "")
+    + '  <p class="count">' + rows.length + " лид(ов)" + (status ? " · статус: " + esc(status) : "") + (q ? " · поиск: «" + esc(q) + "»" : "") + "</p>\n"
+    + '  <div class="wrap"><table><thead><tr>' + thead + "</tr></thead><tbody>" + tbody + "</tbody></table></div>";
+  return htmlPage("Лиды Гамбарян", body);
+}

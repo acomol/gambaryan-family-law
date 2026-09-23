@@ -2993,9 +2993,146 @@ picture { display: block; }
     return;
   }
   var LEAD_ENDPOINT = LEAD_CONTRACT.endpoint;
+  var LEAD_DEAD_LETTER_ENDPOINT = "/api/lead-dead-letter";
   var LEAD_FORM_ID = LEAD_CONTRACT.formId;
   var LEAD_ATTRIBUTION_STORAGE_KEY = LEAD_CONTRACT.attributionStorageKey;
   var LEAD_ATTRIBUTION_KEYS = LEAD_CONTRACT.attributionFields;
+
+  /* --- Надёжная доставка: write-ahead outbox (localStorage) --------------
+     Порт контракта «никогда не терять лид» (ADFIX-SITE-SYSTEM-PLAYBOOK.md
+     §1.6, L2/L6/L9/L11) под текущую форму Гамбаряна: запись уходит в outbox
+     ДО сети; ретраи при загрузке / online / раз в 60 с / pagehide
+     (sendBeacon); запись убирается по 2xx или по окончательно отклонённым
+     422 (retry того же payload бессмыслен — пользователь уже видит ошибку и
+     исправит поле, получив новый submission_id); просроченные (>7 дней)
+     записи считаются потерей и шлют dead-letter маяк без PII. Сервер
+     (functions/api/lead.js) дедуплицирует повторные POST по submission_id,
+     когда LEADS_KV привязан — до этого ретраи безвредны, но и не идемпотентны
+     на стороне Albato (см. docs/LEAD-PIPELINE.md). */
+  var OUTBOX_KEY = "gambarian_lead_outbox_v1";
+  var SENT_KEY = "gambarian_lead_sent_v1";
+  var OUTBOX_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  var OUTBOX_RETRY_MS = 60000;
+  var SENT_IDS_MAX = 200;
+
+  function readJSON(key, fallback) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+  function writeJSON(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      // Storage опционален — недоступность не должна ломать отправку.
+    }
+  }
+  function readOutbox() {
+    var value = readJSON(OUTBOX_KEY, []);
+    return Array.isArray(value) ? value : [];
+  }
+  function writeOutbox(entries) {
+    writeJSON(OUTBOX_KEY, entries);
+  }
+  function enqueueOutbox(data) {
+    if (data.lf_hp) return; // ловушка — не лид, ретраить нечего
+    var entries = readOutbox().filter(function (entry) {
+      return entry.submission_id !== data.submission_id;
+    });
+    entries.push({ submission_id: data.submission_id, data: data, created_at: Date.now(), attempts: 0 });
+    writeOutbox(entries);
+  }
+  function dequeueOutbox(submissionId) {
+    writeOutbox(readOutbox().filter(function (entry) { return entry.submission_id !== submissionId; }));
+  }
+
+  function sentLeadIds() {
+    var value = readJSON(SENT_KEY, []);
+    return Array.isArray(value) ? value : [];
+  }
+  function fireLeadOnce(submissionId, params) {
+    var sent = sentLeadIds();
+    if (sent.indexOf(submissionId) !== -1) return false;
+    pushFormEvent("generate_lead", params);
+    sent.push(submissionId);
+    if (sent.length > SENT_IDS_MAX) sent = sent.slice(sent.length - SENT_IDS_MAX);
+    writeJSON(SENT_KEY, sent);
+    return true;
+  }
+
+  function sendDeadLetterBeacon(reason, attempts) {
+    try {
+      if (!navigator.sendBeacon) return;
+      var body = JSON.stringify({ form_id: LEAD_FORM_ID, reason: reason, attempts: attempts });
+      navigator.sendBeacon(LEAD_DEAD_LETTER_ENDPOINT, new Blob([body], { type: "application/json" }));
+    } catch (error) {
+      // Наблюдательный маяк — не должен ронять остальной flow.
+    }
+  }
+
+  // Защита от гонки: автоматический ретрай не должен дублировать активную
+  // ручную отправку того же submission_id (только эта вкладка, в памяти, не
+  // персистится). Без неё flush, попавший между enqueueOutbox() и ответом
+  // основной отправки, мог бы породить второй одновременный POST.
+  var inFlightSubmissions = {};
+
+  function deliverOutboxEntry(entry, useBeacon) {
+    if (inFlightSubmissions[entry.submission_id]) return;
+    if (useBeacon) {
+      try {
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(LEAD_ENDPOINT, new Blob([JSON.stringify(entry.data)], { type: "application/json" }));
+        }
+      } catch (error) {
+        // best-effort — следующий цикл (load/online/60с) подтвердит результат
+      }
+      return;
+    }
+    submitLead(entry.data).then(
+      function (response) {
+        var submissionId = response.submission_id || entry.submission_id;
+        dequeueOutbox(entry.submission_id);
+        fireLeadOnce(submissionId, {
+          submission_id: submissionId,
+          seconds_to_lead: Math.max(0, Math.round((Date.now() - entry.created_at) / 1000)),
+        });
+      },
+      function (error) {
+        if (error.status === 422) {
+          // Отклонено окончательно — повтор того же payload бессмыслен.
+          dequeueOutbox(entry.submission_id);
+        }
+        // Иначе — транзиентная ошибка: запись остаётся, следующий цикл попробует снова.
+      }
+    );
+  }
+
+  function flushOutbox(useBeacon) {
+    var now = Date.now();
+    var entries = readOutbox();
+    var alive = [];
+    var changed = false;
+    entries.forEach(function (entry) {
+      if (now - entry.created_at > OUTBOX_TTL_MS) {
+        sendDeadLetterBeacon("ttl", entry.attempts || 0);
+        changed = true;
+        return;
+      }
+      entry.attempts = (entry.attempts || 0) + 1;
+      alive.push(entry);
+      changed = true;
+      deliverOutboxEntry(entry, useBeacon);
+    });
+    if (changed) writeOutbox(alive);
+  }
+
+  window.setTimeout(function () { flushOutbox(false); }, 1500);
+  window.addEventListener("online", function () { flushOutbox(false); });
+  window.setInterval(function () { flushOutbox(false); }, OUTBOX_RETRY_MS);
+  window.addEventListener("pagehide", function () { flushOutbox(true); });
 
   function readFirstTouchAttribution() {
     try {
@@ -3464,12 +3601,16 @@ picture { display: block; }
 
       hideFormError();
       setSubmitting(true);
+      enqueueOutbox(data); // write-ahead: до сети, чтобы сбой fetch не терял заявку
+      inFlightSubmissions[data.submission_id] = true;
 
       submitLead(data).then(
         function (response) {
           setSubmitting(false);
+          delete inFlightSubmissions[data.submission_id];
           acceptedSubmissionId = response.submission_id || data.submission_id;
           acceptedContacts = JSON.parse(contactFingerprint);
+          dequeueOutbox(data.submission_id);
           if (!data.lf_hp) {
             if (editingContacts) {
               track('lead_corrected', {
@@ -3477,7 +3618,7 @@ picture { display: block; }
                 corrects_submission_id: data.corrects_submission_id
               });
             } else {
-              pushFormEvent('generate_lead', {
+              fireLeadOnce(acceptedSubmissionId, {
                 submission_id: acceptedSubmissionId,
                 seconds_to_lead: visibleSeconds()
               });
@@ -3488,6 +3629,8 @@ picture { display: block; }
         },
         function (error) {
           setSubmitting(false);
+          delete inFlightSubmissions[data.submission_id];
+          if (error.status === 422) dequeueOutbox(data.submission_id); // отклонено окончательно — ретраить нечего
           showFields(false);
           pushFormEvent('form_error', {
             error_type: error.status === 422 ? 'validation'

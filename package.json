@@ -35,7 +35,8 @@
     "check": "npm run lint && npm run typecheck && npm run build",
     "test:visual": "playwright test -c tests/visual/playwright.config.ts",
     "test:visual:update": "playwright test -c tests/visual/playwright.config.ts --update-snapshots",
-    "test:visual:review": "playwright test -c tests/visual/playwright.config.ts --grep @capture --ignore-snapshots"
+    "test:visual:review": "playwright test -c tests/visual/playwright.config.ts --grep @capture --ignore-snapshots",
+    "test:lead-pipeline": "node --experimental-sqlite test/lead-qa.mjs && node --experimental-sqlite test/cron-backup-qa.mjs && node scripts/verify-lead-pipeline-remap.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
