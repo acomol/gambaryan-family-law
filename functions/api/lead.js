@@ -416,6 +416,19 @@ function jerusalemDay(date) {
   var get = function (type) { return (parts.find(function (p) { return p.type === type; }) || {}).value || ""; };
   return get("year") + "-" + get("month") + "-" + get("day");
 }
+/* ---- Tombstones (review 2026-09-23, finding 5): a deleted lead must never
+   be resurrected by a sweep that only sees a stale KV/D1 remnant. Written by
+   functions/api/admin.js BEFORE it removes the KV/D1 copies; checked here by
+   both sweep sources below. Long TTL (90d, matches the honeypot/dead-letter
+   aggregate counters) — far past any realistic sweep/lease window. Residual
+   risk: if LEADS_KV is entirely unbound/unavailable at both delete time and
+   sweep time, this check is a no-op (documented in docs/LEAD-PIPELINE.md). ---- */
+function tombstoneKey(submissionId) { return "tomb:" + submissionId; }
+async function isLeadTombstoned(env, submissionId) {
+  if (!env.LEADS_KV || typeof env.LEADS_KV.get !== "function") return false;
+  try { return (await env.LEADS_KV.get(tombstoneKey(submissionId))) != null; } catch (e) { return false; }
+}
+
 async function countLeadHoneypot(env) {
   if (!env.LEADS_KV || typeof env.LEADS_KV.put !== "function") return false;
   var day = jerusalemDay();
@@ -434,51 +447,96 @@ async function countLeadHoneypot(env) {
    skip delivered leads WITHOUT a get() — keeps reads within free tier. ---- */
 async function sweepPendingLeads(env, excludeKey) {
   excludeKey = excludeKey || "";
-  if (!env.LEADS_KV || typeof env.LEADS_KV.list !== "function") return;
-  try {
-    var listed = await env.LEADS_KV.list({ prefix: "lead:", limit: 1000 });
-    var pending = listed.keys
-      .filter(function (k) {
-        return k.name !== excludeKey && k.metadata
-          && (k.metadata.status === "pending" || k.metadata.status === "forwarding");
-      })
-      .sort(function (a, b) { return new Date(a.metadata.received_at || 0) - new Date(b.metadata.received_at || 0); });
-    var attempts = 0;
-    var now = Date.now();
-    for (const k of pending) {
-      if (attempts >= LEAD_SWEEP_LIMIT) break;
-      const rec = await readLeadRecord(env, k.name);
-      if (!rec || rec.status === "delivered") continue;
-      if (rec.albato_delivered_at) {
-        await markLeadDelivered(env, k.name, rec);
-        continue;
-      }
-      await insertLeadD1IfMissing(env, rec);
-      const claim = await claimLeadForwarding(env, k.name, rec);
-      if (claim !== "claimed") continue;
-      attempts++;
-      if (await forwardToAlbato(env, rec.fields)) {
-        await markLeadDelivered(env, k.name, rec);
-        await notifyTelegram(env, newLeadTelegramMessage(rec.fields));
-      } else {
-        await releaseLeadToPending(env, k.name, rec);
-        const age = now - new Date(rec.received_at || now).getTime();
-        if (age > LEAD_ALERT_AFTER_MS && !rec.alerted) {
-          const notified = await notifyTelegram(env, undeliveredTelegramMessage(rec));
-          if (notified) {
-            rec.alerted = true;
-            await putLeadRecord(env, k.name, rec);
+  if (env.LEADS_KV && typeof env.LEADS_KV.list === "function") {
+    try {
+      var listed = await env.LEADS_KV.list({ prefix: "lead:", limit: 1000 });
+      var pending = listed.keys
+        .filter(function (k) {
+          return k.name !== excludeKey && k.metadata
+            && (k.metadata.status === "pending" || k.metadata.status === "forwarding");
+        })
+        .sort(function (a, b) { return new Date(a.metadata.received_at || 0) - new Date(b.metadata.received_at || 0); });
+      var attempts = 0;
+      var now = Date.now();
+      for (const k of pending) {
+        if (attempts >= LEAD_SWEEP_LIMIT) break;
+        if (await isLeadTombstoned(env, k.name.slice("lead:".length))) continue;
+        const rec = await readLeadRecord(env, k.name);
+        if (!rec || rec.status === "delivered") continue;
+        if (rec.albato_delivered_at) {
+          await markLeadDelivered(env, k.name, rec);
+          continue;
+        }
+        await insertLeadD1IfMissing(env, rec);
+        const claim = await claimLeadForwarding(env, k.name, rec);
+        if (claim !== "claimed") continue;
+        attempts++;
+        if (await forwardToAlbato(env, rec.fields)) {
+          await markLeadDelivered(env, k.name, rec);
+          await notifyTelegram(env, newLeadTelegramMessage(rec.fields));
+        } else {
+          await releaseLeadToPending(env, k.name, rec);
+          const age = now - new Date(rec.received_at || now).getTime();
+          if (age > LEAD_ALERT_AFTER_MS && !rec.alerted) {
+            const notified = await notifyTelegram(env, undeliveredTelegramMessage(rec));
+            if (notified) {
+              rec.alerted = true;
+              await putLeadRecord(env, k.name, rec);
+            }
           }
         }
       }
-    }
-  } catch (e) { /* best-effort */ }
+    } catch (e) { /* best-effort */ }
+  }
+
+  // D1-only stragglers (review 2026-09-23, finding 3): a lead whose EVERY
+  // KV write failed at intake time never gets a `lead:<id>` key at all, so
+  // the KV-list loop above can never find it — it would otherwise be
+  // stranded in D1 forever. Rebuild a KV-shaped record from payload_json and
+  // run it through the SAME claim/forward path; claimLeadForwarding's D1
+  // lease safely no-ops if another isolate (or the KV loop above, for a row
+  // that DOES also have a KV copy) is already handling this id.
+  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function") {
+    try {
+      var expiredBefore = new Date(Date.now() - LEAD_FORWARD_LEASE_MS).toISOString();
+      var found = await env.LEADS_DB.prepare(
+        "SELECT submission_id, received_at, status, delivered_at, payload_json FROM leads"
+        + " WHERE status='pending' OR (status='forwarding' AND delivered_at<=?1)"
+        + " ORDER BY received_at ASC LIMIT ?2"
+      ).bind(expiredBefore, LEAD_SWEEP_LIMIT * 2).all();
+      var rows = (found && found.results) || [];
+      var d1Attempts = 0;
+      for (const row of rows) {
+        if (d1Attempts >= LEAD_SWEEP_LIMIT) break;
+        var rowKey = "lead:" + row.submission_id;
+        if (rowKey === excludeKey) continue;
+        if (await isLeadTombstoned(env, row.submission_id)) continue;
+        var fields; try { fields = JSON.parse(row.payload_json || "{}"); } catch (e) { fields = {}; }
+        var rec = { submission_id: row.submission_id, fields: fields, status: row.status, received_at: row.received_at };
+        if (row.status === "forwarding") rec.forwarding_started_at = row.delivered_at;
+        const claim = await claimLeadForwarding(env, rowKey, rec);
+        if (claim !== "claimed") continue;
+        d1Attempts++;
+        if (await forwardToAlbato(env, rec.fields)) {
+          await markLeadDelivered(env, rowKey, rec);
+          await notifyTelegram(env, newLeadTelegramMessage(rec.fields));
+        } else {
+          await releaseLeadToPending(env, rowKey, rec);
+        }
+      }
+    } catch (e) { /* best-effort */ }
+  }
 }
 
+// Returns a plain {status, body} RESULT rather than a Response — a Response's
+// body stream can only be consumed once, but this same result is read by
+// BOTH the leader (which computed it) and every concurrent follower waiting
+// on the SAME promise (review 2026-09-23, finding 2). Each caller builds its
+// own fresh Response from this shared, re-readable result.
 async function processDurableLead(env, payload, submissionId, key) {
   var record = await readLeadRecord(env, key);
   if (record && (record.status === "delivered" || record.albato_delivered_at || deliveredLeadsInProcess.has(key))) {
-    return json(202, { ok: true, status: "accepted", submission_id: submissionId, dedup: true });
+    return { status: 202, body: { ok: true, status: "accepted", submission_id: submissionId, dedup: true } };
   }
 
   var kvOk = !!record;
@@ -497,13 +555,13 @@ async function processDurableLead(env, payload, submissionId, key) {
 
   var claim = await claimLeadForwarding(env, key, record);
   if (claim === "delivered") {
-    return json(202, { ok: true, status: "accepted", submission_id: submissionId, dedup: true });
+    return { status: 202, body: { ok: true, status: "accepted", submission_id: submissionId, dedup: true } };
   }
   if (claim === "pending") {
     if (persisted) {
       // Someone else (another isolate via D1, or a live KV lease) is
       // confirmed to be handling delivery — durable, nothing more to do here.
-      return json(202, { ok: true, status: "accepted", submission_id: submissionId, dedup: true });
+      return { status: 202, body: { ok: true, status: "accepted", submission_id: submissionId, dedup: true } };
     }
     // Nothing durably recorded AND no one else can be confirmed to be
     // handling it (this only happens when KV exists but every write to it
@@ -520,9 +578,9 @@ async function processDurableLead(env, payload, submissionId, key) {
   if (delivered) await notifyTelegram(env, newLeadTelegramMessage(record.fields));
 
   if (!persisted && !delivered) {
-    return json(502, { ok: false, error: "not_persisted" });
+    return { status: 502, body: { ok: false, error: "not_persisted" } };
   }
-  return json(202, { ok: true, status: "accepted", submission_id: submissionId });
+  return { status: 202, body: { ok: true, status: "accepted", submission_id: submissionId } };
 }
 
 export async function onRequest(context) {
@@ -646,14 +704,22 @@ export async function onRequest(context) {
   // → Albato → markDelivered/releaseToPending. Same-isolate de-dup by key;
   // D1 (when bound) is the cross-isolate arbiter for exactly-one-forward.
   var key = "lead:" + lead.submissionId;
-  if (activeLeadForwards.has(key)) {
-    return json(202, { ok: true, status: "accepted", submission_id: lead.submissionId, dedup: true });
+  var leaderWork = activeLeadForwards.get(key);
+  if (leaderWork) {
+    // A concurrent request for the SAME lead is already in flight. Await its
+    // REAL outcome (review 2026-09-23, finding 2) instead of blindly telling
+    // the client "accepted" — if the leader ultimately fails (KV down, no
+    // D1, Albato error), this follower must report the same failure, or the
+    // client would clear its write-ahead outbox believing the lead is safe
+    // when nothing was actually persisted anywhere.
+    var leaderResult = await leaderWork;
+    return json(leaderResult.status, Object.assign({}, leaderResult.body, { dedup: true }));
   }
   var work = processDurableLead(env, payload, lead.submissionId, key);
   activeLeadForwards.set(key, work);
-  var response;
+  var result;
   try {
-    response = await work;
+    result = await work;
   } finally {
     if (activeLeadForwards.get(key) === work) activeLeadForwards.delete(key);
   }
@@ -661,7 +727,7 @@ export async function onRequest(context) {
   if (typeof context.waitUntil === "function") {
     context.waitUntil(sweepPendingLeads(env, key));
   }
-  return response;
+  return json(result.status, result.body);
 }
 
 export {

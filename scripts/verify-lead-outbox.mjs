@@ -80,15 +80,122 @@ export async function verifyLeadOutbox(page, baseUrl) {
   return { status: "PASS", submissionId, requests: requests.length };
 }
 
+/* ============ Review 2026-09-23 (independent Codex review of bd8dc8e) —
+   findings 6 and 8. See docs/LEAD-PIPELINE.md "Review 2026-09-23" table. */
+
+// [finding 6, P1] Every outbox/sent-ID mutation must go through
+// navigator.locks (cross-tab mutual exclusion), with a documented fallback
+// when Web Locks is unavailable. A real two-tab race is inherently timing-
+// dependent and would make this test flaky; instead this proves the FIX
+// deterministically — that the code actually routes its mutations through
+// the lock at all (the bug was that it never did) — by wrapping the real
+// navigator.locks.request with a call counter before site/app.js runs.
+export async function verifyLeadOutboxLocking(page, baseUrl) {
+  assert.ok(["127.0.0.1", "localhost"].includes(new URL(baseUrl).hostname));
+  await page.addInitScript(() => {
+    window.__gambLockCalls = 0;
+    if (window.navigator.locks && typeof window.navigator.locks.request === "function") {
+      const realRequest = window.navigator.locks.request.bind(window.navigator.locks);
+      window.navigator.locks.request = function (name, ...rest) {
+        if (String(name).indexOf("gambarian_lead") === 0) window.__gambLockCalls += 1;
+        return realRequest(name, ...rest);
+      };
+    }
+  });
+
+  let networkDown = true;
+  await page.route("**/api/lead", async route => {
+    if (networkDown) return route.abort("failed");
+    const submissionId = route.request().postDataJSON().submission_id;
+    await route.fulfill({ status: 202, json: { ok: true, status: "accepted", submission_id: submissionId } });
+  });
+
+  await page.goto(baseUrl);
+  await page.evaluate(() => document.fonts.ready);
+  const hasWebLocks = await page.evaluate(() => !!(window.navigator.locks && window.navigator.locks.request));
+  assert.ok(hasWebLocks, "тестовая среда должна поддерживать navigator.locks (headless Chromium на 127.0.0.1)");
+
+  await page.locator("#lead-name").fill("Lock Проверка");
+  await page.locator("#lead-phone").fill("+972 50 111 2222");
+  await page.locator("#lead-email").fill("lock-qa@example.com");
+  await page.locator(".lead-form__submit").click();
+  await page.locator(".lead-form__confirm-submit").click();
+  await page.locator(".lead-form__error").waitFor({ state: "visible" });
+
+  const callsAfterEnqueue = await page.evaluate(() => window.__gambLockCalls || 0);
+
+  networkDown = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await page.waitForFunction(
+    key => { try { return JSON.parse(localStorage.getItem(key) || "[]").length === 0; } catch (e) { return false; } },
+    OUTBOX_KEY,
+    { timeout: 5000 },
+  );
+
+  const callsAfterDeliver = await page.evaluate(() => window.__gambLockCalls || 0);
+
+  assert.ok(callsAfterEnqueue > 0, "write-ahead enqueue должен брать navigator.locks перед мутацией outbox");
+  assert.ok(callsAfterDeliver > callsAfterEnqueue, "dequeue + fireLeadOnce на доставке тоже должны брать navigator.locks");
+  return { status: "PASS", callsAfterEnqueue, callsAfterDeliver };
+}
+
+// [finding 8, P2] A retried CORRECTION (corrects_submission_id set) must fire
+// lead_corrected on delivery, not generate_lead — the outbox retry path must
+// share the same event-routing logic as the manual submit path. Injects the
+// outbox entry directly (rather than driving the full "edit contacts" UI
+// flow) to isolate exactly the retry-delivery code path under review.
+export async function verifyLeadOutboxCorrection(page, baseUrl) {
+  assert.ok(["127.0.0.1", "localhost"].includes(new URL(baseUrl).hostname));
+  const requests = [];
+  await page.route("**/api/lead", async route => {
+    requests.push(route.request().postDataJSON());
+    const submissionId = route.request().postDataJSON().submission_id;
+    await route.fulfill({ status: 202, json: { ok: true, status: "accepted", submission_id: submissionId } });
+  });
+
+  await page.goto(baseUrl);
+  await page.evaluate(() => document.fonts.ready);
+
+  const priorId = "b1f6b1e0-19ba-49a5-8c49-6d32f8d91bca";
+  const correctionId = "c2f6b1e0-19ba-49a5-8c49-6d32f8d91bcd";
+  await page.evaluate(({ key, priorId, correctionId }) => {
+    const entry = {
+      submission_id: correctionId,
+      data: {
+        name: "Outbox Исправление", phone: "+972 50 333 4444", email: "outbox-correction@example.com",
+        landing_path: "/", lf_hp: "", submission_id: correctionId, corrects_submission_id: priorId,
+      },
+      created_at: Date.now(), attempts: 0,
+    };
+    localStorage.setItem(key, JSON.stringify([entry]));
+  }, { key: OUTBOX_KEY, priorId, correctionId });
+
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await page.waitForFunction(
+    key => { try { return JSON.parse(localStorage.getItem(key) || "[]").length === 0; } catch (e) { return false; } },
+    OUTBOX_KEY,
+    { timeout: 5000 },
+  );
+
+  const corrections = await page.evaluate(() => (window.dataLayer || []).filter(item => item.event === "lead_corrected"));
+  const leads = await page.evaluate(() => (window.dataLayer || []).filter(item => item.event === "generate_lead"));
+
+  assert.equal(requests.length, 1, "ретрай должен переслать поставленную в очередь коррекцию ровно один раз");
+  assert.equal(requests[0].corrects_submission_id, priorId);
+  assert.equal(corrections.length, 1, "доставленная из outbox коррекция должна слать lead_corrected");
+  assert.equal(corrections[0].corrects_submission_id, priorId);
+  assert.equal(leads.length, 0, "доставленная из outbox коррекция НЕ должна слать generate_lead");
+  return { status: "PASS" };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { chromium } = await import("@playwright/test");
   const browser = await chromium.launch();
+  const baseUrl = process.argv[2] || "http://127.0.0.1:8098/build/variants/final-dev5/";
   try {
-    const page = await browser.newPage();
-    console.log(JSON.stringify(await verifyLeadOutbox(
-      page,
-      process.argv[2] || "http://127.0.0.1:8098/build/variants/final-dev5/",
-    )));
+    console.log(JSON.stringify(await verifyLeadOutbox(await browser.newPage(), baseUrl)));
+    console.log(JSON.stringify(await verifyLeadOutboxLocking(await browser.newPage(), baseUrl)));
+    console.log(JSON.stringify(await verifyLeadOutboxCorrection(await browser.newPage(), baseUrl)));
   } finally {
     await browser.close();
   }

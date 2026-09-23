@@ -153,9 +153,39 @@ async function upsertD1(env, rec) {
     return true;
   } catch (e) { return false; }
 }
+// Insert-only: never touches an EXISTING row (ON CONFLICT DO NOTHING), unlike
+// upsertD1 above. Used as the pre-claim step in claimD1Lease so a stale
+// KV-sourced snapshot can never regress a row another isolate is actively
+// holding (review 2026-09-23, finding 4 — see claimD1Lease comment).
+async function insertD1IfMissing(env, rec) {
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return null;
+  try {
+    const result = await env.LEADS_DB.prepare(
+      `INSERT INTO leads (${D1_COLUMNS.join(",")})
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)
+       ON CONFLICT(submission_id) DO NOTHING`
+    ).bind(...d1Values(rec)).run();
+    return d1Changes(result);
+  } catch (e) { return null; }
+}
+// Review 2026-09-23, finding 4, P1: the previous version called upsertD1()
+// (an UPSERT that overwrites status/delivered_at whenever the CURRENT row
+// isn't already 'delivered') BEFORE attempting the claim. When `rec` is a
+// STALE snapshot read from KV — e.g. cron's own KV list still shows
+// "pending" because it was read moments before Pages Function claimed the
+// D1 lease and flipped it to "forwarding" — that upsert silently regressed
+// the live row back to 'pending', and the very next UPDATE below then
+// matched `status='pending'` and stole the lease out from under the isolate
+// that was still actively forwarding it. Two isolates then POST to Albato
+// concurrently for the same lead. Fix: use insert-if-missing instead, which
+// never touches a row that already exists, so a genuinely live 'forwarding'
+// row keeps its true status/delivered_at and the claim UPDATE below
+// correctly sees it as still held (delivered_at > expiredBefore) and backs
+// off with 'pending'. A readback of delivered_at after a successful claim
+// (the "owner token" check) guards against any UPDATE result miscount.
 async function claimD1Lease(env, rec, startedAt) {
   if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return "unavailable";
-  await upsertD1(env, rec);
+  await insertD1IfMissing(env, rec);
   const expiredBefore = new Date(new Date(startedAt).getTime() - FORWARD_LEASE_MS).toISOString();
   try {
     const result = await env.LEADS_DB.prepare(
@@ -163,7 +193,16 @@ async function claimD1Lease(env, rec, startedAt) {
        WHERE submission_id=?2
          AND (status='pending' OR (status='forwarding' AND delivered_at<=?3))`
     ).bind(startedAt, rec.submission_id, expiredBefore).run();
-    if (d1Changes(result) > 0) return "claimed";
+    if (d1Changes(result) > 0) {
+      // Owner-token readback: confirm OUR startedAt actually stuck before
+      // trusting the affected-row count.
+      const confirmed = await env.LEADS_DB.prepare(
+        "SELECT delivered_at FROM leads WHERE submission_id=?1"
+      ).bind(rec.submission_id).all();
+      const confirmedRow = confirmed && confirmed.results && confirmed.results[0];
+      if (confirmedRow && confirmedRow.delivered_at === startedAt) return "claimed";
+      return "pending";
+    }
     const found = await env.LEADS_DB.prepare(
       "SELECT status FROM leads WHERE submission_id=?1"
     ).bind(rec.submission_id).all();
@@ -254,6 +293,15 @@ async function probeD1(env) {
   return false;
 }
 
+// Tombstones (review 2026-09-23, finding 5): a lead deleted via /api/admin
+// must never be resurrected by this sweep. functions/api/admin.js writes
+// `tomb:<id>` to the SAME KV namespace before removing anything.
+function tombstoneKey(submissionId) { return `tomb:${submissionId}`; }
+async function isTombstoned(env, submissionId) {
+  if (!env.LEADS_KV || typeof env.LEADS_KV.get !== "function") return false;
+  try { return (await env.LEADS_KV.get(tombstoneKey(submissionId))) != null; } catch (e) { return false; }
+}
+
 async function sweepPending(env) {
   if (!(await probeD1(env))) return;
   const keys = await listLeadKeys(env);
@@ -269,6 +317,7 @@ async function sweepPending(env) {
   let attempts = 0;
   for (const key of candidates) {
     if (attempts >= SWEEP_LIMIT) break;
+    if (await isTombstoned(env, key.name.slice("lead:".length))) continue;
     const raw = await env.LEADS_KV.get(key.name);
     if (!raw) continue;
     let rec; try { rec = JSON.parse(raw); } catch (e) { continue; }
@@ -316,6 +365,56 @@ async function sweepPending(env) {
     }
     await upsertD1(env, rec);
     await putRecord(env, key.name, rec);
+  }
+
+  // D1-only stragglers (review 2026-09-23, finding 3): a lead whose EVERY KV
+  // write failed at intake time has no `lead:<id>` key at all, so the
+  // KV-list loop above can never find it. Rebuild a KV-shaped record from
+  // payload_json and run it through the same claim/forward path;
+  // claimD1Lease's insert-if-missing + atomic UPDATE safely no-op if
+  // another isolate (or the KV loop above) is already handling this id.
+  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function" && env.LEADS_KV) {
+    try {
+      const expiredBefore = new Date(Date.now() - FORWARD_LEASE_MS).toISOString();
+      const rows = await queryD1(env,
+        "SELECT submission_id, received_at, status, delivered_at, payload_json FROM leads"
+        + " WHERE status='pending' OR (status='forwarding' AND delivered_at<=?1)"
+        + " ORDER BY received_at ASC LIMIT ?2",
+        [expiredBefore, SWEEP_LIMIT * 2]);
+      let d1Attempts = 0;
+      for (const row of rows) {
+        if (d1Attempts >= SWEEP_LIMIT) break;
+        if (await isTombstoned(env, row.submission_id)) continue;
+        let fields; try { fields = JSON.parse(row.payload_json || "{}"); } catch (e) { fields = {}; }
+        const rec = { submission_id: row.submission_id, fields, status: row.status, received_at: row.received_at };
+        if (row.status === "forwarding") rec.forwarding_started_at = row.delivered_at;
+        const key = `lead:${row.submission_id}`;
+
+        const startedAt = new Date().toISOString();
+        const claim = await claimD1Lease(env, rec, startedAt);
+        if (claim !== "claimed") continue;
+        d1Attempts++;
+        rec.status = "forwarding";
+        rec.forwarding_started_at = startedAt;
+        await putRecord(env, key, rec);
+
+        if (await forwardToAlbato(env, rec.fields || {})) {
+          const deliveredAt = new Date().toISOString();
+          rec.status = "delivered";
+          rec.delivered_at = deliveredAt;
+          rec.albato_delivered_at = deliveredAt;
+          delete rec.forwarding_started_at;
+          await upsertD1(env, rec);
+          await putRecordWithRetry(env, key, rec, true);
+          await notifyTelegram(env, newLeadMsg(rec.fields || {}));
+        } else {
+          rec.status = "pending";
+          delete rec.forwarding_started_at;
+          await upsertD1(env, rec);
+          await putRecord(env, key, rec);
+        }
+      }
+    } catch (e) { /* best-effort */ }
   }
 }
 
@@ -616,4 +715,6 @@ export {
   probeD1,
   reconcile,
   sweepPending,
+  claimD1Lease,
+  insertD1IfMissing,
 };

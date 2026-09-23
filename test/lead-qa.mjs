@@ -20,8 +20,12 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { onRequest as leadRequest } from '../functions/api/lead.js';
+import { onRequest as leadRequest, sweepPendingLeads } from '../functions/api/lead.js';
 import { onRequestGet as adminGet, onRequestPost as adminPost } from '../functions/api/admin.js';
+
+function basicAuthHeader(user, pass) {
+  return { Authorization: 'Basic ' + Buffer.from(user + ':' + pass).toString('base64') };
+}
 
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => {
@@ -220,24 +224,26 @@ const baseLead = (id, extra = {}) => ({
     ok('honeypot stored only as aggregate counter, no lead payload', hpKeys.keys.length === 1 && leadKeys.keys.length === 0);
   }
 
-  // T6 — /api/admin: CF Access gate + table + CSV/MD export + filter + delete
+  // T6 — /api/admin: Basic Auth ONLY (no CF Access — review 2026-09-23 finding 1)
+  // + table + CSV/MD export + filter + delete
   {
     const idA1 = crypto.randomUUID();
     const idA2 = crypto.randomUUID();
-    const env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh', ADMIN_ALLOWED_EMAILS: 'alex@adfix.co.il' };
+    const env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh', ADMIN_PASSWORD: 'correct-horse-battery' };
     albatoUp = true;
     await post(env, baseLead(idA1, { phone: '+972500000011' }));
     await post(env, baseLead(idA2, { phone: '+972500000022' }));
-    const adminReq = (qs = '', email = 'alex@adfix.co.il') => new Request(ADMIN_URL + qs, { headers: email ? { 'Cf-Access-Authenticated-User-Email': email } : {} });
+    const auth = basicAuthHeader('admin', 'correct-horse-battery');
+    const adminReq = (qs = '', authHeader = auth) => new Request(ADMIN_URL + qs, { headers: authHeader || {} });
     const deleteForm = (id) => { const fd = new FormData(); fd.append('action', 'delete'); fd.append('submission_id', id); return fd; };
-    const adminDeleteReq = (id, email = 'alex@adfix.co.il') => new Request(ADMIN_URL + '?q=%2B972500000022', { method: 'POST', headers: email ? { 'Cf-Access-Authenticated-User-Email': email } : {}, body: deleteForm(id) });
-    console.log('\nT6 /api/admin — CF Access gate + table + export');
+    const adminDeleteReq = (id, authHeader = auth) => new Request(ADMIN_URL + '?q=%2B972500000022', { method: 'POST', headers: authHeader || {}, body: deleteForm(id) });
+    console.log('\nT6 /api/admin — Basic Auth only + table + export');
     const noauth = await adminGet({ request: adminReq('', null), env });
-    ok('no CF Access header → 403 (PII safe)', noauth.status === 403);
-    const notallow = await adminGet({ request: adminReq('', 'stranger@evil.com'), env });
-    ok('not on allowlist → 403', notallow.status === 403);
+    ok('no Authorization header → 401 (PII safe)', noauth.status === 401);
+    const wrongPass = await adminGet({ request: adminReq('', basicAuthHeader('admin', 'wrong-password')), env });
+    ok('wrong password → 401', wrongPass.status === 401);
     const tbl = await adminGet({ request: adminReq(), env }); const tblHtml = await tbl.text();
-    ok('authed → 200 HTML table with leads', tbl.status === 200 && tblHtml.includes(idA1) && tblHtml.includes('+972500000011'));
+    ok('authed via Basic → 200 HTML table with leads', tbl.status === 200 && tblHtml.includes(idA1) && tblHtml.includes('+972500000011'));
     const csv = await adminGet({ request: adminReq('?format=csv'), env }); const csvTxt = await csv.text();
     ok('CSV export has header + 2 rows', csv.headers.get('content-type').includes('text/csv') && csvTxt.includes('submission_id') && csvTxt.includes(idA1) && csvTxt.includes(idA2));
     ok('CSV export has Google/Meta click IDs', csvTxt.includes('gclid') && csvTxt.includes('gbraid') && csvTxt.includes('wbraid') && csvTxt.includes('fbclid') && csvTxt.includes('G1') && csvTxt.includes('B1') && csvTxt.includes('W1'));
@@ -246,20 +252,132 @@ const baseLead = (id, extra = {}) => ({
     const filt = await adminGet({ request: adminReq('?q=+972500000022'), env }); const filtTxt = await filt.text();
     ok('search filter narrows to 1', filtTxt.includes(idA2) && !filtTxt.includes(idA1));
     const delNoauth = await adminPost({ request: adminDeleteReq(idA1, null), env });
-    ok('delete without auth → 403 (PII safe)', delNoauth.status === 403);
+    ok('delete without auth → 401 (PII safe)', delNoauth.status === 401);
     const del = await adminPost({ request: adminDeleteReq(idA1), env });
     ok('delete redirects back to filtered admin', del.status === 303 && del.headers.get('location').includes('deleted=' + idA1) && del.headers.get('location').includes('q=%2B972500000022'));
     ok('delete removed D1 row only for selected lead', !env.LEADS_DB._get(idA1) && !!env.LEADS_DB._get(idA2));
     ok('delete removed KV/R2 copies', !env.LEADS_KV._has('lead:' + idA1) && env.LEADS_KV._has('lead:' + idA2) && !env.LEADS_ARCHIVE._keys().some(k => k.endsWith(idA1 + '.md')));
   }
 
-  // T7 — /api/admin inert without D1 (friendly, no crash)
+  // T7 — /api/admin inert without D1 (friendly, no crash), still requires Basic Auth
   {
-    const env = {};
-    const res = await adminGet({ request: new Request(ADMIN_URL, { headers: { 'Cf-Access-Authenticated-User-Email': 'a@b.com' } }), env });
+    const env = { ADMIN_PASSWORD: 'pw' };
+    const res = await adminGet({ request: new Request(ADMIN_URL, { headers: basicAuthHeader('admin', 'pw') }), env });
     const t = await res.text();
     console.log('\nT7 /api/admin inert without D1 → friendly page (no crash)');
     ok('200 + "не настроено" message', res.status === 200 && t.includes('LEADS_DB'));
+  }
+
+  /* ============ Review 2026-09-23 (independent Codex review of bd8dc8e) —
+     8 reproduced defects, one test per finding below. See
+     docs/LEAD-PIPELINE.md "Review 2026-09-23" table for finding → fix → test. */
+
+  // T8 [finding 1, P1] — a spoofed Cf-Access-Authenticated-User-Email header
+  // must NEVER grant admin access; Basic Auth is the only supported method.
+  {
+    const env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh', ADMIN_PASSWORD: 'correct-horse-battery' };
+    const spoofed = new Request(ADMIN_URL, { headers: { 'Cf-Access-Authenticated-User-Email': 'attacker@evil.com' } });
+    const res = await adminGet({ request: spoofed, env });
+    console.log('\nT8 [finding 1] Spoofed Cf-Access header must not grant admin access');
+    ok('spoofed header alone → 401 (Basic Auth required, CF Access path removed)', res.status === 401, 'status=' + res.status);
+  }
+
+  // T9 [finding 2, P1] — a concurrent follower must reflect the leader's REAL
+  // outcome, not blindly claim 202 while the actual persist+deliver failed.
+  {
+    const kv = makeKV();
+    kv.put = async () => { throw new Error('kv down'); };
+    const env = { LEADS_KV: kv, ALBATO_WEBHOOK_URL: 'https://albato.example/wh' }; // no D1 either
+    albatoUp = false;
+    const id = crypto.randomUUID();
+    const [leader, follower] = await Promise.all([
+      post(env, baseLead(id)),
+      post(env, baseLead(id)),
+    ]);
+    console.log('\nT9 [finding 2] Concurrent follower must reflect the leader real outcome');
+    ok('leader correctly reports 502 not_persisted (KV broken, no D1, Albato down)',
+      leader.status === 502 && leader.body.error === 'not_persisted', JSON.stringify(leader.body));
+    ok('follower echoes the SAME outcome instead of a false 202 (no silent client-side accept)',
+      follower.status === leader.status && follower.body.error === leader.body.error,
+      JSON.stringify({ leader: leader.body, follower: follower.body }));
+  }
+
+  // T10 [finding 3, P1] — a lead persisted ONLY in D1 (every KV write failed)
+  // must still be retried by the KV-list-based sweep, not stranded forever.
+  {
+    const failingKv = makeKV();
+    const realPut = failingKv.put.bind(failingKv);
+    failingKv.put = async () => { throw new Error('kv put down'); };
+    const db = makeD1();
+    const env = { LEADS_KV: failingKv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = false;
+    const id = crypto.randomUUID();
+    const first = await post(env, baseLead(id));
+    console.log('\nT10 [finding 3] D1-only pending lead (KV write failed) must be retried by sweep');
+    ok('initial attempt persisted only in D1 — still 202 accepted, D1 status=pending',
+      first.status === 202 && db._get(id)?.status === 'pending', JSON.stringify({ body: first.body, row: db._get(id) }));
+    ok('nothing was written to KV at all for this lead (proves the gap sweep must cover)',
+      failingKv._size() === 0);
+    failingKv.put = realPut; // KV recovers
+    albatoUp = true;
+    await sweepPendingLeads(env, '');
+    ok('sweep retries the D1-only pending row (rebuilt from payload_json) and delivers it',
+      db._get(id)?.status === 'delivered', JSON.stringify(db._get(id)));
+  }
+
+  // T11 [finding 5, P1] — admin delete: a partial failure must not report
+  // success, and a lead must never be resurrected by sweep after being
+  // deleted (tombstone blocks re-insertion even if a stale KV copy lingers).
+  {
+    const kv = makeKV();
+    const db = makeD1();
+    const r2 = makeR2();
+    const env = { LEADS_KV: kv, LEADS_DB: db, LEADS_ARCHIVE: r2, ALBATO_WEBHOOK_URL: 'https://albato.example/wh', ADMIN_PASSWORD: 'secret' };
+    // Lead stays PENDING in both KV and D1 (Albato down at intake) — this is
+    // the shape sweepPendingLeads actually scans for (a 'delivered' ghost is
+    // filtered out by sweep regardless of any tombstone, so it would not
+    // exercise this finding at all).
+    albatoUp = false;
+    const partialId = crypto.randomUUID();
+    await post(env, baseLead(partialId));
+    ok('lead is pending in both KV and D1 before delete',
+      db._get(partialId)?.status === 'pending' && kv._has('lead:' + partialId));
+    const realDelete = kv.delete.bind(kv);
+    kv.delete = async () => { throw new Error('kv delete down'); };
+    const deleteForm = (id) => { const fd = new FormData(); fd.append('action', 'delete'); fd.append('submission_id', id); return fd; };
+    const auth = basicAuthHeader('admin', 'secret');
+    const del = await adminPost({ request: new Request(ADMIN_URL, { method: 'POST', headers: auth, body: deleteForm(partialId) }), env });
+    console.log('\nT11 [finding 5] Partial delete of a pending lead must not report success and must not resurrect');
+    ok('partial delete (KV delete fails) does not redirect with deleted=<id>',
+      !(del.headers.get('location') || '').includes('deleted=' + partialId), del.headers.get('location'));
+    ok('D1 row is gone after the delete attempt (the D1 delete itself succeeded)', !db._get(partialId));
+    kv.delete = realDelete; // "network recovers" — the stale pending KV copy is the ghost lead
+    albatoUp = true; // Albato also recovers — a naive sweep would happily redeliver the ghost
+    await sweepPendingLeads(env, '');
+    ok('tombstone blocks sweep from resurrecting the deleted lead into D1 and re-delivering it',
+      !db._get(partialId), JSON.stringify(db._get(partialId)));
+
+    const fullId = crypto.randomUUID();
+    await post(env, baseLead(fullId));
+    const del2 = await adminPost({ request: new Request(ADMIN_URL, { method: 'POST', headers: auth, body: deleteForm(fullId) }), env });
+    ok('full delete (all copies succeed) reports deleted=<id>',
+      (del2.headers.get('location') || '').includes('deleted=' + fullId), del2.headers.get('location'));
+  }
+
+  // T12 [finding 7, P2] — CSV export must neutralise formula-injection payloads.
+  {
+    const env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh', ADMIN_PASSWORD: 'secret' };
+    albatoUp = true;
+    const id = crypto.randomUUID();
+    await post(env, baseLead(id, { name: '=1+1' }));
+    const auth = basicAuthHeader('admin', 'secret');
+    const csv = await adminGet({ request: new Request(ADMIN_URL + '?format=csv', { headers: auth }), env });
+    const csvTxt = await csv.text();
+    console.log('\nT12 [finding 7] CSV export neutralises formula-injection payloads');
+    ok('a name starting with "=" is prefixed with a single quote in the CSV cell',
+      csvTxt.includes("'=1+1"), csvTxt);
+    ok('the raw unescaped formula (bare =1+1, unprefixed) is not present',
+      !/[,\n]=1\+1/.test(csvTxt), csvTxt);
   }
 
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);

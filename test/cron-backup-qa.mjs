@@ -31,6 +31,7 @@ let verifyPreviousDump;
 let purgeExpiredDumps;
 let probeD1;
 let reconcile;
+let claimD1Lease;
 try {
   ({
     default: worker,
@@ -39,6 +40,7 @@ try {
     purgeExpiredDumps,
     probeD1,
     reconcile,
+    claimD1Lease,
   } = await import('../cron-worker/src/index.js'));
 } catch (error) {
   console.error('HARNESS ERROR: worker module unavailable:', error);
@@ -411,6 +413,43 @@ async function run() {
   await purgeExpiredDumps({ LEADS_ARCHIVE: purgeR2 });
   check('purge removes objects older than 30 days', !purgeR2._has(oldKey) && !purgeR2._has(oldManifest));
   check('purge preserves fresh objects', purgeR2._has(freshKey));
+
+  /* ============ Review 2026-09-23 (independent Codex review of bd8dc8e) —
+     finding 3 (cron-side) and finding 4. See docs/LEAD-PIPELINE.md
+     "Review 2026-09-23" table for finding -> fix -> test. */
+
+  // [finding 3, P1] A lead persisted ONLY in D1 (no KV key exists for it at
+  // all — e.g. intake happened while KV was fully broken) must still be
+  // retried by the cron sweep, not stranded because sweep only lists KV.
+  {
+    alerts = []; albatoHits = 0;
+    const d1OnlyId = 'd1-only-pending-cron';
+    const emptyKv = makeKV(); // no lead: key for this id whatsoever
+    const d1OnlySweepDb = makeD1([seedRow(d1OnlyId, isoOffset(-1), 'pending')]);
+    await runScheduled('*/5 * * * *', withAlerts({
+      LEADS_KV: emptyKv, LEADS_DB: d1OnlySweepDb, ALBATO_WEBHOOK_URL: 'https://albato.local/hook',
+    }));
+    check('cron sweep retries a D1-only pending row missing from KV entirely',
+      d1OnlySweepDb._get(d1OnlyId)?.status === 'delivered', JSON.stringify(d1OnlySweepDb._get(d1OnlyId)));
+  }
+
+  // [finding 4, P1] claimD1Lease must never regress a LIVE (unexpired)
+  // 'forwarding' row back to 'pending' via a stale KV-sourced snapshot, and
+  // must not steal the lease while it is still held by another isolate.
+  {
+    const liveId = 'live-forwarding-race';
+    const freshLeaseStart = new Date().toISOString(); // held right now, nowhere near the 15s expiry
+    const raceDb = makeD1([{ ...seedRow(liveId, isoOffset(-1), 'forwarding'), delivered_at: freshLeaseStart }]);
+    // Cron's own KV-sourced view of this lead is STALE ("pending", as it
+    // looked before Pages claimed the D1 lease moments ago).
+    const staleRec = kvRecord(liveId, isoOffset(-1), 'pending');
+    const claim = await claimD1Lease(withAlerts({ LEADS_DB: raceDb }), staleRec, new Date().toISOString());
+    check('claimD1Lease does not steal a live unexpired forwarding lease from a stale pending snapshot',
+      claim === 'pending', `claim=${claim}`);
+    check('claimD1Lease does not regress the live row status/lease timestamp',
+      raceDb._get(liveId)?.status === 'forwarding' && raceDb._get(liveId)?.delivered_at === freshLeaseStart,
+      JSON.stringify(raceDb._get(liveId)));
+  }
 
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
   process.exit(fail ? 1 : 0);

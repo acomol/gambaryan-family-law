@@ -1,10 +1,18 @@
 /* Cloudflare Pages Function — GET/POST /api/admin
    Lightweight lead admin over the D1 mirror (LEADS_DB): filterable table + CSV/MD export.
 
-   🔒 SECURITY — PII (name/phone/email). Secure-by-default: serves ONLY if
-   authenticated by EITHER (A) Cloudflare Access (self-hosted policy on
-   /api/admin → CF-Access email header) OR (B) HTTP Basic Auth against env
-   ADMIN_PASSWORD. If neither is configured → refuse (403), never open.
+   🔒 SECURITY — PII (name/phone/email). Secure-by-default: serves ONLY via
+   HTTP Basic Auth against env ADMIN_PASSWORD, compared in constant time. If
+   ADMIN_PASSWORD is not configured → refuse (403), never open.
+
+   Review 2026-09-23 (independent Codex review of bd8dc8e, finding 1, P1):
+   the original CF-Access-header path (trusting the raw
+   Cf-Access-Authenticated-User-Email request header) has been REMOVED. That
+   header is only trustworthy when Cloudflare's own edge sets it after a
+   verified Access policy — this Function had no way to confirm that, so a
+   spoofed header alone was enough to grant full read + CSV export + delete
+   access. Basic Auth is now the only supported method; see
+   docs/LEAD-PIPELINE.md "Review 2026-09-23" table.
 
    Ported from clients/luxemed/New Lending/functions/admin.js (digitalhook-os-,
    feature/luxemed-new-lending@613cdd30; contract:
@@ -18,7 +26,6 @@
      • D1 database bound as  LEADS_DB                 (required — the queryable store)
      • env  ADMIN_PASSWORD            password for Basic-Auth login (set via API/dashboard)
      • env  ADMIN_USER     (optional) Basic-Auth username (default: any)
-     • env  ADMIN_ALLOWED_EMAILS (optional) = "a@x.com,b@y.com"  extra allowlist for CF Access
    Until LEADS_DB is bound this shows a friendly "not configured" page (no error). */
 
 const DB_COLS = [
@@ -33,51 +40,64 @@ const COLS = [
 ];
 
 function esc(s) { return String(s == null ? "" : s).replace(/[<>&"]/g, function (c) { return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]; }); }
-function csvCell(s) { var v = String(s == null ? "" : s); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+// CSV-injection guard (review 2026-09-23, finding 7, P2): a cell starting
+// with =, +, -, @, tab or CR can be interpreted as a formula by
+// Excel/Sheets/LibreOffice when the export is opened — prefix with a
+// single quote to force it back to plain text, BEFORE the existing
+// quote/comma/newline escaping (OWASP CSV Injection mitigation).
+function csvCell(s) {
+  var v = String(s == null ? "" : s);
+  if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
+  return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+// Constant-time string compare (review 2026-09-23, finding 1, P1): always
+// walks the full max-length of both inputs instead of returning as soon as
+// a length mismatch or a differing character is found, so a timing
+// side-channel can't be used to guess ADMIN_USER/ADMIN_PASSWORD one
+// character at a time.
+function timingSafeEqual(a, b) {
+  var maxLen = Math.max(a.length, b.length);
+  var diff = a.length === b.length ? 0 : 1;
+  for (var i = 0; i < maxLen; i++) {
+    var ca = i < a.length ? a.charCodeAt(i) : 0;
+    var cb = i < b.length ? b.charCodeAt(i) : 0;
+    diff |= ca ^ cb;
+  }
+  return diff === 0;
+}
 
 function authAdmin(request, env) {
-  var email = null;
-
-  var accessEmail = request.headers.get("Cf-Access-Authenticated-User-Email");
-  if (accessEmail) {
-    var allow = (env.ADMIN_ALLOWED_EMAILS || "").split(",").map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
-    if (allow.length && allow.indexOf(accessEmail.toLowerCase()) === -1) {
-      return { response: new Response("403 — " + accessEmail + " не в списке допуска админки.", { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } }) };
-    }
-    email = accessEmail;
+  if (!env.ADMIN_PASSWORD) {
+    return {
+      response: new Response(
+        "403 — /api/admin не защищён. Задайте env ADMIN_PASSWORD.",
+        { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } },
+      ),
+    };
   }
 
-  if (!email && env.ADMIN_PASSWORD) {
-    var m = /^Basic\s+(.+)$/i.exec(request.headers.get("Authorization") || "");
-    if (m) {
-      var user = "", pass = "";
-      try {
-        var dec = atob(m[1]);
-        var i = dec.indexOf(":");
-        user = dec.slice(0, i);
-        pass = dec.slice(i + 1);
-      } catch (e) { /* malformed header — treated as wrong credentials below */ }
-      var okUser = !env.ADMIN_USER || user === env.ADMIN_USER;
-      var okPass = pass.length === env.ADMIN_PASSWORD.length;
-      for (var k = 0; k < pass.length; k++) okPass = okPass && (pass.charCodeAt(k) === env.ADMIN_PASSWORD.charCodeAt(k));
-      if (okUser && okPass) email = "admin:" + (user || "admin");
-    }
-    if (!email) {
-      return {
-        response: new Response("Требуется вход в админку Гамбарян.", {
-          status: 401,
-          headers: { "www-authenticate": 'Basic realm="Gambarian Admin", charset="UTF-8"', "content-type": "text/plain; charset=utf-8" },
-        }),
-      };
-    }
+  var email = null;
+  var m = /^Basic\s+(.+)$/i.exec(request.headers.get("Authorization") || "");
+  if (m) {
+    var user = "", pass = "";
+    try {
+      var dec = atob(m[1]);
+      var i = dec.indexOf(":");
+      user = dec.slice(0, i);
+      pass = dec.slice(i + 1);
+    } catch (e) { /* malformed header — treated as wrong credentials below */ }
+    var okUser = !env.ADMIN_USER || timingSafeEqual(user, env.ADMIN_USER);
+    var okPass = timingSafeEqual(pass, env.ADMIN_PASSWORD);
+    if (okUser && okPass) email = "admin:" + (user || "admin");
   }
 
   if (!email) {
     return {
-      response: new Response(
-        "403 — /api/admin не защищён. Включите Cloudflare Access на этот маршрут ИЛИ задайте env ADMIN_PASSWORD.",
-        { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } },
-      ),
+      response: new Response("Требуется вход в админку Гамбарян.", {
+        status: 401,
+        headers: { "www-authenticate": 'Basic realm="Gambarian Admin", charset="UTF-8"', "content-type": "text/plain; charset=utf-8" },
+      }),
     };
   }
 
@@ -113,20 +133,65 @@ function htmlPage(title, inner) {
   );
 }
 
+// Review 2026-09-23, finding 5, P1: the previous version deleted D1 first,
+// swallowed KV/R2 errors, and reported success regardless — a KV delete
+// failure left a "ghost" pending/forwarding KV record that a later sweep
+// would happily re-insert into D1 and re-deliver to Albato, resurrecting a
+// lead the admin explicitly removed. Fix:
+//   1. Tombstone FIRST (KV `tomb:<id>`, long TTL) — blocks re-delivery even
+//      if the deletes below partially fail; checked by
+//      functions/api/lead.js sweepPendingLeads (both its KV- and
+//      D1-sourced retry loops) and by cron-worker/src/index.js.
+//   2. Delete the KV and D1 COPIES that could cause re-delivery.
+//   3. R2 archive delete stays best-effort and outside the pass/fail
+//      verdict on purpose — it is a durable audit trail ("keep archive
+//      key"), not a copy that can resurrect a lead.
+//   4. Report success (the `deleted=<id>` flash) ONLY when the tombstone
+//      write and BOTH data-copy deletes are confirmed. A caller can safely
+//      retry: the tombstone write and both deletes are idempotent no-ops
+//      once they have already succeeded.
+const TOMBSTONE_TTL_SECONDS = 90 * 24 * 60 * 60;
+function tombstoneKey(submissionId) { return "tomb:" + submissionId; }
+
 async function deleteLead(env, submissionId) {
   var receivedAt = "";
   if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function") {
     try {
       var r = await env.LEADS_DB.prepare("SELECT received_at FROM leads WHERE submission_id = ?").bind(submissionId).all();
       receivedAt = (r.results && r.results[0] && r.results[0].received_at) || "";
-    } catch (e) { /* best-effort */ }
-    await env.LEADS_DB.prepare("DELETE FROM leads WHERE submission_id = ?").bind(submissionId).run();
+    } catch (e) { /* best-effort — only affects the R2 archive key below */ }
   }
+
+  var tombOk = true;
+  if (env.LEADS_KV && typeof env.LEADS_KV.put === "function") {
+    try {
+      await env.LEADS_KV.put(tombstoneKey(submissionId), JSON.stringify({ deleted_at: new Date().toISOString() }), {
+        expirationTtl: TOMBSTONE_TTL_SECONDS, metadata: { type: "lead_tombstone" },
+      });
+    } catch (e) { tombOk = false; }
+  }
+
+  var d1Ok = true;
+  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function") {
+    try { await env.LEADS_DB.prepare("DELETE FROM leads WHERE submission_id = ?").bind(submissionId).run(); }
+    catch (e) { d1Ok = false; }
+  }
+
+  var kvOk = true;
   if (env.LEADS_KV && typeof env.LEADS_KV.delete === "function") {
-    try { await env.LEADS_KV.delete("lead:" + submissionId); } catch (e) { /* best-effort */ }
+    try { await env.LEADS_KV.delete("lead:" + submissionId); }
+    catch (e) { kvOk = false; }
   }
+
   if (env.LEADS_ARCHIVE && typeof env.LEADS_ARCHIVE.delete === "function" && receivedAt) {
-    try { await env.LEADS_ARCHIVE.delete("leads/" + receivedAt.slice(0, 10) + "/" + submissionId + ".md"); } catch (e) { /* best-effort */ }
+    try { await env.LEADS_ARCHIVE.delete("leads/" + receivedAt.slice(0, 10) + "/" + submissionId + ".md"); }
+    catch (e) { /* best-effort, does not affect tombOk/d1Ok/kvOk */ }
+  }
+
+  if (!tombOk || !d1Ok || !kvOk) {
+    var failure = new Error("partial_delete");
+    failure.partial = true;
+    throw failure;
   }
 }
 
@@ -158,7 +223,10 @@ export async function onRequestPost(context) {
     await deleteLead(env, submissionId);
     back.searchParams.set("deleted", submissionId);
   } catch (e) {
-    back.searchParams.set("error", "delete_failed");
+    // Tombstone still blocks re-delivery even on partial failure (finding
+    // 5) — the distinct code tells the operator a retry may be needed for
+    // the KV/D1 copy that did not confirm, without claiming success.
+    back.searchParams.set("error", (e && e.partial) ? "partial_delete" : "delete_failed");
   }
   return new Response(null, { status: 303, headers: { location: back.pathname + back.search } });
 }
