@@ -35,7 +35,10 @@ export function loadGasContext(fileNames, overrides) {
     ScriptApp: {},
     LockService: {},
     ContentService: {},
-    Session: {}
+    Session: {},
+    // Charts — дашборд «Сводка» (5 графиков, EmbeddedChartBuilder использует
+    // Charts.ChartType.* как перечисление типа при sheet.newChart().setChartType(...)).
+    Charts: { ChartType: { LINE: 'LINE', BAR: 'BAR', COLUMN: 'COLUMN', PIE: 'PIE' } }
   }, overrides || {});
   vm.createContext(sandbox);
 

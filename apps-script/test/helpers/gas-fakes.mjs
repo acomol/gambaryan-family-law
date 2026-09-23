@@ -115,6 +115,29 @@ function makeFakeRange(sheet, row, col, numRows, numCols) {
       return range;
     },
     setDataValidation: function () { return range; },
+    // дашборд «Сегодня»/«Сводка»: несколько отдельных формул одним вызовом
+    // (funnel T5:T8) — по одной строке-массиву на ячейку диапазона, как
+    // setValues, но каждая помечается формулой (в отличие от одиночной
+    // ARRAYFORMULA-ячейки, которая просто setFormula() на якорь и спиллится).
+    setFormulas: function (formulas) { return range.setValues(formulas); },
+    setBackground: function (color) {
+      sheet._backgrounds = sheet._backgrounds || {};
+      for (var r = 0; r < numRows; r++) {
+        for (var c = 0; c < numCols; c++) {
+          sheet._backgrounds[(row + r) + ':' + (col + c)] = color;
+        }
+      }
+      return range;
+    },
+    getBackground: function () { return (sheet._backgrounds && sheet._backgrounds[row + ':' + col]) || '#ffffff'; },
+    // merge — дашборд заголовки блоков «Сегодня»/«Сводка» (A:D в одну ячейку);
+    // фейк не эмулирует реальное объединение ячеек листа, только отмечает
+    // диапазон как «объединённый» для тестов, которые это проверяют.
+    merge: function () {
+      sheet._merges = sheet._merges || [];
+      sheet._merges.push({ row: row, col: col, numRows: numRows, numCols: numCols });
+      return range;
+    },
     setRichTextValue: function (rtv) {
       sheet._richText = sheet._richText || {};
       sheet._richText[row + ':' + col] = rtv;
@@ -187,8 +210,16 @@ export function makeFakeSheet(name, opts) {
     },
     setFrozenRows: function () {},
     setFrozenColumns: function () {},
-    hideColumns: function () {},
+    hideColumns: function (start, count) {
+      sheet._hiddenColumns = sheet._hiddenColumns || [];
+      sheet._hiddenColumns.push({ start: start, count: count || 1 });
+    },
     autoResizeColumns: function () {},
+    setColumnWidth: function (col, width) {
+      sheet._columnWidths = sheet._columnWidths || {};
+      sheet._columnWidths[col] = width;
+      return sheet;
+    },
     getProtections: function (type) {
       return sheet._protections.filter(function (p) { return !type || p._type === type; });
     },
@@ -197,10 +228,41 @@ export function makeFakeSheet(name, opts) {
       sheet._protections.push(p);
       return p;
     },
-    setConditionalFormatRules: function () {},
+    // дашборд-тесты (Сводка/Сегодня) проверяют условное форматирование через
+    // фейк — раньше это был no-op и ничего нельзя было проверить.
+    setConditionalFormatRules: function (rules) { sheet._conditionalFormatRules = (rules || []).slice(); return sheet; },
+    getConditionalFormatRules: function () { return (sheet._conditionalFormatRules || []).slice(); },
     hideSheet: function () { sheet._hidden = true; return sheet; },
     showSheet: function () { sheet._hidden = false; return sheet; },
-    isSheetHidden: function () { return !!sheet._hidden; }
+    isSheetHidden: function () { return !!sheet._hidden; },
+    // дашборд-тесты (5 графиков «Сводки») — минимальная симуляция
+    // EmbeddedChartBuilder: тип/диапазоны/опции записываются, insertChart
+    // складывает построенный чарт в sheet._charts для проверки.
+    newChart: function () {
+      var built = { chartType: null, ranges: [], options: {}, position: null, numHeaders: 0, stacked: false };
+      var builder = {
+        setChartType: function (t) { built.chartType = t; return builder; },
+        addRange: function (r) { built.ranges.push(r); return builder; },
+        setPosition: function (row, col, offsetX, offsetY) { built.position = { row: row, col: col, offsetX: offsetX, offsetY: offsetY }; return builder; },
+        setOption: function (k, v) { built.options[k] = v; return builder; },
+        setNumHeaders: function (n) { built.numHeaders = n; return builder; },
+        setStacked: function () { built.stacked = true; return builder; },
+        setTitle: function (t) { built.title = t; return builder; },
+        setXAxisTitle: function (t) { built.xAxisTitle = t; return builder; },
+        setYAxisTitle: function (t) { built.yAxisTitle = t; return builder; },
+        setLegendPosition: function (p) { built.legendPosition = p; return builder; },
+        build: function () { return { _built: built }; }
+      };
+      return builder;
+    },
+    insertChart: function (chart) {
+      sheet._charts = sheet._charts || [];
+      sheet._charts.push(chart._built);
+    },
+    removeChart: function (chart) {
+      sheet._charts = (sheet._charts || []).filter(function (c) { return c !== (chart && chart._built); });
+    },
+    getCharts: function () { return (sheet._charts || []).slice(); }
   };
   return sheet;
 }
@@ -233,7 +295,7 @@ export function makeFakeSpreadsheetApp(spreadsheetsById) {
       setBold: function (v) { built.bold = v === undefined ? true : v; return api; },
       setItalic: function () { return api; },
       setStrikethrough: function (v) { built.strikethrough = v === undefined ? true : v; return api; },
-      setFontColor: function () { return api; },
+      setFontColor: function (c) { built.fontColor = c; return api; },
       setRanges: function (r) { built.ranges = r; return api; },
       build: function () { return built; }
     };

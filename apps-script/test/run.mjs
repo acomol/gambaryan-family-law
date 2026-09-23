@@ -22,7 +22,8 @@ const testFiles = [
   './code-integration.test.mjs',
   './static-checks.test.mjs',
   './email-templates.test.mjs',
-  './codex-review-fixes.test.mjs'
+  './codex-review-fixes.test.mjs',
+  './dashboard.test.mjs'
 ];
 
 console.log('apps-script/test/run.mjs — GAS_SRC_DIR=' + (process.env.GAS_SRC_DIR || '(по умолчанию: ../src)'));
