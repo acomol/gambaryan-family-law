@@ -62,13 +62,17 @@ function makeFakeRange(sheet, row, col, numRows, numCols) {
       return out;
     },
     getValue: function () { return range.getValues()[0][0]; },
-    // Симуляция formula re-injection (задача fix item1, Codex review): реальный
-    // Google Sheets парсит ведущий "="/"+"/"-"/"@"/TAB/CR как формулу при
-    // setValue()/setValues() НЕЗАВИСИМО от источника записи (Class Range docs),
-    // ЕСЛИ ячейка не отформатирована как обычный текст ("@"). Фейк воспроизводит
-    // ровно эту семантику: если формат ячейки НЕ "@" и значение похоже на
-    // формулу — запись попадает в sheet._formulas (getFormulas() её увидит);
-    // формат "@", выставленный ДО setValue/setValues, держит значение текстом.
+    // Симуляция formula re-injection (P1 A1, root-cause fix): официальная
+    // документация Apps Script (Range.setValue()/setValues(),
+    // Sheet.appendRow() — см. sheetSafeValue_ в Utils.gs для точные цитаты и
+    // URL, прочитано 2026-09-23) не упоминает НИКАКОГО исключения по формату
+    // ячейки — "if it begins with '=' it is interpreted as a formula" ничем
+    // не обусловлено. Прежняя версия фейка воспроизводила НЕподтверждённое
+    // поведение (формат "@" как щит) — эта версия строгая: формат ячейки
+    // ИГНОРИРУЕТСЯ полностью, единственное, что снимает формулу — ведущий
+    // апостроф в самом значении (тот же приём, что и ручной ввод в UI —
+    // ValueInputOption.USER_ENTERED, см. Utils.gs), ровно то, что должен
+    // делать sheetSafeValue_ ДО записи.
     setValues: function (values) {
       for (var r = 0; r < values.length; r++) {
         var idx = row - 1 + r;
@@ -77,11 +81,10 @@ function makeFakeRange(sheet, row, col, numRows, numCols) {
           var v = values[r][c];
           var cellRow = row + r;
           var cellCol = col + c;
-          var fmt = (sheet._numberFormats && sheet._numberFormats[cellRow + ':' + cellCol]) || null;
-          var isPlainText = fmt === '@';
-          var isFormulaLike = typeof v === 'string' && /^[=+\-@\t\r]/.test(v);
+          var isTextForced = typeof v === 'string' && v.charAt(0) === "'";
+          var isFormulaLike = typeof v === 'string' && !isTextForced && /^[=+\-@\t\r]/.test(v);
           sheet._formulas = sheet._formulas || {};
-          if (isFormulaLike && !isPlainText) {
+          if (isFormulaLike) {
             sheet._formulas[cellRow + ':' + cellCol] = v;
           } else {
             delete sheet._formulas[cellRow + ':' + cellCol];
@@ -184,12 +187,10 @@ export function makeFakeSheet(name, opts) {
       return sheet._data.reduce(function (m, r) { return Math.max(m, r.length); }, 0);
     },
     getMaxRows: function () { return Math.max(sheet._maxRows, sheet._data.length); },
-    // design fix item1: appendRow — тоже точка записи внешних строк (новая
-    // заявка/докрутка orphan), поэтому подчиняется той же симуляции formula
-    // re-injection, что и Range.setValues() выше: ячейка, заранее (ДО
-    // appendRow) отформатированная как "@" (см. protectExternalTextColumns_ в
-    // Code.gs), не становится "формулой" в фейке, даже если значение начинается
-    // с "="/"+"/"-"/"@"/TAB/CR.
+    // P1 A1: appendRow — тоже точка записи внешних строк (новая заявка/
+    // докрутка orphan/журнал), той же строгой семантикой, что и
+    // Range.setValues() выше — формат ячейки НЕ снимает формулу, только
+    // ведущий апостроф в значении (см. комментарий у setValues).
     appendRow: function (row) {
       var newRowIndex = sheet._data.length + 1; // 1-based позиция ПОСЛЕ вставки
       var newRow = row.slice();
@@ -197,10 +198,9 @@ export function makeFakeSheet(name, opts) {
       for (var c = 0; c < newRow.length; c++) {
         var v = newRow[c];
         var cellCol = c + 1;
-        var fmt = (sheet._numberFormats && sheet._numberFormats[newRowIndex + ':' + cellCol]) || null;
-        var isPlainText = fmt === '@';
-        var isFormulaLike = typeof v === 'string' && /^[=+\-@\t\r]/.test(v);
-        if (isFormulaLike && !isPlainText) {
+        var isTextForced = typeof v === 'string' && v.charAt(0) === "'";
+        var isFormulaLike = typeof v === 'string' && !isTextForced && /^[=+\-@\t\r]/.test(v);
+        if (isFormulaLike) {
           sheet._formulas[newRowIndex + ':' + cellCol] = v;
         } else {
           delete sheet._formulas[newRowIndex + ':' + cellCol];

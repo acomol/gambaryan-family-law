@@ -249,7 +249,12 @@ function renderNewLeadEmail_(data) {
   textLines.push(footerText);
 
   return {
-    subject: 'Новая заявка ' + leadNo + ' — ' + name,
+    // P1 A6 (review): № и Имя — внешние строки (Имя приходит с формы) в
+    // subject письма; MailApp.sendEmail() не документирует санитизацию
+    // control-символов в subject (см. stripSubjectControlChars_ в Utils.gs
+    // для точной цитаты и URL) — CR/LF внутри значения заголовка письма это
+    // классическая email header injection (RFC 5322 §2.2).
+    subject: 'Новая заявка ' + stripSubjectControlChars_(leadNo) + ' — ' + stripSubjectControlChars_(name),
     html: html,
     text: textLines.join('\n')
   };
@@ -306,7 +311,8 @@ function renderShortLeadEmail_(data) {
   ];
 
   return {
-    subject: (data.subjectPrefix || (data.titleText || '')) + ' — ' + leadNo,
+    // P1 A6 — см. комментарий в renderNewLeadEmail_.
+    subject: (data.subjectPrefix || (data.titleText || '')) + ' — ' + stripSubjectControlChars_(leadNo),
     html: html,
     text: textLines.join('\n')
   };

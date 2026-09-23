@@ -80,8 +80,12 @@ test('item1: новая заявка с Имя/Телефон/Откуда ви�
   const phoneCol = reqHeaderMap['Телефон'] + 1;
   assert.deepEqual(requests.getRange(2, nameCol).getFormulas(), [['']], 'Имя не должно стать формулой');
   assert.deepEqual(requests.getRange(2, phoneCol).getFormulas(), [['']], 'Телефон не должен стать формулой');
-  assert.equal(requests._data[1][nameCol - 1], '=1+1', 'значение остаётся видимым текстом, не пропадает');
-  assert.equal(requests._data[1][phoneCol - 1], '=2+2');
+  // P1 A1 (root cause: setNumberFormat('@') не защита — sheetSafeValue_
+  // добавляет ведущий апостроф, ТОТ ЖЕ приём, что и sheetSafe() на сервере):
+  // значение остаётся видимым текстом (Sheets прячет апостроф на экране), не
+  // пропадает и не становится формулой.
+  assert.equal(requests._data[1][nameCol - 1], "'=1+1", 'значение остаётся видимым текстом (с ведущим апострофом — защита A1), не пропадает');
+  assert.equal(requests._data[1][phoneCol - 1], "'=2+2");
 
   const sourceCol = serviceHeaderMap['Откуда'] + 1;
   const subCol = serviceHeaderMap['submission_id'] + 1;
@@ -111,7 +115,8 @@ test('item1: исправление контактов вида "=5+5" НЕ ст
   ctx.resolvePendingCorrections_(ss, buildConfig(), new Date('2026-01-02T12:00:00Z'), requests, reqHeaderMap, service, serviceHeaderMap);
 
   const nameCol = reqHeaderMap['Имя'] + 1;
-  assert.equal(requests._data[1][nameCol - 1], '=5+5', 'значение из исправления применилось');
+  // P1 A1 — см. комментарий в предыдущем тесте: ведущий апостроф, не '@'-формат.
+  assert.equal(requests._data[1][nameCol - 1], "'=5+5", 'значение из исправления применилось (с ведущим апострофом — защита A1)');
   assert.deepEqual(requests.getRange(2, nameCol).getFormulas(), [['']], 'исправленное имя не должно стать формулой');
 });
 
@@ -228,7 +233,11 @@ test('item4: orphan «Служебное» (создание прервано Д
   const intake = makeFakeSheet('Входящие', {
     data: [intakeHeaders, buildRow(intakeHeaders, { submission_id: 'S1', submitted_at: '2026-01-05T10:00:00Z', name: 'Ivan', phone: '+972501234567', email: 'a@x.com' })]
   });
-  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Служебное': service });
+  // P1 A3: докрутка orphan-заявки теперь (при попадании в рабочие часы) шлёт
+  // немедленное уведомление офису — нужен «Журнал» в фикстуре (раньше
+  // completeOrphanedLeads_ его не читала вовсе).
+  const journal = makeFakeSheet('Журнал');
+  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Служебное': service, 'Журнал': journal });
   const config = buildConfig();
 
   ctx.completeOrphanedLeads_(ss, requests, [Array.from(reqHeaders)], reqHeaderMap, [Array.from(svcHeaders), service._data[1]], serviceHeaderMap, config, new Date('2026-01-05T10:10:00Z'));
@@ -302,14 +311,19 @@ test('item5: ретрай ограничен по числу попыток на
   const service = makeFakeSheet('Служебное', { data: [svcHeaders, buildRow(svcHeaders, { '№': 'G-0001', 'submission_id': 'S1', 'все submission_id': 'S1' })] });
   const journal = makeFakeSheet('Журнал', { data: [Array.from(ctx.JOURNAL_HEADERS_)] });
   journal.appendRow(['2026-01-05T10:05:00.000Z', 'G-0001', 'new_lead', 'boom', 'email', 'failed', '', 'G-0001:new_lead:1']);
-  props._store.notificationRetryAttempts = JSON.stringify({ 'G-0001:new_lead:1': 5 }); // уже на пределе
+  // P1 A4: внутреннее представление attempts теперь {count, backoffUntil} —
+  // "на пределе И внутри backoff-окна" (следующая попытка — не раньше
+  // backoffUntil; окно ещё не истекло на момент вызова ниже).
+  props._store.notificationRetryAttempts = JSON.stringify({
+    'G-0001:new_lead:1': { count: 5, backoffUntil: new Date('2026-01-06T20:00:00.000Z').getTime() }
+  });
   const reqHeaderMap = ctx.colByHeader_(reqHeaders);
   const serviceHeaderMap = ctx.colByHeader_(svcHeaders);
   const ss = makeFakeSpreadsheet({ 'Заявки': requests, 'Служебное': service, 'Журнал': journal });
 
   ctx.retryPendingNotifications_(ss, buildConfig(), new Date('2026-01-06T10:25:00.000Z'), reqHeaderMap, serviceHeaderMap);
 
-  assert.equal(mail._sent.length, 0, 'достигнут лимит попыток — новой отправки быть не должно');
+  assert.equal(mail._sent.length, 0, 'достигнут лимит попыток, backoff-окно ещё не истекло — новой отправки быть не должно');
 });
 
 test('item5: ретрай не идёт, если суточная квота MailApp исчерпана (MailApp.getRemainingDailyQuota() === 0)', () => {
