@@ -2,15 +2,22 @@
 # Deploy:  cd cron-worker && wrangler deploy
 #
 # Adapted from clients/luxemed/New Lending/cron-worker/wrangler.toml
-# (digitalhook-os-, feature/luxemed-new-lending@613cdd30). Every Assuta
-# resource id below has been replaced with a <GAMB_*> placeholder — resolve
-# with `python -B scripts/verify-lead-pipeline-remap.mjs` before deploying.
+# (digitalhook-os-, feature/luxemed-new-lending@613cdd30).
 #
-# 1) Bind the SAME KV namespace that the Pages /api/lead function uses:
-#      wrangler kv namespace list   → copy the id of the Gambaryan LEADS namespace
-#      paste it into `id` below (replacing <GAMB_KV_ID>).
-# 2) Bind the SAME D1 database as Pages LEADS_DB (replacing <GAMB_D1_ID> below),
-#    after applying db/leads-schema.sql to it.
+# Resource ids below are PRODUCTION Cloudflare ids for account 4799e9f7…,
+# reported by the coordinator 2026-09-23 (created out-of-band — this repo
+# change did NOT create them and has not called the Cloudflare API to
+# confirm they resolve; verify with `wrangler kv namespace list` /
+# `wrangler d1 list` / `wrangler r2 bucket list` before the first deploy).
+# This worker's own deploy binds PRODUCTION only — Cloudflare Pages itself
+# has a SEPARATE Preview binding set (see docs/LEAD-PIPELINE.md §3) that is
+# configured in the Pages project dashboard, not in this file.
+#
+# 1) The KV/D1/R2 ids below already match the SAME resources the Pages
+#    Production environment must bind LEADS_KV/LEADS_DB/LEADS_ARCHIVE to.
+# 2) Apply the schema to this D1 database BEFORE the first cron run:
+#      wrangler d1 execute gambarian-leads --remote --file=../db/leads-schema.sql
+#    (run from cron-worker/ — the schema file lives one directory up).
 # 3) Set secrets (NOT committed — never put tokens in this file):
 #      wrangler secret put ALBATO_WEBHOOK_URL
 #      wrangler secret put TELEGRAM_TOKEN
@@ -23,12 +30,12 @@ compatibility_date = "2026-05-01"
 
 [[kv_namespaces]]
 binding = "LEADS_KV"
-id = "<GAMB_KV_ID>"
+id = "10bb8fd2315248139fe95118affc1515"
 
 [[d1_databases]]
 binding = "LEADS_DB"
-database_name = "gambarian-leads-db"
-database_id = "<GAMB_D1_ID>"
+database_name = "gambarian-leads"
+database_id = "da00d8e3-477c-4863-a677-dcad24868893"
 
 [[r2_buckets]]
 binding = "LEADS_ARCHIVE"

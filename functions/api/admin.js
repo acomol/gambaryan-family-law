@@ -40,15 +40,23 @@ const COLS = [
 ];
 
 function esc(s) { return String(s == null ? "" : s).replace(/[<>&"]/g, function (c) { return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]; }); }
-// CSV-injection guard (review 2026-09-23, finding 7, P2): a cell starting
-// with =, +, -, @, tab or CR can be interpreted as a formula by
-// Excel/Sheets/LibreOffice when the export is opened — prefix with a
-// single quote to force it back to plain text, BEFORE the existing
-// quote/comma/newline escaping (OWASP CSV Injection mitigation).
+// CSV-injection guard (review 2026-09-23, finding 7 + round-2 finding E,
+// P2): a cell starting with =, +, -, @, tab or CR can be interpreted as a
+// formula by Excel/Sheets/LibreOffice when the export is opened. Prefixing
+// only the FIRST character wasn't enough: a value with an embedded \r (e.g.
+// "Review\r=1+1") was written out UNQUOTED (the old quoting check only
+// looked for '"', ',' or '\n'), and some lenient CSV parsers treat a bare
+// \r as a row separator even outside quotes — the ",=1+1" that follows
+// would start a new, unescaped, unprefixed row. Fix: neutralise a formula
+// prefix on EVERY line inside the cell (split on \r\n | \r | \n), and quote
+// whenever the cell contains ANY of '"', ',', '\n' or '\r' — before the
+// existing quote-doubling escape.
 function csvCell(s) {
   var v = String(s == null ? "" : s);
-  if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
-  return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  v = v.split(/\r\n|\r|\n/).map(function (line) {
+    return /^[=+\-@\t\r]/.test(line) ? "'" + line : line;
+  }).join("\n");
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
 }
 
 // Constant-time string compare (review 2026-09-23, finding 1, P1): always
@@ -133,23 +141,34 @@ function htmlPage(title, inner) {
   );
 }
 
-// Review 2026-09-23, finding 5, P1: the previous version deleted D1 first,
-// swallowed KV/R2 errors, and reported success regardless — a KV delete
-// failure left a "ghost" pending/forwarding KV record that a later sweep
-// would happily re-insert into D1 and re-deliver to Albato, resurrecting a
-// lead the admin explicitly removed. Fix:
-//   1. Tombstone FIRST (KV `tomb:<id>`, long TTL) — blocks re-delivery even
-//      if the deletes below partially fail; checked by
-//      functions/api/lead.js sweepPendingLeads (both its KV- and
-//      D1-sourced retry loops) and by cron-worker/src/index.js.
-//   2. Delete the KV and D1 COPIES that could cause re-delivery.
+// Review 2026-09-23, finding 5 (P1) + round-2 finding B (P1): the previous
+// version deleted D1 first, swallowed KV/R2 errors, and reported success
+// regardless — a KV delete failure left a "ghost" pending/forwarding KV
+// record that a later sweep would happily re-insert into D1 and re-deliver
+// to Albato, resurrecting a lead the admin explicitly removed. Worse, a
+// PHYSICAL DELETE FROM leads meant a plain resubmission of the same id
+// could freely INSERT a brand-new live row afterwards.
+//
+// Fix — D1 status='deleted' is now the AUTHORITATIVE, atomic marker:
+//   1. Soft-delete D1 via an UPSERT that unconditionally sets
+//      status='deleted' (admin intent always wins over whatever state the
+//      row was in) — the row is KEPT, never physically removed, so its
+//      submission_id permanently occupies the D1 uniqueness constraint.
+//      Every later `INSERT ... ON CONFLICT DO NOTHING` (intake, sweep
+//      repairs) is then a no-op against it, and every upsertLeadD1's CASE
+//      WHEN protects 'deleted' from regressing back to pending/forwarding/
+//      delivered. functions/api/lead.js checks this status at intake
+//      (isLeadDeleted) and both its sweep sources; cron-worker/src/index.js
+//      checks it in its sweep too.
+//   2. KV `tomb:<id>` (long TTL) stays as a SECONDARY signal for when D1
+//      itself can't be queried; also delete the live KV copy.
 //   3. R2 archive delete stays best-effort and outside the pass/fail
 //      verdict on purpose — it is a durable audit trail ("keep archive
 //      key"), not a copy that can resurrect a lead.
-//   4. Report success (the `deleted=<id>` flash) ONLY when the tombstone
-//      write and BOTH data-copy deletes are confirmed. A caller can safely
-//      retry: the tombstone write and both deletes are idempotent no-ops
-//      once they have already succeeded.
+//   4. Report success (the `deleted=<id>` flash) ONLY when the D1 soft-
+//      delete, the KV tombstone write, and the KV data delete are all
+//      confirmed. A caller can safely retry: every step here is idempotent
+//      once it has already succeeded.
 const TOMBSTONE_TTL_SECONDS = 90 * 24 * 60 * 60;
 function tombstoneKey(submissionId) { return "tomb:" + submissionId; }
 
@@ -162,6 +181,18 @@ async function deleteLead(env, submissionId) {
     } catch (e) { /* best-effort — only affects the R2 archive key below */ }
   }
 
+  var d1Ok = true;
+  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function") {
+    try {
+      var deletedAt = new Date().toISOString();
+      await env.LEADS_DB.prepare(
+        "INSERT INTO leads (submission_id, received_at, status, delivered_at, payload_json)"
+        + " VALUES (?1, ?2, 'deleted', ?3, '{}')"
+        + " ON CONFLICT(submission_id) DO UPDATE SET status='deleted', delivered_at=excluded.delivered_at"
+      ).bind(submissionId, receivedAt || deletedAt, deletedAt).run();
+    } catch (e) { d1Ok = false; }
+  }
+
   var tombOk = true;
   if (env.LEADS_KV && typeof env.LEADS_KV.put === "function") {
     try {
@@ -169,12 +200,6 @@ async function deleteLead(env, submissionId) {
         expirationTtl: TOMBSTONE_TTL_SECONDS, metadata: { type: "lead_tombstone" },
       });
     } catch (e) { tombOk = false; }
-  }
-
-  var d1Ok = true;
-  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function") {
-    try { await env.LEADS_DB.prepare("DELETE FROM leads WHERE submission_id = ?").bind(submissionId).run(); }
-    catch (e) { d1Ok = false; }
   }
 
   var kvOk = true;
@@ -253,7 +278,11 @@ export async function onRequestGet(context) {
 
   var sql = "SELECT " + DB_COLS.join(", ") + " FROM leads";
   var where = []; var binds = [];
+  // Soft-deleted rows (status='deleted', review round 2 finding B) are kept
+  // in D1 as the authoritative anti-resurrection marker, but must not
+  // clutter the default admin view.
   if (status === "pending" || status === "delivered") { where.push("status = ?"); binds.push(status); }
+  else { where.push("status != 'deleted'"); }
   if (q) { where.push("(phone LIKE ? OR name LIKE ? OR email LIKE ?)"); binds.push("%" + q + "%", "%" + q + "%", "%" + q + "%"); }
   if (where.length) sql += " WHERE " + where.join(" AND ");
   sql += " ORDER BY received_at DESC LIMIT " + limit; // limit is a sanitized int

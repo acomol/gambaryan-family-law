@@ -603,7 +603,8 @@
   // Cross-tab mutual exclusion (review 2026-09-23, finding 6, P1): two tabs
   // of the same origin share localStorage but not JS state, so an unguarded
   // read-modify-write (outbox array, sent-ID set) can interleave and lose an
-  // update — one tab's enqueueOutbox() overwrites another's, or both tabs
+  // update — a tab calling enqueueOutbox() can overwrite a write from a
+  // different tab, or both tabs
   // race fireLeadOnce() and both fire generate_lead for the same lead.
   // navigator.locks.request() serialises a named critical section across
   // ALL tabs/pages of this origin (Web Locks API — supported in every
@@ -661,15 +662,31 @@
     var value = readJSON(SENT_KEY, []);
     return Array.isArray(value) ? value : [];
   }
-  function fireLeadOnce(submissionId, params) {
+  // Дедуп по submission_id, общий для generate_lead И lead_corrected
+  // (review round 2, finding F, P2): каждый submission_id — либо новый лид,
+  // либо коррекция, никогда оба сразу, так что один персистентный Set,
+  // защищённый локом, безопасно накрывает оба типа событий. Раньше
+  // lead_corrected слался безусловно (без какого-либо дедупа) — две
+  // вкладки, ретраящие одну и ту же коррекцию, обе фиксировали конверсию,
+  // даже при наличии блокировки на саму мутацию outbox (блокировка защищает
+  // запись в хранилище, а не количество попыток доставки).
+  function fireEventOnce(submissionId, send) {
     return withLock(SENT_LOCK_NAME, function () {
       var sent = sentLeadIds();
       if (sent.indexOf(submissionId) !== -1) return false;
-      pushFormEvent("generate_lead", params);
+      send();
       sent.push(submissionId);
       if (sent.length > SENT_IDS_MAX) sent = sent.slice(sent.length - SENT_IDS_MAX);
       writeJSON(SENT_KEY, sent);
       return true;
+    });
+  }
+  function fireLeadOnce(submissionId, params) {
+    return fireEventOnce(submissionId, function () { pushFormEvent("generate_lead", params); });
+  }
+  function fireCorrectionOnce(submissionId, correctsSubmissionId) {
+    return fireEventOnce(submissionId, function () {
+      track("lead_corrected", { submission_id: submissionId, corrects_submission_id: correctsSubmissionId });
     });
   }
 
@@ -682,10 +699,7 @@
   function handleLeadAccepted(data, submissionId, secondsToLead) {
     if (data.lf_hp) return; // ловушка отфильтрована раньше — событий не считаем
     if (data.corrects_submission_id) {
-      track("lead_corrected", {
-        submission_id: submissionId,
-        corrects_submission_id: data.corrects_submission_id,
-      });
+      fireCorrectionOnce(submissionId, data.corrects_submission_id);
     } else {
       fireLeadOnce(submissionId, {
         submission_id: submissionId,

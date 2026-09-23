@@ -451,6 +451,39 @@ async function run() {
       JSON.stringify(raceDb._get(liveId)));
   }
 
+  /* ============ Round 2 re-review (base 39750ac) — findings A and D on the
+     cron side. See docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 2". */
+
+  // [finding A, P1 regression] cron's D1-sourced retry must not re-deliver a
+  // lead KV already shows as delivered (D1's own final write failed once).
+  {
+    alerts = []; albatoHits = 0;
+    const id = 'd1-repair-not-repost';
+    const deliveredAt = new Date().toISOString();
+    const oldReceivedAt = isoOffset(-1);
+    const kv = makeKV();
+    await kv.put(`lead:${id}`, JSON.stringify(kvRecord(id, oldReceivedAt, 'delivered')),
+      { metadata: { status: 'delivered', received_at: oldReceivedAt, albato_delivered_at: deliveredAt } });
+    const staleLeaseStart = new Date(Date.now() - 20000).toISOString();
+    const db = makeD1([{ ...seedRow(id, oldReceivedAt, 'forwarding'), delivered_at: staleLeaseStart }]);
+    await runScheduled('*/5 * * * *', withAlerts({ LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.local/hook' }));
+    check('cron D1 retry does not re-post an already-delivered (per KV) lead', albatoHits === 0, `hits=${albatoHits}`);
+    check('cron D1 retry repairs the stuck D1 row to delivered', db._get(id)?.status === 'delivered');
+  }
+
+  // [finding D, P2] An exception in LEADS_KV.list() must not abort the sweep
+  // before the D1-sourced retry loop runs — the two phases are independent.
+  {
+    alerts = []; albatoHits = 0;
+    const brokenKv = makeKV();
+    brokenKv.list = async () => { throw new Error('KV list unavailable'); };
+    const d1OnlyId = 'd1-only-survives-kv-list-failure';
+    const db = makeD1([seedRow(d1OnlyId, isoOffset(-1), 'pending')]);
+    await runScheduled('*/5 * * * *', withAlerts({ LEADS_KV: brokenKv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.local/hook' }));
+    check('D1-only retry still runs and delivers when LEADS_KV.list() throws',
+      db._get(d1OnlyId)?.status === 'delivered', JSON.stringify(db._get(d1OnlyId)));
+  }
+
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
   process.exit(fail ? 1 : 0);
 }

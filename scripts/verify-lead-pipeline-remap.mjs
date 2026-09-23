@@ -6,13 +6,16 @@
    Two checks, both must be clean:
      1. Zero leaked Assuta/LuxeMed identifiers anywhere in the ported lead
         pipeline (cron-worker/, db/, functions/api/lead*.js, admin.js, docs).
-     2. Every Cloudflare resource id that is not yet provisioned for
-        Gambaryan (cron-worker/wrangler.toml KV id + D1 database_id) is a
-        recognizable <GAMB_*> placeholder — not blank, not a real-looking
-        Cloudflare id, and not an accidentally-copied Assuta value. This is
-        the "not yet activated" state on purpose (see docs/LEAD-PIPELINE.md);
-        the gate fails only if a placeholder looks wrong, not because a
-        placeholder exists.
+     2. Every Cloudflare resource id in cron-worker/wrangler.toml (KV id, D1
+        database_id) is a REAL-shaped Gambaryan id — review 2026-09-23 round
+        2, finding G flipped this gate's intent: real production ids were
+        provided and committed, so a REMAINING <GAMB_*> placeholder (or a
+        blank/malformed value) is now the failure, not the pass condition.
+        NOTE: this gate only checks SHAPE (hex/UUID pattern) and that it
+        isn't a known-leaked Assuta id — it does NOT call the Cloudflare API
+        and does NOT prove the id resolves to a real, reachable resource in
+        the account. CLEAN here is necessary, not sufficient, for activation
+        readiness — see docs/LEAD-PIPELINE.md §3.
 
    Run: node scripts/verify-lead-pipeline-remap.mjs */
 
@@ -70,17 +73,16 @@ function stripCommentsPreservingLines(content) {
     .join("\n");
 }
 
-// Fields that must be a placeholder until the owner provisions real Cloudflare
-// resources for Gambaryan (wrangler.toml is inert without them — no deploy
-// happens as part of this change).
+// Fields that must now hold a REAL-shaped Gambaryan resource id (round 2,
+// finding G — real ids have been committed; a placeholder remaining here
+// means activation was never finished).
 const PLACEHOLDER_FIELDS = [
   { file: "cron-worker/wrangler.toml", label: "KV id", re: /^\s*id\s*=\s*"([^"]*)"\s*$/m },
   { file: "cron-worker/wrangler.toml", label: "D1 database_id", re: /^\s*database_id\s*=\s*"([^"]*)"\s*$/m },
 ];
 const PLACEHOLDER_SHAPE = /^<GAMB_[A-Z0-9_]+>$/;
-// A real Cloudflare KV/D1 id is a 32-char lowercase hex string (Assuta's own
-// ids are exactly this shape) — reject anything that looks like one, blank,
-// or anything not matching PLACEHOLDER_SHAPE.
+// A Cloudflare KV/D1 id is a 32-char lowercase hex string, either bare
+// (KV namespace ids) or UUID-dashed (D1 database ids).
 const REAL_ID_SHAPE = /^[0-9a-f]{8}(-?[0-9a-f]{4}){3}-?[0-9a-f]{12}$/i;
 
 let failures = 0;
@@ -141,14 +143,14 @@ for (const { file, label, re } of PLACEHOLDER_FIELDS) {
   if (value == null) {
     failures++;
     console.log(`  FAIL  ${file} — could not find ${label} field`);
-  } else if (REAL_ID_SHAPE.test(value)) {
+  } else if (PLACEHOLDER_SHAPE.test(value)) {
     failures++;
-    console.log(`  FAIL  ${file} — ${label} looks like a real Cloudflare id, not a placeholder → "${value}"`);
-  } else if (!PLACEHOLDER_SHAPE.test(value)) {
+    console.log(`  FAIL  ${file} — ${label} is still an unresolved <GAMB_*> placeholder → "${value}"`);
+  } else if (!REAL_ID_SHAPE.test(value)) {
     failures++;
-    console.log(`  FAIL  ${file} — ${label} is not a recognizable <GAMB_*> placeholder → "${value}"`);
+    console.log(`  FAIL  ${file} — ${label} is neither a real Cloudflare id nor a recognizable placeholder → "${value}"`);
   } else {
-    console.log(`  PASS  ${file} — ${label} is a valid pending placeholder ("${value}")`);
+    console.log(`  PASS  ${file} — ${label} is a real-shaped id ("${value}") — SHAPE only, not verified live`);
   }
 }
 

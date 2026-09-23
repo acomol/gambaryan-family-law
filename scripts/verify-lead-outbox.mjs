@@ -188,6 +188,61 @@ export async function verifyLeadOutboxCorrection(page, baseUrl) {
   return { status: "PASS" };
 }
 
+// [round-2 finding F, P2] Two "tabs" (two pages sharing localStorage/origin)
+// both retrying the SAME queued correction must fire lead_corrected only
+// ONCE for that submission_id — the outbox lock (finding 6) only protects
+// the storage mutation itself, not how many delivery attempts independently
+// succeed and each call their own success handler.
+export async function verifyLeadCorrectionDedup(context, baseUrl) {
+  assert.ok(["127.0.0.1", "localhost"].includes(new URL(baseUrl).hostname));
+  const priorId = "d3f6b1e0-19ba-49a5-8c49-6d32f8d91bce";
+  const correctionId = "e4f6b1e0-19ba-49a5-8c49-6d32f8d91bcf";
+  const entry = {
+    submission_id: correctionId,
+    data: {
+      name: "Дубль Коррекции", phone: "+972 50 555 6666", email: "dedup-correction@example.com",
+      landing_path: "/", lf_hp: "", submission_id: correctionId, corrects_submission_id: priorId,
+    },
+    created_at: Date.now(), attempts: 0,
+  };
+
+  const pageA = await context.newPage();
+  await pageA.route("**/api/lead", async route => {
+    await route.fulfill({ status: 202, json: { ok: true, status: "accepted", submission_id: correctionId } });
+  });
+  await pageA.goto(baseUrl);
+  await pageA.evaluate(() => document.fonts.ready);
+  await pageA.evaluate(({ key, entry }) => localStorage.setItem(key, JSON.stringify([entry])), { key: OUTBOX_KEY, entry });
+
+  const pageB = await context.newPage();
+  await pageB.route("**/api/lead", async route => {
+    await route.fulfill({ status: 202, json: { ok: true, status: "accepted", submission_id: correctionId } });
+  });
+  await pageB.goto(baseUrl);
+  await pageB.evaluate(() => document.fonts.ready);
+
+  // Both tabs attempt delivery of the SAME queued correction "at once".
+  await Promise.all([
+    pageA.evaluate(() => window.dispatchEvent(new Event("online"))),
+    pageB.evaluate(() => window.dispatchEvent(new Event("online"))),
+  ]);
+  await pageA.waitForFunction(
+    key => { try { return JSON.parse(localStorage.getItem(key) || "[]").length === 0; } catch (e) { return false; } },
+    OUTBOX_KEY,
+    { timeout: 5000 },
+  );
+
+  const correctionsA = await pageA.evaluate(() => (window.dataLayer || []).filter(item => item.event === "lead_corrected"));
+  const correctionsB = await pageB.evaluate(() => (window.dataLayer || []).filter(item => item.event === "lead_corrected"));
+  const total = correctionsA.length + correctionsB.length;
+
+  await pageA.close();
+  await pageB.close();
+
+  assert.equal(total, 1, `две вкладки не должны обе зафиксировать lead_corrected для одной коррекции (получено ${total})`);
+  return { status: "PASS", total };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { chromium } = await import("@playwright/test");
   const browser = await chromium.launch();
@@ -196,6 +251,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.log(JSON.stringify(await verifyLeadOutbox(await browser.newPage(), baseUrl)));
     console.log(JSON.stringify(await verifyLeadOutboxLocking(await browser.newPage(), baseUrl)));
     console.log(JSON.stringify(await verifyLeadOutboxCorrection(await browser.newPage(), baseUrl)));
+    const context = await browser.newContext();
+    try {
+      console.log(JSON.stringify(await verifyLeadCorrectionDedup(context, baseUrl)));
+    } finally {
+      await context.close();
+    }
   } finally {
     await browser.close();
   }

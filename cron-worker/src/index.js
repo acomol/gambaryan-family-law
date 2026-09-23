@@ -143,12 +143,16 @@ function d1Values(rec) {
 async function upsertD1(env, rec) {
   if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return false;
   try {
+    // Protects BOTH terminal states from regressing via a stale upsert:
+    // 'delivered' (as before) and 'deleted' (review round 2, finding B —
+    // functions/api/admin.js soft-deletes by setting status='deleted' and
+    // keeping the row; this cron worker must never flip it back).
     await env.LEADS_DB.prepare(
       `INSERT INTO leads (${D1_COLUMNS.join(",")})
        VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)
        ON CONFLICT(submission_id) DO UPDATE SET
-         status=CASE WHEN leads.status='delivered' THEN leads.status ELSE excluded.status END,
-         delivered_at=CASE WHEN leads.status='delivered' THEN leads.delivered_at ELSE excluded.delivered_at END`
+         status=CASE WHEN leads.status IN ('delivered','deleted') THEN leads.status ELSE excluded.status END,
+         delivered_at=CASE WHEN leads.status IN ('delivered','deleted') THEN leads.delivered_at ELSE excluded.delivered_at END`
     ).bind(...d1Values(rec)).run();
     return true;
   } catch (e) { return false; }
@@ -293,79 +297,106 @@ async function probeD1(env) {
   return false;
 }
 
-// Tombstones (review 2026-09-23, finding 5): a lead deleted via /api/admin
-// must never be resurrected by this sweep. functions/api/admin.js writes
-// `tomb:<id>` to the SAME KV namespace before removing anything.
+// Deletion status (review 2026-09-23, finding 5 + round-2 finding B): a
+// lead deleted via /api/admin must never be resurrected by this sweep. D1
+// status='deleted' is the AUTHORITATIVE marker (admin.js soft-deletes,
+// keeping the row); KV `tomb:<id>` is a SECONDARY signal for when D1 can't
+// be queried. A read error on BOTH signals fails closed (treated as
+// deleted, no forward) rather than risking a resurrected delivery.
 function tombstoneKey(submissionId) { return `tomb:${submissionId}`; }
-async function isTombstoned(env, submissionId) {
-  if (!env.LEADS_KV || typeof env.LEADS_KV.get !== "function") return false;
-  try { return (await env.LEADS_KV.get(tombstoneKey(submissionId))) != null; } catch (e) { return false; }
+async function isDeleted(env, submissionId) {
+  let d1Status = null;
+  let d1Error = false;
+  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function") {
+    try {
+      const found = await env.LEADS_DB.prepare("SELECT status FROM leads WHERE submission_id=?1").bind(submissionId).all();
+      const row = found && found.results && found.results[0];
+      d1Status = row ? row.status : null;
+    } catch (e) { d1Error = true; }
+  }
+  if (d1Status === "deleted") return true;
+
+  let kvError = false;
+  let kvTombstoned = false;
+  if (env.LEADS_KV && typeof env.LEADS_KV.get === "function") {
+    try { kvTombstoned = (await env.LEADS_KV.get(tombstoneKey(submissionId))) != null; }
+    catch (e) { kvError = true; }
+  }
+  if (kvTombstoned) return true;
+  if (d1Error && kvError) return true; // both signals unreadable — fail closed
+  return false;
 }
 
 async function sweepPending(env) {
   if (!(await probeD1(env))) return;
-  const keys = await listLeadKeys(env);
-  const candidates = keys
-    .filter(k => {
-      const m = k.metadata || {};
-      if (m.status === "pending") return true;
-      const started = new Date(m.forwarding_started_at || 0).getTime();
-      return m.status === "forwarding" && started > 0 && (Date.now() - started) >= FORWARD_LEASE_MS;
-    })
-    .sort((a, b) => new Date((a.metadata || {}).received_at || 0) - new Date((b.metadata || {}).received_at || 0));
 
-  let attempts = 0;
-  for (const key of candidates) {
-    if (attempts >= SWEEP_LIMIT) break;
-    if (await isTombstoned(env, key.name.slice("lead:".length))) continue;
-    const raw = await env.LEADS_KV.get(key.name);
-    if (!raw) continue;
-    let rec; try { rec = JSON.parse(raw); } catch (e) { continue; }
-    if (!rec || rec.status === "delivered") continue;
-    if (rec.albato_delivered_at) {
-      rec.status = "delivered";
-      rec.delivered_at = rec.albato_delivered_at;
-      await upsertD1(env, rec);
-      await putRecordWithRetry(env, key.name, rec, true);
-      continue;
-    }
+  // Review round 2, finding D (P2): a KV-phase failure (e.g. LEADS_KV.list()
+  // throwing) must not prevent the independent D1-sourced retry loop below
+  // from running — isolate the two phases.
+  try {
+    const keys = await listLeadKeys(env);
+    const candidates = keys
+      .filter(k => {
+        const m = k.metadata || {};
+        if (m.status === "pending") return true;
+        const started = new Date(m.forwarding_started_at || 0).getTime();
+        return m.status === "forwarding" && started > 0 && (Date.now() - started) >= FORWARD_LEASE_MS;
+      })
+      .sort((a, b) => new Date((a.metadata || {}).received_at || 0) - new Date((b.metadata || {}).received_at || 0));
 
-    const startedAt = new Date().toISOString();
-    const claim = await claimD1Lease(env, rec, startedAt);
-    if (claim === "delivered") {
-      rec.status = "delivered";
-      rec.delivered_at = rec.delivered_at || startedAt;
-      await putRecordWithRetry(env, key.name, rec, true);
-      continue;
-    }
-    if (claim !== "claimed") continue;
+    let attempts = 0;
+    for (const key of candidates) {
+      if (attempts >= SWEEP_LIMIT) break;
+      if (await isDeleted(env, key.name.slice("lead:".length))) continue;
+      const raw = await env.LEADS_KV.get(key.name);
+      if (!raw) continue;
+      let rec; try { rec = JSON.parse(raw); } catch (e) { continue; }
+      if (!rec || rec.status === "delivered") continue;
+      if (rec.albato_delivered_at) {
+        rec.status = "delivered";
+        rec.delivered_at = rec.albato_delivered_at;
+        await upsertD1(env, rec);
+        await putRecordWithRetry(env, key.name, rec, true);
+        continue;
+      }
 
-    rec.status = "forwarding";
-    rec.forwarding_started_at = startedAt;
-    await putRecord(env, key.name, rec);
-    attempts++;
+      const startedAt = new Date().toISOString();
+      const claim = await claimD1Lease(env, rec, startedAt);
+      if (claim === "delivered") {
+        rec.status = "delivered";
+        rec.delivered_at = rec.delivered_at || startedAt;
+        await putRecordWithRetry(env, key.name, rec, true);
+        continue;
+      }
+      if (claim !== "claimed") continue;
 
-    if (await forwardToAlbato(env, rec.fields || {})) {
-      const deliveredAt = new Date().toISOString();
-      rec.status = "delivered";
-      rec.delivered_at = deliveredAt;
-      rec.albato_delivered_at = deliveredAt;
+      rec.status = "forwarding";
+      rec.forwarding_started_at = startedAt;
+      await putRecord(env, key.name, rec);
+      attempts++;
+
+      if (await forwardToAlbato(env, rec.fields || {})) {
+        const deliveredAt = new Date().toISOString();
+        rec.status = "delivered";
+        rec.delivered_at = deliveredAt;
+        rec.albato_delivered_at = deliveredAt;
+        delete rec.forwarding_started_at;
+        await upsertD1(env, rec);
+        await putRecordWithRetry(env, key.name, rec, true);
+        await notifyTelegram(env, newLeadMsg(rec.fields || {}));
+        continue;
+      }
+
+      rec.status = "pending";
       delete rec.forwarding_started_at;
+      const age = Date.now() - new Date(rec.received_at || Date.now()).getTime();
+      if (age > ALERT_AFTER_MS && !rec.alerted) {
+        rec.alerted = await notifyTelegram(env, undeliveredMsg(rec));
+      }
       await upsertD1(env, rec);
-      await putRecordWithRetry(env, key.name, rec, true);
-      await notifyTelegram(env, newLeadMsg(rec.fields || {}));
-      continue;
+      await putRecord(env, key.name, rec);
     }
-
-    rec.status = "pending";
-    delete rec.forwarding_started_at;
-    const age = Date.now() - new Date(rec.received_at || Date.now()).getTime();
-    if (age > ALERT_AFTER_MS && !rec.alerted) {
-      rec.alerted = await notifyTelegram(env, undeliveredMsg(rec));
-    }
-    await upsertD1(env, rec);
-    await putRecord(env, key.name, rec);
-  }
+  } catch (e) { /* best-effort — KV-phase failure must not block the D1 phase below */ }
 
   // D1-only stragglers (review 2026-09-23, finding 3): a lead whose EVERY KV
   // write failed at intake time has no `lead:<id>` key at all, so the
@@ -384,11 +415,29 @@ async function sweepPending(env) {
       let d1Attempts = 0;
       for (const row of rows) {
         if (d1Attempts >= SWEEP_LIMIT) break;
-        if (await isTombstoned(env, row.submission_id)) continue;
+        if (await isDeleted(env, row.submission_id)) continue;
+        const key = `lead:${row.submission_id}`;
+
+        // Finding A (review round 2, P1 regression): KV is the delivery
+        // source of truth. If Albato already accepted this lead but the
+        // FINAL D1 write failed — leaving a stale D1 row this loop would
+        // otherwise treat as a fresh candidate — repair D1 from the KV
+        // record WITHOUT re-posting to Albato.
+        let kvRecordForRow = null;
+        if (typeof env.LEADS_KV.get === "function") {
+          try {
+            const raw = await env.LEADS_KV.get(key);
+            kvRecordForRow = raw ? JSON.parse(raw) : null;
+          } catch (e) { kvRecordForRow = null; }
+        }
+        if (kvRecordForRow && (kvRecordForRow.status === "delivered" || kvRecordForRow.albato_delivered_at)) {
+          await upsertD1(env, kvRecordForRow);
+          continue;
+        }
+
         let fields; try { fields = JSON.parse(row.payload_json || "{}"); } catch (e) { fields = {}; }
         const rec = { submission_id: row.submission_id, fields, status: row.status, received_at: row.received_at };
         if (row.status === "forwarding") rec.forwarding_started_at = row.delivered_at;
-        const key = `lead:${row.submission_id}`;
 
         const startedAt = new Date().toISOString();
         const claim = await claimD1Lease(env, rec, startedAt);

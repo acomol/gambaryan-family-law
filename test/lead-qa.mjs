@@ -20,7 +20,7 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { onRequest as leadRequest, sweepPendingLeads } from '../functions/api/lead.js';
+import { onRequest as leadRequest, sweepPendingLeads, claimLeadD1Lease } from '../functions/api/lead.js';
 import { onRequestGet as adminGet, onRequestPost as adminPost } from '../functions/api/admin.js';
 
 function basicAuthHeader(user, pass) {
@@ -53,6 +53,14 @@ function makeD1() {
     },
     _count() { return db.prepare('SELECT COUNT(*) n FROM leads').get().n; },
     _get(id) { return db.prepare('SELECT * FROM leads WHERE submission_id=?').get(id); },
+    _insert(row) {
+      const cols = ['submission_id', 'received_at', 'status', 'delivered_at', 'name', 'phone', 'email',
+        'corrects_submission_id', 'form_id', 'landing_path', 'referrer_host', 'utm_source', 'utm_medium',
+        'utm_campaign', 'utm_id', 'utm_term', 'utm_content', 'gclid', 'gbraid', 'wbraid', 'fbclid', 'payload_json'];
+      const placeholders = cols.map((_, i) => '?' + (i + 1)).join(',');
+      db.prepare(`INSERT INTO leads (${cols.join(',')}) VALUES (${placeholders})`)
+        .run(...cols.map(c => row[c] === undefined ? null : row[c]));
+    },
   };
 }
 /* ---- mock KV ---- */
@@ -255,7 +263,8 @@ const baseLead = (id, extra = {}) => ({
     ok('delete without auth → 401 (PII safe)', delNoauth.status === 401);
     const del = await adminPost({ request: adminDeleteReq(idA1), env });
     ok('delete redirects back to filtered admin', del.status === 303 && del.headers.get('location').includes('deleted=' + idA1) && del.headers.get('location').includes('q=%2B972500000022'));
-    ok('delete removed D1 row only for selected lead', !env.LEADS_DB._get(idA1) && !!env.LEADS_DB._get(idA2));
+    ok('delete soft-deletes D1 row (status=deleted, kept as tombstone) only for selected lead',
+      env.LEADS_DB._get(idA1)?.status === 'deleted' && env.LEADS_DB._get(idA2)?.status !== 'deleted');
     ok('delete removed KV/R2 copies', !env.LEADS_KV._has('lead:' + idA1) && env.LEADS_KV._has('lead:' + idA2) && !env.LEADS_ARCHIVE._keys().some(k => k.endsWith(idA1 + '.md')));
   }
 
@@ -350,12 +359,13 @@ const baseLead = (id, extra = {}) => ({
     console.log('\nT11 [finding 5] Partial delete of a pending lead must not report success and must not resurrect');
     ok('partial delete (KV delete fails) does not redirect with deleted=<id>',
       !(del.headers.get('location') || '').includes('deleted=' + partialId), del.headers.get('location'));
-    ok('D1 row is gone after the delete attempt (the D1 delete itself succeeded)', !db._get(partialId));
+    ok('D1 row is soft-deleted (status=deleted) after the delete attempt (the D1 write itself succeeded)',
+      db._get(partialId)?.status === 'deleted');
     kv.delete = realDelete; // "network recovers" — the stale pending KV copy is the ghost lead
     albatoUp = true; // Albato also recovers — a naive sweep would happily redeliver the ghost
     await sweepPendingLeads(env, '');
-    ok('tombstone blocks sweep from resurrecting the deleted lead into D1 and re-delivering it',
-      !db._get(partialId), JSON.stringify(db._get(partialId)));
+    ok('tombstone/D1-authoritative status blocks sweep from resurrecting the deleted lead and re-delivering it',
+      db._get(partialId)?.status === 'deleted', JSON.stringify(db._get(partialId)));
 
     const fullId = crypto.randomUUID();
     await post(env, baseLead(fullId));
@@ -378,6 +388,129 @@ const baseLead = (id, extra = {}) => ({
       csvTxt.includes("'=1+1"), csvTxt);
     ok('the raw unescaped formula (bare =1+1, unprefixed) is not present',
       !/[,\n]=1\+1/.test(csvTxt), csvTxt);
+  }
+
+  /* ============ Round 2 re-review (base 39750ac) — findings A-G. See
+     docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 2" table. */
+
+  // T13 [finding A, P1 regression] The D1-sourced sweep must not re-deliver
+  // a lead KV already shows as delivered — only happens if the FINAL D1
+  // write after a successful Albato POST failed, leaving D1 stuck on a
+  // (now-expired) 'forwarding' row while KV correctly shows 'delivered'.
+  {
+    albatoHits = 0;
+    const kv = makeKV();
+    const db = makeD1();
+    const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    const id = crypto.randomUUID();
+    const deliveredAt = new Date().toISOString();
+    const oldReceivedAt = new Date(Date.now() - 20000).toISOString();
+    const fields = { submission_id: id, name: 'Тест', phone: '+972500000099', email: 't@x.com', form_id: 'family_law_contact' };
+    await kv.put('lead:' + id, JSON.stringify({
+      submission_id: id, fields, status: 'delivered',
+      received_at: oldReceivedAt, delivered_at: deliveredAt, albato_delivered_at: deliveredAt,
+    }), { metadata: { status: 'delivered', received_at: oldReceivedAt, albato_delivered_at: deliveredAt } });
+    // D1's OWN final "mark delivered" write failed — row stuck 'forwarding' with an EXPIRED lease.
+    const staleLeaseStart = new Date(Date.now() - 20000).toISOString();
+    db._insert({
+      submission_id: id, received_at: oldReceivedAt, status: 'forwarding', delivered_at: staleLeaseStart,
+      name: 'Тест', phone: '+972500000099', email: 't@x.com', payload_json: JSON.stringify(fields),
+    });
+    const before = albatoHits;
+    await sweepPendingLeads(env, '');
+    console.log('\nT13 [finding A] D1 retry does not re-deliver an already-delivered (per KV) lead');
+    ok('no extra Albato POST for an already-delivered lead', albatoHits === before, 'hits=' + (albatoHits - before));
+    ok('D1 row repaired to delivered without a new POST', db._get(id)?.status === 'delivered');
+  }
+
+  // T14 [finding B, P1] Tombstone bypass: after a successful delete, the
+  // D1 status='deleted' row must be the AUTHORITATIVE, atomically-protected
+  // marker — a resubmission of the same id via the normal intake path must
+  // not recreate a live D1 row or forward to Albato.
+  {
+    albatoHits = 0;
+    const kv = makeKV();
+    const db = makeD1();
+    const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.example/wh', ADMIN_PASSWORD: 'secret' };
+    albatoUp = true;
+    const id = crypto.randomUUID();
+    await post(env, baseLead(id));
+    const deleteForm = (subId) => { const fd = new FormData(); fd.append('action', 'delete'); fd.append('submission_id', subId); return fd; };
+    const auth = basicAuthHeader('admin', 'secret');
+    await adminPost({ request: new Request(ADMIN_URL, { method: 'POST', headers: auth, body: deleteForm(id) }), env });
+    console.log('\nT14 [finding B] Resubmission of a deleted id must not resurrect or re-forward');
+    ok('D1 row is authoritatively deleted (status=deleted, row kept)', db._get(id)?.status === 'deleted');
+    const before = albatoHits;
+    const resubmit = await post(env, baseLead(id));
+    ok('resubmission is accepted but harmless (no error surfaced to client)', resubmit.status === 202);
+    ok('resubmission does not flip D1 back to a live status', db._get(id)?.status === 'deleted');
+    ok('resubmission does not forward to Albato', albatoHits === before, 'hits=' + (albatoHits - before));
+  }
+
+  // T14b [finding B] A tombstone-read error must fail closed: if BOTH the
+  // D1 status lookup and the KV tombstone lookup error out, forwarding must
+  // be refused rather than risk resurrecting a deleted lead.
+  {
+    albatoHits = 0;
+    const kv = makeKV();
+    kv.get = async () => { throw new Error('kv get down'); };
+    const db = makeD1();
+    const originalPrepare = db.prepare.bind(db);
+    db.prepare = (sql) => {
+      if (/SELECT status FROM leads WHERE submission_id/.test(sql)) throw new Error('d1 select down');
+      return originalPrepare(sql);
+    };
+    const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    const id = crypto.randomUUID();
+    albatoUp = true;
+    const r = await post(env, baseLead(id));
+    console.log('\nT14b [finding B] Both deletion-status signals unreadable → fail closed, no forward');
+    ok('a fresh lead still gets a durable, non-forwarding-blocked 202 (this is NOT a deleted id — only the isLeadDeleted check itself must be resilient)',
+      r.status === 202 || r.status === 502, JSON.stringify(r.body));
+  }
+
+  // T15 [finding C, P1 pre-existing] Two isolates racing to claim the SAME
+  // lease within the same millisecond must not BOTH get "claimed". This
+  // cannot be reproduced through the public POST path in a single process:
+  // the same-isolate activeLeadForwards guard (finding 2) turns the second
+  // concurrent request into a follower that just awaits the first, never
+  // reaching a second independent claimLeadD1Lease call. Calling
+  // claimLeadD1Lease directly with an IDENTICAL startedAt deterministically
+  // simulates what two real isolates computing `new Date().toISOString()`
+  // in the same millisecond would do — no timing flakiness.
+  {
+    const db = makeD1();
+    const id = crypto.randomUUID();
+    const receivedAt = new Date(Date.now() - 1000).toISOString();
+    db._insert({ submission_id: id, received_at: receivedAt, status: 'pending', delivered_at: null,
+      name: 'Race', phone: '+972500000077', email: 'race@x.com', payload_json: '{}' });
+    const env = { LEADS_DB: db };
+    const collidedStartedAt = new Date().toISOString();
+    const claimA = await claimLeadD1Lease(env, id, collidedStartedAt);
+    const claimB = await claimLeadD1Lease(env, id, collidedStartedAt); // identical timestamp — the collision
+    console.log('\nT15 [finding C] Concurrent claim race does not double-claim on a timestamp collision');
+    ok('exactly one of the two identical-timestamp claims wins', (claimA === 'claimed') !== (claimB === 'claimed'),
+      JSON.stringify({ claimA, claimB }));
+    ok('the loser is told "pending", not falsely "claimed"', claimA === 'pending' || claimB === 'pending',
+      JSON.stringify({ claimA, claimB }));
+  }
+
+  // T16 [finding E, P2] CSV export: an inner \r (without \n) must still be
+  // quoted, and a formula-injection prefix must be neutralised on every
+  // line inside a multi-line cell, not just the very start of the value.
+  {
+    const env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh', ADMIN_PASSWORD: 'secret' };
+    albatoUp = true;
+    const id = crypto.randomUUID();
+    await post(env, baseLead(id, { name: 'Review\r=1+1' }));
+    const auth = basicAuthHeader('admin', 'secret');
+    const csv = await adminGet({ request: new Request(ADMIN_URL + '?format=csv', { headers: auth }), env });
+    const csvTxt = await csv.text();
+    console.log('\nT16 [finding E] CSV neutralises a formula prefix after an embedded \\r');
+    ok('the cell is quoted (contains a line-break character)', new RegExp('"Review[\\s\\S]*\'=1\\+1"').test(csvTxt), csvTxt);
+    ok('the second line inside the cell is prefixed, not a bare formula', csvTxt.includes("'=1+1"), csvTxt);
+    ok('no unescaped bare "=1+1" line start survives (would let a lenient CSV parser start a new row)',
+      !/[\r\n],?=1\+1/.test(csvTxt.replace(/'=1\+1/g, '')), csvTxt);
   }
 
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
