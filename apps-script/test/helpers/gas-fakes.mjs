@@ -508,9 +508,21 @@ export function makeFakeMailApp(opts) {
  * очередь {code, body} (или {shouldThrow} для симуляции сетевой ошибки/таймаута),
  * по одной на КАЖДЫЙ вызов fetch(); когда очередь короче числа вызовов,
  * последний элемент переиспользуется (удобно для "все последующие проверки
- * успешны/неуспешны одинаково"). muteHttpExceptions в params — как в реальном
- * UrlFetchApp, здесь просто игнорируется (фейк никогда не бросает на
- * неуспешном коде ответа сам по себе, только когда явно указан shouldThrow).
+ * успешны/неуспешны одинаково").
+ *
+ * STRICT muteHttpExceptions (build-round C1-C5 фикс, root cause: фейк раньше
+ * ВСЕГДА возвращал HTTPResponse и никогда не бросал на неуспешном коде — код
+ * никогда не тестировался против настоящей семантики параметра). Официальная
+ * документация UrlFetchApp.fetch(url, params):
+ * https://developers.google.com/apps-script/reference/url-fetch/url-fetch-app#fetch(String,Object)
+ * — params.muteHttpExceptions: "If true the fetch doesn't throw an exception
+ * if the response code indicates failure, and instead returns the
+ * HTTPResponse" (default false — БЕЗ muteHttpExceptions:true fetch() бросает
+ * на response code, указывающем на неудачу). Фейк теперь воспроизводит это:
+ * code >= 400 БЕЗ params.muteHttpExceptions===true — бросает, как и настоящий
+ * UrlFetchApp. Это защищает от регрессии "кто-то убрал muteHttpExceptions в
+ * PipelineHealth.gs" — без строгого фейка такая регрессия прошла бы тесты
+ * молча и упала бы только на первом боевом прогоне.
  */
 export function makeFakeUrlFetchApp(opts) {
   opts = opts || {};
@@ -522,6 +534,10 @@ export function makeFakeUrlFetchApp(opts) {
       var idx = Math.min(calls.length - 1, responses.length - 1);
       var resp = responses[idx];
       if (resp.shouldThrow) throw new Error(typeof resp.shouldThrow === 'string' ? resp.shouldThrow : 'UrlFetchApp: forced failure');
+      var muted = !!(params && params.muteHttpExceptions === true);
+      if (resp.code >= 400 && !muted) {
+        throw new Error('Request failed for ' + url + ' returned code ' + resp.code + '. Truncated server response: ' + (resp.body || ''));
+      }
       return {
         getResponseCode: function () { return resp.code; },
         getContentText: function () { return resp.body; }
