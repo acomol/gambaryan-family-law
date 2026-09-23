@@ -33,6 +33,8 @@ let probeD1;
 let reconcile;
 let claimD1Lease;
 let upsertD1Guarded;
+let hourlyRun;
+let sweepPending;
 try {
   ({
     default: worker,
@@ -43,6 +45,8 @@ try {
     reconcile,
     claimD1Lease,
     upsertD1Guarded,
+    hourlyRun,
+    sweepPending,
   } = await import('../cron-worker/src/index.js'));
 } catch (error) {
   console.error('HARNESS ERROR: worker module unavailable:', error);
@@ -230,10 +234,17 @@ async function putBackup(r2, day, rows, storedRows = rows) {
   await r2.put(`backups/d1/${day}/leads.ndjson`, stored);
   await r2.put(`backups/d1/${day}/manifest.json`, `${JSON.stringify(manifest)}\n`);
 }
-async function runScheduled(cron, env) {
+async function runScheduled(cron, env, scheduledTime) {
   const pending = [];
-  await worker.scheduled({ cron }, env, { waitUntil(promise) { pending.push(promise); } });
+  await worker.scheduled({ cron, scheduledTime: scheduledTime ?? Date.now() }, env,
+    { waitUntil(promise) { pending.push(promise); } });
   await Promise.all(pending);
+}
+// UTC timestamp for a given hour "today" — used to deterministically pick
+// which branch of hourlyRun() a "0 * * * *" firing resolves to.
+function utcHourTimestamp(hour) {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour, 0, 0);
 }
 
 async function negativeTruncated() {
@@ -267,25 +278,72 @@ async function run() {
   const cronStrings = [...cronLine.matchAll(/"([^"]+)"/g)].map(match => match[1]);
   const r2Blocks = [...toml.matchAll(/\[\[r2_buckets\]\]([\s\S]*?)(?=\r?\n\[|$)/g)]
     .map(match => match[1]);
-  check('wrangler.toml has exactly 3 cron strings', cronStrings.length === 3,
-    JSON.stringify(cronStrings));
+  check('wrangler.toml has exactly 2 cron strings (Workers Free: 5/account, assuta-lead-cron uses 3)',
+    cronStrings.length === 2, JSON.stringify(cronStrings));
+  check('wrangler.toml crons are the 5-min sweep and the hourly dump/reconcile trigger',
+    cronStrings.includes('*/5 * * * *') && cronStrings.includes('0 * * * *'), JSON.stringify(cronStrings));
   check('wrangler.toml has LEADS_ARCHIVE R2 binding',
     r2Blocks.some(block => /^binding\s*=\s*"LEADS_ARCHIVE"$/m.test(block)
       && /^bucket_name\s*=\s*"gambarian-leads-archive"$/m.test(block)));
+
+  // Round 5 addition (owner requirement): the daily backup extras and
+  // reconcile were folded into the single hourly "0 * * * *" trigger,
+  // gated by event.scheduledTime's UTC hour — not by a separate cron
+  // string. Four scenarios per the coordinator's brief.
+  alerts = []; albatoHits = 0;
+  {
+    // Hourly firing at a NON-2/NON-18 hour: dump only, no verify/purge/reconcile.
+    const plainKv = makeKV();
+    const plainR2 = makeR2();
+    await runScheduled('0 * * * *', withAlerts({
+      LEADS_KV: plainKv, LEADS_DB: makeD1(), LEADS_ARCHIVE: plainR2, ALBATO_WEBHOOK_URL: 'https://albato.local/hook',
+    }), utcHourTimestamp(7));
+    check("hourly '0 * * * *' at a plain hour writes a dump", plainR2._has(`backups/d1/${dayOffset(0)}/manifest.json`));
+    check("hourly '0 * * * *' at a plain hour does not call sweep (Albato)", albatoHits === 0, `hits=${albatoHits}`);
+    check("hourly '0 * * * *' at a plain hour does not run reconcile (no KV↔D1 repair alert)",
+      !alerts.some(text => text.includes('KV→D1')), JSON.stringify(alerts));
+  }
+  alerts = []; albatoHits = 0;
+  {
+    // UTC hour 2: dump + verify (yesterday) + purge — the former "30 2" cron.
+    const utc2R2 = makeR2();
+    const utc2Db = makeD1();
+    await runScheduled('0 * * * *', withAlerts({ LEADS_DB: utc2Db, LEADS_ARCHIVE: utc2R2 }), utcHourTimestamp(2));
+    check("hourly '0 * * * *' at UTC hour 2 writes today's dump", utc2R2._has(`backups/d1/${dayOffset(0)}/manifest.json`));
+    check("hourly '0 * * * *' at UTC hour 2 also verifies yesterday's dump",
+      alerts.some(text => text.includes('дамп за') && text.includes('отсутствует')), JSON.stringify(alerts));
+  }
+  alerts = []; albatoHits = 0;
+  {
+    // UTC hour 18: dump + reconcile — the former "0 18" cron.
+    const utc18Kv = makeKV();
+    const utc18Db = makeD1();
+    const utc18R2 = makeR2();
+    const orphanId = 'utc18-kv-orphan';
+    await utc18Kv.put(`lead:${orphanId}`, JSON.stringify(kvRecord(orphanId, isoOffset(-1), 'delivered')),
+      { metadata: { status: 'delivered', received_at: isoOffset(-1) } });
+    await runScheduled('0 * * * *', withAlerts({
+      LEADS_KV: utc18Kv, LEADS_DB: utc18Db, LEADS_ARCHIVE: utc18R2, SHEET_COUNT_URL: 'https://sheet.local/count',
+    }), utcHourTimestamp(18));
+    check("hourly '0 * * * *' at UTC hour 18 writes today's dump", utc18R2._has(`backups/d1/${dayOffset(0)}/manifest.json`));
+    check("hourly '0 * * * *' at UTC hour 18 also runs reconcile (repairs KV lead missing from D1)",
+      !!utc18Db._get(orphanId));
+  }
+  alerts = []; albatoHits = 0;
+  {
+    // The 5-min sweep trigger must never write a dump.
+    const sweepR2 = makeR2();
+    await runScheduled('*/5 * * * *', withAlerts({
+      LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: sweepR2, ALBATO_WEBHOOK_URL: 'https://albato.local/hook',
+    }));
+    check("'*/5 * * * *' does not write a dump", !sweepR2._has(`backups/d1/${dayOffset(0)}/manifest.json`));
+  }
 
   alerts = []; albatoHits = 0;
   const dispatchKv = makeKV();
   const pendingAt = isoOffset(-1);
   await dispatchKv.put('lead:dispatch-pending', JSON.stringify(kvRecord('dispatch-pending', pendingAt, 'pending')),
     { metadata: { status: 'pending', received_at: pendingAt } });
-  const dispatchR2 = makeR2();
-  await runScheduled('30 2 * * *', withAlerts({
-    LEADS_KV: dispatchKv, LEADS_DB: makeD1([seedRow('dispatch-pending', pendingAt, 'pending')]),
-    LEADS_ARCHIVE: dispatchR2, ALBATO_WEBHOOK_URL: 'https://albato.local/hook',
-  }));
-  check("cron '30 2' calls backupRun and writes a dump", dispatchR2._has(`backups/d1/${dayOffset(0)}/manifest.json`));
-  check("cron '30 2' does not call sweep", albatoHits === 0, `Albato hits=${albatoHits}`);
-  alerts = []; albatoHits = 0;
   await runScheduled('13 13 * * *', withAlerts({
     LEADS_KV: dispatchKv, LEADS_DB: makeD1(), ALBATO_WEBHOOK_URL: 'https://albato.local/hook',
   }));
@@ -579,6 +637,437 @@ async function run() {
     check('D1 row is untouched (still forwarding under the original lease)',
       db._get(id)?.status === 'forwarding' && db._get(id)?.delivered_at === leaseStart,
       JSON.stringify(db._get(id)));
+  }
+
+  /* ============ Round 5 (base 6034203) — janitor: bounded cleanup of the
+     admin-delete race Codex found. See docs/LEAD-PIPELINE.md "Review
+     2026-09-23 — round 5". Deletion is eventual (one cron interval), not
+     instant — this janitor is the second, cron-bounded layer behind
+     lead.js's own request-time re-checks. */
+
+  // [round 5, janitor] A D1 row marked 'deleted' within the retention
+  // window with a LEFTOVER KV key and R2 object (the resurrection the
+  // request-time re-check in lead.js did not catch) must be idempotently
+  // wiped, and the alert must report COUNTS ONLY — never a submission_id.
+  {
+    alerts = []; sheetIds = [];
+    const id = 'janitor-leftover-id';
+    const receivedAt = isoOffset(-1);
+    const deletedAt = new Date().toISOString();
+    const db = makeD1([{
+      ...seedRow(id, receivedAt, 'deleted'), delivered_at: deletedAt,
+      name: null, phone: null, email: null, payload_json: '{}',
+    }]);
+    const kv = makeKV();
+    await kv.put(`lead:${id}`, JSON.stringify({ submission_id: id, fields: { name: 'Leftover', phone: '+972500000001' }, status: 'pending', received_at: receivedAt }));
+    const r2 = makeR2();
+    const day = receivedAt.slice(0, 10);
+    const r2Key = `leads/${day}/${id}.md`;
+    await r2.put(r2Key, '# leftover archive with PII');
+    const env = withAlerts({ LEADS_KV: kv, LEADS_DB: db, LEADS_ARCHIVE: r2, SHEET_COUNT_URL: 'https://sheet.local/count' });
+    await reconcile(env);
+    console.log('\n[round 5, janitor] leftover KV/R2 for a deleted D1 row must be wiped, alert has no PII/id');
+    check('KV key was wiped', !kv._has(`lead:${id}`));
+    check('R2 object was wiped', !r2._has(r2Key));
+    check('alert fired reporting counts only — no submission_id leaked',
+      alerts.some(text => text.includes('janitor')) && !alerts.some(text => text.includes(id)),
+      JSON.stringify(alerts));
+  }
+
+  // [round 5, janitor idempotency] A 'deleted' row with NO leftover KV/R2
+  // copies (the common case — the request-time re-check already caught it)
+  // must produce no alert at all: the janitor is a no-op re-run every cycle.
+  {
+    alerts = []; sheetIds = [];
+    const id = 'janitor-clean-id';
+    const db = makeD1([{
+      ...seedRow(id, isoOffset(-1), 'deleted'), delivered_at: new Date().toISOString(),
+      name: null, phone: null, email: null, payload_json: '{}',
+    }]);
+    const env = withAlerts({ LEADS_KV: makeKV(), LEADS_DB: db, LEADS_ARCHIVE: makeR2(), SHEET_COUNT_URL: 'https://sheet.local/count' });
+    await reconcile(env);
+    console.log('\n[round 5, janitor idempotency] Nothing to wipe → no alert (safe to re-run every cycle)');
+    check('no janitor alert when nothing needed wiping', !alerts.some(text => text.includes('janitor')), JSON.stringify(alerts));
+  }
+
+  // [round 5, hourly overwrite] verifyPreviousDump must correctly verify a
+  // "yesterday" dump that was OVERWRITTEN by a later hourly snapshot during
+  // the day — the owner's new hourly cadence means backups/d1/<day>/ is
+  // overwritten every hour, so "yesterday's" stored dump is whatever the
+  // LAST hourly run before day-rollover captured, not a single write.
+  // verifyPreviousDump only ever reads the CURRENT content of that prefix,
+  // so an overwrite is transparent to it — no code change was needed; this
+  // test is the evidence for that claim, not just an assertion of it.
+  {
+    alerts = [];
+    const day = dayOffset(-1);
+    const r2 = makeR2();
+    const earlyRow = seedRow('overwrite-early', day);
+    await putBackup(r2, day, [earlyRow]); // an earlier hour's snapshot
+    const laterRow1 = seedRow('overwrite-early', day);
+    const laterRow2 = seedRow('overwrite-late', day);
+    await putBackup(r2, day, [laterRow1, laterRow2]); // a LATER hourly run overwrites the same key
+    const db = makeD1([laterRow1, laterRow2]); // live D1 matches the latest snapshot
+    const result = await verifyPreviousDump(withAlerts({ LEADS_ARCHIVE: r2, LEADS_DB: db }));
+    console.log('\n[round 5, hourly overwrite] verifyPreviousDump reads the LATEST hourly snapshot for yesterday, not a stale one');
+    check('verify succeeds against the overwritten (latest) snapshot', result.state === 0, JSON.stringify(result));
+    check('verify sees the LATEST row count, not the earlier hour\'s', result.manifest?.row_count === 2, JSON.stringify(result.manifest));
+  }
+
+  /* ============ Round 5 addition 2 — pipeline-health v1 (owner-approved).
+     See docs/LEAD-PIPELINE.md §12 for the full contract. An external reader
+     (the mini-CRM Apps Script) is built against this EXACT shape. */
+
+  function healthRequest(method, path) {
+    return new Request(`https://cron.internal${path || '/health'}`, { method: method || 'GET' });
+  }
+
+  // [health] end-to-end shape: real hourlyRun + sweepPending write
+  // cron_health, GET /health reads it back correctly, including stuck_leads.
+  {
+    const db = makeD1();
+    const env = {
+      LEADS_DB: db, LEADS_ARCHIVE: makeR2(), LEADS_KV: makeKV(),
+      ALBATO_WEBHOOK_URL: 'https://albato.local/hook',
+    };
+    await hourlyRun(env, new Date(utcHourTimestamp(7))); // plain hour: dump only, real success
+    await sweepPending(env); // real completed run (nothing to deliver yet)
+    // Seed the stuck-lead fixtures AFTER sweep has already run, so sweep's
+    // own D1-only-stragglers loop (which WOULD successfully "deliver" a
+    // pending row via the mocked Albato and flip it out of pending/
+    // forwarding) never touches them — this test is about the /health
+    // COUNT, not about exercising delivery.
+    db._insert(seedRow('stuck-old', new Date(Date.now() - 40 * 60 * 1000).toISOString(), 'pending'));
+    db._insert(seedRow('stuck-new', new Date(Date.now() - 5 * 60 * 1000).toISOString(), 'forwarding'));
+    const res = await worker.fetch(healthRequest(), env);
+    const body = await res.json();
+    console.log('\n[health] GET /health returns the pipeline-health v1 shape after real backup+sweep runs');
+    check('200, application/json, Cache-Control: no-store', res.status === 200
+      && (res.headers.get('content-type') || '').includes('application/json')
+      && res.headers.get('cache-control') === 'no-store');
+    check('schema=1 and generated_at is a fresh, parseable ISO timestamp',
+      body.schema === 1 && typeof body.generated_at === 'string' && !Number.isNaN(Date.parse(body.generated_at)));
+    check('backup reflects a real successful dump (last_ok_at set, integrity_ok=true)',
+      !!body.backup?.last_ok_at && !!body.backup?.last_run_at && body.backup?.integrity_ok === true,
+      JSON.stringify(body.backup));
+    check('sweep reflects a real completed run (last_ok_at set)',
+      !!body.sweep?.last_ok_at && !!body.sweep?.last_run_at, JSON.stringify(body.sweep));
+    check('stuck_leads counts only the row received more than 30 minutes ago',
+      body.stuck_leads === 1, JSON.stringify(body));
+    check('albato_configured is a boolean reflecting the binding, never the URL value',
+      body.albato_configured === true && !JSON.stringify(body).includes('albato.local'), JSON.stringify(body));
+  }
+
+  // [health] 503 when D1 is unreadable — both "not bound at all" and
+  // "bound but the query itself throws".
+  {
+    const noD1 = await worker.fetch(healthRequest(), { ALBATO_WEBHOOK_URL: 'https://albato.local/hook' });
+    const noD1Body = await noD1.json();
+    const throwingDb = { prepare() { throw new Error('d1 down'); } };
+    const throwingD1 = await worker.fetch(healthRequest(), { LEADS_DB: throwingDb });
+    const throwingD1Body = await throwingD1.json();
+    console.log('\n[health] D1 unavailable (unbound or throwing) → 503, exact contract error shape, no PII');
+    check('no LEADS_DB at all → 503 {schema:1,error:"d1_unavailable"}',
+      noD1.status === 503 && noD1Body.schema === 1 && noD1Body.error === 'd1_unavailable', JSON.stringify(noD1Body));
+    check('LEADS_DB bound but querying throws → the same 503 contract',
+      throwingD1.status === 503 && throwingD1Body.schema === 1 && throwingD1Body.error === 'd1_unavailable',
+      JSON.stringify(throwingD1Body));
+  }
+
+  // [health] routing: unknown path → 404; non-GET on /health → 405.
+  {
+    const notFound = await worker.fetch(healthRequest('GET', '/'), {});
+    const wrongMethod = await worker.fetch(healthRequest('POST', '/health'), {});
+    console.log('\n[health] routing: unknown path 404, non-GET on /health 405');
+    check('unknown path → 404', notFound.status === 404, String(notFound.status));
+    check('POST /health → 405', wrongMethod.status === 405, String(wrongMethod.status));
+  }
+
+  // [health] a backup FAILURE must leave last_ok_at unchanged while
+  // last_run_at still advances — the CRM reader relies on last_ok_at to
+  // detect a stuck/stale backup even while runs keep firing.
+  {
+    const db = makeD1();
+    const r2 = makeR2();
+    const env = { LEADS_DB: db, LEADS_ARCHIVE: r2 };
+    await hourlyRun(env, new Date(utcHourTimestamp(7))); // succeeds
+    const afterOk = await (await worker.fetch(healthRequest(), env)).json();
+    const firstOkAt = afterOk.backup.last_ok_at;
+    const firstRunAt = afterOk.backup.last_run_at;
+    await new Promise(resolve => setTimeout(resolve, 5)); // ensure a distinguishable later timestamp
+    env.LEADS_ARCHIVE.put = async () => { throw new Error('r2 down'); }; // next dump fails
+    await hourlyRun(env, new Date(utcHourTimestamp(7)));
+    const afterFail = await (await worker.fetch(healthRequest(), env)).json();
+    console.log('\n[health] backup failure leaves last_ok_at unchanged while last_run_at advances');
+    check('first successful run sets last_ok_at === last_run_at',
+      !!firstOkAt && firstOkAt === firstRunAt, JSON.stringify(afterOk.backup));
+    check('failed run leaves last_ok_at at the PREVIOUS successful timestamp',
+      afterFail.backup.last_ok_at === firstOkAt, JSON.stringify(afterFail.backup));
+    check('failed run still advances last_run_at to a NEW timestamp',
+      !!afterFail.backup.last_run_at && afterFail.backup.last_run_at !== firstRunAt, JSON.stringify(afterFail.backup));
+    // Round 6, small item: the dump itself failed (R2 down) — dumpResult is
+    // null and recordCronHealth stores detail="dump_failed", which
+    // parseIntegrityOk resolves to null (unknown), NOT false. false is
+    // reserved for "the dump succeeded but its OWN same-run integrity
+    // check failed" — a different, more specific scenario this test does
+    // not exercise.
+    check('failed run reports integrity_ok as null (unknown — the dump itself failed, not merely its integrity check)',
+      afterFail.backup.integrity_ok === null, JSON.stringify(afterFail.backup));
+  }
+
+  /* ============ Round 6 (base ea91e3c) — consolidated review (Codex + a
+     5-lens review, independently re-verified). See
+     docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 6" for the table. */
+
+  // [round 6, finding 1] KV-loop: completion CAS succeeds, THEN a
+  // concurrent admin delete wins the race (D1→deleted, PII scrubbed)
+  // BEFORE our own completion KV write lands — the resurrection must be
+  // undone and no Telegram alert sent.
+  {
+    alerts = [];
+    const id = 'round6-f1-kvloop';
+    const receivedAt = isoOffset(-1);
+    const kv = makeKV();
+    await kv.put(`lead:${id}`, JSON.stringify(kvRecord(id, receivedAt, 'pending')),
+      { metadata: { status: 'pending', received_at: receivedAt } });
+    const db = makeD1([seedRow(id, receivedAt, 'pending')]);
+    const env = withAlerts({ LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.local/hook' });
+    const key = `lead:${id}`;
+    const originalPut = kv.put.bind(kv);
+    let sideEffectFired = false;
+    kv.put = async (k, v, opts) => {
+      if (!sideEffectFired && k === key && JSON.parse(v).status === 'delivered') {
+        sideEffectFired = true;
+        await db.prepare(
+          "UPDATE leads SET status='deleted', delivered_at=?1, name=NULL, phone=NULL, email=NULL, payload_json='{}' WHERE submission_id=?2",
+        ).bind(new Date().toISOString(), id).run();
+      }
+      return originalPut(k, v, opts);
+    };
+    await sweepPending(env);
+    console.log('\n[round 6, finding 1] KV-loop must not resurrect PII or alert after a concurrent admin delete');
+    check('D1 row stays deleted', db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
+    check('KV stays wiped (resurrection undone)', !kv._has(key));
+    check('no Telegram alert fired for a deleted lead', !alerts.some(text => text.includes('Новая заявка')), JSON.stringify(alerts));
+  }
+
+  // [round 6, finding 1] D1-straggler loop: same resurrection race, via the
+  // D1-only path (no KV key exists for this id at all).
+  {
+    alerts = [];
+    const id = 'round6-f1-d1loop';
+    const receivedAt = isoOffset(-1);
+    const db = makeD1([seedRow(id, receivedAt, 'pending')]);
+    const kv = makeKV();
+    const env = withAlerts({ LEADS_DB: db, LEADS_KV: kv, ALBATO_WEBHOOK_URL: 'https://albato.local/hook' });
+    const key = `lead:${id}`;
+    const originalPut = kv.put.bind(kv);
+    let sideEffectFired = false;
+    kv.put = async (k, v, opts) => {
+      if (!sideEffectFired && k === key && JSON.parse(v).status === 'delivered') {
+        sideEffectFired = true;
+        await db.prepare(
+          "UPDATE leads SET status='deleted', delivered_at=?1, name=NULL, phone=NULL, email=NULL, payload_json='{}' WHERE submission_id=?2",
+        ).bind(new Date().toISOString(), id).run();
+      }
+      return originalPut(k, v, opts);
+    };
+    await sweepPending(env);
+    console.log('\n[round 6, finding 1] D1-straggler loop must not resurrect PII or alert after a concurrent admin delete');
+    check('D1 row stays deleted', db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
+    check('KV stays wiped (resurrection undone)', !kv._has(key));
+    check('no Telegram alert fired for a deleted lead', !alerts.some(text => text.includes('Новая заявка')), JSON.stringify(alerts));
+  }
+
+  // [round 6, finding 2] D1-straggler loop: admin delete lands AFTER the
+  // lease claim (KV shows 'forwarding') but BEFORE the Albato POST — the
+  // POST must not fire (matches the coordinator's exact repro citation,
+  // index.js ~561 on ea91e3c).
+  {
+    albatoHits = 0;
+    const id = 'round6-f2-d1loop';
+    const receivedAt = isoOffset(-1);
+    const db = makeD1([seedRow(id, receivedAt, 'pending')]);
+    const kv = makeKV();
+    const env = { LEADS_DB: db, LEADS_KV: kv, ALBATO_WEBHOOK_URL: 'https://albato.local/hook' };
+    const key = `lead:${id}`;
+    const originalPut = kv.put.bind(kv);
+    let sideEffectFired = false;
+    kv.put = async (k, v, opts) => {
+      const result = await originalPut(k, v, opts);
+      if (!sideEffectFired && k === key && JSON.parse(v).status === 'forwarding') {
+        sideEffectFired = true;
+        await db.prepare(
+          "UPDATE leads SET status='deleted', delivered_at=?1, name=NULL, phone=NULL, email=NULL, payload_json='{}' WHERE submission_id=?2",
+        ).bind(new Date().toISOString(), id).run();
+      }
+      return result;
+    };
+    const before = albatoHits;
+    await sweepPending(env);
+    console.log('\n[round 6, finding 2] D1-straggler loop must not POST to Albato once a concurrent admin delete lands post-claim');
+    check('no Albato POST fired', albatoHits === before, `hits=${albatoHits - before}`);
+    check('D1 row stays deleted', db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
+  }
+
+  // [round 6, finding 3] KV write budget: over a full simulated day of
+  // 5-min sweeps (288 runs), ONE persistently-stuck pending lead must cost
+  // at most ~60 total KV.put calls — not the ~1150/day the coordinator's
+  // repro found (2 KV.put on the first sweep, then 4/sweep once BOTH loops
+  // double-process the same id, uncapped, forever). A monkey-patched Date
+  // advances 5 simulated minutes per iteration so the exponential backoff
+  // window genuinely elapses, without literally waiting a day.
+  async function simulateDailySweeps(env, kv, iterations = 288) {
+    const RealDate = global.Date;
+    let simulatedNow = RealDate.now();
+    function FakeDate(...args) {
+      if (args.length === 0) return new RealDate(simulatedNow);
+      return new RealDate(...args);
+    }
+    FakeDate.now = () => simulatedNow;
+    FakeDate.prototype = RealDate.prototype;
+    let totalPuts = 0;
+    const originalPut = kv.put.bind(kv);
+    kv.put = async (...args) => { totalPuts++; return originalPut(...args); };
+    global.Date = FakeDate;
+    try {
+      for (let i = 0; i < iterations; i++) {
+        await sweepPending(env);
+        simulatedNow += 5 * 60 * 1000;
+      }
+    } finally {
+      global.Date = RealDate;
+    }
+    return totalPuts;
+  }
+  {
+    const id = 'round6-f3-no-url';
+    const receivedAt = isoOffset(-1);
+    const kv = makeKV();
+    await kv.put(`lead:${id}`, JSON.stringify(kvRecord(id, receivedAt, 'pending')),
+      { metadata: { status: 'pending', received_at: receivedAt } });
+    const db = makeD1([seedRow(id, receivedAt, 'pending')]);
+    const env = { LEADS_KV: kv, LEADS_DB: db }; // no ALBATO_WEBHOOK_URL at all
+    const totalPuts = await simulateDailySweeps(env, kv);
+    console.log('\n[round 6, finding 3] no ALBATO_WEBHOOK_URL: one stuck lead over 288 sweeps stays within the KV write budget');
+    check('total KV.put <= 60 (fix 3a: skip before any claim/KV write with no Albato URL configured)',
+      totalPuts <= 60, `totalPuts=${totalPuts}`);
+  }
+  {
+    const id = 'round6-f3-502';
+    const receivedAt = isoOffset(-1);
+    const kv = makeKV();
+    await kv.put(`lead:${id}`, JSON.stringify(kvRecord(id, receivedAt, 'pending')),
+      { metadata: { status: 'pending', received_at: receivedAt } });
+    const db = makeD1([seedRow(id, receivedAt, 'pending')]);
+    const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.local/hook-502' };
+    const realFetch = global.fetch;
+    global.fetch = async url => {
+      const target = String(url);
+      if (target.startsWith('https://albato.local/')) return new Response('bad gateway', { status: 502 });
+      throw new Error(`unexpected fetch in budget test: ${target}`);
+    };
+    let totalPuts;
+    try {
+      totalPuts = await simulateDailySweeps(env, kv);
+    } finally {
+      global.fetch = realFetch;
+    }
+    console.log('\n[round 6, finding 3] Albato returning 502: one persistently-failing lead over 288 sweeps stays within the KV write budget');
+    check('total KV.put <= 60 (fix 3b dedup + 3c exponential backoff)', totalPuts <= 60, `totalPuts=${totalPuts}`);
+  }
+
+  // [round 6, finding 4] probeD1 failing must NOT let sweep record ok=true.
+  {
+    const db = makeD1();
+    const originalPrepare = db.prepare.bind(db);
+    db.prepare = sql => {
+      if (sql === 'SELECT 1 AS ok') throw new Error('d1 down for probe');
+      return originalPrepare(sql);
+    };
+    const env = { LEADS_KV: makeKV(), LEADS_DB: db };
+    await sweepPending(env);
+    const body = await (await worker.fetch(healthRequest(), { LEADS_DB: db })).json();
+    console.log('\n[round 6, finding 4] probeD1 failing must not record sweep as ok — this also exercises the try/finally (last_run_at still advances on the early-return path)');
+    check('sweep.last_ok_at stays null (probe failure correctly recorded as NOT ok)',
+      body.sweep.last_ok_at === null, JSON.stringify(body.sweep));
+    check('sweep.last_run_at still advances (recordCronHealth runs via finally even on the early return)',
+      !!body.sweep.last_run_at, JSON.stringify(body.sweep));
+  }
+
+  // [round 6, finding 4] probeD1 must not throw on a KV exception — it must
+  // resolve to a failed probe instead of crashing the whole sweep.
+  {
+    const kv = makeKV();
+    kv.get = async () => { throw new Error('kv down'); };
+    const env = { LEADS_KV: kv, LEADS_DB: makeD1() };
+    let threw = false;
+    let result;
+    try { result = await probeD1(env); } catch (e) { threw = true; }
+    console.log('\n[round 6, finding 4] probeD1 must not throw on a KV exception');
+    check('probeD1 resolves to false instead of throwing', !threw && result === false, `threw=${threw} result=${result}`);
+  }
+
+  // [round 6, finding 4] a missing cron_health table (migration not yet
+  // applied) must report 200 with null backup/sweep fields — never mask a
+  // perfectly healthy `leads` table behind a 503.
+  {
+    const db = makeD1();
+    const originalPrepare = db.prepare.bind(db);
+    db.prepare = sql => {
+      if (/cron_health/.test(sql)) throw new Error('no such table: cron_health');
+      return originalPrepare(sql);
+    };
+    const res = await worker.fetch(healthRequest(), { LEADS_DB: db });
+    const body = await res.json();
+    console.log('\n[round 6, finding 4] missing cron_health table → 200 with null backup/sweep fields, not 503');
+    check('200, not 503 (the leads table itself is fine)', res.status === 200, String(res.status));
+    check('backup fields are all null (degraded, not outage)',
+      body.backup.last_ok_at === null && body.backup.last_run_at === null && body.backup.integrity_ok === null,
+      JSON.stringify(body.backup));
+    check('sweep fields are all null (degraded, not outage)',
+      body.sweep.last_ok_at === null && body.sweep.last_run_at === null, JSON.stringify(body.sweep));
+    check('stuck_leads still computed normally (leads table unaffected)', body.stuck_leads === 0, JSON.stringify(body));
+  }
+
+  // [round 6, finding 5] deploy transition: scheduled() must ALSO accept
+  // the retiring literals "30 2 * * *" and "0 18 * * *" — production is
+  // currently on 6034203 with only "30 2 * * *" live, and this repo's new
+  // code must not silently skip the dump if that trigger fires before the
+  // Cloudflare-side config catches up to the new ["*/5 * * * *", "0 * * * *"].
+  {
+    const r2 = makeR2();
+    const db = makeD1();
+    await runScheduled('30 2 * * *', { LEADS_DB: db, LEADS_ARCHIVE: r2 }, utcHourTimestamp(2));
+    console.log('\n[round 6, finding 5] the retiring "30 2 * * *" trigger must still route into hourlyRun (dump + verify), not the unknown-cron fallback');
+    check('retiring "30 2 * * *" still writes a dump', r2._has(`backups/d1/${dayOffset(0)}/manifest.json`));
+
+    const r2b = makeR2();
+    const kv = makeKV();
+    const orphanId = 'round6-f5-orphan';
+    await kv.put(`lead:${orphanId}`, JSON.stringify(kvRecord(orphanId, isoOffset(-1), 'delivered')),
+      { metadata: { status: 'delivered', received_at: isoOffset(-1) } });
+    const dbB = makeD1();
+    await runScheduled('0 18 * * *', {
+      LEADS_KV: kv, LEADS_DB: dbB, LEADS_ARCHIVE: r2b, SHEET_COUNT_URL: 'https://sheet.local/count',
+    }, utcHourTimestamp(18));
+    console.log('[round 6, finding 5] the retiring "0 18 * * *" trigger must still route into hourlyRun (dump + reconcile)');
+    check('retiring "0 18 * * *" still writes a dump', r2b._has(`backups/d1/${dayOffset(0)}/manifest.json`));
+    check('retiring "0 18 * * *" still runs reconcile (repairs KV lead missing from D1)', !!dbB._get(orphanId));
+  }
+
+  // [round 6, small item] the day key for backup paths must come from the
+  // SAME clock as the hour gating, not each function's own independent
+  // "now" — verified by passing an explicit `now` far from the real date
+  // and confirming the R2 path lands on THAT day, not today's.
+  {
+    const explicitNow = new Date('2026-01-15T10:00:00.000Z');
+    const db = makeD1();
+    const r2 = makeR2();
+    await dumpD1ToR2({ LEADS_DB: db, LEADS_ARCHIVE: r2 }, explicitNow);
+    console.log('\n[round 6, small item] dumpD1ToR2 uses the threaded `now`, not its own independent clock, for the day key');
+    check('dump lands under the explicitly-passed day (2026-01-15), not the real today',
+      r2._has('backups/d1/2026-01-15/manifest.json'), r2._putOrder().join(','));
   }
 
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);

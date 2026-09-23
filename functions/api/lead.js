@@ -478,6 +478,43 @@ async function upsertLeadD1Guarded(env, rec, expectedLeaseStart) {
   } catch (e) { return "error"; } // D1 bound but the query itself failed — CANNOT confirm ownership; never conflate with "not configured"
 }
 
+// Review round 5 (Codex-found race on 6034203): admin DELETE is not
+// serialized against an in-flight writer for the SAME submission_id — that
+// would need a Durable Object. Two narrow windows exist instead:
+//   (1) our completion CAS (upsertLeadD1Guarded) commits `changes=1`, a
+//       concurrent admin delete then flips D1 to 'deleted' and wipes
+//       KV/R2, and OUR OWN completion write (KV) still lands right after —
+//       resurrecting PII into KV and (via the caller's notify-gate) would
+//       have alerted, had the caller not already checked our return value.
+//   (2) intake's deletion-status check reads "active", a concurrent admin
+//       delete then flips D1 to 'deleted' and wipes KV/R2, and intake's OWN
+//       first-ever KV+R2 write for this id still lands right after.
+// DECISION: make deletion EVENTUAL and BOUNDED instead of fully serialized.
+// Right after the KV (and, at intake, R2) write, re-read D1's status ONE
+// more time. If it now says 'deleted', undo the resurrection we JUST wrote
+// (wipe KV, and R2 when a receivedAt is given) — closing the window within
+// the SAME request in the common case. cron-worker's janitor
+// (janitorPurgeDeletedLeads) is the second, bounded-by-cron-interval layer
+// for the remaining, much narrower race between this re-check and the
+// return (see docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 5").
+async function wipeIfDeletedAfterWrite(env, key, submissionId, receivedAt) {
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return false;
+  var status = null;
+  try {
+    var found = await env.LEADS_DB.prepare("SELECT status FROM leads WHERE submission_id=?1").bind(submissionId).all();
+    var row = found && found.results && found.results[0];
+    status = row ? row.status : null;
+  } catch (e) { return false; } // can't confirm right now — the janitor catches this on its next pass
+  if (status !== "deleted") return false;
+  if (env.LEADS_KV && typeof env.LEADS_KV.delete === "function") {
+    try { await env.LEADS_KV.delete(key); } catch (e) { /* best-effort */ }
+  }
+  if (receivedAt && env.LEADS_ARCHIVE && typeof env.LEADS_ARCHIVE.delete === "function") {
+    try { await env.LEADS_ARCHIVE.delete("leads/" + receivedAt.slice(0, 10) + "/" + submissionId + ".md"); } catch (e) { /* best-effort */ }
+  }
+  return true;
+}
+
 // Callers check the return with strict equality (=== false), not
 // truthiness, because the "no D1 bound" legacy fallback is boolean `false`
 // while "not_owner"/"error" are distinct truthy strings that must ALSO
@@ -506,6 +543,13 @@ async function markLeadDelivered(env, key, rec) {
   }
   deliveredLeadsInProcess.add(key);
   var kvOk = await putLeadRecordWithRetry(env, key, rec, true);
+  if (await wipeIfDeletedAfterWrite(env, key, rec.submission_id, rec.received_at)) {
+    // Round 5: a concurrent admin delete won the race between our CAS
+    // commit and this KV write. Undo the resurrection and tell the caller
+    // we do NOT own this delivery — it must not notify.
+    deliveredLeadsInProcess.delete(key);
+    return false;
+  }
   return kvOk || d1Result;
 }
 // Returns true only when this isolate still owns the row and the release
@@ -521,6 +565,7 @@ async function releaseLeadToPending(env, key, rec) {
   var d1Result = await upsertLeadD1Guarded(env, rec, expectedLeaseStart);
   if (d1Result === "not_owner" || d1Result === "error") return false; // do not resurrect/overwrite a since-changed row in KV, and do not act as if we still own it
   var kvOk = await putLeadRecord(env, key, rec);
+  if (await wipeIfDeletedAfterWrite(env, key, rec.submission_id, rec.received_at)) return false; // round 5: same race, undo the resurrection
   return kvOk || d1Result;
 }
 
@@ -625,6 +670,13 @@ async function sweepPendingLeads(env, excludeKey) {
         const claim = await claimLeadForwarding(env, k.name, rec);
         if (claim !== "claimed") continue;
         attempts++;
+        // Review round 6, finding 2 (Codex "send-after-delete"): the claim
+        // above only proves ownership AT CLAIM TIME — a concurrent admin
+        // delete can land in the gap before this POST. Re-check right
+        // before sending; residual window (a POST already in flight when
+        // the delete lands) is a documented limitation, see
+        // docs/LEAD-PIPELINE.md §10.
+        if (await wipeIfDeletedAfterWrite(env, k.name, rec.submission_id, rec.received_at)) continue;
         if (await forwardToAlbato(env, rec.fields)) {
           // Review round 4, finding B: only announce delivery if we still
           // own the row after the completion write — a not_owner/error
@@ -693,6 +745,8 @@ async function sweepPendingLeads(env, excludeKey) {
         const claim = await claimLeadForwarding(env, rowKey, rec);
         if (claim !== "claimed") continue;
         d1Attempts++;
+        // Review round 6, finding 2: same pre-POST re-check as the KV-loop above.
+        if (await wipeIfDeletedAfterWrite(env, rowKey, rec.submission_id, rec.received_at)) continue;
         if (await forwardToAlbato(env, rec.fields)) {
           // Review round 4, finding B (consistency with the KV-loop above):
           // only alert if we still own the row after the completion write.
@@ -761,6 +815,14 @@ async function processDurableLead(env, payload, submissionId, key) {
     record = { submission_id: submissionId, fields: payload, status: "pending", received_at: received_at };
     kvOk = await putLeadRecord(env, key, record);
     await archiveLeadR2(env, record);
+    if (await wipeIfDeletedAfterWrite(env, key, submissionId, received_at)) {
+      // Round 5 (Codex-found race): the "active" check above ran before a
+      // concurrent admin delete committed — this intake write just
+      // resurrected KV+R2 with fresh PII on top of a row D1 now says is
+      // 'deleted'. Undo it and stop here: no D1 lease claim, no Albato
+      // POST, no notification — a harmless dedup-style 202 to the client.
+      return { status: 202, body: { ok: true, status: "accepted", submission_id: submissionId, dedup: true } };
+    }
   }
   var d1Insert = await insertLeadD1IfMissing(env, record);
   // "Durably recorded somewhere" — kvOk covers the common case; a
@@ -786,6 +848,15 @@ async function processDurableLead(env, payload, submissionId, key) {
     // lead". Fall through and attempt delivery directly instead: no cross-
     // isolate coordination is possible anyway once storage is this broken.
     claim = "claimed";
+  }
+
+  // Review round 6, finding 2 (Codex "send-after-delete"): the claim above
+  // only proves ownership AT CLAIM TIME — a concurrent admin delete can
+  // land in the gap before this POST. Re-check right before sending;
+  // residual window (a POST already in flight when the delete lands) is a
+  // documented limitation, see docs/LEAD-PIPELINE.md §10.
+  if (await wipeIfDeletedAfterWrite(env, key, submissionId, record.received_at)) {
+    return { status: 202, body: { ok: true, status: "accepted", submission_id: submissionId, dedup: true } };
   }
 
   var delivered = await forwardToAlbato(env, record.fields);
