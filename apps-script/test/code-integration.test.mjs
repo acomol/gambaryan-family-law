@@ -27,6 +27,10 @@ function buildRow(headers, obj) {
   return headers.map((h) => (obj[h] !== undefined ? obj[h] : ''));
 }
 
+function emptyServiceSheet(ctx) {
+  return makeFakeSheet('Служебное', { data: [Array.from(ctx.SERVICE_SHEET_HEADERS_)] });
+}
+
 // --- review находка №2: меню «CRM» убрано — getUi() недоступен в standalone --
 
 test('onOpen() удалён — не пытается вызывать getUi() из standalone-проекта (review находка №2)', () => {
@@ -83,6 +87,7 @@ test('tick(): читает "Заявки" (getDataRange) один раз за ц
 
   const reqHeaders = Array.from(ctx.REQUESTS_HEADERS_);
   const requests = makeFakeSheet('Заявки', { data: [reqHeaders] }); // без заявок и исправлений в этом сценарии
+  const service = emptyServiceSheet(ctx);
   const intakeHeaders = Array.from(ctx.INTAKE_HEADERS_);
   const intake = makeFakeSheet('Входящие', { data: [intakeHeaders] });
   const journal = makeFakeSheet('Журнал');
@@ -93,7 +98,7 @@ test('tick(): читает "Заявки" (getDataRange) один раз за ц
   const settings = makeFakeSheet('Настройки', {
     data: ctx.buildDefaultSettingsRows_({ business_days: '0,1,2,3,4,5,6', digest_time: '00:00' })
   });
-  const ss = makeFakeSpreadsheet({ 'Заявки': requests, 'Входящие': intake, 'Журнал': journal, 'Настройки': settings });
+  const ss = makeFakeSpreadsheet({ 'Заявки': requests, 'Служебное': service, 'Входящие': intake, 'Журнал': journal, 'Настройки': settings });
   spreadsheetApp.openById = () => ss;
 
   ctx.tick();
@@ -110,6 +115,8 @@ test('syncIntakeToRequests_: новая заявка получает RichTextVa
 
   const reqHeaders = Array.from(ctx.REQUESTS_HEADERS_);
   const requests = makeFakeSheet('Заявки', { data: [reqHeaders] });
+  const service = emptyServiceSheet(ctx);
+  const serviceHeaderMap = ctx.colByHeader_(Array.from(ctx.SERVICE_SHEET_HEADERS_));
   const intakeHeaders = Array.from(ctx.INTAKE_HEADERS_);
   const intake = makeFakeSheet('Входящие', {
     data: [intakeHeaders, buildRow(intakeHeaders, {
@@ -117,12 +124,13 @@ test('syncIntakeToRequests_: новая заявка получает RichTextVa
     })]
   });
   const journal = makeFakeSheet('Журнал');
-  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Журнал': journal });
+  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Служебное': service, 'Журнал': journal });
   spreadsheetApp.openById = () => ss;
   const reqHeaderMap = ctx.colByHeader_(reqHeaders);
   const config = buildConfig();
 
-  ctx.syncIntakeToRequests_(ss, config, new Date('2026-01-05T10:05:00Z'), requests, [reqHeaders], reqHeaderMap);
+  ctx.syncIntakeToRequests_(ss, config, new Date('2026-01-05T10:05:00Z'), requests, [reqHeaders], reqHeaderMap,
+    service, [Array.from(ctx.SERVICE_SHEET_HEADERS_)], serviceHeaderMap);
 
   const contactCol = reqHeaderMap['Связаться'] + 1;
   const rtv = requests._richText['2:' + contactCol];
@@ -131,6 +139,46 @@ test('syncIntakeToRequests_: новая заявка получает RichTextVa
   assert.equal(rtv._links[0].url, 'https://wa.me/972501234567');
   assert.ok(requests._data[1][contactCol - 1].indexOf('tel:') === -1,
     'старый формат "tel:... https://wa.me/..." как plain-текст больше не пишется');
+});
+
+// --- задача 0.4.0: sync пишет служебные данные ТОЛЬКО в «Служебное» --------
+
+test('syncIntakeToRequests_: submission_id/«Откуда»/цепочка пишутся ТОЛЬКО в «Служебное», «Заявки» их не содержит вовсе (задача 0.4.0)', () => {
+  const spreadsheetApp = makeFakeSpreadsheetApp({});
+  const ctx = loadGasContext(undefined, { SpreadsheetApp: spreadsheetApp, PropertiesService: makeFakePropertiesService({}) });
+
+  const reqHeaders = Array.from(ctx.REQUESTS_HEADERS_);
+  const requests = makeFakeSheet('Заявки', { data: [reqHeaders] });
+  const service = emptyServiceSheet(ctx);
+  const serviceHeaderMap = ctx.colByHeader_(Array.from(ctx.SERVICE_SHEET_HEADERS_));
+  const intakeHeaders = Array.from(ctx.INTAKE_HEADERS_);
+  const intake = makeFakeSheet('Входящие', {
+    data: [intakeHeaders, buildRow(intakeHeaders, {
+      submission_id: 'S1', submitted_at: '2026-01-05T10:00:00Z', name: 'Ivan', phone: '+972501234567',
+      email: 'a@x.com', gclid: 'gclid-abc', utm_source: 'facebook'
+    })]
+  });
+  const journal = makeFakeSheet('Журнал');
+  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Служебное': service, 'Журнал': journal });
+  spreadsheetApp.openById = () => ss;
+  const reqHeaderMap = ctx.colByHeader_(reqHeaders);
+  const config = buildConfig();
+
+  ctx.syncIntakeToRequests_(ss, config, new Date('2026-01-05T10:05:00Z'), requests, [reqHeaders], reqHeaderMap,
+    service, [Array.from(ctx.SERVICE_SHEET_HEADERS_)], serviceHeaderMap);
+
+  // «Заявки»: ровно OFFICE_HEADERS_.length ячеек в строке, никаких технических полей
+  assert.equal(requests._data[1].length, ctx.OFFICE_HEADERS_.length);
+  assert.equal(reqHeaderMap['submission_id'], undefined, '«Заявки» не имеет колонки submission_id вовсе');
+  assert.equal(reqHeaderMap['Откуда'], undefined, '«Заявки» не имеет колонки «Откуда» вовсе — она на «Служебное»');
+
+  // «Служебное»: строка появилась, ключ №, submission_id/цепочка/«Откуда» на месте
+  assert.equal(service._data.length, 2, 'должна появиться одна строка «Служебное» на новую заявку');
+  const svcRow = service._data[1];
+  assert.equal(svcRow[serviceHeaderMap['№']], requests._data[1][reqHeaderMap['№']], 'связь по № между листами');
+  assert.equal(svcRow[serviceHeaderMap['submission_id']], 'S1');
+  assert.equal(svcRow[serviceHeaderMap['все submission_id']], 'S1');
+  assert.equal(svcRow[serviceHeaderMap['Откуда']], 'Google Ads', 'detectSource_: gclid есть -> Google Ads, несмотря на utm_source');
 });
 
 // --- review находка №13 / design §12 строка 7: дежурный на выходные/ночь ----
@@ -142,18 +190,21 @@ test('syncIntakeToRequests_: вне рабочего времени, дежур�
 
   const reqHeaders = Array.from(ctx.REQUESTS_HEADERS_);
   const requests = makeFakeSheet('Заявки', { data: [reqHeaders] });
+  const service = emptyServiceSheet(ctx);
+  const serviceHeaderMap = ctx.colByHeader_(Array.from(ctx.SERVICE_SHEET_HEADERS_));
   const intakeHeaders = Array.from(ctx.INTAKE_HEADERS_);
   const intake = makeFakeSheet('Входящие', {
     data: [intakeHeaders, buildRow(intakeHeaders, { submission_id: 'S1', submitted_at: '2026-01-05T21:00:00Z', name: 'Ivan', phone: '+972501234567' })]
   });
   const journal = makeFakeSheet('Журнал');
-  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Журнал': journal });
+  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Служебное': service, 'Журнал': journal });
   spreadsheetApp.openById = () => ss;
   const reqHeaderMap = ctx.colByHeader_(reqHeaders);
   const config = buildConfig({ weekendDuty: { enabled: true, email: 'duty@x.com' } });
   const offHoursNow = new Date('2026-01-05T21:00:00Z'); // 23:00 Asia/Jerusalem — вне 09:00-18:00
 
-  ctx.syncIntakeToRequests_(ss, config, offHoursNow, requests, [reqHeaders], reqHeaderMap);
+  ctx.syncIntakeToRequests_(ss, config, offHoursNow, requests, [reqHeaders], reqHeaderMap,
+    service, [Array.from(ctx.SERVICE_SHEET_HEADERS_)], serviceHeaderMap);
 
   assert.equal(mail._sent.length, 1, 'дежурный включён — уведомление должно уйти немедленно, не ждать дайджеста');
   assert.equal(mail._sent[0].to, 'duty@x.com');
@@ -166,18 +217,21 @@ test('syncIntakeToRequests_: вне рабочего времени, дежур�
 
   const reqHeaders = Array.from(ctx.REQUESTS_HEADERS_);
   const requests = makeFakeSheet('Заявки', { data: [reqHeaders] });
+  const service = emptyServiceSheet(ctx);
+  const serviceHeaderMap = ctx.colByHeader_(Array.from(ctx.SERVICE_SHEET_HEADERS_));
   const intakeHeaders = Array.from(ctx.INTAKE_HEADERS_);
   const intake = makeFakeSheet('Входящие', {
     data: [intakeHeaders, buildRow(intakeHeaders, { submission_id: 'S1', submitted_at: '2026-01-05T21:00:00Z', name: 'Ivan', phone: '+972501234567' })]
   });
   const journal = makeFakeSheet('Журнал');
-  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Журнал': journal });
+  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Служебное': service, 'Журнал': journal });
   spreadsheetApp.openById = () => ss;
   const reqHeaderMap = ctx.colByHeader_(reqHeaders);
   const config = buildConfig(); // weekendDuty.enabled=false по умолчанию
   const offHoursNow = new Date('2026-01-05T21:00:00Z');
 
-  ctx.syncIntakeToRequests_(ss, config, offHoursNow, requests, [reqHeaders], reqHeaderMap);
+  ctx.syncIntakeToRequests_(ss, config, offHoursNow, requests, [reqHeaders], reqHeaderMap,
+    service, [Array.from(ctx.SERVICE_SHEET_HEADERS_)], serviceHeaderMap);
 
   assert.equal(mail._sent.length, 0, 'вне рабочего времени без дежурного — попадёт в дайджест, не отдельным письмом');
 });

@@ -142,7 +142,10 @@ export function makeFakeSheet(name, opts) {
       sheet._protections.push(p);
       return p;
     },
-    setConditionalFormatRules: function () {}
+    setConditionalFormatRules: function () {},
+    hideSheet: function () { sheet._hidden = true; return sheet; },
+    showSheet: function () { sheet._hidden = false; return sheet; },
+    isSheetHidden: function () { return !!sheet._hidden; }
   };
   return sheet;
 }

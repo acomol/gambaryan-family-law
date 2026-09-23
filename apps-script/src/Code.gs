@@ -26,17 +26,25 @@ function tick() {
 
     // Review находка №10: раньше каждый шаг сам делал getDataRange().getValues()
     // «Заявки» — до 4 полных чтений за один tick(). Снимок читается ОДИН раз и
-    // передаётся шагам. Исключение — поиск строки для записи исправления
-    // (findRequestRowIndexBySubmissionId_/findRequestRowBySubmissionOrChain_,
-    // CorrectionChain-путь): те продолжают читать лист заново непосредственно
-    // перед записью (design §1 инвариант, review находка №6) — снимок для них
-    // не годится по построению.
+    // передаётся шагам. Исключение — поиск строки для записи исправления/штампа
+    // (findRequestRowIndexByLeadNo_/findServiceRow*_, CorrectionChain-путь): те
+    // продолжают читать лист заново непосредственно перед записью (design §1
+    // инвариант, review находка №6) — снимок для них не годится по построению.
     var requests = ss.getSheetByName(SHEET_REQUESTS_);
     var reqValues = requests.getDataRange().getValues();
     var reqHeaderMap = colByHeader_(reqValues[0] || []);
 
-    runStepSafely_('sync', function () { syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMap); });
-    runStepSafely_('corrections', function () { resolvePendingCorrections_(ss, config, now, requests, reqHeaderMap); });
+    // Задача 0.4.0: «Служебное» — второй лист, снимок читается тем же приёмом.
+    var service = ss.getSheetByName(SHEET_SERVICE_);
+    var serviceValues = service.getDataRange().getValues();
+    var serviceHeaderMap = colByHeader_(serviceValues[0] || []);
+
+    runStepSafely_('sync', function () {
+      syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMap, service, serviceValues, serviceHeaderMap);
+    });
+    runStepSafely_('corrections', function () {
+      resolvePendingCorrections_(ss, config, now, requests, reqHeaderMap, service, serviceHeaderMap);
+    });
     runStepSafely_('sla', function () { processSla_(ss, config, now, reqValues, reqHeaderMap); });
     runStepSafely_('digest', function () { maybeSendDigest_(ss, config, now, reqValues, reqHeaderMap); });
     runStepSafely_('weekly_summary', function () { maybeSendWeeklySummary_(ss, config, now); });
@@ -73,14 +81,21 @@ function runStepSafely_(name, fn) {
  * целиком заново каждый tick навсегда — берём только строки после watermark
  * (последнее обработанное количество строк, PropertiesService). Анти-дубль
  * при этом НЕ полагается только на watermark: existingBySubmissionId строится
- * по ПОЛНОМУ reqValues (снимок «Заявки» на этот tick) — "re-validated by
+ * по ПОЛНОМУ serviceValues (снимок «Служебное» на этот tick) — "re-validated by
  * submission_id" — так что даже сбитый watermark может максимум пропустить
  * новую заявку до починки, но никогда не создаст дубль.
+ *
+ * Задача 0.4.0: submission_id/«Откуда»/технические поля больше НЕ пишутся на
+ * «Заявки» вовсе — вся служебная часть новой строки уходит в «Служебное»,
+ * связанное с «Заявками» по № (design §3.2).
  * @param {Sheet} requests уже открытый лист «Заявки» (для appendRow/getRange)
  * @param {Array} reqValues снимок «Заявки» на начало этого tick (design item10)
  * @param {Object} reqHeaderMap
+ * @param {Sheet} service уже открытый лист «Служебное»
+ * @param {Array} serviceValues снимок «Служебное» на начало этого tick
+ * @param {Object} serviceHeaderMap
  */
-function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMap) {
+function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMap, service, serviceValues, serviceHeaderMap) {
   var intake = ss.getSheetByName(SHEET_INTAKE_);
   var intakeValues = intake.getDataRange().getValues();
   if (intakeValues.length < 2) return;
@@ -93,8 +108,8 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
   }).filter(function (r) { return r.submission_id && !r.corrects_submission_id; }); // корневые заявки — исправления §5.4 отдельно
 
   var existingBySubmissionId = {};
-  reqValues.slice(1).forEach(function (row) {
-    var id = getCell_(row, reqHeaderMap, 'submission_id');
+  serviceValues.slice(1).forEach(function (row) {
+    var id = getCell_(row, serviceHeaderMap, 'submission_id');
     if (id) existingBySubmissionId[id] = true;
   });
 
@@ -107,10 +122,14 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
     plan.toCreate.forEach(function (rec) {
       var leadNo = nextLeadNumber_(existingNumbers);
       existingNumbers.push(leadNo);
+
       var row = buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now);
       requests.appendRow(row);
       var newRowIndex = requests.getLastRow();
       writeContactCell_(requests, newRowIndex, reqHeaderMap, rec.phone); // review находка №12 — настоящая ссылка
+
+      var serviceRow = buildNewServiceRow_(serviceHeaderMap, rec, leadNo);
+      service.appendRow(serviceRow);
 
       var notification = decideNewLeadNotification_(now, config.calendar, config.weekendDuty);
       if (plan.toNotify.indexOf(rec.submission_id) !== -1) {
@@ -139,6 +158,7 @@ function rowToRecord_(row, headerMap) {
   return rec;
 }
 
+/** «Заявки»: только поля офиса (задача 0.4.0 — никакой техники на этом листе). */
 function buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now) {
   var row = new Array(REQUESTS_HEADERS_.length).fill('');
   setCell_(row, reqHeaderMap, '№', leadNo);
@@ -150,13 +170,21 @@ function buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now) {
   // ПОСЛЕ appendRow через writeContactCell_ (appendRow не умеет rich text).
   setCell_(row, reqHeaderMap, 'Email', rec.email || '');
   setCell_(row, reqHeaderMap, 'Ответственный', config.defaultDutyOfficer || '');
-  setCell_(row, reqHeaderMap, 'Откуда', detectSource_(rec));
-  setCell_(row, reqHeaderMap, 'submission_id', rec.submission_id);
-  setCell_(row, reqHeaderMap, 'все submission_id', rec.submission_id);
-  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-    'gclid', 'gbraid', 'wbraid', 'landing_path', 'referrer_host', 'form_id'].forEach(function (f) {
-    setCell_(row, reqHeaderMap, f, rec[f] || '');
-  });
+  return row;
+}
+
+/**
+ * «Служебное»: № (ключ связи с «Заявками»), submission_id корня, цепочка
+ * исправлений (изначально — сам корень) и «Откуда» (design §3.2). Остальные
+ * поля («Контакт состоялся», «Статус изменён», «Договор», contact_version,
+ * флаги уведомлений) заполняются позже — onEdit/SLA/notifications шагами.
+ */
+function buildNewServiceRow_(serviceHeaderMap, rec, leadNo) {
+  var row = new Array(SERVICE_SHEET_HEADERS_.length).fill('');
+  setCell_(row, serviceHeaderMap, '№', leadNo);
+  setCell_(row, serviceHeaderMap, 'submission_id', rec.submission_id);
+  setCell_(row, serviceHeaderMap, 'все submission_id', rec.submission_id);
+  setCell_(row, serviceHeaderMap, 'Откуда', detectSource_(rec));
   return row;
 }
 
@@ -165,13 +193,19 @@ function buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Задача 0.4.0: цепочка исправлений («все submission_id») и связь по
+ * submission_id теперь живут на «Служебное», а не на «Заявки» — там больше
+ * нет технических колонок. Контактные поля (Имя/Телефон/Email/«Связаться») —
+ * по-прежнему на «Заявки», найденной по № через строку «Служебное».
  * @param {Sheet} requests уже открытый лист «Заявки»
- * @param {Object} reqHeaderMap карта заголовков «Заявки» (общая для tick — design item10);
+ * @param {Object} reqHeaderMap карта заголовков «Заявки» (общая для tick — design item10)
+ * @param {Sheet} service уже открытый лист «Служебное»
+ * @param {Object} serviceHeaderMap карта заголовков «Служебное»
  *   САМИ строки при этом ищутся заново непосредственно перед каждой записью
- *   (findRequestRowBySubmissionOrChain_/findRequestRowIndexBySubmissionId_ читают
- *   лист напрямую, а не reqHeaderMap-снимок значений — design §1, review находка №6).
+ *   (findServiceRow*_/findRequestRowIndexByLeadNo_ читают лист напрямую, а не
+ *   снимок значений — design §1, review находка №6).
  */
-function resolvePendingCorrections_(ss, config, now, requests, reqHeaderMap) {
+function resolvePendingCorrections_(ss, config, now, requests, reqHeaderMap, service, serviceHeaderMap) {
   var intake = ss.getSheetByName(SHEET_INTAKE_);
   var intakeValues = intake.getDataRange().getValues();
   if (intakeValues.length < 2) return;
@@ -192,8 +226,8 @@ function resolvePendingCorrections_(ss, config, now, requests, reqHeaderMap) {
   var pendingCycles = readPendingCycles_(); // review находка №8
 
   corrections.forEach(function (leafId) {
-    var alreadyAppliedRow = findRequestRowBySubmissionOrChain_(requests, reqHeaderMap, leafId);
-    if (alreadyAppliedRow) return; // уже применено в предыдущем тике (idempotent)
+    var alreadyAppliedRow = findServiceRowBySubmissionOrChain_(service, serviceHeaderMap, leafId);
+    if (alreadyAppliedRow !== -1) return; // уже применено в предыдущем тике (idempotent)
 
     var plan = buildCorrectionPlan_(leafId, recordsById, []);
     if (plan.status === 'cycle') {
@@ -212,57 +246,72 @@ function resolvePendingCorrections_(ss, config, now, requests, reqHeaderMap) {
     }
     clearPendingCorrection_(pending, leafId);
 
-    var rowIndex = findRequestRowIndexBySubmissionId_(requests, reqHeaderMap, plan.rootId);
-    if (rowIndex === -1) return; // корень ещё не синхронизирован в «Заявки» — следующий тик подтянет
-    applyCorrectionToRow_(requests, reqHeaderMap, plan.rootId, plan);
+    var serviceRowIndex = findServiceRowIndexBySubmissionId_(service, serviceHeaderMap, plan.rootId);
+    if (serviceRowIndex === -1) return; // корень ещё не синхронизирован в «Служебное» — следующий тик подтянет
+    applyCorrectionToRow_(requests, reqHeaderMap, service, serviceHeaderMap, plan);
   });
 
   writePendingCorrections_(pending);
   writePendingCycles_(pendingCycles);
 }
 
-function findRequestRowIndexBySubmissionId_(requests, headerMap, submissionId) {
-  var values = requests.getDataRange().getValues();
+/** Находит строку «Служебное» по корневому submission_id (колонка 'submission_id'). */
+function findServiceRowIndexBySubmissionId_(service, headerMap, submissionId) {
+  var values = service.getDataRange().getValues();
   for (var i = 1; i < values.length; i++) {
     if (getCell_(values[i], headerMap, 'submission_id') === submissionId) return i + 1; // 1-based row
   }
   return -1;
 }
 
-/** true если leafId уже присутствует в "все submission_id" какой-либо строки. */
-function findRequestRowBySubmissionOrChain_(requests, headerMap, leafId) {
-  var values = requests.getDataRange().getValues();
+/** true если leafId уже присутствует в "все submission_id" какой-либо строки «Служебное». */
+function findServiceRowBySubmissionOrChain_(service, headerMap, leafId) {
+  var values = service.getDataRange().getValues();
   for (var i = 1; i < values.length; i++) {
     var chain = String(getCell_(values[i], headerMap, 'все submission_id') || '');
     if (chain.split(',').indexOf(leafId) !== -1) return i + 1;
   }
-  return null;
+  return -1;
+}
+
+/** Находит строку «Заявки» по № (design §1: связь между листами — только по №). */
+function findRequestRowIndexByLeadNo_(requests, headerMap, leadNo) {
+  var values = requests.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (getCell_(values[i], headerMap, '№') === leadNo) return i + 1; // 1-based row
+  }
+  return -1;
 }
 
 /**
- * Review находка №6 (CRITICAL): раньше принимался готовый rowIndex, вычисленный
- * ДО этого вызова — между тем моментом и пятью setValue() ниже строка могла
- * "уехать" (сотрудник отсортировал/переставил — LockService защищает только
- * код скрипта, не действия людей, design §1). Design-инвариант "перед каждой
- * записью заново находит строку по submission_id" требует свежего поиска
- * НЕПОСРЕДСТВЕННО перед записью — поэтому здесь принимается rootId (submission_id),
- * а не число, и поиск строки происходит внутри, в последний момент.
- * @param {string} rootId submission_id корня цепочки (plan.rootId)
+ * Review находка №6 (CRITICAL, версия 0.3.0) + design §1 (версия 0.4.0): раньше
+ * принимался готовый rowIndex, вычисленный ДО этого вызова — между тем моментом
+ * и записью строка могла "уехать" (сотрудник отсортировал/переставил —
+ * LockService защищает только код скрипта, не действия людей). Инвариант
+ * "перед каждой записью заново находит строку по №" требует свежего поиска
+ * НЕПОСРЕДСТВЕННО перед записью на ОБОИХ листах: «Служебное» — по корневому
+ * submission_id, «Заявки» — по № (единственная связь между листами).
  */
-function applyCorrectionToRow_(requests, headerMap, rootId, plan) {
-  var rowIndex = findRequestRowIndexBySubmissionId_(requests, headerMap, rootId);
-  if (rowIndex === -1) return; // строка исчезла между поиском корня и записью — следующий тик подтянет
+function applyCorrectionToRow_(requests, reqHeaderMap, service, serviceHeaderMap, plan) {
+  var serviceRowIndex = findServiceRowIndexBySubmissionId_(service, serviceHeaderMap, plan.rootId);
+  if (serviceRowIndex === -1) return; // строка исчезла между поиском корня и записью — следующий тик подтянет
+  var leadNo = service.getRange(serviceRowIndex, serviceHeaderMap['№'] + 1).getValue();
+
+  var rowIndex = findRequestRowIndexByLeadNo_(requests, reqHeaderMap, leadNo);
+  if (rowIndex === -1) return; // строка «Заявки» исчезла между поиском и записью — следующий тик подтянет
+
   var updates = {
     'Имя': plan.finalContacts.name || '',
     'Телефон': plan.finalContacts.phone || '',
-    'Email': plan.finalContacts.email || '',
-    'все submission_id': plan.orderedIds.join(',')
+    'Email': plan.finalContacts.email || ''
   };
   Object.keys(updates).forEach(function (header) {
-    var col = headerMap[header] + 1;
+    var col = reqHeaderMap[header] + 1;
     requests.getRange(rowIndex, col).setValue(updates[header]);
   });
-  writeContactCell_(requests, rowIndex, headerMap, plan.finalContacts.phone); // review находка №12
+  writeContactCell_(requests, rowIndex, reqHeaderMap, plan.finalContacts.phone); // review находка №12
+
+  service.getRange(serviceRowIndex, serviceHeaderMap['все submission_id'] + 1).setValue(plan.orderedIds.join(','));
 }
 
 function readPendingCorrections_() {
@@ -479,13 +528,18 @@ function handleEdit_(e) {
     if (e.range.getRow() === 1) return; // заголовок
 
     var headerMap = colByHeader_(sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]);
-    var journal = SpreadsheetApp.openById(SPREADSHEET_ID_).getSheetByName(SHEET_JOURNAL_);
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID_);
+    var journal = ss.getSheetByName(SHEET_JOURNAL_);
+    // Задача 0.4.0: «Контакт состоялся»/«Статус изменён»/«Договор» переехали на
+    // «Служебное» — onEdit находит нужную строку там по № (design §1, §3.2).
+    var service = ss.getSheetByName(SHEET_SERVICE_);
+    var serviceHeaderMap = colByHeader_(service.getRange(1, 1, 1, service.getLastColumn()).getValues()[0]);
     var now = new Date();
 
     // вставка в несколько строк/ячеек — обрабатываем диапазоном (§5.2)
     for (var r = e.range.getRow(); r < e.range.getRow() + e.range.getNumRows(); r++) {
       runStepSafely_('onEdit_row_' + r, function () {
-        handleEditRow_(sheet, headerMap, r, journal, now);
+        handleEditRow_(sheet, headerMap, r, journal, service, serviceHeaderMap, now);
       });
     }
   } finally {
@@ -493,7 +547,15 @@ function handleEdit_(e) {
   }
 }
 
-function handleEditRow_(sheet, headerMap, rowIndex, journal, now) {
+/**
+ * Задача 0.4.0: правки самой строки «Заявки» (Первая попытка, «Связаться») —
+ * на месте; штампы, которые раньше жили на «Заявки» («Контакт состоялся»,
+ * «Статус изменён», «Договор»), теперь пишутся в «Служебное», найденную ЗАНОВО
+ * по № (design §1 инвариант — Заявки могли быть отсортированы/перестроены
+ * между чтением rowIndex и этим вызовом, а Служебное вообще не связано по
+ * физической позиции строки).
+ */
+function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHeaderMap, now) {
   var row = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
   var leadNo = getCell_(row, headerMap, '№');
   if (!leadNo) return; // не заявка (например, пустая строка)
@@ -501,30 +563,42 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, now) {
   var status = getCell_(row, headerMap, 'Статус');
   var telephone = getCell_(row, headerMap, 'Телефон');
   var firstAttempt = getCell_(row, headerMap, 'Первая попытка');
-  var contactMade = getCell_(row, headerMap, 'Контакт состоялся');
 
-  // "Контакт состоялся" — время, когда статус впервые стал «В работе» и дальше (§3.1)
-  var contactStatuses = ['В работе', 'Консультация назначена', 'Консультация проведена', 'Клиент — договор'];
-  if (contactStatuses.indexOf(status) !== -1 && !contactMade) {
-    sheet.getRange(rowIndex, headerMap['Контакт состоялся'] + 1).setValue(now);
+  var serviceRowIndex = findServiceRowIndexByLeadNo_(service, serviceHeaderMap, leadNo);
+  if (serviceRowIndex !== -1) {
+    var contactMade = service.getRange(serviceRowIndex, serviceHeaderMap['Контакт состоялся'] + 1).getValue();
+    // "Контакт состоялся" — время, когда статус впервые стал «В работе» и дальше (§3.1)
+    var contactStatuses = ['В работе', 'Консультация назначена', 'Консультация проведена', 'Клиент — договор'];
+    if (contactStatuses.indexOf(status) !== -1 && !contactMade) {
+      service.getRange(serviceRowIndex, serviceHeaderMap['Контакт состоялся'] + 1).setValue(now);
+    }
+    if (status === 'Клиент — договор') {
+      var contractCell = service.getRange(serviceRowIndex, serviceHeaderMap['Договор'] + 1);
+      if (!contractCell.getValue()) contractCell.setValue(now);
+    }
+    service.getRange(serviceRowIndex, serviceHeaderMap['Статус изменён'] + 1).setValue(now);
   }
+
   // "Первая попытка" закрывает SLA — если статус сдвинулся с «Новой», но штамп ещё
   // не проставлен (office не использовал чекбокс отдельно), проставляем по факту первой правки.
   if (status && !firstAttempt) {
     sheet.getRange(rowIndex, headerMap['Первая попытка'] + 1).setValue(now);
   }
-  if (status === 'Клиент — договор') {
-    var contractCell = sheet.getRange(rowIndex, headerMap['Договор'] + 1);
-    if (!contractCell.getValue()) contractCell.setValue(now);
-  }
 
-  var statusChangedCell = sheet.getRange(rowIndex, headerMap['Статус изменён'] + 1);
-  statusChangedCell.setValue(now);
   appendJournalRow_(journal, now, leadNo, 'status_changed', 'sent', 'internal', 'status=' + (status || '(пусто)'), 'status_change:' + leadNo + ':' + now.getTime());
 
   if (telephone) {
     writeContactCell_(sheet, rowIndex, headerMap, telephone); // review находка №12
   }
+}
+
+/** Находит строку «Служебное» по № (design §1/§3.2 — единственная связь между листами). */
+function findServiceRowIndexByLeadNo_(service, headerMap, leadNo) {
+  var values = service.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (getCell_(values[i], headerMap, '№') === leadNo) return i + 1; // 1-based row
+  }
+  return -1;
 }
 
 // ---------------------------------------------------------------------------
