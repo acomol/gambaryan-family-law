@@ -457,10 +457,13 @@ export async function verifyAnchorTabs(page, baseUrl) {
   numbers.tel.forEach(href => assert.equal(href, `tel:+${PHONE_NUMBER}`, `tel: ${href}`));
 
   // Каждый из 8 якорей при загрузке (со сторонним query-параметром до #) открывает свою тему.
+  // qa_i меняется на каждой итерации, иначе смена URL только якорем — навигация в том же
+  // документе (hashchange), а не свежая загрузка, и dataLayer предыдущей темы не обнулится.
   for (let index = 0; index < ANCHOR_SERVICES.length; index += 1) {
     const url = new URL(base);
     url.searchParams.set("utm_source", "qa-anchor");
     url.searchParams.set("utm_campaign", "svc-deep-link");
+    url.searchParams.set("qa_i", String(index));
     url.hash = ANCHOR_SERVICES[index];
     await setup(page, url.href);
     await waitTabInView(page, index);
@@ -499,7 +502,12 @@ export async function verifyAnchorTabs(page, baseUrl) {
     "клик по вкладке, уже активированной якорем, не должен дублировать событие");
 
   // Обычный #services поведение не меняет: первая тема, без переключения.
-  await setup(page, `${base.href}#services`);
+  // qa_i=plain — гарантирует свежую загрузку (иначе смена только якоря после
+  // предыдущего блока была бы hashchange в том же документе, см. комментарий выше).
+  const plainServicesUrl = new URL(base);
+  plainServicesUrl.searchParams.set("qa_i", "plain");
+  plainServicesUrl.hash = "services";
+  await setup(page, plainServicesUrl.href);
   const defaultState = await activeTabState(page);
   assert.equal(defaultState.active, 0, "#services должен оставлять первую тему");
   assert.equal((await named(page, "service_select")).length, 0, "#services не должен переключать тему");
