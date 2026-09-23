@@ -25,7 +25,10 @@ P0-LEAD — сохранение лидов по плейбуку (ADFIX-SITE-SY
 - [ ] Раунд 5 (агент): гонка удаление↔запись (janitor, P1 по Codex, не блокер по правилу «теряет заявку / открывает данные»), ежечасный бэкап, `/health` (контракт pipeline-health v1) → Codex + ревью → деплой worker + миграция D1 `cron_health`
 - [ ] Владелец: вход в `/api/admin` + удалить «ТЕСТ Активация хранилища» (проверка входа и удаления)
 - [ ] Владелец: секрет `ALBATO_WEBHOOK_URL` в Worker `gambarian-lead-cron` (без него зависшие заявки ждут, не теряются)
-- [ ] CRM: проверка `/health` раз в час → письмо alex@adfix.co.il (единственный канал тревог; Telegram нет)
+- [x] **Письмо о заявке — через Albato, как у Assuta (2026-09-23):** GAMB_ADV = Webhook → Sheets (ошибка: Continue) → Gmail Send email (подключение «4774022@gmail.com», From 4774020@gmail.com, plain text) → Answer. Кому: cityr.ta@, justicetelaviv@, gambarian@gmail.com, alex@adfix.co.il, nat.shurygin@. Контроль: лид 05c8a599 20:20:44Z → письмо 20:20:48Z всем 5. Паузы при правке — заявок не было (D1)
+- [x] Round 6–7 выкачены (d20b9db, deploy aba60e3d): ежечасный бэкап (первый 18:01Z integrity_ok), /health, лимит KV. Workers Free — решение владельца; D1 Time Travel = восстановление на любую минуту за 7 дней
+- [ ] Позже (не блокирует рекламу): апостроф в телефоне `'+972…` в письме; ответ Albato 200 ≠ «письмо ушло»; ошибки Albato сейчас только на alex@adfix.co.il раз в час
+- [ ] CRM (статусы/SLA) — отложен; файл готов `claude/gambarian-mini-crm-fix` @ 6e01162 (2 живых прогона в копии, 4 ошибки Google найдены и исправлены). При установке — выключить письмо о новой заявке в CRM (дубль с Albato)
 - [x] Ресурсы CF созданы 2026-09-23 (аккаунт 4799e9f7…, новые и пустые, Assuta не затронута):
   prod — KV `gambarian-leads` 10bb8fd2315248139fe95118affc1515 · D1 `gambarian-leads` da00d8e3-477c-4863-a677-dcad24868893 · R2 `gambarian-leads-archive`;
   preview — KV `gambarian-leads-preview` 552a56110ca742aa879ca06c8f4dffe4 · D1 `gambarian-leads-preview` b57f842a-b498-4071-83a7-cee7d9aeb80b · R2 `gambarian-leads-archive-preview`
