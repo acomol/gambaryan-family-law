@@ -97,7 +97,19 @@ function validateLead(value) {
   };
 }
 
+// Albato записывает payload в Google Sheets как ввод с клавиатуры: «+972…» превращается
+// в формулу (#ERROR!), «=…» из поля формы выполнилось бы. Значения из формы и URL,
+// начинающиеся с = + - @ / tab / CR, получают апостроф (OWASP: formula injection);
+// таблица его не показывает и хранит значение текстом.
+function sheetSafe(value) {
+  return typeof value === "string" && /^[=+\-@\t\r]/.test(value) ? "'" + value : value;
+}
+
 function buildPayload(lead) {
+  var attribution = {};
+  Object.keys(lead.attribution).forEach(function (key) {
+    attribution[key] = sheetSafe(lead.attribution[key]);
+  });
   return Object.assign(
     {
       schema_version: LEAD_CONTRACT.schemaVersion,
@@ -108,14 +120,14 @@ function buildPayload(lead) {
       corrects_submission_id: lead.correctsSubmissionId,
       submitted_at: new Date().toISOString(),
       form_id: LEAD_CONTRACT.formId,
-      landing_path: lead.landingPath,
+      landing_path: sheetSafe(lead.landingPath),
       landing_language: LEAD_CONTRACT.landingLanguage,
-      name: lead.name,
-      phone: lead.phone,
-      email: lead.email,
-      referrer_host: lead.referrerHost,
+      name: sheetSafe(lead.name),
+      phone: sheetSafe(lead.phone),
+      email: sheetSafe(lead.email),
+      referrer_host: sheetSafe(lead.referrerHost),
     },
-    lead.attribution,
+    attribution,
   );
 }
 

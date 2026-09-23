@@ -71,6 +71,12 @@ attribution передаётся пустая строка.
 | `utm_term`, `utm_content` | string | session first touch |
 | `gclid`, `gbraid`, `wbraid`, `fbclid` | string | session first touch |
 
+**Защита таблицы (2026-09-23).** Albato пишет payload в Google Sheets как ввод с клавиатуры, поэтому
+значения из формы и URL (`name`, `phone`, `email`, `landing_path`, `referrer_host`, UTM и click-id), которые
+начинаются с `=`, `+`, `-`, `@`, табуляции или CR, сервер отправляет с апострофом впереди: `'+972 50 000 0000`.
+Таблица апостроф не показывает и хранит значение текстом; без него телефон становился `#ERROR!`, а формула из
+поля формы выполнилась бы (OWASP, formula injection). Остальные потребители payload должны снимать ведущий `'`.
+
 Не отправляются IP, User-Agent, полный URL/referrer, cookie/GA client ID,
 topic и свободный текст дела. Payload и webhook URL не логируются.
 

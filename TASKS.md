@@ -17,6 +17,28 @@ P0 — теги живые на lp и проверены. Пока P0 не за�
 - Кнопки «Позвонить» показываются только в рабочее время (задумано) — проверять днём
 - `page_view` пока без `design_version` (ранний push в сборке — P1)
 
+P0-LEAD — сохранение лидов по плейбуку (ADFIX-SITE-SYSTEM v2 §1.6 L1–L15), **блокер запуска рекламы**:
+- Аудит 2026-09-23: `functions/api/lead.js` только пересылает в Albato, 0 копий; нет outbox, ретраев, KV/D1/R2, крона, бэкапа, `/admin`, алертов; в проекте CF нет ни биндингов, ни секретов → форма сейчас 503
+- [ ] Перенос эталона Assuta (`feature/luxemed-new-lending` @ 613cdd30) → ветка `claude/gambarian-lead-pipeline` (агент, без деплоя)
+- [x] Ресурсы CF созданы 2026-09-23 (аккаунт 4799e9f7…, новые и пустые, Assuta не затронута):
+  prod — KV `gambarian-leads` 10bb8fd2315248139fe95118affc1515 · D1 `gambarian-leads` da00d8e3-477c-4863-a677-dcad24868893 · R2 `gambarian-leads-archive`;
+  preview — KV `gambarian-leads-preview` 552a56110ca742aa879ca06c8f4dffe4 · D1 `gambarian-leads-preview` b57f842a-b498-4071-83a7-cee7d9aeb80b · R2 `gambarian-leads-archive-preview`
+- [ ] Проверка переноса мной + Codex; схема D1; биндинги; cron-worker; вебхук Albato; деплой (владелец дал «да» 2026-09-23 — после проверки); контрольный лид → строка в Sheet + D1 + R2
+- Память владельца (`personal-brain`) не читается: brainctl «CLAUDE.md no longer matches its verified bytes» — починить валидацию (план в `~/.claude/plans/claude-md-restructure-2026-09-23.md`, п.1)
+
+P0-ADS — запрос сессии Google Ads 2026-09-23 (кампания 994-218-4821 на паузе до этих правок):
+- [ ] WhatsApp → стажёр wa.me/972587803188; tel: остаётся 972545490623 (решение Alex) — агент, ветка `claude/gambarian-wa-anchors`
+- [ ] Якоря услуг #svc-divorce … #svc-protection: открывают вкладку + прокрутка, при загрузке и hashchange, с UTM перед #; service_select 1× (via=anchor)
+- [ ] Контрольная заявка «ТЕСТ»: 202 → строка во «Входящих» с тем же submission_id → generate_lead в GA4 → запрос Ads «Заявка» (ccbrCO7u…)
+- [ ] Вернуть в сессию Ads: таблица якорей, номер деплоя + проверка «байт в байт», результат тестовой заявки
+
+Albato → «Входящие» (2026-09-23):
+- [x] GAMB_ADV (389465, группа GAMBARIAN): Gmail с получателями Assuta удалён; 24 поля → «Входящие», дубли по submission_id; запущен владельцем
+- [x] Контрольные заявки: браузерная — 202 → строка → generate_lead (GA4 Realtime) → Ads «Заявка» (oid = submission_id); телефон `#ERROR!` → сервер ставит `'` перед = + - @ (`0c299e2`, деплой `ab007c50`) → телефон текстом
+- ⚠️ Заявка, пришедшая при паузе сценария, **теряется** (Albato ответил 200, после Start не обработал) — не ставить GAMB_ADV на паузу; закрывает контур сохранения лидов
+- [ ] Удалить тест-строки во «Входящих» (dd9da8b8, 5c16e8aa, dbdf0083) ДО установки CRM
+- [ ] Влить `sheetSafe` (0c299e2) в ветку `claude/gambarian-lead-pipeline` при слиянии (конфликт в buildPayload)
+
 P1 — после P0: правки агента (хвосты параметров, ранний `design_version`) → передеплой; аудитории по потоку lp; фильтр внутреннего трафика → Active; Codex по итогу; документы.
 P2 — вторичное: карточки WhatsApp/Telegram, Rich Results, чистка комментариев в head.
 
