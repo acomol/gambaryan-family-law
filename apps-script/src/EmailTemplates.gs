@@ -111,7 +111,7 @@ function renderEmailShellHtml_(parts) {
     '}' +
     '</style>' +
     '</head>' +
-    '<body style="margin:0;padding:0;background:' + b.bgOuterLight + ';">' +
+    '<body class="email-bg" style="margin:0;padding:0;background:' + b.bgOuterLight + ';">' +
     '<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">' + escapeHtml_(parts.previewText || '') + '</div>' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-bg" style="background:' + b.bgOuterLight + ';">' +
     '<tr><td align="center" style="padding:32px 16px;">' +
@@ -171,7 +171,7 @@ function renderNewLeadEmail_(data) {
   var rows = emailLabelledRowHtml_('Имя', escapeHtml_(name), { noBorderTop: true });
   rows += emailLabelledRowHtml_('Телефон', phoneValueHtml);
   if (email) {
-    rows += emailLabelledRowHtml_('Email', '<a href="mailto:' + escapeHtml_(email) + '" style="color:' + EMAIL_BRAND_.ink + ';font-weight:600;">' + escapeHtml_(email) + '</a>');
+    rows += emailLabelledRowHtml_('Email', '<a href="mailto:' + escapeHtml_(email) + '" class="email-text" style="color:' + EMAIL_BRAND_.ink + ';font-weight:600;">' + escapeHtml_(email) + '</a>');
   }
   rows += emailLabelledRowHtml_('Откуда', escapeHtml_(source || '—'));
 
