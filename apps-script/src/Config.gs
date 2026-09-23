@@ -1,0 +1,119 @@
+/**
+ * Config.gs — настройки читаются из листа «Настройки» (ключ/значение), а не
+ * захардкожены в коде. Design: docs/MINI-CRM-DESIGN.md §5.3, §12.2/§12.3.
+ *
+ * Только spreadsheet id — константа (Config §задачи): всё остальное живёт
+ * в «Настройках» и редактируется без правки кода. Значения recipients/duty
+ * ниже — ПРЕДЛОЖЕННЫЕ владельцем дефолты из §12.2 ("ждёт подтверждения") —
+ * setupCrm() пишет их один раз при первом создании листа, дальше их можно
+ * менять прямо в таблице.
+ */
+
+var SPREADSHEET_ID_ = '1_jhfr7ucoKkbrwWlUQoS9wyw7uHYhe_oOutKpTlcoV4';
+var SETTINGS_SHEET_NAME_ = 'Настройки';
+
+var DEFAULT_SETTINGS_ = {
+  tz: 'Asia/Jerusalem',
+  business_days: '0,1,2,3,4', // 0=вс..6=сб (design §5.5: вс-чт)
+  business_start: '09:00',
+  business_end: '18:00',
+  sla_first_attempt_minutes: '30',
+  sla_escalation_minutes: '120',
+  digest_time: '08:30',
+  office_recipients: 'cityr.ta@gmail.com,justicetelaviv@gmail.com',
+  escalation_recipients: 'gambarian@gmail.com,alex@adfix.co.il',
+  system_alert_recipients: 'alex@adfix.co.il',
+  owner_summary_recipient: 'gambarian@gmail.com',
+  default_duty_officer: 'cityr.ta@gmail.com',
+  staff_list: 'cityr.ta@gmail.com,justicetelaviv@gmail.com',
+  observer_stale_minutes: '30'
+};
+
+// Ключи, по которым владелец ещё не подтвердил значение (design §12.2) —
+// комментарий во втором листе «Настроек» явно про это напоминает.
+var SETTINGS_PENDING_CONFIRMATION_ = ['office_recipients', 'escalation_recipients', 'default_duty_officer'];
+
+var SETTINGS_COMMENTS_ = {
+  business_days: '0=вс … 6=сб; design §5.5 — вс-чт',
+  escalation_recipients: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ владельца — design §12.2',
+  default_duty_officer: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ владельца — design §12.2 ("дежурный")',
+  office_recipients: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ владельца — design §12.2',
+  owner_summary_recipient: 'воскресная сводка (design §5.6)',
+  system_alert_recipients: 'heartbeat / независимый наблюдатель (design §5.7)'
+};
+
+/**
+ * Строки для записи в «Настройки» при первом setupCrm() (заголовок + по строке
+ * на параметр). Не перезаписывает существующие значения — вызывающий код должен
+ * писать только отсутствующие ключи (см. Sheets.gs ensureSettingsSheet_).
+ */
+function buildDefaultSettingsRows_(overrides) {
+  var merged = {};
+  Object.keys(DEFAULT_SETTINGS_).forEach(function (k) { merged[k] = DEFAULT_SETTINGS_[k]; });
+  Object.keys(overrides || {}).forEach(function (k) { merged[k] = overrides[k]; });
+
+  var rows = [['Параметр', 'Значение', 'Комментарий']];
+  Object.keys(merged).forEach(function (key) {
+    rows.push([key, merged[key], SETTINGS_COMMENTS_[key] || '']);
+  });
+  return rows;
+}
+
+function splitList_(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .split(',')
+    .map(function (x) { return x.trim(); })
+    .filter(Boolean);
+}
+
+/**
+ * Разбирает строки листа «Настройки» (включая заголовок) в плоский объект
+ * "ключ -> сырое строковое значение", подставляя дефолты для отсутствующих ключей.
+ */
+function parseSettingsRows_(rows) {
+  var raw = {};
+  Object.keys(DEFAULT_SETTINGS_).forEach(function (k) { raw[k] = DEFAULT_SETTINGS_[k]; });
+  (rows || []).slice(1).forEach(function (row) {
+    var key = row[0];
+    if (!key) return;
+    key = String(key).trim();
+    var value = row[1];
+    if (value !== undefined && value !== null && String(value) !== '') {
+      raw[key] = value;
+    }
+  });
+  return raw;
+}
+
+/**
+ * Приводит сырые строковые настройки к типизированному calendar/thresholds/recipients.
+ * holidays и shortDays сюда не входят намеренно — они читаются из отдельных
+ * табличек листа «Настройки» построчно (Sheets.gs readHolidaysAndShortDays_),
+ * т.к. это списки переменной длины, а не пары ключ/значение.
+ */
+function normalizeSettings_(raw, holidaysAndShortDays) {
+  var hs = holidaysAndShortDays || { holidays: [], shortDays: {} };
+  return {
+    tz: raw.tz,
+    calendar: {
+      tz: raw.tz,
+      businessDays: String(raw.business_days).split(',').map(function (s) { return parseInt(s, 10); }),
+      businessStart: raw.business_start,
+      businessEnd: raw.business_end,
+      holidays: hs.holidays,
+      shortDays: hs.shortDays
+    },
+    thresholds: {
+      slaFirstAttemptMinutes: parseInt(raw.sla_first_attempt_minutes, 10),
+      slaEscalationMinutes: parseInt(raw.sla_escalation_minutes, 10)
+    },
+    digestTime: raw.digest_time,
+    officeRecipients: splitList_(raw.office_recipients),
+    escalationRecipients: splitList_(raw.escalation_recipients),
+    systemAlertRecipients: splitList_(raw.system_alert_recipients),
+    ownerSummaryRecipient: raw.owner_summary_recipient,
+    defaultDutyOfficer: raw.default_duty_officer,
+    staffList: splitList_(raw.staff_list),
+    observerStaleMinutes: parseInt(raw.observer_stale_minutes, 10)
+  };
+}
