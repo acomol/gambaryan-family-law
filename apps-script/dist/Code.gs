@@ -2,7 +2,7 @@
 //
 // Built by scripts/bundle-apps-script.mjs from apps-script/src/*.gs
 // (fixed order — see FILE_ORDER in that script).
-// Source commit: c76cfef082ac961d7afcc6bd6a676bfc52e52d38
+// Source commit: 8cb974633f6ff38a267ae024f2a5d6de1879caa3
 // Generated: 2026-09-23
 //
 // To change behavior, edit the corresponding file under apps-script/src/
@@ -1924,8 +1924,11 @@ function applyRequestsConditionalFormatting_(sheet) {
       .setRanges([fullRowRange])
       .build());
   });
+  // Боевая таблица 2026-09-24: ISBLANK(статус) красил жёлтым ВСЕ пустые строки
+  // листа. «Новая» = есть № и нет статуса.
+  var noColLetter = columnLetter_(headerMap['№'] + 1);
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=ISBLANK($' + statusCol + '2)')
+    .whenFormulaSatisfied('=AND($' + noColLetter + '2<>"",ISBLANK($' + statusCol + '2))')
     .setBackground('#FFF9C4')
     .setRanges([fullRowRange])
     .build());
