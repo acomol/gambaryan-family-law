@@ -273,9 +273,13 @@ async function runScheduled(cron, env, scheduledTime) {
 }
 // UTC timestamp for a given hour "today" — used to deterministically pick
 // which branch of hourlyRun() a "0 * * * *" firing resolves to.
+// The date is Jerusalem's "today" (same source as dayOffset(0)), not UTC's:
+// between Jerusalem midnight and UTC midnight the two calendars differ and the
+// assertions looked for the dump under the wrong day (flake seen 2026-09-23 22:26 UTC).
+// Hours used here (2, 7, 18 UTC) all fall on the same Jerusalem date.
 function utcHourTimestamp(hour) {
-  const now = new Date();
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour, 0, 0);
+  const [y, m, d] = dayOffset(0).split('-').map(Number);
+  return Date.UTC(y, m - 1, d, hour, 0, 0);
 }
 
 async function negativeTruncated() {
