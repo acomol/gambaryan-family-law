@@ -57,7 +57,7 @@ test('evaluatePipelineHealth_: всё в порядке -> ok:true, без пр�
   const now = new Date('2026-09-23T10:00:00Z');
   const health = JSON.parse(okHealthBody());
   const state = pureCtx.evaluatePipelineHealth_(health, 200, now, 0);
-  assert.equal(state.ok, true);
+  assert.equal(state.status, 'ok');
   assert.equal(state.reasons.length, 0);
 });
 
@@ -65,7 +65,7 @@ test('evaluatePipelineHealth_: backup.last_ok_at null -> degraded', () => {
   const now = new Date('2026-09-23T10:00:00Z');
   const health = JSON.parse(okHealthBody({ backup: { last_ok_at: null, last_run_at: null, integrity_ok: null } }));
   const state = pureCtx.evaluatePipelineHealth_(health, 200, now, 0);
-  assert.equal(state.ok, false);
+  assert.equal(state.status, 'degraded');
   assert.ok(state.reasons.some((r) => r.indexOf('backup.last_ok_at') !== -1));
 });
 
@@ -73,7 +73,7 @@ test('evaluatePipelineHealth_: backup.last_ok_at старше 2ч -> degraded', 
   const now = new Date('2026-09-23T10:00:00Z');
   const health = JSON.parse(okHealthBody({ backup: { last_ok_at: '2026-09-23T07:00:00Z', last_run_at: '2026-09-23T07:00:00Z', integrity_ok: true } })); // 3ч назад
   const state = pureCtx.evaluatePipelineHealth_(health, 200, now, 0);
-  assert.equal(state.ok, false);
+  assert.equal(state.status, 'degraded');
   assert.ok(state.reasons.some((r) => r.indexOf('старше 2ч') !== -1));
 });
 
@@ -81,39 +81,39 @@ test('evaluatePipelineHealth_: backup.last_ok_at РОВНО 2ч назад -> е
   const now = new Date('2026-09-23T10:00:00Z');
   const health = JSON.parse(okHealthBody({ backup: { last_ok_at: '2026-09-23T08:00:00Z', last_run_at: '2026-09-23T08:00:00Z', integrity_ok: true } }));
   const state = pureCtx.evaluatePipelineHealth_(health, 200, now, 0);
-  assert.equal(state.ok, true);
+  assert.equal(state.status, 'ok');
 });
 
 test('evaluatePipelineHealth_: backup.integrity_ok === false -> degraded', () => {
   const now = new Date('2026-09-23T10:00:00Z');
   const health = JSON.parse(okHealthBody({ backup: { last_ok_at: '2026-09-23T09:30:00Z', last_run_at: '2026-09-23T09:30:00Z', integrity_ok: false } }));
   const state = pureCtx.evaluatePipelineHealth_(health, 200, now, 0);
-  assert.equal(state.ok, false);
+  assert.equal(state.status, 'degraded');
   assert.ok(state.reasons.some((r) => r.indexOf('integrity_ok') !== -1));
 });
 
 test('evaluatePipelineHealth_: sweep.last_ok_at null или старше 30 минут -> degraded', () => {
   const now = new Date('2026-09-23T10:00:00Z');
   const nullSweep = pureCtx.evaluatePipelineHealth_(JSON.parse(okHealthBody({ sweep: { last_ok_at: null, last_run_at: null } })), 200, now, 0);
-  assert.equal(nullSweep.ok, false);
+  assert.equal(nullSweep.status, 'degraded');
   assert.ok(nullSweep.reasons.some((r) => r.indexOf('sweep.last_ok_at') !== -1 && r.indexOf('отсутствует') !== -1));
 
   const staleSweep = pureCtx.evaluatePipelineHealth_(JSON.parse(okHealthBody({ sweep: { last_ok_at: '2026-09-23T09:00:00Z', last_run_at: '2026-09-23T09:00:00Z' } })), 200, now, 0); // час назад
-  assert.equal(staleSweep.ok, false);
+  assert.equal(staleSweep.status, 'degraded');
   assert.ok(staleSweep.reasons.some((r) => r.indexOf('старше 30 минут') !== -1));
 });
 
 test('evaluatePipelineHealth_: stuck_leads > 0 -> degraded', () => {
   const now = new Date('2026-09-23T10:00:00Z');
   const state = pureCtx.evaluatePipelineHealth_(JSON.parse(okHealthBody({ stuck_leads: 3 })), 200, now, 0);
-  assert.equal(state.ok, false);
+  assert.equal(state.status, 'degraded');
   assert.ok(state.reasons.some((r) => r.indexOf('stuck_leads = 3') !== -1));
 });
 
 test('evaluatePipelineHealth_: albato_configured === false -> degraded', () => {
   const now = new Date('2026-09-23T10:00:00Z');
   const state = pureCtx.evaluatePipelineHealth_(JSON.parse(okHealthBody({ albato_configured: false })), 200, now, 0);
-  assert.equal(state.ok, false);
+  assert.equal(state.status, 'degraded');
   assert.ok(state.reasons.some((r) => r.indexOf('albato_configured') !== -1));
 });
 
@@ -121,9 +121,9 @@ test('evaluatePipelineHealth_: 503/d1_unavailable — это fetchFailed (не 2
   const now = new Date('2026-09-23T10:00:00Z');
   const state1 = pureCtx.evaluatePipelineHealth_(null, 503, now, 1);
   assert.equal(state1.fetchFailed, true);
-  assert.equal(state1.ok, true, 'первая неудача подряд — ещё не degraded (2 нужны)');
+  assert.equal(state1.status, 'unknown', 'первая неудача подряд — недостаточно данных (unknown), не degraded и не ok');
   const state2 = pureCtx.evaluatePipelineHealth_(null, 503, now, 2);
-  assert.equal(state2.ok, false, 'вторая неудача подряд — degraded');
+  assert.equal(state2.status, 'degraded', 'вторая неудача подряд — degraded');
 });
 
 // =============================================================================
@@ -207,6 +207,196 @@ test('checkPipelineHealth_: не чаще раза в час (throttle) — по
 
   ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T11:01:00Z')); // час и минута спустя
   assert.equal(urlFetch._calls.length, 2, 'через час+ throttle пропускает следующую проверку');
+});
+
+// =============================================================================
+// C1 — false recovery: fetch-неудача/non-200 НЕ должна тихо снимать активный
+// инцидент и слать recovery. Только доверенный здоровый 200 восстанавливает.
+// Официальная семантика: UrlFetchApp.fetch с muteHttpExceptions:true не
+// бросает на неуспешном коде, а возвращает HTTPResponse — но контракт
+// pipeline-health v1 не гарантирует "код без 200 = временный блип": до того,
+// как накопилось MAX_CONSECUTIVE_FETCH_FAILURES_ неудач подряд, это
+// "неизвестно" (unknown), а не "восстановлено".
+// https://developers.google.com/apps-script/reference/url-fetch/url-fetch-app#fetch(String,Object)
+// =============================================================================
+
+test('C1: инцидент активен (contract-нарушение), затем ОДИН сетевой сбой -> НЕ recovery, инцидент остаётся активным', () => {
+  const { ctx, mail, ss } = newHarness({
+    responses: [
+      { code: 200, body: okHealthBody({ stuck_leads: 5 }) }, // t0: реальная деградация
+      { shouldThrow: 'timeout' } // t1 (час спустя): сетевой блип, НЕ здоровый ответ
+    ]
+  });
+  const config = buildConfig();
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T10:00:00Z'));
+  assert.equal(mail._sent.length, 1, 'реальная деградация алертит немедленно');
+
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T11:00:00Z'));
+  assert.equal(mail._sent.length, 1, 'один сетевой сбой НЕ должен слать recovery-письмо во время активного инцидента');
+  assert.ok(!mail._sent.some((m) => /восстановлен/.test(m.subject)), 'recovery-письма быть не должно');
+});
+
+test('C1: инцидент активен, ДВА сетевых сбоя подряд (недоступность подтверждена) -> тоже НЕ recovery (просто остаётся degraded)', () => {
+  const { ctx, mail, ss } = newHarness({
+    responses: [
+      { code: 200, body: okHealthBody({ stuck_leads: 5 }) },
+      { shouldThrow: 'timeout' },
+      { shouldThrow: 'timeout' }
+    ]
+  });
+  const config = buildConfig();
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T10:00:00Z'));
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T11:00:00Z'));
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T12:00:00Z'));
+  assert.ok(!mail._sent.some((m) => /восстановлен/.test(m.subject)), 'недоступность — не признак восстановления, recovery не должно уйти');
+});
+
+test('C1: инцидент активен, сетевой сбой, ЗАТЕМ настоящий здоровый 200 -> ТЕПЕРЬ recovery уходит', () => {
+  const recoveredBody = okHealthBody({
+    backup: { last_ok_at: '2026-09-23T11:45:00Z', last_run_at: '2026-09-23T11:45:00Z', integrity_ok: true },
+    sweep: { last_ok_at: '2026-09-23T11:58:00Z', last_run_at: '2026-09-23T11:58:00Z' }
+  });
+  const { ctx, mail, ss } = newHarness({
+    responses: [
+      { code: 200, body: okHealthBody({ stuck_leads: 5 }) },
+      { shouldThrow: 'timeout' },
+      { code: 200, body: recoveredBody }
+    ]
+  });
+  const config = buildConfig();
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T10:00:00Z'));
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T11:00:00Z'));
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T12:00:00Z'));
+  assert.equal(mail._sent.length, 2, 'после доверенного здорового 200 recovery должно уйти');
+  assert.match(mail._sent[1].subject, /восстановлен/);
+});
+
+// =============================================================================
+// C2 — lost alert: если MailApp упал на первой попытке алерта, инцидент не
+// должен "молча считаться заалерченным" — каждый часовой тик обязан
+// повторять попытку, пока письмо реально не уйдёт.
+// =============================================================================
+
+test('C2: алерт не доставлен (MailApp упал) -> следующий часовой тик ПОВТОРЯЕТ попытку и письмо доходит', () => {
+  const props = makeFakePropertiesService({});
+  const mail = makeFakeMailApp({ shouldThrow: 'quota exceeded' });
+  const urlFetch = makeFakeUrlFetchApp({ responses: [{ code: 200, body: okHealthBody({ stuck_leads: 2 }) }] });
+  const ctx = loadGasContext(undefined, {
+    PropertiesService: props, MailApp: mail, UrlFetchApp: urlFetch,
+    Session: makeFakeSession('alex@adfix.co.il'), SpreadsheetApp: makeFakeSpreadsheetApp({})
+  });
+  const journal = makeFakeSheet('Журнал');
+  const ss = makeFakeSpreadsheet({ 'Журнал': journal });
+  const config = buildConfig();
+
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T10:00:00Z'));
+  assert.equal(mail._sent.length, 0, 'MailApp упал — письмо не доставлено');
+
+  // "Чиним" MailApp (квота освободилась) и делаем ещё один часовой тик.
+  mail.sendEmail = function (msg) { mail._sent.push(msg); };
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T11:00:00Z'));
+  assert.equal(mail._sent.length, 1, 'следующий часовой тик должен ПОВТОРИТЬ недоставленный алерт, а не считать его отправленным');
+});
+
+// =============================================================================
+// C3 — malformed/mistyped contract fields не должны читаться как здоровые.
+// Официально: JSON.parse бросает SyntaxError на невалидном JSON
+// (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse#exceptions);
+// new Date(x).getTime() для невалидной строки возвращает NaN, а не бросает
+// (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/Date) —
+// именно поэтому сравнение "NaN < число" всегда false и старый код читал
+// такие поля как "не устарело" (здоровые).
+// =============================================================================
+
+test('C3: /health возвращает НЕ-JSON тело (200) -> degraded с "не по контракту", НЕ считается сетевым сбоем (не требует 2 подряд)', () => {
+  const { ctx, mail, ss } = newHarness({ responses: [{ code: 200, body: 'not json at all' }] });
+  ctx.checkPipelineHealth_(ss, buildConfig(), new Date('2026-09-23T10:00:00Z'));
+  assert.equal(mail._sent.length, 1, 'нарушение контракта алертит немедленно, а не ждёт вторую проверку подряд');
+  assert.ok(mail._sent[0].body.indexOf('не по контракту') !== -1);
+});
+
+test('C3: schema !== 1 -> degraded "не по контракту"', () => {
+  const { ctx, mail, ss } = newHarness({ responses: [{ code: 200, body: okHealthBody({ schema: 2 }) }] });
+  ctx.checkPipelineHealth_(ss, buildConfig(), new Date('2026-09-23T10:00:00Z'));
+  assert.equal(mail._sent.length, 1);
+  assert.ok(mail._sent[0].body.indexOf('не по контракту') !== -1);
+});
+
+test('C3: backup.last_ok_at — невалидная (не-ISO) строка -> degraded "не по контракту", НЕ читается как здоровая', () => {
+  const { ctx, mail, ss } = newHarness({
+    responses: [{ code: 200, body: okHealthBody({ backup: { last_ok_at: 'вчера что-то было', last_run_at: '2026-09-23T09:30:00Z', integrity_ok: true } }) }]
+  });
+  ctx.checkPipelineHealth_(ss, buildConfig(), new Date('2026-09-23T10:00:00Z'));
+  assert.equal(mail._sent.length, 1, 'невалидная дата НЕ должна молча читаться как "не устарела" (NaN-сравнение)');
+  assert.ok(mail._sent[0].body.indexOf('не по контракту') !== -1);
+});
+
+test('C3: stuck_leads — не целое число (строка) -> degraded "не по контракту", НЕ читается как 0', () => {
+  const { ctx, mail, ss } = newHarness({ responses: [{ code: 200, body: okHealthBody({ stuck_leads: 'abc' }) }] });
+  ctx.checkPipelineHealth_(ss, buildConfig(), new Date('2026-09-23T10:00:00Z'));
+  assert.equal(mail._sent.length, 1, '"abc" > 0 === false в JS — старый код молча читал это как здоровое');
+  assert.ok(mail._sent[0].body.indexOf('не по контракту') !== -1);
+});
+
+test('C3: albato_configured — строка "false" вместо boolean -> degraded "не по контракту", НЕ читается как true', () => {
+  const { ctx, mail, ss } = newHarness({ responses: [{ code: 200, body: okHealthBody({ albato_configured: 'false' }) }] });
+  ctx.checkPipelineHealth_(ss, buildConfig(), new Date('2026-09-23T10:00:00Z'));
+  assert.equal(mail._sent.length, 1, '"false" (строка) !== false — старый код молча читал это как настроенный albato');
+  assert.ok(mail._sent[0].body.indexOf('не по контракту') !== -1);
+});
+
+// =============================================================================
+// C4 — пустой system_alert_recipients не должен означать "никто никогда не
+// узнает": фолбэк на существующий в кодовой базе паттерн self-identity —
+// Session.getEffectiveUser().getEmail() (тот же приём, что Sheets.gs использует
+// для "владельца скрипта" — https://developers.google.com/apps-script/reference/base/session#getEffectiveUser()).
+// =============================================================================
+
+test('C4: system_alert_recipients пуст -> алерт уходит на Session.getEffectiveUser().getEmail() (self-alert fallback)', () => {
+  const { ctx, mail, ss } = newHarness({ responses: [{ code: 200, body: okHealthBody({ stuck_leads: 1 }) }] });
+  ctx.checkPipelineHealth_(ss, buildConfig({ systemAlertRecipients: [] }), new Date('2026-09-23T10:00:00Z'));
+  assert.equal(mail._sent.length, 1, 'пустой список получателей не должен означать "письмо в никуда"');
+  assert.equal(mail._sent[0].to, 'alex@adfix.co.il', 'fallback — эффективный пользователь скрипта (makeFakeSession)');
+});
+
+// =============================================================================
+// C5 — набор причин деградации меняется В ХОДЕ одного и того же инцидента ->
+// ОДНО письмо-обновление, не письмо на каждый час.
+// =============================================================================
+
+test('C5: набор причин деградации меняется в ходе инцидента -> ОДНО письмо-обновление (не по одному на час)', () => {
+  // ВАЖНО (тот же приём, что и в тесте recovery выше): backup/sweep timestamps
+  // должны быть СВЕЖИМИ ОТНОСИТЕЛЬНО момента каждой проверки — иначе sweep
+  // сам "устареет" к следующему часу и добавит РЕАЛЬНУЮ новую причину
+  // (sweep_stale), а тест должен изолированно проверять именно "причина
+  // осталась той же" / "причина изменилась", без постороннего шума от времени.
+  function freshBody(now, overrides) {
+    return okHealthBody(Object.assign({
+      backup: { last_ok_at: new Date(now.getTime() - 5 * 60000).toISOString(), last_run_at: new Date(now.getTime() - 5 * 60000).toISOString(), integrity_ok: true },
+      sweep: { last_ok_at: new Date(now.getTime() - 2 * 60000).toISOString(), last_run_at: new Date(now.getTime() - 2 * 60000).toISOString() }
+    }, overrides || {}));
+  }
+  const t0 = new Date('2026-09-23T10:00:00Z');
+  const t1 = new Date('2026-09-23T11:00:00Z');
+  const t2 = new Date('2026-09-23T12:00:00Z');
+  const t3 = new Date('2026-09-23T13:00:00Z');
+  const { ctx, mail, ss } = newHarness({
+    responses: [
+      { code: 200, body: freshBody(t0, { stuck_leads: 3 }) }, // t0: причина A
+      { code: 200, body: freshBody(t1, { stuck_leads: 3 }) }, // t1: та же причина A — НЕ должно слать повторно
+      { code: 200, body: freshBody(t2, { stuck_leads: 3, albato_configured: false }) }, // t2: причина изменилась (добавилась B)
+      { code: 200, body: freshBody(t3, { stuck_leads: 3, albato_configured: false }) } // t3: тот же набор (A+B) — НЕ должно слать снова
+    ]
+  });
+  const config = buildConfig();
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T10:00:00Z'));
+  assert.equal(mail._sent.length, 1, 't0: первый алерт инцидента');
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T11:00:00Z'));
+  assert.equal(mail._sent.length, 1, 't1: причина не изменилась — повторно слать не нужно');
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T12:00:00Z'));
+  assert.equal(mail._sent.length, 2, 't2: причина изменилась — ОДНО письмо-обновление');
+  ctx.checkPipelineHealth_(ss, config, new Date('2026-09-23T13:00:00Z'));
+  assert.equal(mail._sent.length, 2, 't3: набор причин снова тот же (A+B) — повторно слать не нужно');
 });
 
 test('checkPipelineHealth_: исключение внутри проверки не ломает tick() — остальные шаги выполняются', () => {
