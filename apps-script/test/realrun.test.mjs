@@ -93,6 +93,12 @@ test('боевая таблица: после удаления строк «Вх
   assert.doesNotMatch(src, /readIntakeWatermark_|writeIntakeWatermark_/, 'watermark по номеру строки убран');
 });
 
+test('боевая таблица: жёлтая «новая» только у строки с № и без статуса (не все пустые строки)', () => {
+  const src = ctx.applyRequestsConditionalFormatting_.toString();
+  assert.doesNotMatch(src, /'=ISBLANK\(\$' \+ statusCol/, 'старое правило ISBLANK(статус) убрано');
+  assert.match(src, /'=AND\(\$' \+ noColLetter \+ '2<>"",ISBLANK\(\$' \+ statusCol/);
+});
+
 test('живой прогон: setupCrm пишет значения «Настроек» текстом (апостроф), заголовок и пустые — без изменений', () => {
   const sheet = makeFakeSheet('Настройки');
   ctx.ensureSettingsSheet_(sheet);

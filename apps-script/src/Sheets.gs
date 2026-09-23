@@ -290,8 +290,11 @@ function applyRequestsConditionalFormatting_(sheet) {
       .setRanges([fullRowRange])
       .build());
   });
+  // Боевая таблица 2026-09-24: ISBLANK(статус) красил жёлтым ВСЕ пустые строки
+  // листа. «Новая» = есть № и нет статуса.
+  var noColLetter = columnLetter_(headerMap['№'] + 1);
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=ISBLANK($' + statusCol + '2)')
+    .whenFormulaSatisfied('=AND($' + noColLetter + '2<>"",ISBLANK($' + statusCol + '2))')
     .setBackground('#FFF9C4')
     .setRanges([fullRowRange])
     .build());
