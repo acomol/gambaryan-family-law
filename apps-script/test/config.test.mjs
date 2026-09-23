@@ -19,8 +19,32 @@ test('normalizeSettings_ типизирует пороги и списки по�
   assert.equal(settings.thresholds.slaFirstAttemptMinutes, 30);
   assert.equal(settings.thresholds.slaEscalationMinutes, 120);
   assert.deepEqual(toHost(settings.calendar.businessDays), [0, 1, 2, 3, 4]);
-  assert.deepEqual(toHost(settings.officeRecipients), ['cityr.ta@gmail.com', 'justicetelaviv@gmail.com']);
+  assert.deepEqual(toHost(settings.officeRecipients), [
+    'cityr.ta@gmail.com', 'justicetelaviv@gmail.com', 'gambarian@gmail.com', 'alex@adfix.co.il', 'nat.shurygin@gmail.com'
+  ], 'build-round 2026-09-23: 5 адресов, подтверждено владельцем в чате');
   assert.deepEqual(toHost(settings.calendar.holidays), ['2026-10-01']);
+});
+
+test('build-round 2026-09-23: office_recipients/default_duty_officer/staff_list — подтверждённые владельцем дефолты (не ПРЕДЛОЖЕННЫЕ)', () => {
+  const rows = ctx.buildDefaultSettingsRows_();
+  const raw = ctx.parseSettingsRows_(rows);
+  const settings = ctx.normalizeSettings_(raw, { holidays: [], shortDays: {} });
+
+  assert.deepEqual(toHost(settings.officeRecipients), [
+    'cityr.ta@gmail.com', 'justicetelaviv@gmail.com', 'gambarian@gmail.com', 'alex@adfix.co.il', 'nat.shurygin@gmail.com'
+  ]);
+  assert.equal(settings.defaultDutyOfficer, 'nat.shurygin@gmail.com', 'nat.shurygin@gmail.com ведёт лиды напрямую (владелец, 2026-09-23)');
+  assert.deepEqual(toHost(settings.staffList), ['cityr.ta@gmail.com', 'justicetelaviv@gmail.com', 'nat.shurygin@gmail.com']);
+  // escalation_recipients остаётся ПРЕДЛОЖЕННЫМ (не тронут этим решением)
+  assert.deepEqual(toHost(settings.escalationRecipients), ['gambarian@gmail.com', 'alex@adfix.co.il']);
+
+  assert.deepEqual(toHost(ctx.SETTINGS_PENDING_CONFIRMATION_), ['escalation_recipients'],
+    'office_recipients и default_duty_officer подтверждены — остаётся только escalation_recipients');
+
+  const officeRow = rows.find((r) => r[0] === 'office_recipients');
+  const dutyRow = rows.find((r) => r[0] === 'default_duty_officer');
+  assert.match(officeRow[2], /подтверждено владельцем 2026-09-23/);
+  assert.match(dutyRow[2], /подтверждено владельцем 2026-09-23/);
 });
 
 test('parseSettingsRows_ подставляет дефолт для отсутствующего в листе ключа (миграция схемы)', () => {

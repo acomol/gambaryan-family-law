@@ -20,12 +20,18 @@ var DEFAULT_SETTINGS_ = {
   sla_first_attempt_minutes: '30',
   sla_escalation_minutes: '120',
   digest_time: '08:30',
-  office_recipients: 'cityr.ta@gmail.com,justicetelaviv@gmail.com',
+  // build-round 2026-09-23: подтверждено владельцем в чате — 5 адресов
+  // (было 2 ПРЕДЛОЖЕННЫХ в design §12.2; сначала подтверждены 4, затем
+  // владелец добавил nat.shurygin@gmail.com — человек, который ведёт лиды
+  // напрямую — финальный подтверждённый список).
+  office_recipients: 'cityr.ta@gmail.com,justicetelaviv@gmail.com,gambarian@gmail.com,alex@adfix.co.il,nat.shurygin@gmail.com',
   escalation_recipients: 'gambarian@gmail.com,alex@adfix.co.il',
   system_alert_recipients: 'alex@adfix.co.il',
   owner_summary_recipient: 'gambarian@gmail.com',
-  default_duty_officer: 'cityr.ta@gmail.com',
-  staff_list: 'cityr.ta@gmail.com,justicetelaviv@gmail.com',
+  // build-round 2026-09-23: подтверждено владельцем — nat.shurygin@gmail.com
+  // ведёт лиды напрямую (было ПРЕДЛОЖЕНО cityr.ta@gmail.com, design §12.2).
+  default_duty_officer: 'nat.shurygin@gmail.com',
+  staff_list: 'cityr.ta@gmail.com,justicetelaviv@gmail.com,nat.shurygin@gmail.com',
   observer_stale_minutes: '30',
   // review находка №5: ОДНО место хранения — строка «Настроек», не Script
   // Property (README раньше противоречил коду). Пустой дефолт — заполняется
@@ -45,13 +51,15 @@ var DEFAULT_SETTINGS_ = {
 
 // Ключи, по которым владелец ещё не подтвердил значение (design §12.2) —
 // комментарий во втором листе «Настроек» явно про это напоминает.
-var SETTINGS_PENDING_CONFIRMATION_ = ['office_recipients', 'escalation_recipients', 'default_duty_officer'];
+// build-round 2026-09-23: office_recipients и default_duty_officer подтверждены
+// владельцем в чате — остаётся только escalation_recipients.
+var SETTINGS_PENDING_CONFIRMATION_ = ['escalation_recipients'];
 
 var SETTINGS_COMMENTS_ = {
   business_days: '0=вс … 6=сб; design §5.5 — вс-чт',
   escalation_recipients: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ владельца — design §12.2',
-  default_duty_officer: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ владельца — design §12.2 ("дежурный")',
-  office_recipients: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ владельца — design §12.2',
+  default_duty_officer: 'подтверждено владельцем 2026-09-23',
+  office_recipients: 'подтверждено владельцем 2026-09-23',
   owner_summary_recipient: 'воскресная сводка (design §5.6)',
   system_alert_recipients: 'heartbeat / независимый наблюдатель (design §5.7)',
   albato_editor_email: 'email аккаунта Albato для доступа к «Входящие» — заполнить при подключении Albato (design §5.1, review №5); пока пусто — защита «Входящие» в режиме предупреждения',
