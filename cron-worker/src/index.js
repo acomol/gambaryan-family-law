@@ -310,6 +310,10 @@ async function putRecord(env, key, rec, deliveredTtl = false) {
       received_at: rec.received_at,
       forwarding_started_at: rec.forwarding_started_at || "",
       albato_delivered_at: rec.albato_delivered_at || "",
+      // Review round 6, finding 3c: exponential backoff — the KV-list
+      // candidate filter reads this straight from metadata (no extra
+      // .get() needed) to skip a lead that isn't due for retry yet.
+      next_attempt_at: rec.next_attempt_at || "",
     },
   };
   if (deliveredTtl) options.expirationTtl = TTL_SECONDS;
@@ -364,37 +368,44 @@ async function probeD1(env) {
     return false;
   }
 
-  let healthy = false;
+  // Review round 6, finding 4: everything below talks to KV, and a KV
+  // exception here used to propagate all the way out of sweepPending
+  // (which has no try/catch around this very first call) — an outage in
+  // the free-tier-shared KV namespace could crash the whole sweep instead
+  // of just failing the probe. Never let this function throw.
   try {
-    await queryD1(env, "SELECT 1 AS ok");
-    healthy = true;
-  } catch (e) { /* failure is counted below */ }
+    let healthy = false;
+    try {
+      await queryD1(env, "SELECT 1 AS ok");
+      healthy = true;
+    } catch (e) { /* failure is counted below */ }
 
-  if (healthy) {
-    const failures = await env.LEADS_KV.get("ops:d1_probe_fail");
-    const alerted = await env.LEADS_KV.get("ops:d1_alerted");
-    if (typeof env.LEADS_KV.delete === "function") {
-      if (failures != null) await env.LEADS_KV.delete("ops:d1_probe_fail");
-    } else {
-      if (failures != null) await env.LEADS_KV.put("ops:d1_probe_fail", "0");
+    if (healthy) {
+      const failures = await env.LEADS_KV.get("ops:d1_probe_fail");
+      const alerted = await env.LEADS_KV.get("ops:d1_alerted");
+      if (typeof env.LEADS_KV.delete === "function") {
+        if (failures != null) await env.LEADS_KV.delete("ops:d1_probe_fail");
+      } else {
+        if (failures != null) await env.LEADS_KV.put("ops:d1_probe_fail", "0");
+      }
+      if (alerted && await notifyTelegram(env, "✅ D1 восстановлен")) {
+        if (typeof env.LEADS_KV.delete === "function") await env.LEADS_KV.delete("ops:d1_alerted");
+        else await env.LEADS_KV.put("ops:d1_alerted", "");
+      }
+      return true;
     }
-    if (alerted && await notifyTelegram(env, "✅ D1 восстановлен")) {
-      if (typeof env.LEADS_KV.delete === "function") await env.LEADS_KV.delete("ops:d1_alerted");
-      else await env.LEADS_KV.put("ops:d1_alerted", "");
-    }
-    return true;
-  }
 
-  const previous = Number(await env.LEADS_KV.get("ops:d1_probe_fail")) || 0;
-  const failures = previous + 1;
-  await env.LEADS_KV.put("ops:d1_probe_fail", String(failures));
-  const lastAlert = Number(await env.LEADS_KV.get("ops:d1_alerted")) || 0;
-  if (failures >= 3 && (!lastAlert || failures - lastAlert >= 12)) {
-    const alerted = await notifyTelegram(env,
-      "🔴 D1 недоступен ~15 мин, доставка остановлена, лиды копятся в KV");
-    if (alerted) await env.LEADS_KV.put("ops:d1_alerted", String(failures));
-  }
-  return false;
+    const previous = Number(await env.LEADS_KV.get("ops:d1_probe_fail")) || 0;
+    const failures = previous + 1;
+    await env.LEADS_KV.put("ops:d1_probe_fail", String(failures));
+    const lastAlert = Number(await env.LEADS_KV.get("ops:d1_alerted")) || 0;
+    if (failures >= 3 && (!lastAlert || failures - lastAlert >= 12)) {
+      const alerted = await notifyTelegram(env,
+        "🔴 D1 недоступен ~15 мин, доставка остановлена, лиды копятся в KV");
+      if (alerted) await env.LEADS_KV.put("ops:d1_alerted", String(failures));
+    }
+    return false;
+  } catch (e) { return false; } // KV (or anything else) threw — treat as a failed probe, never propagate
 }
 
 // Deletion status (review 2026-09-23, finding 5 + round-2 finding B): a
@@ -427,136 +438,148 @@ async function isDeleted(env, submissionId) {
   return false;
 }
 
-async function sweepPending(env) {
-  // Review round 5 addition 2 (pipeline-health v1): last_ok_at records
-  // "this run completed without throwing" — sweepPending's own sections are
-  // already self-contained (each wrapped in its own best-effort try/catch,
-  // see below), so in practice every reached return/end is a success by
-  // this simple, literal contract.
-  if (!(await probeD1(env))) { await recordCronHealth(env, "sweep", true); return; }
+// Review round 6, findings 1 and 2 (Codex-found, mirrors
+// functions/api/lead.js's wipeIfDeletedAfterWrite): re-reads the deletion
+// status RIGHT NOW and, if deleted, wipes the KV key (and R2 archive
+// object, when receivedAt is given). Used in TWO places per candidate:
+// immediately before every Albato POST (finding 2 — the lease claim only
+// proves ownership AT CLAIM TIME; a concurrent admin delete can land in the
+// gap before the send) and immediately after a completion KV write
+// (finding 1 — the SAME admin delete can instead land between the CAS
+// commit and that write, resurrecting PII into KV and, without this check,
+// triggering a PII-carrying Telegram alert for a lead that is already
+// deleted). Reuses isDeleted()'s existing fail-closed semantics (both D1
+// and KV unreadable → treated as deleted) — the SAME posture already used
+// for the pre-claim candidate check, so this does not introduce a new risk
+// model into this file. A deleted lead's D1 row is never written by this
+// helper — only KV/R2 are touched, matching the admin-delete tombstone
+// contract in functions/api/admin.js.
+async function wipeIfDeletedAfterWrite(env, key, submissionId, receivedAt) {
+  if (!(await isDeleted(env, submissionId))) return false;
+  if (env.LEADS_KV && typeof env.LEADS_KV.delete === "function") {
+    try { await env.LEADS_KV.delete(key); } catch (e) { /* best-effort */ }
+  }
+  if (receivedAt && env.LEADS_ARCHIVE && typeof env.LEADS_ARCHIVE.delete === "function") {
+    try { await env.LEADS_ARCHIVE.delete(`leads/${String(receivedAt).slice(0, 10)}/${submissionId}.md`); } catch (e) { /* best-effort */ }
+  }
+  return true;
+}
 
-  // Review round 2, finding D (P2): a KV-phase failure (e.g. LEADS_KV.list()
-  // throwing) must not prevent the independent D1-sourced retry loop below
-  // from running — isolate the two phases.
-  try {
-    const keys = await listLeadKeys(env);
-    const candidates = keys
-      .filter(k => {
-        const m = k.metadata || {};
-        if (m.status === "pending") return true;
-        const started = new Date(m.forwarding_started_at || 0).getTime();
-        return m.status === "forwarding" && started > 0 && (Date.now() - started) >= FORWARD_LEASE_MS;
-      })
-      .sort((a, b) => new Date((a.metadata || {}).received_at || 0) - new Date((b.metadata || {}).received_at || 0));
-
-    let attempts = 0;
-    for (const key of candidates) {
-      if (attempts >= SWEEP_LIMIT) break;
-      if (await isDeleted(env, key.name.slice("lead:".length))) continue;
-      const raw = await env.LEADS_KV.get(key.name);
-      if (!raw) continue;
-      let rec; try { rec = JSON.parse(raw); } catch (e) { continue; }
-      if (!rec || rec.status === "delivered") continue;
-      if (rec.albato_delivered_at) {
-        rec.status = "delivered";
-        rec.delivered_at = rec.albato_delivered_at;
-        await upsertD1(env, rec);
-        await putRecordWithRetry(env, key.name, rec, true);
-        continue;
-      }
-
-      const startedAt = new Date().toISOString();
-      const claim = await claimD1Lease(env, rec, startedAt);
-      if (claim === "delivered") {
-        rec.status = "delivered";
-        rec.delivered_at = rec.delivered_at || startedAt;
-        await putRecordWithRetry(env, key.name, rec, true);
-        continue;
-      }
-      if (claim !== "claimed") continue;
-
-      rec.status = "forwarding";
-      rec.forwarding_started_at = startedAt;
-      await putRecord(env, key.name, rec);
-      attempts++;
-
-      if (await forwardToAlbato(env, rec.fields || {})) {
-        const deliveredAt = new Date().toISOString();
-        rec.status = "delivered";
-        rec.delivered_at = deliveredAt;
-        rec.albato_delivered_at = deliveredAt;
-        delete rec.forwarding_started_at;
-        const d1Result = await upsertD1Guarded(env, rec, startedAt);
-        // Review round 4, finding C: an "error" (D1 bound but the guard
-        // query itself threw) must be treated exactly like "not_owner" —
-        // never like the legacy "no D1 configured" `false` fallback.
-        if (d1Result !== "not_owner" && d1Result !== "error") {
-          await putRecordWithRetry(env, key.name, rec, true);
-          await notifyTelegram(env, newLeadMsg(rec.fields || {}));
-        }
-        continue;
-      }
-
-      rec.status = "pending";
-      delete rec.forwarding_started_at;
-      const d1ReleaseResult = await upsertD1Guarded(env, rec, startedAt);
-      if (d1ReleaseResult === "not_owner" || d1ReleaseResult === "error") continue;
-      const age = Date.now() - new Date(rec.received_at || Date.now()).getTime();
-      if (age > ALERT_AFTER_MS && !rec.alerted) {
-        rec.alerted = await notifyTelegram(env, undeliveredMsg(rec));
-      }
-      await putRecord(env, key.name, rec);
-    }
-  } catch (e) { /* best-effort — KV-phase failure must not block the D1 phase below */ }
-
-  // D1-only stragglers (review 2026-09-23, finding 3): a lead whose EVERY KV
-  // write failed at intake time has no `lead:<id>` key at all, so the
-  // KV-list loop above can never find it. Rebuild a KV-shaped record from
-  // payload_json and run it through the same claim/forward path;
-  // claimD1Lease's insert-if-missing + atomic UPDATE safely no-op if
-  // another isolate (or the KV loop above) is already handling this id.
-  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function" && env.LEADS_KV) {
+// Review round 6, finding 3c (Codex "KV write budget"): without backoff, a
+// PERSISTENTLY failing Albato (down, timing out, or misconfigured) gets
+// re-claimed and re-released on EVERY 5-min sweep forever — 2 KV.put per
+// attempt, ~576/day for one stuck lead alone, against a 1000/day
+// account-wide free-tier budget shared with Assuta. Exponential backoff
+// (5min, 10min, 20min, 40min, capped at 60min) means a persistently-failing
+// lead costs roughly one claim per backoff STEP, not one per 5-min sweep.
+const BACKOFF_BASE_MS = 5 * 60 * 1000;
+const BACKOFF_CAP_MS = 60 * 60 * 1000;
+function computeNextAttemptAt(priorAttemptCount, now) {
+  const stepMs = Math.min(BACKOFF_BASE_MS * (2 ** Math.max(0, priorAttemptCount)), BACKOFF_CAP_MS);
+  return new Date((now || Date.now()) + stepMs).toISOString();
+}
+// A DEDICATED, narrow UPDATE — deliberately NOT routed through
+// upsertD1/upsertD1Guarded (which are driven by the full D1_COLUMNS list
+// and rewrite every column): attempt_count/next_attempt_at are
+// cron-worker-only bookkeeping columns that functions/api/lead.js's own
+// D1_COLUMNS never lists, so its writes correctly leave them untouched
+// (SQL UPDATE only touches columns named in SET) — this stays true for
+// this table's OTHER writers precisely because it is its own statement.
+// Best-effort and NOT CAS-guarded: worst case on a lost race is one extra
+// retry cycle, never data loss or a resurrected delivery.
+async function recordFailedAttempt(env, submissionId, priorAttemptCount) {
+  const attemptCount = (priorAttemptCount || 0) + 1;
+  const nextAttemptAt = computeNextAttemptAt(priorAttemptCount || 0);
+  if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function") {
     try {
-      const expiredBefore = new Date(Date.now() - FORWARD_LEASE_MS).toISOString();
-      const rows = await queryD1(env,
-        "SELECT submission_id, received_at, status, delivered_at, payload_json FROM leads"
-        + " WHERE status='pending' OR (status='forwarding' AND delivered_at<=?1)"
-        + " ORDER BY received_at ASC LIMIT ?2",
-        [expiredBefore, SWEEP_LIMIT * 2]);
-      let d1Attempts = 0;
-      for (const row of rows) {
-        if (d1Attempts >= SWEEP_LIMIT) break;
-        if (await isDeleted(env, row.submission_id)) continue;
-        const key = `lead:${row.submission_id}`;
+      await env.LEADS_DB.prepare(
+        "UPDATE leads SET attempt_count=?1, next_attempt_at=?2 WHERE submission_id=?3",
+      ).bind(attemptCount, nextAttemptAt, submissionId).run();
+    } catch (e) { /* best-effort — worst case this lead retries sooner than ideal, never lost */ }
+  }
+  return { attemptCount, nextAttemptAt };
+}
 
-        // Finding A (review round 2, P1 regression): KV is the delivery
-        // source of truth. If Albato already accepted this lead but the
-        // FINAL D1 write failed — leaving a stale D1 row this loop would
-        // otherwise treat as a fresh candidate — repair D1 from the KV
-        // record WITHOUT re-posting to Albato.
-        let kvRecordForRow = null;
-        if (typeof env.LEADS_KV.get === "function") {
-          try {
-            const raw = await env.LEADS_KV.get(key);
-            kvRecordForRow = raw ? JSON.parse(raw) : null;
-          } catch (e) { kvRecordForRow = null; }
-        }
-        if (kvRecordForRow && (kvRecordForRow.status === "delivered" || kvRecordForRow.albato_delivered_at)) {
-          await upsertD1(env, kvRecordForRow);
+async function sweepPending(env) {
+  // Review round 6, finding 4: sweep's health must reflect EVERY phase, not
+  // just "we reached the end without an uncaught exception". `ok` starts
+  // true and is downgraded the moment ANY phase fails; recordCronHealth
+  // runs in `finally` so last_run_at ALWAYS advances even on an early
+  // return or an exception this function itself doesn't otherwise handle.
+  let ok = true;
+  // Review round 6, finding 3b: a submission_id must be attempted AT MOST
+  // ONCE per sweep run — the KV-phase and the D1-phase below both target
+  // the SAME rows (a KV-visible pending/forwarding lead also matches the
+  // D1-phase's WHERE clause), and without this guard a single stuck lead
+  // was claimed and KV-written TWICE per invocation (finding 3, "KV write
+  // budget": 4 KV.put per sweep × 288 sweeps/day ≈ 1150, over the
+  // account-wide 1000/day free-tier budget shared with Assuta).
+  const processedIds = new Set();
+  try {
+    if (!(await probeD1(env))) { ok = false; return; }
+
+    // Review round 2, finding D (P2): a KV-phase failure (e.g. LEADS_KV.list()
+    // throwing) must not prevent the independent D1-sourced retry loop below
+    // from running — isolate the two phases.
+    try {
+      const keys = await listLeadKeys(env);
+      const now = Date.now();
+      const candidates = keys
+        .filter(k => {
+          const m = k.metadata || {};
+          // Round 6, finding 3c: skip a lead still inside its backoff window.
+          if (m.next_attempt_at && new Date(m.next_attempt_at).getTime() > now) return false;
+          if (m.status === "pending") return true;
+          const started = new Date(m.forwarding_started_at || 0).getTime();
+          return m.status === "forwarding" && started > 0 && (now - started) >= FORWARD_LEASE_MS;
+        })
+        .sort((a, b) => new Date((a.metadata || {}).received_at || 0) - new Date((b.metadata || {}).received_at || 0));
+
+      let attempts = 0;
+      for (const key of candidates) {
+        if (attempts >= SWEEP_LIMIT) break;
+        const submissionId = key.name.slice("lead:".length);
+        if (processedIds.has(submissionId)) continue;
+        if (await isDeleted(env, submissionId)) continue;
+        const raw = await env.LEADS_KV.get(key.name);
+        if (!raw) continue;
+        let rec; try { rec = JSON.parse(raw); } catch (e) { continue; }
+        if (!rec || rec.status === "delivered") continue;
+        processedIds.add(submissionId);
+        if (rec.albato_delivered_at) {
+          rec.status = "delivered";
+          rec.delivered_at = rec.albato_delivered_at;
+          await upsertD1(env, rec);
+          await putRecordWithRetry(env, key.name, rec, true);
           continue;
         }
-
-        let fields; try { fields = JSON.parse(row.payload_json || "{}"); } catch (e) { fields = {}; }
-        const rec = { submission_id: row.submission_id, fields, status: row.status, received_at: row.received_at };
-        if (row.status === "forwarding") rec.forwarding_started_at = row.delivered_at;
+        // Round 6, finding 3a: with no Albato URL configured at all, this
+        // lead can NEVER be delivered right now — skip BEFORE any
+        // claim/KV write instead of claiming-then-immediately-releasing it
+        // (2 wasted KV.put) every single sweep forever.
+        if (!env.ALBATO_WEBHOOK_URL) continue;
 
         const startedAt = new Date().toISOString();
         const claim = await claimD1Lease(env, rec, startedAt);
+        if (claim === "delivered") {
+          rec.status = "delivered";
+          rec.delivered_at = rec.delivered_at || startedAt;
+          await putRecordWithRetry(env, key.name, rec, true);
+          continue;
+        }
         if (claim !== "claimed") continue;
-        d1Attempts++;
+
         rec.status = "forwarding";
         rec.forwarding_started_at = startedAt;
-        await putRecord(env, key, rec);
+        await putRecord(env, key.name, rec);
+        attempts++;
+
+        // Review round 6, finding 2 (Codex "send-after-delete"): the claim
+        // above only proves ownership AT CLAIM TIME — re-check right before
+        // sending. Residual window (a POST already in flight when the
+        // delete lands) is a documented limitation, see
+        // docs/LEAD-PIPELINE.md §10.
+        if (await wipeIfDeletedAfterWrite(env, key.name, rec.submission_id, rec.received_at)) continue;
 
         if (await forwardToAlbato(env, rec.fields || {})) {
           const deliveredAt = new Date().toISOString();
@@ -565,26 +588,146 @@ async function sweepPending(env) {
           rec.albato_delivered_at = deliveredAt;
           delete rec.forwarding_started_at;
           const d1Result = await upsertD1Guarded(env, rec, startedAt);
-          // Round 4, finding C: "error" must be skipped exactly like
-          // "not_owner" (see the KV-loop above).
+          // Review round 4, finding C: an "error" (D1 bound but the guard
+          // query itself threw) must be treated exactly like "not_owner" —
+          // never like the legacy "no D1 configured" `false` fallback.
           if (d1Result !== "not_owner" && d1Result !== "error") {
-            await putRecordWithRetry(env, key, rec, true);
-            await notifyTelegram(env, newLeadMsg(rec.fields || {}));
+            await putRecordWithRetry(env, key.name, rec, true);
+            // Review round 6, finding 1 (Codex-found, mirrors lead.js's
+            // markLeadDelivered): a concurrent admin delete could ALSO land
+            // between the CAS commit just above and this KV write.
+            if (!(await wipeIfDeletedAfterWrite(env, key.name, rec.submission_id, rec.received_at))) {
+              await notifyTelegram(env, newLeadMsg(rec.fields || {}));
+            }
           }
-        } else {
-          rec.status = "pending";
-          delete rec.forwarding_started_at;
-          const d1ReleaseResult = await upsertD1Guarded(env, rec, startedAt);
-          if (d1ReleaseResult !== "not_owner" && d1ReleaseResult !== "error") await putRecord(env, key, rec);
+          continue;
         }
+
+        rec.status = "pending";
+        delete rec.forwarding_started_at;
+        const d1ReleaseResult = await upsertD1Guarded(env, rec, startedAt);
+        if (d1ReleaseResult === "not_owner" || d1ReleaseResult === "error") continue;
+        const backoff = await recordFailedAttempt(env, rec.submission_id, rec.attempt_count || 0);
+        rec.attempt_count = backoff.attemptCount;
+        rec.next_attempt_at = backoff.nextAttemptAt;
+        const age = now - new Date(rec.received_at || now).getTime();
+        if (age > ALERT_AFTER_MS && !rec.alerted) {
+          rec.alerted = await notifyTelegram(env, undeliveredMsg(rec));
+        }
+        await putRecord(env, key.name, rec);
       }
-    } catch (e) { /* best-effort */ }
+    } catch (e) {
+      ok = false; /* best-effort — KV-phase failure must not block the D1 phase below */
+    }
+
+    // D1-only stragglers (review 2026-09-23, finding 3): a lead whose EVERY KV
+    // write failed at intake time has no `lead:<id>` key at all, so the
+    // KV-list loop above can never find it. Rebuild a KV-shaped record from
+    // payload_json and run it through the same claim/forward path;
+    // claimD1Lease's insert-if-missing + atomic UPDATE safely no-op if
+    // another isolate (or the KV loop above) is already handling this id.
+    if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function" && env.LEADS_KV) {
+      try {
+        const expiredBefore = new Date(Date.now() - FORWARD_LEASE_MS).toISOString();
+        const nowIso = new Date().toISOString();
+        const rows = await queryD1(env,
+          "SELECT submission_id, received_at, status, delivered_at, payload_json, attempt_count FROM leads"
+          + " WHERE (status='pending' OR (status='forwarding' AND delivered_at<=?1))"
+          + " AND (next_attempt_at IS NULL OR next_attempt_at<=?2)"
+          + " ORDER BY received_at ASC LIMIT ?3",
+          [expiredBefore, nowIso, SWEEP_LIMIT * 2]);
+        let d1Attempts = 0;
+        for (const row of rows) {
+          if (d1Attempts >= SWEEP_LIMIT) break;
+          const submissionId = String(row.submission_id);
+          if (processedIds.has(submissionId)) continue; // round 6, finding 3b — already handled by the KV loop above
+          if (await isDeleted(env, submissionId)) continue;
+          const key = `lead:${submissionId}`;
+
+          // Finding A (review round 2, P1 regression): KV is the delivery
+          // source of truth. If Albato already accepted this lead but the
+          // FINAL D1 write failed — leaving a stale D1 row this loop would
+          // otherwise treat as a fresh candidate — repair D1 from the KV
+          // record WITHOUT re-posting to Albato.
+          let kvRecordForRow = null;
+          if (typeof env.LEADS_KV.get === "function") {
+            try {
+              const raw = await env.LEADS_KV.get(key);
+              kvRecordForRow = raw ? JSON.parse(raw) : null;
+            } catch (e) { kvRecordForRow = null; }
+          }
+          if (kvRecordForRow && (kvRecordForRow.status === "delivered" || kvRecordForRow.albato_delivered_at)) {
+            processedIds.add(submissionId);
+            await upsertD1(env, kvRecordForRow);
+            continue;
+          }
+          // Round 6, finding 3a: same skip as the KV loop — nothing useful
+          // to do without an Albato URL configured.
+          if (!env.ALBATO_WEBHOOK_URL) continue;
+          processedIds.add(submissionId);
+
+          let fields; try { fields = JSON.parse(row.payload_json || "{}"); } catch (e) { fields = {}; }
+          const rec = { submission_id: submissionId, fields, status: row.status, received_at: row.received_at };
+          if (row.status === "forwarding") rec.forwarding_started_at = row.delivered_at;
+          rec.attempt_count = row.attempt_count || 0;
+
+          const startedAt = new Date().toISOString();
+          const claim = await claimD1Lease(env, rec, startedAt);
+          if (claim !== "claimed") continue;
+          d1Attempts++;
+          rec.status = "forwarding";
+          rec.forwarding_started_at = startedAt;
+          await putRecord(env, key, rec);
+
+          // Review round 6, finding 2: same pre-POST re-check as the KV loop.
+          if (await wipeIfDeletedAfterWrite(env, key, submissionId, rec.received_at)) continue;
+
+          if (await forwardToAlbato(env, rec.fields || {})) {
+            const deliveredAt = new Date().toISOString();
+            rec.status = "delivered";
+            rec.delivered_at = deliveredAt;
+            rec.albato_delivered_at = deliveredAt;
+            delete rec.forwarding_started_at;
+            const d1Result = await upsertD1Guarded(env, rec, startedAt);
+            // Round 4, finding C: "error" must be skipped exactly like
+            // "not_owner" (see the KV-loop above).
+            if (d1Result !== "not_owner" && d1Result !== "error") {
+              await putRecordWithRetry(env, key, rec, true);
+              // Review round 6, finding 1: same post-write re-check as the KV loop.
+              if (!(await wipeIfDeletedAfterWrite(env, key, submissionId, rec.received_at))) {
+                await notifyTelegram(env, newLeadMsg(rec.fields || {}));
+              }
+            }
+          } else {
+            rec.status = "pending";
+            delete rec.forwarding_started_at;
+            const d1ReleaseResult = await upsertD1Guarded(env, rec, startedAt);
+            if (d1ReleaseResult !== "not_owner" && d1ReleaseResult !== "error") {
+              const backoff = await recordFailedAttempt(env, submissionId, rec.attempt_count || 0);
+              rec.attempt_count = backoff.attemptCount;
+              rec.next_attempt_at = backoff.nextAttemptAt;
+              await putRecord(env, key, rec);
+            }
+          }
+        }
+      } catch (e) {
+        ok = false; /* best-effort */
+      }
+    }
+  } catch (e) {
+    ok = false;
+  } finally {
+    await recordCronHealth(env, "sweep", ok);
   }
-  await recordCronHealth(env, "sweep", true);
 }
 
-async function verifyPreviousDump(env) {
-  const day = jerusalemDayOffset(-1);
+// Review round 6, small item: `now` threads through from hourlyRun's own
+// hour-gating clock — without this, a test (or a scheduled invocation that
+// runs slightly late across a day boundary) could compute the HOUR from one
+// instant and the DAY KEY from a different one (this function's own
+// `new Date()`), pointing verify/dump/purge at inconsistent days.
+async function verifyPreviousDump(env, now) {
+  const day = jerusalemDayOffset(-1, now || new Date());
   if (!env.LEADS_ARCHIVE || typeof env.LEADS_ARCHIVE.get !== "function") {
     await notifyTelegram(env, `⚠️ не удалось проверить бэкап: LEADS_ARCHIVE не настроен (${day})`);
     return { state: 2, day };
@@ -630,8 +773,8 @@ async function verifyPreviousDump(env) {
   }
 }
 
-async function dumpD1ToR2(env) {
-  const day = jerusalemDay();
+async function dumpD1ToR2(env, now) {
+  const day = jerusalemDay(now || new Date());
   if (!env.LEADS_ARCHIVE || typeof env.LEADS_ARCHIVE.put !== "function"
       || typeof env.LEADS_ARCHIVE.get !== "function") {
     await notifyTelegram(env, `⚠️ не удалось проверить бэкап: LEADS_ARCHIVE не настроен (${day})`);
@@ -692,11 +835,11 @@ async function dumpD1ToR2(env) {
   }
 }
 
-async function purgeExpiredDumps(env) {
+async function purgeExpiredDumps(env, now) {
   if (!env.LEADS_ARCHIVE || typeof env.LEADS_ARCHIVE.delete !== "function") {
     throw new Error("LEADS_ARCHIVE не настроен");
   }
-  const cutoff = jerusalemDayOffset(-BACKUP_RETENTION_DAYS);
+  const cutoff = jerusalemDayOffset(-BACKUP_RETENTION_DAYS, now || new Date());
   const objects = await listR2Objects(env.LEADS_ARCHIVE, BACKUP_PREFIX);
   const expired = objects.filter(object => {
     const match = /^backups\/d1\/(\d{4}-\d{2}-\d{2})\//.exec(object.key || "");
@@ -706,13 +849,13 @@ async function purgeExpiredDumps(env) {
   return expired.length;
 }
 
-async function weeklyBackupHeartbeat(env, dumpResult, integrityOk) {
+async function weeklyBackupHeartbeat(env, dumpResult, integrityOk, now) {
   const objects = await listR2Objects(env.LEADS_ARCHIVE, BACKUP_PREFIX);
   const manifestDays = new Set(objects.map(object => {
     const match = /^backups\/d1\/(\d{4}-\d{2}-\d{2})\/manifest\.json$/.exec(object.key || "");
     return match ? match[1] : "";
   }).filter(Boolean));
-  const week = Array.from({ length: 7 }, (_, index) => jerusalemDayOffset(-index));
+  const week = Array.from({ length: 7 }, (_, index) => jerusalemDayOffset(-index, now || new Date()));
   const count = week.filter(day => manifestDays.has(day)).length;
   const last = [...manifestDays].sort().at(-1) || "нет";
   const rows = dumpResult && dumpResult.manifest ? dumpResult.manifest.row_count : 0;
@@ -738,7 +881,10 @@ async function weeklyBackupHeartbeat(env, dumpResult, integrityOk) {
 async function hourlyRun(env, now) {
   now = now || new Date();
   const utcHour = now.getUTCHours();
-  const dumpResult = await dumpD1ToR2(env);
+  // Round 6, small item: thread `now` through so the day key these
+  // functions compute internally comes from the SAME clock as the hour
+  // gating above, not each function's own independent `new Date()`.
+  const dumpResult = await dumpD1ToR2(env, now);
   // Review round 5 addition 2 (pipeline-health v1): "backup" is ok only
   // when the dump itself succeeded AND its same-run integrity check passed
   // — matching the coordinator's exact contract, not merely "dumpD1ToR2 was
@@ -747,16 +893,16 @@ async function hourlyRun(env, now) {
     dumpResult ? `integrity_ok=${dumpResult.integrity_ok}` : "dump_failed");
 
   if (utcHour === 2) {
-    const previous = await verifyPreviousDump(env);
+    const previous = await verifyPreviousDump(env, now);
     try {
-      await purgeExpiredDumps(env);
+      await purgeExpiredDumps(env, now);
     } catch (error) {
       await notifyTelegram(env, `⚠️ не удалось удалить просроченные бэкапы: ${esc(error && error.message)}`);
     }
     if (isJerusalemSunday(now)) {
       try {
         await weeklyBackupHeartbeat(env, dumpResult,
-          previous.state === 0 && !!dumpResult && dumpResult.integrity_ok === true);
+          previous.state === 0 && !!dumpResult && dumpResult.integrity_ok === true, now);
       } catch (error) {
         await notifyTelegram(env, `⚠️ не удалось проверить недельный бэкап: ${esc(error && error.message)}`);
       }
@@ -976,15 +1122,27 @@ function parseIntegrityOk(detail) {
   return null;
 }
 async function buildHealthResponse(env) {
-  let backupRow;
-  let sweepRow;
+  // Review round 6, finding 4: `leads` is the PRIMARY table (existed since
+  // round 1) — if querying it fails, D1 itself is genuinely unreadable, a
+  // real 503. `cron_health` is a round-5 addition the owner applies as a
+  // separate migration; if IT alone is missing ("no such table"), that is
+  // a migration-lag DEGRADED state, not a total outage — the reader treats
+  // null backup/sweep fields as degraded, so report 200 with nulls instead
+  // of masking a perfectly healthy `leads` table behind a 503.
   let stuckLeads;
   try {
-    backupRow = await cronHealthRow(env, "backup");
-    sweepRow = await cronHealthRow(env, "sweep");
     stuckLeads = await stuckLeadsCount(env);
   } catch (e) {
     return healthJson(503, { schema: 1, error: "d1_unavailable" });
+  }
+  let backupRow = null;
+  let sweepRow = null;
+  try {
+    backupRow = await cronHealthRow(env, "backup");
+    sweepRow = await cronHealthRow(env, "sweep");
+  } catch (e) {
+    backupRow = null;
+    sweepRow = null;
   }
   return healthJson(200, {
     schema: 1,
@@ -1009,7 +1167,20 @@ export default {
     // Round 5 addition: the daily backup/reconcile crons were merged into
     // this single hourly trigger (5-cron-per-account limit) — hourlyRun
     // gates its own daily-only steps by the UTC hour of event.scheduledTime.
-    else if (event.cron === "0 * * * *") ctx.waitUntil(hourlyRun(env, new Date(event.scheduledTime)));
+    //
+    // Round 6, finding 5 (deploy transition): the RETIRING literals
+    // "30 2 * * *" and "0 18 * * *" must ALSO route here. Production is
+    // currently on 6034203 with */5 disabled and ONLY "30 2 * * *" live —
+    // if this code deploys before the Cloudflare-side trigger config
+    // catches up to the new ["*/5 * * * *", "0 * * * *"] pair, that
+    // still-configured "30 2 * * *" firing would otherwise hit the
+    // "unknown cron" fallback below and silently skip the dump entirely.
+    // hourlyRun resolves the correct hour from event.scheduledTime either
+    // way (UTC 2:30 → hour 2, UTC 18:00 → hour 18), so this is safe for
+    // however long the transition takes.
+    else if (event.cron === "0 * * * *" || event.cron === "30 2 * * *" || event.cron === "0 18 * * *") {
+      ctx.waitUntil(hourlyRun(env, new Date(event.scheduledTime)));
+    }
     else ctx.waitUntil(notifyTelegram(env, "⚠️ незнакомый cron: " + event.cron));
   },
   async fetch(request, env) {

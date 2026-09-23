@@ -894,6 +894,88 @@ const baseLead = (id, extra = {}) => ({
       JSON.stringify(r.body));
   }
 
+  /* ============ Round 6 (base ea91e3c) — consolidated review (Codex + a
+     5-lens review, independently re-verified). See
+     docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 6" for the table. */
+
+  // T25 [round 6, finding 2] Intake: a concurrent admin DELETE lands AFTER
+  // the lease claim but BEFORE the Albato POST — the POST must not go out,
+  // even though the claim itself succeeded moments earlier.
+  {
+    albatoHits = 0; telegramHits = 0;
+    const kv = makeKV();
+    const db = makeD1();
+    const env = { LEADS_KV: kv, LEADS_DB: db, LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = true;
+    const id = crypto.randomUUID();
+    const originalPrepare = db.prepare.bind(db);
+    let selectCount = 0;
+    db.prepare = (sql) => {
+      if (/^SELECT status FROM leads WHERE submission_id=/.test(sql)) {
+        selectCount++;
+        // 1st = the initial deletion check (finding A); 2nd = the
+        // post-write re-check (round 5, finding 1/2); 3rd = THIS round's
+        // pre-POST re-check, right before the Albato send — inject the
+        // concurrent admin delete exactly there.
+        if (selectCount === 3) {
+          originalPrepare(
+            "UPDATE leads SET status='deleted', delivered_at=?1, name=NULL, phone=NULL, email=NULL, payload_json='{}' WHERE submission_id=?2",
+          ).bind(new Date().toISOString(), id).run();
+        }
+      }
+      return originalPrepare(sql);
+    };
+    const before = albatoHits;
+    const r = await post(env, baseLead(id));
+    console.log('\nT25 [round 6, finding 2] Intake must not POST to Albato once a concurrent admin delete lands post-claim');
+    ok('no Albato POST fired', albatoHits === before, 'hits=' + (albatoHits - before));
+    ok('D1 row stays deleted', db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
+    ok('response is a harmless dedup-style 202, not a client-facing error',
+      r.status === 202 && r.body.dedup === true, JSON.stringify(r.body));
+  }
+
+  // T26 [round 6, finding 2] sweepPendingLeads' KV-loop: same race, this
+  // time via the sweep path — the claim succeeds, admin delete lands, the
+  // sweep's own POST must not fire either.
+  {
+    albatoHits = 0; telegramHits = 0;
+    const kv = makeKV();
+    const db = makeD1();
+    const id = crypto.randomUUID();
+    const receivedAt = new Date().toISOString();
+    const fields = { name: 'Round6F2', phone: '+972500000011', email: 'round6f2@x.com' };
+    await kv.put('lead:' + id, JSON.stringify({
+      submission_id: id, fields, status: 'pending', received_at: receivedAt,
+    }), { metadata: { status: 'pending', received_at: receivedAt } });
+    db._insert({
+      submission_id: id, received_at: receivedAt, status: 'pending', delivered_at: null,
+      name: fields.name, phone: fields.phone, email: fields.email, payload_json: JSON.stringify(fields),
+    });
+    const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = true;
+    const originalPrepare = db.prepare.bind(db);
+    let selectCount = 0;
+    db.prepare = (sql) => {
+      if (/^SELECT status FROM leads WHERE submission_id=/.test(sql)) {
+        selectCount++;
+        // 1st = isLeadDeletedForSweep's pre-claim candidate check (must see
+        // "active" so the claim actually proceeds); 2nd = THIS round's
+        // pre-POST re-check, right before the Albato send.
+        if (selectCount === 2) {
+          originalPrepare(
+            "UPDATE leads SET status='deleted', delivered_at=?1, name=NULL, phone=NULL, email=NULL, payload_json='{}' WHERE submission_id=?2",
+          ).bind(new Date().toISOString(), id).run();
+        }
+      }
+      return originalPrepare(sql);
+    };
+    const before = albatoHits;
+    await sweepPendingLeads({ ...env }, '');
+    console.log('\nT26 [round 6, finding 2] sweep must not POST to Albato once a concurrent admin delete lands post-claim');
+    ok('no Albato POST fired', albatoHits === before, 'hits=' + (albatoHits - before));
+    ok('D1 row stays deleted', db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
+  }
+
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('HARNESS ERROR:', e); process.exit(2); });

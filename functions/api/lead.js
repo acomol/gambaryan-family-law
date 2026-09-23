@@ -670,6 +670,13 @@ async function sweepPendingLeads(env, excludeKey) {
         const claim = await claimLeadForwarding(env, k.name, rec);
         if (claim !== "claimed") continue;
         attempts++;
+        // Review round 6, finding 2 (Codex "send-after-delete"): the claim
+        // above only proves ownership AT CLAIM TIME — a concurrent admin
+        // delete can land in the gap before this POST. Re-check right
+        // before sending; residual window (a POST already in flight when
+        // the delete lands) is a documented limitation, see
+        // docs/LEAD-PIPELINE.md §10.
+        if (await wipeIfDeletedAfterWrite(env, k.name, rec.submission_id, rec.received_at)) continue;
         if (await forwardToAlbato(env, rec.fields)) {
           // Review round 4, finding B: only announce delivery if we still
           // own the row after the completion write — a not_owner/error
@@ -738,6 +745,8 @@ async function sweepPendingLeads(env, excludeKey) {
         const claim = await claimLeadForwarding(env, rowKey, rec);
         if (claim !== "claimed") continue;
         d1Attempts++;
+        // Review round 6, finding 2: same pre-POST re-check as the KV-loop above.
+        if (await wipeIfDeletedAfterWrite(env, rowKey, rec.submission_id, rec.received_at)) continue;
         if (await forwardToAlbato(env, rec.fields)) {
           // Review round 4, finding B (consistency with the KV-loop above):
           // only alert if we still own the row after the completion write.
@@ -839,6 +848,15 @@ async function processDurableLead(env, payload, submissionId, key) {
     // lead". Fall through and attempt delivery directly instead: no cross-
     // isolate coordination is possible anyway once storage is this broken.
     claim = "claimed";
+  }
+
+  // Review round 6, finding 2 (Codex "send-after-delete"): the claim above
+  // only proves ownership AT CLAIM TIME — a concurrent admin delete can
+  // land in the gap before this POST. Re-check right before sending;
+  // residual window (a POST already in flight when the delete lands) is a
+  // documented limitation, see docs/LEAD-PIPELINE.md §10.
+  if (await wipeIfDeletedAfterWrite(env, key, submissionId, record.received_at)) {
+    return { status: 202, body: { ok: true, status: "accepted", submission_id: submissionId, dedup: true } };
   }
 
   var delivered = await forwardToAlbato(env, record.fields);
