@@ -81,6 +81,19 @@ function splitList_(s) {
 /**
  * Разбирает строки листа «Настройки» (включая заголовок) в плоский объект
  * "ключ -> сырое строковое значение", подставляя дефолты для отсутствующих ключей.
+ *
+ * design fix item2 (Codex review, CHANGES_REQUESTED): раньше явно ОЧИЩЕННОЕ
+ * значение (пустая строка в ячейке) не отличалось от "строки для ключа нет
+ * вовсе" — обе ветки проваливались через `String(value) !== ''` и оставляли
+ * ДЕФОЛТ активным. Итог: владелец очищает office_recipients, чтобы никому не
+ * слать письма с ФИО/телефоном лида, а скрипт продолжает слать их дефолтным
+ * адресам — PII продолжает уходить получателям, которых владелец явно убрал.
+ * Теперь: строка для ключа ЕСТЬ в листе -> её значение используется КАК ЕСТЬ,
+ * даже пустое (пустой список получателей = «не отправлять», splitList_('')
+ * уже возвращает [] — см. Utils/Config splitList_). Дефолт из
+ * DEFAULT_SETTINGS_ применяется ТОЛЬКО когда строки для ключа нет вовсе
+ * (миграция схемы — buildDefaultSettingsRows_ дописывает новые ключи одной
+ * строкой, ensureSettingsSheet_ в Sheets.gs).
  */
 function parseSettingsRows_(rows) {
   var raw = {};
@@ -89,10 +102,9 @@ function parseSettingsRows_(rows) {
     var key = row[0];
     if (!key) return;
     key = String(key).trim();
+    if (!key) return;
     var value = row[1];
-    if (value !== undefined && value !== null && String(value) !== '') {
-      raw[key] = value;
-    }
+    raw[key] = value === undefined || value === null ? '' : String(value);
   });
   return raw;
 }

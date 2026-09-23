@@ -37,14 +37,26 @@ function appendJournalRow_(journalSheet, time, leadNo, event, state, channel, de
  *   plain-text альтернативой (обязательна для клиентов без HTML — сама задача
  *   требует "plain-text alternative body"). Не передан — письмо остаётся
  *   чистым plain-text, как раньше (дайджест/сводка/системные тревоги).
+ * @param {string[]} [systemAlertRecipients] design fix item2 (Codex review):
+ *   если recipients пуст (например, владелец явно очистил office_recipients
+ *   в «Настройках» — см. Config.gs parseSettingsRows_), письмо не уходит
+ *   ВООБЩЕ никому и офис молча перестаёт узнавать о заявках. Алертим системного
+ *   получателя ОДИН раз на ключ события (не на каждый тик — reuse того же
+ *   send-log механизма под отдельным ключом 'empty_recipients:<key>').
  */
-function sendNotificationOnce_(journalSheet, key, leadNo, event, channel, recipients, subject, body, htmlBody) {
+function sendNotificationOnce_(journalSheet, key, leadNo, event, channel, recipients, subject, body, htmlBody, systemAlertRecipients) {
   var now = new Date();
   var existing = findLatestJournalStateForKey_(journalSheet, key);
   var action = decideSendAction_(existing, now);
   if (action === 'skip') return { sent: false, reason: 'skip' };
   if (!recipients || !recipients.length) {
     Logger.log('sendNotificationOnce_: нет получателей для события "%s" (ключ %s)', event, key);
+    if (systemAlertRecipients && systemAlertRecipients.length) {
+      sendNotificationOnce_(journalSheet, 'empty_recipients:' + key, '', 'empty_recipients', 'email',
+        systemAlertRecipients, 'CRM: получатели события пусты — ' + event,
+        'Список получателей для события "' + event + '" (ключ ' + key + ') пуст — письмо НЕ отправлено. ' +
+        'Проверьте «Настройки» (значение могло быть очищено намеренно).');
+    }
     return { sent: false, reason: 'no_recipients' };
   }
 
@@ -92,8 +104,9 @@ function buildRequestRowLink_(requestsSheet, rowNumber) {
  * (кнопки «Позвонить»/WhatsApp), Email, Откуда, кнопка «Открыть заявку».
  * @param {Sheet} requestsSheet лист «Заявки» — для ссылки на строку
  * @param {{name, phone, email, source, receivedAtLabel}} leadData
+ * @param {string[]} [systemAlertRecipients] design fix item2 — алерт на пустых получателей
  */
-function notifyNewLead_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData) {
+function notifyNewLead_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData, systemAlertRecipients) {
   leadData = leadData || {};
   var email = renderNewLeadEmail_({
     leadNo: leadNo,
@@ -105,11 +118,11 @@ function notifyNewLead_(journalSheet, requestsSheet, leadNo, rowNumber, recipien
     sheetUrl: buildRequestRowLink_(requestsSheet, rowNumber)
   });
   return sendNotificationOnce_(journalSheet, makeSendKey_(leadNo, 'new_lead', '1'), leadNo, 'new_lead', 'email',
-    recipients, email.subject, email.text, email.html);
+    recipients, email.subject, email.text, email.html, systemAlertRecipients);
 }
 
 /** @param {Sheet} requestsSheet лист «Заявки» @param {{name, phone}} leadData */
-function notifySlaFirstAttempt_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData) {
+function notifySlaFirstAttempt_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData, systemAlertRecipients) {
   leadData = leadData || {};
   var email = renderSlaFirstAttemptEmail_({
     leadNo: leadNo,
@@ -118,11 +131,11 @@ function notifySlaFirstAttempt_(journalSheet, requestsSheet, leadNo, rowNumber, 
     sheetUrl: buildRequestRowLink_(requestsSheet, rowNumber)
   });
   return sendNotificationOnce_(journalSheet, makeSendKey_(leadNo, 'sla_first_attempt', '1'), leadNo, 'sla_first_attempt', 'email',
-    recipients, email.subject, email.text, email.html);
+    recipients, email.subject, email.text, email.html, systemAlertRecipients);
 }
 
 /** @param {Sheet} requestsSheet лист «Заявки» @param {{name, phone}} leadData */
-function notifySlaEscalation_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData) {
+function notifySlaEscalation_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData, systemAlertRecipients) {
   leadData = leadData || {};
   var email = renderSlaEscalationEmail_({
     leadNo: leadNo,
@@ -131,12 +144,12 @@ function notifySlaEscalation_(journalSheet, requestsSheet, leadNo, rowNumber, re
     sheetUrl: buildRequestRowLink_(requestsSheet, rowNumber)
   });
   return sendNotificationOnce_(journalSheet, makeSendKey_(leadNo, 'sla_escalation', '1'), leadNo, 'sla_escalation', 'email',
-    recipients, email.subject, email.text, email.html);
+    recipients, email.subject, email.text, email.html, systemAlertRecipients);
 }
 
-function notifyDigest_(journalSheet, dayKey, recipients, digest) {
+function notifyDigest_(journalSheet, dayKey, recipients, digest, systemAlertRecipients) {
   return sendNotificationOnce_(journalSheet, 'digest:' + dayKey, 'DIGEST', 'digest', 'email',
-    recipients, digest.subject, digest.body);
+    recipients, digest.subject, digest.body, undefined, systemAlertRecipients);
 }
 
 function notifyWeeklySummary_(journalSheet, weekKey, recipient, body) {

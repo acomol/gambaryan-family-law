@@ -62,18 +62,49 @@ function makeFakeRange(sheet, row, col, numRows, numCols) {
       return out;
     },
     getValue: function () { return range.getValues()[0][0]; },
+    // Симуляция formula re-injection (задача fix item1, Codex review): реальный
+    // Google Sheets парсит ведущий "="/"+"/"-"/"@"/TAB/CR как формулу при
+    // setValue()/setValues() НЕЗАВИСИМО от источника записи (Class Range docs),
+    // ЕСЛИ ячейка не отформатирована как обычный текст ("@"). Фейк воспроизводит
+    // ровно эту семантику: если формат ячейки НЕ "@" и значение похоже на
+    // формулу — запись попадает в sheet._formulas (getFormulas() её увидит);
+    // формат "@", выставленный ДО setValue/setValues, держит значение текстом.
     setValues: function (values) {
       for (var r = 0; r < values.length; r++) {
         var idx = row - 1 + r;
         while (sheet._data.length <= idx) sheet._data.push([]);
         for (var c = 0; c < values[r].length; c++) {
-          sheet._data[idx][col - 1 + c] = values[r][c];
+          var v = values[r][c];
+          var cellRow = row + r;
+          var cellCol = col + c;
+          var fmt = (sheet._numberFormats && sheet._numberFormats[cellRow + ':' + cellCol]) || null;
+          var isPlainText = fmt === '@';
+          var isFormulaLike = typeof v === 'string' && /^[=+\-@\t\r]/.test(v);
+          sheet._formulas = sheet._formulas || {};
+          if (isFormulaLike && !isPlainText) {
+            sheet._formulas[cellRow + ':' + cellCol] = v;
+          } else {
+            delete sheet._formulas[cellRow + ':' + cellCol];
+          }
+          sheet._data[idx][col - 1 + c] = v;
         }
       }
       return range;
     },
     setValue: function (v) { return range.setValues([[v]]); },
     setFormula: function (f) { return range.setValue(f); },
+    getFormula: function () { return (sheet._formulas && sheet._formulas[row + ':' + col]) || ''; },
+    getFormulas: function () {
+      var out = [];
+      for (var r = 0; r < numRows; r++) {
+        var line = [];
+        for (var c = 0; c < numCols; c++) {
+          line.push((sheet._formulas && sheet._formulas[(row + r) + ':' + (col + c)]) || '');
+        }
+        out.push(line);
+      }
+      return out;
+    },
     setNumberFormat: function (fmt) {
       sheet._numberFormats = sheet._numberFormats || {};
       for (var r = 0; r < numRows; r++) {
@@ -130,7 +161,30 @@ export function makeFakeSheet(name, opts) {
       return sheet._data.reduce(function (m, r) { return Math.max(m, r.length); }, 0);
     },
     getMaxRows: function () { return Math.max(sheet._maxRows, sheet._data.length); },
-    appendRow: function (row) { sheet._data.push(row.slice()); },
+    // design fix item1: appendRow — тоже точка записи внешних строк (новая
+    // заявка/докрутка orphan), поэтому подчиняется той же симуляции formula
+    // re-injection, что и Range.setValues() выше: ячейка, заранее (ДО
+    // appendRow) отформатированная как "@" (см. protectExternalTextColumns_ в
+    // Code.gs), не становится "формулой" в фейке, даже если значение начинается
+    // с "="/"+"/"-"/"@"/TAB/CR.
+    appendRow: function (row) {
+      var newRowIndex = sheet._data.length + 1; // 1-based позиция ПОСЛЕ вставки
+      var newRow = row.slice();
+      sheet._formulas = sheet._formulas || {};
+      for (var c = 0; c < newRow.length; c++) {
+        var v = newRow[c];
+        var cellCol = c + 1;
+        var fmt = (sheet._numberFormats && sheet._numberFormats[newRowIndex + ':' + cellCol]) || null;
+        var isPlainText = fmt === '@';
+        var isFormulaLike = typeof v === 'string' && /^[=+\-@\t\r]/.test(v);
+        if (isFormulaLike && !isPlainText) {
+          sheet._formulas[newRowIndex + ':' + cellCol] = v;
+        } else {
+          delete sheet._formulas[newRowIndex + ':' + cellCol];
+        }
+      }
+      sheet._data.push(newRow);
+    },
     setFrozenRows: function () {},
     setFrozenColumns: function () {},
     hideColumns: function () {},
@@ -227,8 +281,18 @@ export function makeFakePropertiesService(initialProps) {
   return { getScriptProperties: function () { return scriptProps; }, _store: store };
 }
 
-export function makeFakeLockService() {
-  return { getScriptLock: function () { return { tryLock: function () { return true; }, releaseLock: function () {} }; } };
+// design fix item7: opts.tryLock === false симулирует таймаут блокировки
+// (например, handleEdit_ на 5с) — по умолчанию блокировка всегда удаётся.
+export function makeFakeLockService(opts) {
+  opts = opts || {};
+  return {
+    getScriptLock: function () {
+      return {
+        tryLock: function () { return opts.tryLock === undefined ? true : opts.tryLock; },
+        releaseLock: function () {}
+      };
+    }
+  };
 }
 
 export function makeFakeMailApp(opts) {
@@ -239,6 +303,10 @@ export function makeFakeMailApp(opts) {
       if (opts.shouldThrow) throw new Error(typeof opts.shouldThrow === 'string' ? opts.shouldThrow : 'MailApp: forced failure');
       sent.push(msg);
     },
+    // design fix item5: MailApp.getRemainingDailyQuota() — реальный метод
+    // (https://developers.google.com/apps-script/reference/mail/mail-app),
+    // используется, чтобы ретраи уведомлений не жгли всю суточную квоту.
+    getRemainingDailyQuota: function () { return opts.remainingDailyQuota === undefined ? 1000 : opts.remainingDailyQuota; },
     _sent: sent
   };
 }

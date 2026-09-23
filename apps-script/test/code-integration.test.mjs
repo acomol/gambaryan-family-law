@@ -69,10 +69,11 @@ test('menuSendTestNotification_/menuArchiveClosed_ работают БЕЗ Sprea
   assert.match(message, /бессрочно/);
 });
 
-// --- review находка №10: "Заявки" читается один раз за tick(), не по разу
-// на каждый шаг ---------------------------------------------------------------
+// --- review находка №10: "Заявки" читается ОГРАНИЧЕННОЕ число раз за tick(),
+// не по разу на каждый шаг; fix item8 добавляет ровно ОДНО дополнительное
+// чтение (свежий снимок для SLA/дайджеста после sync/corrections) ------------
 
-test('tick(): читает "Заявки" (getDataRange) один раз за цикл, а не по разу на sync/corrections/sla/digest (review находка №10)', () => {
+test('tick(): читает "Заявки" (getDataRange) РОВНО дважды за цикл — не по разу на sync/corrections/sla/digest (review находка №10), и не один снимок на весь тик (fix item8: второе чтение — актуальное состояние для SLA/дайджеста после sync/corrections)', () => {
   const props = makeFakePropertiesService({});
   const mail = makeFakeMailApp();
   const lock = makeFakeLockService();
@@ -103,8 +104,10 @@ test('tick(): читает "Заявки" (getDataRange) один раз за ц
 
   ctx.tick();
 
-  assert.equal(requests._getDataRangeCallCount, 1,
-    'sync/corrections/sla/digest раньше каждый сам читал "Заявки" целиком — до 4 полных чтений за один tick()');
+  assert.equal(requests._getDataRangeCallCount, 2,
+    'sync/corrections/sla/digest раньше каждый сам читал "Заявки" целиком — до 4 полных чтений за один tick(); ' +
+    'fix item8 сознательно добавляет ОДНО повторное чтение после sync/corrections, чтобы SLA/дайджест видели ' +
+    'актуальное состояние, а не снимок до этих шагов (иначе свежая установка ровно в 08:30 шлёт «Новых: 0»)');
 });
 
 // --- review находка №12: «Связаться» — настоящая ссылка (RichTextValue) -----

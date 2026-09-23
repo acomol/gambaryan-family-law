@@ -7,6 +7,14 @@
  * GAS-only, оркестрирует чистые функции из BusinessCalendar/Sla/CorrectionChain/
  * SendLog/Digest/Source/Numbering/SyncPlan. НЕ запускалось вживую — см. README
  * "Проверить перед боем" и раздел отчёта "не проверено".
+ *
+ * Независимое ревью Codex (ветка claude/gambarian-mini-crm @ 1071f53,
+ * CHANGES_REQUESTED, все 8 находок воспроизведены) закрыто в этом файле:
+ * item1 formula re-injection, item3 batched correction write + verify-after,
+ * item4 atomic lead creation (Служебное перед Заявки + докрутка orphan-строк),
+ * item5 независимый ретрай упавших писем, item6 per-step результаты + алерт
+ * на деградацию, item7 очередь потерянных onEdit-правок, item8 свежий снимок
+ * «Заявки» для SLA/дайджеста после sync/corrections.
  */
 
 // ---------------------------------------------------------------------------
@@ -24,31 +32,60 @@ function tick() {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID_);
     var now = new Date();
 
-    // Review находка №10: раньше каждый шаг сам делал getDataRange().getValues()
-    // «Заявки» — до 4 полных чтений за один tick(). Снимок читается ОДИН раз и
-    // передаётся шагам. Исключение — поиск строки для записи исправления/штампа
-    // (findRequestRowIndexByLeadNo_/findServiceRow*_, CorrectionChain-путь): те
-    // продолжают читать лист заново непосредственно перед записью (design §1
-    // инвариант, review находка №6) — снимок для них не годится по построению.
     var requests = ss.getSheetByName(SHEET_REQUESTS_);
     var reqValues = requests.getDataRange().getValues();
     var reqHeaderMap = colByHeader_(reqValues[0] || []);
 
-    // Задача 0.4.0: «Служебное» — второй лист, снимок читается тем же приёмом.
     var service = ss.getSheetByName(SHEET_SERVICE_);
     var serviceValues = service.getDataRange().getValues();
     var serviceHeaderMap = colByHeader_(serviceValues[0] || []);
 
-    runStepSafely_('sync', function () {
+    // design fix item6: каждый шаг возвращает {ok:true|false} — heartbeat
+    // (design §5.7) обновляется всегда (доказывает, что скрипт вообще
+    // выполнился), а "последний ПОЛНОСТЬЮ успешный цикл" — отдельное
+    // состояние, и на переходе ok -> degraded уходит алерт (см. reportCycleHealth_).
+    var stepResults = {};
+
+    // design fix item4: сначала докручиваем прерванные создания (Служебное
+    // уже есть, «Заявки» нет — например скрипт упал между двумя appendRow в
+    // прошлом тике), потом обычная синхронизация новых заявок.
+    stepResults.complete_orphans = runStepSafely_('complete_orphans', function () {
+      completeOrphanedLeads_(ss, requests, reqValues, reqHeaderMap, serviceValues, serviceHeaderMap, config, now);
+    });
+
+    stepResults.sync = runStepSafely_('sync', function () {
       syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMap, service, serviceValues, serviceHeaderMap);
     });
-    runStepSafely_('corrections', function () {
+    stepResults.corrections = runStepSafely_('corrections', function () {
       resolvePendingCorrections_(ss, config, now, requests, reqHeaderMap, service, serviceHeaderMap);
     });
-    runStepSafely_('sla', function () { processSla_(ss, config, now, reqValues, reqHeaderMap); });
-    runStepSafely_('digest', function () { maybeSendDigest_(ss, config, now, reqValues, reqHeaderMap); });
-    runStepSafely_('weekly_summary', function () { maybeSendWeeklySummary_(ss, config, now); });
+
+    // design fix item8: sync/corrections МЕНЯЮТ «Заявки» (новые строки,
+    // докрученные orphan-заявки, исправленные контакты) — SLA и дайджест
+    // должны видеть АКТУАЛЬНОЕ состояние, не снимок ДО этих шагов (иначе
+    // свежая установка ровно в 08:30 отправит дайджест «Новых: 0», хотя
+    // заявки только что появились в этом же тике).
+    reqValues = requests.getDataRange().getValues();
+    reqHeaderMap = colByHeader_(reqValues[0] || []);
+
+    stepResults.sla = runStepSafely_('sla', function () { processSla_(ss, config, now, reqValues, reqHeaderMap); });
+    stepResults.digest = runStepSafely_('digest', function () { maybeSendDigest_(ss, config, now, reqValues, reqHeaderMap); });
+    stepResults.weekly_summary = runStepSafely_('weekly_summary', function () { maybeSendWeeklySummary_(ss, config, now); });
+
+    // design fix item5: письма, которые не удалось отправить (pending/unknown/
+    // failed в «Журнале»), больше не теряются навсегда — независимый ретрай.
+    stepResults.retry_notifications = runStepSafely_('retry_notifications', function () {
+      retryPendingNotifications_(ss, config, now, reqHeaderMap, serviceHeaderMap);
+    });
+
+    // design fix item7: правки, потерянные из-за таймаута блокировки onEdit,
+    // докручиваются здесь.
+    stepResults.reconcile_edits = runStepSafely_('reconcile_edits', function () {
+      reconcilePendingEdits_(requests, reqHeaderMap, ss.getSheetByName(SHEET_JOURNAL_), service, serviceHeaderMap, now);
+    });
+
     writeHeartbeat_(now);
+    reportCycleHealth_(ss, config, now, stepResults);
   } catch (err) {
     Logger.log('tick: ошибка верхнего уровня: %s', err);
     notifySystemAlert_('tick_error', String(err));
@@ -57,10 +94,17 @@ function tick() {
   }
 }
 
-/** Ошибка одного шага/одной заявки не должна останавливать остальные (§5.3 п.7). */
+/**
+ * Ошибка одного шага/одной заявки не должна останавливать остальные (§5.3 п.7).
+ * design fix item6: раньше ничего не возвращала (ошибка "проглатывалась"
+ * молча, вызывающий код не мог узнать об этом) — теперь возвращает
+ * {ok:true} | {ok:false, error}, что использует reportCycleHealth_.
+ * @return {{ok:boolean, error:(string|undefined)}}
+ */
 function runStepSafely_(name, fn) {
   try {
     fn();
+    return { ok: true };
   } catch (err) {
     Logger.log('tick/%s: ошибка: %s', name, err);
     try {
@@ -69,14 +113,93 @@ function runStepSafely_(name, fn) {
     } catch (loggingErr) {
       Logger.log('tick/%s: не удалось записать ошибку в журнал: %s', name, loggingErr);
     }
+    return { ok: false, error: String(err) };
   }
 }
 
+/**
+ * design fix item6 (Codex review): heartbeat раньше был ЕДИНСТВЕННЫМ сигналом
+ * здоровья tick() и обновлялся всегда, даже если каждый шаг падал —
+ * независимый наблюдатель (design §5.7) не видел деградации вовсе. Теперь:
+ * "последний полностью успешный цикл" — отдельное свойство; на переходе
+ * ok -> degraded уходит алерт системному получателю ОДИН раз на инцидент (не
+ * на каждый тик, пока деградация продолжается), на переходе обратно в ok флаг
+ * тихо снимается (следующая деградация — новый инцидент, новый алерт).
+ * @param {Object<string,{ok:boolean}>} stepResults
+ */
+function reportCycleHealth_(ss, config, now, stepResults) {
+  var allOk = Object.keys(stepResults).every(function (name) { return stepResults[name].ok; });
+  var props = PropertiesService.getScriptProperties();
+  if (allOk) {
+    props.setProperty('lastFullCycleAt', now.toISOString());
+    props.setProperty('tickDegraded', 'false');
+    return;
+  }
+  var wasDegraded = props.getProperty('tickDegraded') === 'true';
+  props.setProperty('tickDegraded', 'true');
+  if (wasDegraded) return; // уже алертили этот инцидент
+
+  var failedSteps = Object.keys(stepResults).filter(function (name) { return !stepResults[name].ok; });
+  var journal = ss.getSheetByName(SHEET_JOURNAL_);
+  sendNotificationOnce_(journal, 'tick_degraded:' + now.getTime(), '', 'tick_degraded', 'email',
+    config.systemAlertRecipients, 'CRM: часть шагов tick() не выполнилась',
+    'Провалились шаги: ' + failedSteps.join(', ') + '. Подробности — «Журнал» (tick_step_error).');
+}
+
 // ---------------------------------------------------------------------------
-// Синхронизация «Входящие» -> «Заявки» (§5.3 п.2, SyncPlan.gs)
+// design fix item1: защита от formula re-injection при записи внешних строк
 // ---------------------------------------------------------------------------
 
 /**
+ * Codex review item1 (CRITICAL): строки из «Входящих» (Имя/Телефон/Email/
+ * Откуда/submission_id — заполняются посетителем формы или query-параметрами
+ * лендинга, включая utm_source) пишутся через Range.setValue()/setValues().
+ * Официальная семантика Class Range: значение, начинающееся с "=", парсится
+ * как формула НЕЗАВИСИМО от источника записи (API/UI). Значение вида "=1+1",
+ * "+CMD(...)" превращается в исполняемую формулу на «Заявки»/«Служебное».
+ * Стандартная защита (formula/CSV injection) — формат ячейки "обычный текст"
+ * ("@"), выставленный ДО setValue()/setValues(): движок не парсит содержимое
+ * ячейки с этим форматом как формулу. Формат ставится на ЦЕЛЕВЫЕ ячейки
+ * НЕПОСРЕДСТВЕННО перед каждой записью — не полагаемся на разовую настройку
+ * колонки при setupCrm() (которая могла не запуститься на этой копии/версии).
+ * @param {Sheet} sheet
+ * @param {number} rowIndex 1-based
+ * @param {Object<string,number>} headerMap
+ * @param {string[]} headers какие заголовки защитить в этой строке
+ */
+function protectExternalTextColumns_(sheet, rowIndex, headerMap, headers) {
+  headers.forEach(function (header) {
+    var col = headerMap[header];
+    if (col === undefined) return;
+    sheet.getRange(rowIndex, col + 1).setNumberFormat('@');
+  });
+}
+
+/** design item1: одна ячейка — формат "обычный текст" ДО значения, одним вызовом. */
+function setPlainTextValue_(range, value) {
+  range.setNumberFormat('@');
+  range.setValue(value);
+  return range;
+}
+
+// ---------------------------------------------------------------------------
+// Синхронизация «Входящие» -> «Заявки»/«Служебное» (§5.3 п.2, SyncPlan.gs)
+// ---------------------------------------------------------------------------
+
+/**
+ * design fix item4 (Codex review, CHANGES_REQUESTED): раньше «Заявки» и
+ * «Служебное» дописывались ДВУМЯ отдельными appendRow — падение скрипта между
+ * ними (квота/таймаут/сбой сети) оставляло либо orphan-строку «Заявки» без
+ * «Служебное» (следующий тик считает submission_id новым и создаёт ВТОРУЮ
+ * заявку под другим №), либо orphan-строку «Служебное» без «Заявки» (заявка
+ * навсегда не видна офису). Теперь: «Служебное» пишется ПЕРВЫМ — само его
+ * присутствие БЕЗ строки «Заявки» и есть маркер "создание не завершено" (без
+ * отдельной колонки состояния), докручивается completeOrphanedLeads_ в
+ * начале следующего тика тем же №. № для новых заявок берётся из ОБЪЕДИНЕНИЯ
+ * номеров «Заявки» и «Служебное» — иначе orphan-заявка (номер уже "занят" в
+ * «Служебное», но не виден в «Заявки») и genuinely новая заявка того же тика
+ * могут получить ОДИН И ТОТ ЖЕ №.
+ *
  * Review находка №10: «Входящие» — append-only, поэтому не сканируем его
  * целиком заново каждый tick навсегда — берём только строки после watermark
  * (последнее обработанное количество строк, PropertiesService). Анти-дубль
@@ -117,19 +240,26 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
 
   if (plan.toCreate.length) {
     var journal = ss.getSheetByName(SHEET_JOURNAL_);
+    // design item4: № берём из ОБЪЕДИНЕНИЯ «Заявки» + «Служебное» — orphan-
+    // заявка (есть в «Служебное», ещё нет в «Заявки») не должна отдать свой №
+    // genuinely новой заявке этого же тика.
     var existingNumbers = reqValues.slice(1).map(function (row) { return getCell_(row, reqHeaderMap, '№'); });
+    serviceValues.slice(1).forEach(function (row) {
+      var no = getCell_(row, serviceHeaderMap, '№');
+      if (no && existingNumbers.indexOf(no) === -1) existingNumbers.push(no);
+    });
 
     plan.toCreate.forEach(function (rec) {
       var leadNo = nextLeadNumber_(existingNumbers);
       existingNumbers.push(leadNo);
 
-      var row = buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now);
-      requests.appendRow(row);
-      var newRowIndex = requests.getLastRow();
-      writeContactCell_(requests, newRowIndex, reqHeaderMap, rec.phone); // review находка №12 — настоящая ссылка
-
+      // design item4: «Служебное» ПЕРВЫМ (см. комментарий выше функции).
       var serviceRow = buildNewServiceRow_(serviceHeaderMap, rec, leadNo);
-      service.appendRow(serviceRow);
+      appendServiceRowSafely_(service, serviceHeaderMap, serviceRow); // item1 защита
+
+      var row = buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now);
+      var newRowIndex = appendRequestRowSafely_(requests, reqHeaderMap, row); // item1 защита
+      writeContactCell_(requests, newRowIndex, reqHeaderMap, rec.phone); // review находка №12 — настоящая ссылка
 
       var notification = decideNewLeadNotification_(now, config.calendar, config.weekendDuty);
       if (plan.toNotify.indexOf(rec.submission_id) !== -1) {
@@ -143,11 +273,11 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
           receivedAtLabel: Utilities.formatDate(now, config.tz, 'dd.MM.yyyy HH:mm')
         };
         if (notification === 'immediate') {
-          notifyNewLead_(journal, requests, leadNo, newRowIndex, config.officeRecipients, leadData);
+          notifyNewLead_(journal, requests, leadNo, newRowIndex, config.officeRecipients, leadData, config.systemAlertRecipients);
         } else if (notification === 'immediate_duty') {
           // review находка №13 / design §12 строка 7: дежурный на выходные/ночь,
           // выключен по умолчанию — включается настройкой «Настроек»
-          notifyNewLead_(journal, requests, leadNo, newRowIndex, [config.weekendDuty.email], leadData);
+          notifyNewLead_(journal, requests, leadNo, newRowIndex, [config.weekendDuty.email], leadData, config.systemAlertRecipients);
         }
         // 'digest' — вне рабочего времени и дежурный выключен: не шлём по одной
         // (§12.1), попадёт в дайджест сам фактом присутствия в «Заявки» без
@@ -157,6 +287,71 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
   }
 
   writeIntakeWatermark_(dataRowCount); // append-only — следующий tick начнёт отсюда
+}
+
+/**
+ * design fix item4: докручивает заявки, для которых «Служебное» уже создано
+ * (значит, создание НАЧАЛОСЬ), а «Заявки» — ещё нет (скрипт упал между двумя
+ * appendRow). Использует тот же №, что уже зарезервирован в «Служебное» — не
+ * создаёт вторую заявку. Идемпотентно: если «Заявки» уже на месте, ничего не
+ * делает.
+ */
+function completeOrphanedLeads_(ss, requests, reqValues, reqHeaderMap, serviceValues, serviceHeaderMap, config, now) {
+  var existingLeadNumbers = {};
+  reqValues.slice(1).forEach(function (row) {
+    var no = getCell_(row, reqHeaderMap, '№');
+    if (no) existingLeadNumbers[no] = true;
+  });
+
+  var orphans = serviceValues.slice(1).filter(function (row) {
+    var no = getCell_(row, serviceHeaderMap, '№');
+    return no && !existingLeadNumbers[no];
+  });
+  if (!orphans.length) return;
+
+  var intake = ss.getSheetByName(SHEET_INTAKE_);
+  var intakeValues = intake.getDataRange().getValues();
+  if (intakeValues.length < 2) return;
+  var intakeHeaderMap = colByHeader_(intakeValues[0]);
+  var recordsById = {};
+  intakeValues.slice(1).forEach(function (row) {
+    var rec = rowToRecord_(row, intakeHeaderMap);
+    if (rec.submission_id) recordsById[rec.submission_id] = rec;
+  });
+
+  orphans.forEach(function (svcRow) {
+    var leadNo = getCell_(svcRow, serviceHeaderMap, '№');
+    var submissionId = getCell_(svcRow, serviceHeaderMap, 'submission_id');
+    var rec = recordsById[submissionId];
+    if (!rec) return; // запись «Входящих» не найдена — не должно происходить, но не падаем; следующий тик подтянет
+
+    var row = buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now);
+    var newRowIndex = appendRequestRowSafely_(requests, reqHeaderMap, row); // item1 защита
+    writeContactCell_(requests, newRowIndex, reqHeaderMap, rec.phone);
+  });
+}
+
+/**
+ * appendRow не позволяет отформатировать ячейки ДО записи (пишет всю строку
+ * разом) — резервируем позицию будущей строки, форматируем в ней Имя/
+ * Телефон/Email обычным текстом (design item1), и ТОЛЬКО ПОТОМ дописываем
+ * строку. appendRow на предварительно отформатированную позицию сохраняет
+ * формат ячейки (формат — свойство ячейки листа, не строки appendRow).
+ * @return {number} 1-based индекс дописанной строки
+ */
+function appendRequestRowSafely_(requests, reqHeaderMap, row) {
+  var futureRowIndex = requests.getLastRow() + 1;
+  protectExternalTextColumns_(requests, futureRowIndex, reqHeaderMap, ['Имя', 'Телефон', 'Email']);
+  requests.appendRow(row);
+  return requests.getLastRow();
+}
+
+/** Симметрично appendRequestRowSafely_, но для «Служебное» (submission_id/все submission_id/Откуда). */
+function appendServiceRowSafely_(service, serviceHeaderMap, row) {
+  var futureRowIndex = service.getLastRow() + 1;
+  protectExternalTextColumns_(service, futureRowIndex, serviceHeaderMap, ['submission_id', 'все submission_id', 'Откуда']);
+  service.appendRow(row);
+  return service.getLastRow();
 }
 
 function rowToRecord_(row, headerMap) {
@@ -292,14 +487,29 @@ function findRequestRowIndexByLeadNo_(requests, headerMap, leadNo) {
   return -1;
 }
 
+/** Находит строку «Служебное» по № (design §1/§3.2 — единственная связь между листами). */
+function findServiceRowIndexByLeadNo_(service, headerMap, leadNo) {
+  var values = service.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (getCell_(values[i], headerMap, '№') === leadNo) return i + 1; // 1-based row
+  }
+  return -1;
+}
+
 /**
- * Review находка №6 (CRITICAL, версия 0.3.0) + design §1 (версия 0.4.0): раньше
- * принимался готовый rowIndex, вычисленный ДО этого вызова — между тем моментом
- * и записью строка могла "уехать" (сотрудник отсортировал/переставил —
- * LockService защищает только код скрипта, не действия людей). Инвариант
- * "перед каждой записью заново находит строку по №" требует свежего поиска
- * НЕПОСРЕДСТВЕННО перед записью на ОБОИХ листах: «Служебное» — по корневому
- * submission_id, «Заявки» — по № (единственная связь между листами).
+ * design fix item3 (Codex review, "reproduced G-0001/G-0002"): раньше Имя/
+ * Телефон/Email писались ОТДЕЛЬНЫМИ setValue() при заранее вычисленном
+ * rowIndex — сортировка «Заявки» МЕЖДУ этими вызовами приводила к тому, что
+ * часть контактных полей попадала в СТАРУЮ физическую строку, а часть — в
+ * НОВУЮ (после сортировки там оказывается уже ДРУГАЯ заявка) — контакты
+ * "расползались" по двум клиентам. Теперь: строка находится ЗАНОВО по № (design
+ * §1), читается и правится В ПАМЯТИ и пишется ОДНИМ setValues() на весь office-
+ * диапазон строки — Имя/Телефон/Email физически не могут попасть в РАЗНЫЕ
+ * строки одним вызовом API. До и после записи № сверяется: если он не
+ * совпадает с ожидаемым (строка успела уехать в узком окне между чтением и
+ * записью), запись НЕ производится (проверка до) либо ОТКАТЫВАЕТСЯ к
+ * прочитанным значениям (проверка после) — исправление не помечается
+ * применённым и будет повторено следующим тиком, чужая заявка не портится.
  */
 function applyCorrectionToRow_(requests, reqHeaderMap, service, serviceHeaderMap, plan) {
   var serviceRowIndex = findServiceRowIndexBySubmissionId_(service, serviceHeaderMap, plan.rootId);
@@ -309,18 +519,40 @@ function applyCorrectionToRow_(requests, reqHeaderMap, service, serviceHeaderMap
   var rowIndex = findRequestRowIndexByLeadNo_(requests, reqHeaderMap, leadNo);
   if (rowIndex === -1) return; // строка «Заявки» исчезла между поиском и записью — следующий тик подтянет
 
-  var updates = {
-    'Имя': plan.finalContacts.name || '',
-    'Телефон': plan.finalContacts.phone || '',
-    'Email': plan.finalContacts.email || ''
-  };
-  Object.keys(updates).forEach(function (header) {
-    var col = reqHeaderMap[header] + 1;
-    requests.getRange(rowIndex, col).setValue(updates[header]);
-  });
+  var lastCol = OFFICE_HEADERS_.length;
+  var rowRange = requests.getRange(rowIndex, 1, 1, lastCol);
+  var originalValues = rowRange.getValues()[0];
+
+  // design item3, проверка ДО записи: строка могла уехать между поиском по №
+  // и этим чтением — если № в прочитанной строке уже не совпадает, это не
+  // наша строка, писать в неё нельзя.
+  if (getCell_(originalValues, reqHeaderMap, '№') !== leadNo) {
+    Logger.log('applyCorrectionToRow_: строка %s больше не принадлежит %s (уехала до записи) — пропуск, следующий тик найдёт заново', rowIndex, leadNo);
+    return;
+  }
+
+  var updatedValues = originalValues.slice();
+  setCell_(updatedValues, reqHeaderMap, 'Имя', plan.finalContacts.name || '');
+  setCell_(updatedValues, reqHeaderMap, 'Телефон', plan.finalContacts.phone || '');
+  setCell_(updatedValues, reqHeaderMap, 'Email', plan.finalContacts.email || '');
+
+  protectExternalTextColumns_(requests, rowIndex, reqHeaderMap, ['Имя', 'Телефон', 'Email']); // item1
+  rowRange.setValues([updatedValues]); // design item3 — ОДИН вызов на всю строку
+
+  // design item3, проверка ПОСЛЕ записи: узкое окно между getValues() и
+  // setValues() этой же строки — если № успел смениться, откатываем запись
+  // (не оставляем чужую заявку испорченной) и не помечаем исправление
+  // применённым (Служебное «все submission_id» ниже не трогаем).
+  var noAfterWrite = requests.getRange(rowIndex, reqHeaderMap['№'] + 1).getValue();
+  if (noAfterWrite !== leadNo) {
+    Logger.log('applyCorrectionToRow_: № в строке %s изменился на %s (ожидали %s) между чтением и записью — откатываю запись', rowIndex, noAfterWrite, leadNo);
+    rowRange.setValues([originalValues]); // компенсирующий откат к исходным значениям чужой строки
+    return;
+  }
+
   writeContactCell_(requests, rowIndex, reqHeaderMap, plan.finalContacts.phone); // review находка №12
 
-  service.getRange(serviceRowIndex, serviceHeaderMap['все submission_id'] + 1).setValue(plan.orderedIds.join(','));
+  setPlainTextValue_(service.getRange(serviceRowIndex, serviceHeaderMap['все submission_id'] + 1), plan.orderedIds.join(',')); // item1
 }
 
 function readPendingCorrections_() {
@@ -399,7 +631,9 @@ function writeIntakeWatermark_(n) {
 
 // review находка №12: «Связаться» — RichTextValue с настоящей кликабельной
 // ссылкой (WhatsApp), а не текст "tel:... https://wa.me/...". tel: не делаем
-// ссылкой — см. Utils.gs buildContactCellPlan_ и README "Не проверено".
+// ссылкой — см. Utils.gs buildContactCellPlan_ и README "Не проверено". Rich
+// text не подвержен formula re-injection (item1) — движок не парсит содержимое
+// RichTextValue как формулу, это чистый форматированный текст.
 function buildContactRichText_(phone) {
   var plan = buildContactCellPlan_(phone);
   if (!plan.text) return null;
@@ -450,10 +684,10 @@ function processSla_(ss, config, now, values, headerMap) {
     var rowNumber = i + 1;
     var leadData = { name: getCell_(row, headerMap, 'Имя') || '', phone: getCell_(row, headerMap, 'Телефон') || '' };
     if (state.escalationDue) {
-      notifySlaEscalation_(journal, requests, leadNo, rowNumber, config.escalationRecipients, leadData);
+      notifySlaEscalation_(journal, requests, leadNo, rowNumber, config.escalationRecipients, leadData, config.systemAlertRecipients);
     } else if (state.firstAttemptDue) {
       var responsible = getCell_(row, headerMap, 'Ответственный') || config.defaultDutyOfficer;
-      notifySlaFirstAttempt_(journal, requests, leadNo, rowNumber, [responsible], leadData);
+      notifySlaFirstAttempt_(journal, requests, leadNo, rowNumber, [responsible], leadData, config.systemAlertRecipients);
     }
   }
 }
@@ -479,7 +713,7 @@ function maybeSendDigest_(ss, config, now, values, headerMap) {
   var stats = computeDigestStats_(values, headerMap, config, now);
   var digest = composeDigest_(stats);
   var journal = ss.getSheetByName(SHEET_JOURNAL_);
-  var result = notifyDigest_(journal, todayKey, config.officeRecipients, digest);
+  var result = notifyDigest_(journal, todayKey, config.officeRecipients, digest, config.systemAlertRecipients);
   if (result.sent) props.setProperty('lastDigestDayKey', todayKey);
 }
 
@@ -521,6 +755,91 @@ function writeHeartbeat_(now) {
 }
 
 // ---------------------------------------------------------------------------
+// design fix item5: независимый ретрай упавших/зависших уведомлений
+// ---------------------------------------------------------------------------
+
+/**
+ * Codex review item5: раньше письмо о новой заявке отправлялось ТОЛЬКО в
+ * момент создания строки (внутри syncIntakeToRequests_) — если сама отправка
+ * не удалась (сеть/квота/невалидный адрес), его больше никто не пытался
+ * повторить: watermark уже продвинут, а следующий тик видит эту заявку как
+ * "уже существующую" (есть в «Служебное»), а не как toCreate — код, который
+ * вызывал notifyNewLead_, больше никогда не выполнится для неё. Теперь —
+ * независимый шаг: сканирует «Журнал» на предмет последних записей события
+ * new_lead в состоянии НЕ sent, повторяет отправку по ТОЙ ЖЕ политике
+ * decideSendAction_ (SendLog.gs — используется автоматически внутри
+ * sendNotificationOnce_), с ограничением числа попыток на ключ (иначе
+ * зависшая заявка может съесть много писем/квоты) и проверкой суточной квоты
+ * MailApp.getRemainingDailyQuota() (иначе ретраи одного зависшего письма
+ * тратят квоту, нужную для остальных).
+ */
+var NOTIFICATION_RETRY_MAX_ATTEMPTS_ = 5;
+
+function retryPendingNotifications_(ss, config, now, reqHeaderMap, serviceHeaderMap) {
+  var journal = ss.getSheetByName(SHEET_JOURNAL_);
+  var lastRow = journal.getLastRow();
+  if (lastRow < 2) return;
+  var rows = journal.getRange(2, 1, lastRow - 1, JOURNAL_HEADERS_.length).getValues();
+
+  // Последнее состояние по каждому ключу события new_lead (самая свежая запись,
+  // журнал append-only — идём с конца, чтобы не тратить лишний проход).
+  var latestByKey = {};
+  for (var i = rows.length - 1; i >= 0; i--) {
+    var row = rows[i];
+    var key = row[7];
+    if (!key || key.indexOf(':new_lead:') === -1) continue;
+    if (latestByKey[key]) continue; // уже нашли более свежую запись этого ключа
+    latestByKey[key] = { leadNo: row[1], state: row[5] };
+  }
+
+  var attempts = readNotificationRetryAttempts_();
+  var requests = ss.getSheetByName(SHEET_REQUESTS_);
+  var service = ss.getSheetByName(SHEET_SERVICE_);
+  var quotaOk = typeof MailApp.getRemainingDailyQuota !== 'function' || MailApp.getRemainingDailyQuota() > 0;
+
+  Object.keys(latestByKey).forEach(function (key) {
+    var entry = latestByKey[key];
+    if (entry.state === SEND_STATES_.SENT) { delete attempts[key]; return; }
+
+    var count = attempts[key] || 0;
+    if (count >= NOTIFICATION_RETRY_MAX_ATTEMPTS_ || !quotaOk) return; // item5: ограничение попыток / квота
+
+    var leadRow = findRequestRowIndexByLeadNo_(requests, reqHeaderMap, entry.leadNo);
+    if (leadRow === -1) return; // строка исчезла — не на чем ретраить
+
+    var rowValues = requests.getRange(leadRow, 1, 1, OFFICE_HEADERS_.length).getValues()[0];
+    var serviceRowIndex = findServiceRowIndexByLeadNo_(service, serviceHeaderMap, entry.leadNo);
+    var source = '';
+    if (serviceRowIndex !== -1) {
+      var svcValues = service.getRange(serviceRowIndex, 1, 1, SERVICE_SHEET_HEADERS_.length).getValues()[0];
+      source = getCell_(svcValues, serviceHeaderMap, 'Откуда') || '';
+    }
+    var receivedAtRaw = getCell_(rowValues, reqHeaderMap, 'Получена');
+
+    var leadData = {
+      name: getCell_(rowValues, reqHeaderMap, 'Имя') || '',
+      phone: getCell_(rowValues, reqHeaderMap, 'Телефон') || '',
+      email: getCell_(rowValues, reqHeaderMap, 'Email') || '',
+      source: source,
+      receivedAtLabel: receivedAtRaw ? Utilities.formatDate(new Date(receivedAtRaw), config.tz, 'dd.MM.yyyy HH:mm') : ''
+    };
+
+    attempts[key] = count + 1;
+    notifyNewLead_(journal, requests, entry.leadNo, leadRow, config.officeRecipients, leadData, config.systemAlertRecipients);
+  });
+
+  writeNotificationRetryAttempts_(attempts);
+}
+
+function readNotificationRetryAttempts_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('notificationRetryAttempts');
+  return raw ? JSON.parse(raw) : {};
+}
+function writeNotificationRetryAttempts_(attempts) {
+  PropertiesService.getScriptProperties().setProperty('notificationRetryAttempts', JSON.stringify(attempts));
+}
+
+// ---------------------------------------------------------------------------
 // onEdit — устанавливаемый триггер (§5.2)
 // ---------------------------------------------------------------------------
 
@@ -529,17 +848,35 @@ function writeHeartbeat_(now) {
  * .forSpreadsheet(SPREADSHEET_ID_).onEdit().create() — НЕ простой bound-триггер
  * (design §5.1, находка Codex №1: у bound-скрипта редакторы таблицы = редакторы
  * кода, у installable-триггера identity владельца триггера отделена от таблицы).
+ *
+ * design fix item7 (Codex review): раньше `if (!lock.tryLock(5000)) return;` —
+ * если блокировка занята (параллельный tick() или другая правка) дольше 5с,
+ * правка терялась НАВСЕГДА: ни штампов («Первая попытка»), ни записи в
+ * «Служебное», ни строки в «Журнале». Теперь: таймаут ставит правку в очередь
+ * (Script Properties) на реконсиляцию следующим tick() (см.
+ * reconcilePendingEdits_) и журналирует сам факт таймаута.
  */
 function handleEdit_(e) {
   var lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return;
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID_); // нужен и для лога таймаута, и для основного пути
+  if (!lock.tryLock(5000)) {
+    queuePendingEdit_(e);
+    try {
+      var journalOnTimeout = ss.getSheetByName(SHEET_JOURNAL_);
+      appendJournalRow_(journalOnTimeout, new Date(), '', 'onedit_lock_timeout', 'failed', 'internal',
+        'handleEdit_: не удалось получить блокировку за 5с — правка поставлена в очередь на следующий tick()',
+        'onedit_lock_timeout:' + Date.now());
+    } catch (loggingErr) {
+      Logger.log('handleEdit_: не удалось записать таймаут в журнал: %s', loggingErr);
+    }
+    return;
+  }
   try {
     var sheet = e.range.getSheet();
     if (sheet.getName() !== SHEET_REQUESTS_) return;
     if (e.range.getRow() === 1) return; // заголовок
 
     var headerMap = colByHeader_(sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]);
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID_);
     var journal = ss.getSheetByName(SHEET_JOURNAL_);
     // Задача 0.4.0: «Контакт состоялся»/«Статус изменён»/«Договор» переехали на
     // «Служебное» — onEdit находит нужную строку там по № (design §1, §3.2).
@@ -556,6 +893,48 @@ function handleEdit_(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/** design item7: правка, потерянная из-за таймаута блокировки — ставится в очередь по номерам строк «Заявки». */
+function queuePendingEdit_(e) {
+  if (!e || !e.range) return;
+  var sheetName = e.range.getSheet().getName();
+  if (sheetName !== SHEET_REQUESTS_) return; // не наш лист — нечего реконсилировать
+  var pending = readPendingEdits_();
+  var startRow = e.range.getRow();
+  var numRows = e.range.getNumRows();
+  for (var r = startRow; r < startRow + numRows; r++) {
+    if (r === 1) continue; // заголовок
+    if (pending.indexOf(r) === -1) pending.push(r);
+  }
+  writePendingEdits_(pending);
+}
+function readPendingEdits_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('pendingEditRows');
+  return raw ? JSON.parse(raw) : [];
+}
+function writePendingEdits_(rows) {
+  PropertiesService.getScriptProperties().setProperty('pendingEditRows', JSON.stringify(rows));
+}
+
+/**
+ * design fix item7: реконсиляция правок, потерянных из-за таймаута блокировки
+ * onEdit — по одной попытке на очередь (не бесконечный повтор одной и той же
+ * правки, если она снова не проходит: строка могла быть удалена/лист
+ * перестроен). Строка, которой уже нет (удалена/за пределами листа),
+ * пропускается молча.
+ */
+function reconcilePendingEdits_(requests, reqHeaderMap, journal, service, serviceHeaderMap, now) {
+  var pending = readPendingEdits_();
+  if (!pending.length) return;
+  var maxRow = requests.getLastRow();
+  pending.forEach(function (r) {
+    if (r < 2 || r > maxRow) return;
+    runStepSafely_('reconcile_edit_row_' + r, function () {
+      handleEditRow_(requests, reqHeaderMap, r, journal, service, serviceHeaderMap, now);
+    });
+  });
+  writePendingEdits_([]);
 }
 
 /**
@@ -601,15 +980,6 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
   if (telephone) {
     writeContactCell_(sheet, rowIndex, headerMap, telephone); // review находка №12
   }
-}
-
-/** Находит строку «Служебное» по № (design §1/§3.2 — единственная связь между листами). */
-function findServiceRowIndexByLeadNo_(service, headerMap, leadNo) {
-  var values = service.getDataRange().getValues();
-  for (var i = 1; i < values.length; i++) {
-    if (getCell_(values[i], headerMap, '№') === leadNo) return i + 1; // 1-based row
-  }
-  return -1;
 }
 
 // ---------------------------------------------------------------------------
