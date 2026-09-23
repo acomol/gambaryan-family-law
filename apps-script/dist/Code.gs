@@ -2,7 +2,7 @@
 //
 // Built by scripts/bundle-apps-script.mjs from apps-script/src/*.gs
 // (fixed order — see FILE_ORDER in that script).
-// Source commit: 61482e221e152dfbd90f59f025eb9422e7951fda
+// Source commit: 2b7ae86cfbe8fafa1630fe0a60bf4bb366ee2756
 // Generated: 2026-09-23
 //
 // To change behavior, edit the corresponding file under apps-script/src/
@@ -2308,7 +2308,7 @@ var TODAY_HEADER_ROW_NEW_ = TODAY_HEADER_ROW_OVERDUE_ + 2 + TODAY_BLOCK_CAPACITY
 var TODAY_HEADER_ROW_CONSULT_ = TODAY_HEADER_ROW_NEW_ + 2 + TODAY_BLOCK_CAPACITY_ + 1; // 409
 
 function ensureTodayFormulas_(sheet, requestsSheet) {
-  if (sheet.getRange(1, 1).getValue()) return; // уже настроено — не перезаписываем
+  var alreadyBuilt = !!sheet.getRange(1, 1).getValue();
   var requestsSheetId = requestsSheet.getSheetId();
 
   // B3 fix (review sheet-robustness №2): колонки «Заявки» раньше резолвились
@@ -2334,25 +2334,38 @@ function ensureTodayFormulas_(sheet, requestsSheet) {
   var notClosed = statusCol + ' <> \'Клиент — договор\' and ' +
     statusCol + ' <> \'Отказ\' and ' + statusCol + ' <> \'Дубль / спам\'';
 
-  // Блок 1: Просрочено
   var overdueQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + nextStepCol +
     ' where ' + nextStepCol + ' < date \'"&TEXT(TODAY(),"yyyy-MM-dd")&"\' and ' + nextStepCol + ' is not null and ' +
-    notClosed + ' order by ' + nextStepCol + ' asc",0),"")';
+    notClosed + ' order by ' + nextStepCol + ' asc limit ' + TODAY_BLOCK_CAPACITY_ + '",0),"")';
+  // Установка 2026-09-24 на боевой таблице: без условия «№ не пуст» под «статус
+  // пуст» попадали все ~1000 пустых строк листа, результат не помещался в блок и
+  // показывал #REF! (перекрывал следующий блок). limit — та же защита для всех блоков.
+  var newQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + phoneCol +
+    ' where (' + statusCol + ' = \'\' or ' + statusCol + ' is null) and ' + noCol + ' <> \'\'' +
+    ' order by ' + receivedCol + ' asc limit ' + TODAY_BLOCK_CAPACITY_ + '",0),"")';
+  var consultQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + consultCol +
+    ' where ' + consultCol + ' >= date \'"&TEXT(TODAY(),"yyyy-MM-dd")&"\' and ' + consultCol +
+    ' < date \'"&TEXT(TODAY()+1,"yyyy-MM-dd")&"\' order by ' + consultCol + ' asc limit ' + TODAY_BLOCK_CAPACITY_ + '",0),"")';
+
+  // Лист уже построен (повторный setupCrm) — обновляем только три формулы блоков.
+  if (alreadyBuilt) {
+    sheet.getRange(TODAY_HEADER_ROW_OVERDUE_ + 2, 1).setFormula(overdueQuery);
+    sheet.getRange(TODAY_HEADER_ROW_NEW_ + 2, 1).setFormula(newQuery);
+    sheet.getRange(TODAY_HEADER_ROW_CONSULT_ + 2, 1).setFormula(consultQuery);
+    return;
+  }
+
+  // Блок 1: Просрочено
   buildTodayBlock_(sheet, TODAY_HEADER_ROW_OVERDUE_, '🔴 ПРОСРОЧЕНО — следующий шаг прошёл',
     ['№', 'Имя', 'Шаг был', 'Открыть'], overdueQuery, requestsSheetId);
   sheet.getRange(TODAY_HEADER_ROW_OVERDUE_, 1, 1, 4).setBackground('#FFCDD2'); // design §3.4 — тот же красный, что overdue в «Заявках»
 
   // Блок 2: Новые — ждут первой попытки
-  var newQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + phoneCol +
-    ' where ' + statusCol + ' = \'\' or ' + statusCol + ' is null order by ' + receivedCol + ' asc",0),"")';
   buildTodayBlock_(sheet, TODAY_HEADER_ROW_NEW_, '🟡 НОВЫЕ — ждут первой попытки',
     ['№', 'Имя', 'Телефон', 'Открыть'], newQuery, requestsSheetId);
   sheet.getRange(TODAY_HEADER_ROW_NEW_, 1, 1, 4).setBackground('#FFF9C4'); // design §3.4 — тот же жёлтый, что «Новая» в «Заявках»
 
   // Блок 3: Консультации сегодня
-  var consultQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + consultCol +
-    ' where ' + consultCol + ' >= date \'"&TEXT(TODAY(),"yyyy-MM-dd")&"\' and ' + consultCol +
-    ' < date \'"&TEXT(TODAY()+1,"yyyy-MM-dd")&"\' order by ' + consultCol + ' asc",0),"")';
   buildTodayBlock_(sheet, TODAY_HEADER_ROW_CONSULT_, '🟣 КОНСУЛЬТАЦИИ СЕГОДНЯ',
     ['№', 'Имя', 'Время', 'Открыть'], consultQuery, requestsSheetId);
   sheet.getRange(TODAY_HEADER_ROW_CONSULT_, 1, 1, 4).setBackground('#CE93D8'); // design §3.4 — тот же сиреневый, что «Консультация назначена»
