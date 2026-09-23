@@ -25,6 +25,8 @@ const testFiles = [
   './codex-review-fixes.test.mjs',
   './dashboard.test.mjs',
   './realrun.test.mjs',
+  './new-lead-flag.test.mjs',
+  './whatsapp.test.mjs',
   './pipeline-health.test.mjs',
   './fix-a.test.mjs',
   './fix-b.test.mjs'

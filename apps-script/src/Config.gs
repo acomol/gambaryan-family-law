@@ -17,6 +17,12 @@ var SETTINGS_SHEET_NAME_ = 'Настройки';
 // графики пустые. Код сохранён: включить = true и повторно запустить setupCrm().
 var SUMMARY_SHEET_ENABLED_ = false;
 
+// v1 (2026-09-23): письмо о новой заявке шлёт Albato (шаг Gmail в сценарии
+// GAMB_ADV, как у Assuta) — сразу и круглосуточно. CRM его НЕ шлёт, иначе
+// офис получит два письма на заявку. SLA-напоминания, эскалации, дайджест —
+// остаются за CRM. Включить обратно = true.
+var NEW_LEAD_EMAIL_ENABLED_ = false;
+
 var DEFAULT_SETTINGS_ = {
   tz: 'Asia/Jerusalem',
   business_days: '0,1,2,3,4', // 0=вс..6=сб (design §5.5: вс-чт)

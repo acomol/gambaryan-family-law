@@ -113,6 +113,7 @@ function buildRequestRowLink_(requestsSheet, rowNumber) {
  * @param {string[]} [systemAlertRecipients] design fix item2 — алерт на пустых получателей
  */
 function notifyNewLead_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData, systemAlertRecipients) {
+  if (!NEW_LEAD_EMAIL_ENABLED_) return { sent: false, reason: 'skip' }; // письмо шлёт Albato (Config.gs)
   leadData = leadData || {};
   var email = renderNewLeadEmail_({
     leadNo: leadNo,

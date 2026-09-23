@@ -61,11 +61,33 @@ function buildContactLinks_(phone) {
   var raw = String(phone === undefined || phone === null ? '' : phone);
   var withPlus = raw.replace(/[^\d+]/g, '');
   var digitsOnly = withPlus.replace(/^\+/, '');
+  var waNumber = normalizeWhatsAppNumber_(raw);
   return {
     digitsOnly: digitsOnly,
     telHref: digitsOnly ? 'tel:' + withPlus : '',
-    waHref: digitsOnly ? 'https://wa.me/' + digitsOnly : ''
+    waHref: waNumber ? 'https://wa.me/' + waNumber : ''
   };
+}
+
+/**
+ * Номер для wa.me в международном формате. Официально (WhatsApp Help Center,
+ * «How to use click to chat», прочитано 2026-09-24): "Use https://wa.me/<number>
+ * where the <number> is a full phone number in international format. Omit any
+ * zeroes, brackets, or dashes". Раньше «0501112233» давал wa.me/0501112233 —
+ * WhatsApp такой номер не открывает (живой прогон 2026-09-23).
+ * Израиль: ведущий 0 -> 972; городские (972 + не 5) -> null (без кнопки).
+ * @return {string|null} только цифры, 10–15 знаков, или null
+ */
+function normalizeWhatsAppNumber_(raw) {
+  var s = String(raw === undefined || raw === null ? '' : raw).replace(/[^\d+]/g, '');
+  if (s.charAt(0) === '+') s = s.slice(1);
+  else if (s.indexOf('00') === 0) s = s.slice(2);
+  else if (s.charAt(0) === '0') s = '972' + s.slice(1);
+  else if (/^5\d{8}$/.test(s)) s = '972' + s;
+  s = s.replace(/\D/g, '');
+  if (!/^\d{10,15}$/.test(s)) return null;
+  if (s.indexOf('972') === 0 && s.charAt(3) !== '5') return null;
+  return s;
 }
 
 /**

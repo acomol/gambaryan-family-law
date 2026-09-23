@@ -62,5 +62,11 @@ export function loadGasContext(fileNames, overrides) {
     const code = fs.readFileSync(fullPath, 'utf8');
     vm.runInContext(code, sandbox, { filename: fullPath });
   }
+  // Existing suites were written for the CRM sending the new-lead email; v1
+  // ships with it OFF (Albato sends it). Suites keep testing the email path;
+  // test/new-lead-flag.test.mjs checks the shipped default separately.
+  if ('NEW_LEAD_EMAIL_ENABLED_' in sandbox && !(overrides && 'NEW_LEAD_EMAIL_ENABLED_' in overrides)) {
+    sandbox.NEW_LEAD_EMAIL_ENABLED_ = true;
+  }
   return sandbox;
 }
