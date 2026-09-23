@@ -2,8 +2,10 @@
  * Sheets.gs — setupCrm(): идемпотентно создаёт/чинит структуру таблицы.
  * Design: docs/MINI-CRM-DESIGN.md §2, §3, §4.
  *
- * GAS-only (SpreadsheetApp) — не тестируется в Node. НЕ ЗАПУСКАЛОСЬ вживую на
- * реальной таблице — README.md §"Проверить перед боем" описывает ручную приёмку.
+ * GAS-only (SpreadsheetApp) — тестируется в Node через структурные фейки
+ * (test/helpers/gas-fakes.mjs, test/sheets-protection.test.mjs), не живым API.
+ * НЕ ЗАПУСКАЛОСЬ вживую на реальной таблице — README.md §"Проверить перед боем"
+ * описывает ручную приёмку.
  */
 
 var SHEET_INTAKE_ = 'Входящие';
@@ -28,13 +30,16 @@ var SERVICE_HEADERS_ = [
 
 var REQUESTS_HEADERS_ = OFFICE_HEADERS_.concat(SERVICE_HEADERS_);
 
-// Точный список полей Albato (24, §7) не проверен — реконструирован из того, что
-// упомянуто в design.md; сверить с реальным маппингом сценария bundle 389466
-// перед подключением Albato (README §"Приёмочный тест Albato").
+// Реальный лист «Входящие» уже переименован и живёт — это 24 заголовка A..X в
+// этом фиксированном порядке (владелец подтвердил, review находка №3; Albato
+// пишет их, lf_hp в маппинг Albato не входит). setupCrm НИКОГДА не переставляет/
+// переименовывает/добавляет/удаляет их — см. verifyIntakeHeaders_ ниже, которая
+// только СВЕРЯЕТ и репортит расхождение в «Журнал».
 var INTAKE_HEADERS_ = [
-  'submission_id', 'corrects_submission_id', 'submitted_at', 'name', 'phone', 'email',
-  'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-  'gclid', 'gbraid', 'wbraid', 'landing_path', 'referrer_host', 'form_id', 'lf_hp'
+  'submitted_at', 'submission_id', 'corrects_submission_id', 'name', 'phone', 'email',
+  'landing_path', 'referrer_host', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_id',
+  'utm_term', 'utm_content', 'gclid', 'gbraid', 'wbraid', 'fbclid', 'form_id',
+  'landing_language', 'event_name', 'source_system', 'schema_version', 'schema_date'
 ];
 
 var STATUS_OPTIONS_ = [
@@ -62,6 +67,12 @@ function setupCrm() {
   var journal = ensureSheet_(ss, SHEET_JOURNAL_);
   var settings = ensureSheet_(ss, SETTINGS_SHEET_NAME_);
 
+  // «Входящие» — реальный лист Albato: setupCrm его НЕ переставляет/не рвёт
+  // (design item3/review №3). ensureHeaderRow_ пишет заголовки только если их
+  // ещё вовсе нет (см. hasAny ниже) — на реальном листе они уже есть, поэтому
+  // здесь только заводим их при первом создании листа "с нуля" (например, в
+  // тестовой копии таблицы), а verifyIntakeHeaders_ сверяет и репортит
+  // расхождение, не пытаясь его исправить.
   ensureHeaderRow_(intake, INTAKE_HEADERS_);
   ensureHeaderRow_(requests, REQUESTS_HEADERS_);
   ensureHeaderRow_(journal, JOURNAL_HEADERS_);
@@ -70,7 +81,9 @@ function setupCrm() {
   formatRequestsSheet_(requests);
   applyRequestsValidation_(requests);
   applyRequestsConditionalFormatting_(requests);
-  protectIntakeSheet_(intake);
+  verifyIntakeHeaders_(intake, journal);
+  formatIntakeSheet_(intake);
+  protectIntakeSheet_(intake, journal);
   protectServiceColumns_(requests);
   protectWholeSheet_(journal, 'Журнал — только для чтения из UI, пишет только скрипт');
 
@@ -256,18 +269,36 @@ function columnLetter_(colIndex1based) {
 /**
  * Design §2/§5.1: «Входящие» — весь лист защищён, редакторы только аккаунт
  * Albato и владелец скрипта. Аккаунт Albato читается из «Настроек» ключа
- * albato_editor_email (не в DEFAULT_SETTINGS_ — заполняется вручную при
- * подключении Albato, т.к. неизвестен на момент кода).
+ * albato_editor_email (review находка №5: ровно одно место хранения — строка
+ * «Настроек», её пустой дефолт заводит setupCrm через DEFAULT_SETTINGS_).
+ *
+ * Review находка №5, вторая часть: если albato_editor_email ещё не заполнен,
+ * жёсткая защита (только владелец скрипта редактор) заблокирует ЖИВОЙ Albato
+ * молча — лид потеряется. Поэтому пока ключ пуст, защита переводится в режим
+ * предупреждения (Protection.setWarningOnly(true) — "every user can edit data
+ * in the area, except editing prompts a warning", см.
+ * https://developers.google.com/apps-script/reference/spreadsheet/protection#setwarningonlywarningonly),
+ * и в «Журнал» пишется предупреждение. Как только email заполнен — защита
+ * снова жёсткая (setWarningOnly(false), редактор — только владелец + Albato).
  */
-function protectIntakeSheet_(sheet) {
+function protectIntakeSheet_(sheet, journal) {
   var protection = getOrCreateSheetProtection_(sheet);
   protection.setDescription('Входящие — только Albato и владелец скрипта (design §2)');
   var albatoEmail = readSingleSetting_('albato_editor_email');
-  var editors = [Session.getEffectiveUser().getEmail()];
-  if (albatoEmail) editors.push(albatoEmail);
-  protection.removeEditors(protection.getEditors());
-  protection.addEditors(editors);
+  var owner = Session.getEffectiveUser().getEmail(); // review №4: может быть '' без scope userinfo.email
+  resetEditorsTo_(protection, [owner, albatoEmail]);
   if (protection.canDomainEdit()) protection.setDomainEdit(false);
+
+  if (albatoEmail) {
+    protection.setWarningOnly(false);
+  } else {
+    protection.setWarningOnly(true);
+    if (journal) {
+      appendJournalRow_(journal, new Date(), '', 'setup_warning', 'sent', 'internal',
+        'albato_editor_email пуст — «Входящие» защищены в режиме предупреждения (не жёстко), ' +
+        'заполните строку в «Настройки» перед подключением Albato', 'setup_warning:albato_editor_email');
+    }
+  }
 }
 
 function protectWholeSheet_(sheet, description) {
@@ -275,20 +306,108 @@ function protectWholeSheet_(sheet, description) {
   protection.setDescription(description);
 }
 
+var SERVICE_COLUMNS_PROTECTION_DESCRIPTION_ = 'Служебные колонки «Заявки» — только владелец скрипта (design §3.2)';
+
 /**
  * Design §3.2: служебные колонки в «Заявки» — только владелец скрипта.
- * Защищаем диапазон служебных колонок отдельно от офисных.
+ * Review находка №1 (CRITICAL): раньше removeEditors(getEditors()) не
+ * сопровождался addEditors — редакторов не оставалось вовсе, и аккаунт
+ * скрипта (не владелец файла) не мог писать служебные колонки, весь tick()
+ * падал. Симметрично protectIntakeSheet_: снимаем всех и добавляем только
+ * владельца скрипта.
+ * Review находка №9 (idempotent): раньше range.protect() вызывался каждый
+ * setupCrm() заново — при повторном запуске плодились дубли защиты диапазона.
+ * Теперь ищем существующую RANGE-защиту по описанию и переиспользуем её.
  */
 function protectServiceColumns_(sheet) {
-  var range = sheet.getRange(1, OFFICE_HEADERS_.length + 1, sheet.getMaxRows(), SERVICE_HEADERS_.length);
-  var existing = range.protect();
-  existing.setDescription('Служебные колонки «Заявки» — только владелец скрипта (design §3.2)');
-  existing.removeEditors(existing.getEditors());
+  var protection = getOrCreateRangeProtectionByDescription_(
+    sheet,
+    SERVICE_COLUMNS_PROTECTION_DESCRIPTION_,
+    function () { return sheet.getRange(1, OFFICE_HEADERS_.length + 1, sheet.getMaxRows(), SERVICE_HEADERS_.length); }
+  );
+  protection.setDescription(SERVICE_COLUMNS_PROTECTION_DESCRIPTION_);
+  resetEditorsTo_(protection, [Session.getEffectiveUser().getEmail()]);
 }
 
 function getOrCreateSheetProtection_(sheet) {
   var protections = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
   return protections.length ? protections[0] : sheet.protect();
+}
+
+/**
+ * Review находка №9: get-or-create RANGE-защиты по description, а не
+ * безусловный range.protect() при каждом вызове (иначе повторный setupCrm()
+ * плодит дубли защиты того же диапазона).
+ * @param {Sheet} sheet
+ * @param {string} description
+ * @param {function(): Range} makeRange вызывается только если защиты ещё нет
+ */
+function getOrCreateRangeProtectionByDescription_(sheet, description, makeRange) {
+  var existing = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).filter(function (p) {
+    return p.getDescription() === description;
+  });
+  if (existing.length) return existing[0];
+  return makeRange().protect();
+}
+
+/**
+ * Review находки №1/№4: снимает всех текущих редакторов и ставит РОВНО
+ * переданный список, никогда не вызывая addEditors с '' (пустой email —
+ * например Session.getEffectiveUser().getEmail() без scope userinfo.email,
+ * см. https://developers.google.com/apps-script/reference/base/session).
+ * @param {Protection} protection
+ * @param {string[]} emails
+ */
+function resetEditorsTo_(protection, emails) {
+  protection.removeEditors(protection.getEditors());
+  var valid = (emails || []).filter(function (e) { return !!e; });
+  if (valid.length) protection.addEditors(valid);
+}
+
+/**
+ * Design §2 review находка №3: сверяет реальные заголовки «Входящие» (Albato
+ * пишет их через Sheets API, порядок и состав задаёт сценарий bundle 389466,
+ * НЕ этот код) с INTAKE_HEADERS_ и репортит расхождение в «Журнал» — НИКОГДА
+ * не переставляет/не переименовывает/не дописывает колонки сама.
+ * @return {string[]} описания расхождений (пусто — заголовки совпадают)
+ */
+function verifyIntakeHeaders_(sheet, journal) {
+  var lastCol = sheet.getLastColumn();
+  var actual = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+  var diff = diffHeaderLists_(actual, INTAKE_HEADERS_);
+  if (diff.length && journal) {
+    appendJournalRow_(journal, new Date(), '', 'intake_headers_mismatch', 'sent', 'internal',
+      diff.join('; '), 'setup_warning:intake_headers');
+  }
+  return diff;
+}
+
+/**
+ * Чистое позиционное сравнение заголовков (A, B, C… — порядок важен, «Входящие»
+ * не переставляем). Тестируется без листов/фейков.
+ * @param {Array} actual
+ * @param {string[]} expected
+ * @return {string[]}
+ */
+function diffHeaderLists_(actual, expected) {
+  var diffs = [];
+  var len = Math.max((actual || []).length, expected.length);
+  for (var i = 0; i < len; i++) {
+    var a = actual && actual[i] !== undefined && actual[i] !== null ? String(actual[i]).trim() : '';
+    var e = expected[i] === undefined ? '' : expected[i];
+    if (a !== e) {
+      diffs.push('колонка ' + columnLetter_(i + 1) + ': ожидали "' + e + '", в листе "' + a + '"');
+    }
+  }
+  return diffs;
+}
+
+/**
+ * Design item3 review: «Плейн-текст» на A:X «Входящие», идемпотентно
+ * (setNumberFormat безопасно вызывать повторно с тем же форматом).
+ */
+function formatIntakeSheet_(sheet) {
+  sheet.getRange(2, 1, Math.max(sheet.getMaxRows() - 1, 1), INTAKE_HEADERS_.length).setNumberFormat('@');
 }
 
 function readSingleSetting_(key) {

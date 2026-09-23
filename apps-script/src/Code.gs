@@ -1,6 +1,8 @@
 /**
  * Code.gs — точки входа: tick(), onEdit-обработчик, установка/снятие триггеров,
- * doGet (health), меню «CRM». Design: docs/MINI-CRM-DESIGN.md §5.1-§5.7.
+ * doGet (health), административные функции ADFIX (без меню «CRM» — review
+ * находка №2, см. комментарий над menuSendTestNotification_). Design:
+ * docs/MINI-CRM-DESIGN.md §5.1-§5.7.
  *
  * GAS-only, оркестрирует чистые функции из BusinessCalendar/Sla/CorrectionChain/
  * SendLog/Digest/Source/Numbering/SyncPlan. НЕ запускалось вживую — см. README
@@ -22,10 +24,21 @@ function tick() {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID_);
     var now = new Date();
 
-    runStepSafely_('sync', function () { syncIntakeToRequests_(ss, config, now); });
-    runStepSafely_('corrections', function () { resolvePendingCorrections_(ss, config, now); });
-    runStepSafely_('sla', function () { processSla_(ss, config, now); });
-    runStepSafely_('digest', function () { maybeSendDigest_(ss, config, now); });
+    // Review находка №10: раньше каждый шаг сам делал getDataRange().getValues()
+    // «Заявки» — до 4 полных чтений за один tick(). Снимок читается ОДИН раз и
+    // передаётся шагам. Исключение — поиск строки для записи исправления
+    // (findRequestRowIndexBySubmissionId_/findRequestRowBySubmissionOrChain_,
+    // CorrectionChain-путь): те продолжают читать лист заново непосредственно
+    // перед записью (design §1 инвариант, review находка №6) — снимок для них
+    // не годится по построению.
+    var requests = ss.getSheetByName(SHEET_REQUESTS_);
+    var reqValues = requests.getDataRange().getValues();
+    var reqHeaderMap = colByHeader_(reqValues[0] || []);
+
+    runStepSafely_('sync', function () { syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMap); });
+    runStepSafely_('corrections', function () { resolvePendingCorrections_(ss, config, now, requests, reqHeaderMap); });
+    runStepSafely_('sla', function () { processSla_(ss, config, now, reqValues, reqHeaderMap); });
+    runStepSafely_('digest', function () { maybeSendDigest_(ss, config, now, reqValues, reqHeaderMap); });
     runStepSafely_('weekly_summary', function () { maybeSendWeeklySummary_(ss, config, now); });
     writeHeartbeat_(now);
   } catch (err) {
@@ -55,18 +68,30 @@ function runStepSafely_(name, fn) {
 // Синхронизация «Входящие» -> «Заявки» (§5.3 п.2, SyncPlan.gs)
 // ---------------------------------------------------------------------------
 
-function syncIntakeToRequests_(ss, config, now) {
+/**
+ * Review находка №10: «Входящие» — append-only, поэтому не сканируем его
+ * целиком заново каждый tick навсегда — берём только строки после watermark
+ * (последнее обработанное количество строк, PropertiesService). Анти-дубль
+ * при этом НЕ полагается только на watermark: existingBySubmissionId строится
+ * по ПОЛНОМУ reqValues (снимок «Заявки» на этот tick) — "re-validated by
+ * submission_id" — так что даже сбитый watermark может максимум пропустить
+ * новую заявку до починки, но никогда не создаст дубль.
+ * @param {Sheet} requests уже открытый лист «Заявки» (для appendRow/getRange)
+ * @param {Array} reqValues снимок «Заявки» на начало этого tick (design item10)
+ * @param {Object} reqHeaderMap
+ */
+function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMap) {
   var intake = ss.getSheetByName(SHEET_INTAKE_);
-  var requests = ss.getSheetByName(SHEET_REQUESTS_);
   var intakeValues = intake.getDataRange().getValues();
   if (intakeValues.length < 2) return;
   var intakeHeaderMap = colByHeader_(intakeValues[0]);
-  var incoming = intakeValues.slice(1).map(function (row) {
+  var dataRowCount = intakeValues.length - 1;
+  var watermark = Math.min(readIntakeWatermark_(), dataRowCount);
+
+  var incoming = intakeValues.slice(1 + watermark).map(function (row) {
     return rowToRecord_(row, intakeHeaderMap);
   }).filter(function (r) { return r.submission_id && !r.corrects_submission_id; }); // корневые заявки — исправления §5.4 отдельно
 
-  var reqValues = requests.getDataRange().getValues();
-  var reqHeaderMap = colByHeader_(reqValues[0]);
   var existingBySubmissionId = {};
   reqValues.slice(1).forEach(function (row) {
     var id = getCell_(row, reqHeaderMap, 'submission_id');
@@ -74,25 +99,36 @@ function syncIntakeToRequests_(ss, config, now) {
   });
 
   var plan = computeSyncPlan_(incoming, existingBySubmissionId, []);
-  if (!plan.toCreate.length) return;
 
-  var journal = ss.getSheetByName(SHEET_JOURNAL_);
-  var existingNumbers = reqValues.slice(1).map(function (row) { return getCell_(row, reqHeaderMap, '№'); });
+  if (plan.toCreate.length) {
+    var journal = ss.getSheetByName(SHEET_JOURNAL_);
+    var existingNumbers = reqValues.slice(1).map(function (row) { return getCell_(row, reqHeaderMap, '№'); });
 
-  plan.toCreate.forEach(function (rec) {
-    var leadNo = nextLeadNumber_(existingNumbers);
-    existingNumbers.push(leadNo);
-    var row = buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now);
-    requests.appendRow(row);
-    var newRowIndex = requests.getLastRow();
+    plan.toCreate.forEach(function (rec) {
+      var leadNo = nextLeadNumber_(existingNumbers);
+      existingNumbers.push(leadNo);
+      var row = buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now);
+      requests.appendRow(row);
+      var newRowIndex = requests.getLastRow();
+      writeContactCell_(requests, newRowIndex, reqHeaderMap, rec.phone); // review находка №12 — настоящая ссылка
 
-    var notification = decideNewLeadNotification_(now, config.calendar);
-    if (notification === 'immediate' && plan.toNotify.indexOf(rec.submission_id) !== -1) {
-      notifyNewLead_(journal, leadNo, newRowIndex, config.officeRecipients);
-    }
-    // вне рабочего времени — не шлём по одной (§12.1): попадёт в дайджест сам
-    // фактом присутствия в «Заявки» без «Первой попытки».
-  });
+      var notification = decideNewLeadNotification_(now, config.calendar, config.weekendDuty);
+      if (plan.toNotify.indexOf(rec.submission_id) !== -1) {
+        if (notification === 'immediate') {
+          notifyNewLead_(journal, leadNo, newRowIndex, config.officeRecipients);
+        } else if (notification === 'immediate_duty') {
+          // review находка №13 / design §12 строка 7: дежурный на выходные/ночь,
+          // выключен по умолчанию — включается настройкой «Настроек»
+          notifyNewLead_(journal, leadNo, newRowIndex, [config.weekendDuty.email]);
+        }
+        // 'digest' — вне рабочего времени и дежурный выключен: не шлём по одной
+        // (§12.1), попадёт в дайджест сам фактом присутствия в «Заявки» без
+        // «Первой попытки».
+      }
+    });
+  }
+
+  writeIntakeWatermark_(dataRowCount); // append-only — следующий tick начнёт отсюда
 }
 
 function rowToRecord_(row, headerMap) {
@@ -105,13 +141,13 @@ function rowToRecord_(row, headerMap) {
 
 function buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now) {
   var row = new Array(REQUESTS_HEADERS_.length).fill('');
-  var links = buildContactLinks_(rec.phone);
   setCell_(row, reqHeaderMap, '№', leadNo);
   // 'Статус' сознательно не пишем (§3.1: "скрипт статус не пишет", пусто = «Новая»)
   setCell_(row, reqHeaderMap, 'Получена', now);
   setCell_(row, reqHeaderMap, 'Имя', rec.name || '');
   setCell_(row, reqHeaderMap, 'Телефон', rec.phone || '');
-  setCell_(row, reqHeaderMap, 'Связаться', links.telHref ? (links.telHref + '  ' + links.waHref) : '');
+  // 'Связаться' — не строка, а RichTextValue (review находка №12); пишется
+  // ПОСЛЕ appendRow через writeContactCell_ (appendRow не умеет rich text).
   setCell_(row, reqHeaderMap, 'Email', rec.email || '');
   setCell_(row, reqHeaderMap, 'Ответственный', config.defaultDutyOfficer || '');
   setCell_(row, reqHeaderMap, 'Откуда', detectSource_(rec));
@@ -128,9 +164,15 @@ function buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now) {
 // Исправления контактов (§5.4, CorrectionChain.gs)
 // ---------------------------------------------------------------------------
 
-function resolvePendingCorrections_(ss, config, now) {
+/**
+ * @param {Sheet} requests уже открытый лист «Заявки»
+ * @param {Object} reqHeaderMap карта заголовков «Заявки» (общая для tick — design item10);
+ *   САМИ строки при этом ищутся заново непосредственно перед каждой записью
+ *   (findRequestRowBySubmissionOrChain_/findRequestRowIndexBySubmissionId_ читают
+ *   лист напрямую, а не reqHeaderMap-снимок значений — design §1, review находка №6).
+ */
+function resolvePendingCorrections_(ss, config, now, requests, reqHeaderMap) {
   var intake = ss.getSheetByName(SHEET_INTAKE_);
-  var requests = ss.getSheetByName(SHEET_REQUESTS_);
   var intakeValues = intake.getDataRange().getValues();
   if (intakeValues.length < 2) return;
   var intakeHeaderMap = colByHeader_(intakeValues[0]);
@@ -146,9 +188,8 @@ function resolvePendingCorrections_(ss, config, now) {
   });
   if (!corrections.length) return;
 
-  var reqValues = requests.getDataRange().getValues();
-  var reqHeaderMap = colByHeader_(reqValues[0]);
   var pending = readPendingCorrections_();
+  var pendingCycles = readPendingCycles_(); // review находка №8
 
   corrections.forEach(function (leafId) {
     var alreadyAppliedRow = findRequestRowBySubmissionOrChain_(requests, reqHeaderMap, leafId);
@@ -157,8 +198,14 @@ function resolvePendingCorrections_(ss, config, now) {
     var plan = buildCorrectionPlan_(leafId, recordsById, []);
     if (plan.status === 'cycle') {
       Logger.log('resolvePendingCorrections_: цикл исправлений: %s', plan.ids.join(' -> '));
+      // review находка №8: раньше цикл только логировался (Logger.log — теряется
+      // между запусками) и никогда не алертился. Журналируем один раз при первом
+      // обнаружении и алертим системным получателям через 24ч, как
+      // waiting_for_original (trackPendingCorrection_ ниже).
+      trackPendingCycle_(pendingCycles, leafId, plan.ids, now, ss, config);
       return;
     }
+    clearPendingCycle_(pendingCycles, leafId); // цикл разрешился (новые данные разорвали его)
     if (plan.status === 'waiting_for_original') {
       trackPendingCorrection_(pending, leafId, plan.missingId, now, ss, config);
       return;
@@ -167,10 +214,11 @@ function resolvePendingCorrections_(ss, config, now) {
 
     var rowIndex = findRequestRowIndexBySubmissionId_(requests, reqHeaderMap, plan.rootId);
     if (rowIndex === -1) return; // корень ещё не синхронизирован в «Заявки» — следующий тик подтянет
-    applyCorrectionToRow_(requests, reqHeaderMap, rowIndex, plan);
+    applyCorrectionToRow_(requests, reqHeaderMap, plan.rootId, plan);
   });
 
   writePendingCorrections_(pending);
+  writePendingCycles_(pendingCycles);
 }
 
 function findRequestRowIndexBySubmissionId_(requests, headerMap, submissionId) {
@@ -191,21 +239,30 @@ function findRequestRowBySubmissionOrChain_(requests, headerMap, leafId) {
   return null;
 }
 
-function applyCorrectionToRow_(requests, headerMap, rowIndex, plan) {
-  // перечитываем строку заново перед записью (§1: "перед каждой записью заново
-  // находит строку по submission_id") — rowIndex уже свежий (найден в этом же тике).
-  var links = buildContactLinks_(plan.finalContacts.phone);
+/**
+ * Review находка №6 (CRITICAL): раньше принимался готовый rowIndex, вычисленный
+ * ДО этого вызова — между тем моментом и пятью setValue() ниже строка могла
+ * "уехать" (сотрудник отсортировал/переставил — LockService защищает только
+ * код скрипта, не действия людей, design §1). Design-инвариант "перед каждой
+ * записью заново находит строку по submission_id" требует свежего поиска
+ * НЕПОСРЕДСТВЕННО перед записью — поэтому здесь принимается rootId (submission_id),
+ * а не число, и поиск строки происходит внутри, в последний момент.
+ * @param {string} rootId submission_id корня цепочки (plan.rootId)
+ */
+function applyCorrectionToRow_(requests, headerMap, rootId, plan) {
+  var rowIndex = findRequestRowIndexBySubmissionId_(requests, headerMap, rootId);
+  if (rowIndex === -1) return; // строка исчезла между поиском корня и записью — следующий тик подтянет
   var updates = {
     'Имя': plan.finalContacts.name || '',
     'Телефон': plan.finalContacts.phone || '',
     'Email': plan.finalContacts.email || '',
-    'Связаться': links.telHref ? (links.telHref + '  ' + links.waHref) : '',
     'все submission_id': plan.orderedIds.join(',')
   };
   Object.keys(updates).forEach(function (header) {
     var col = headerMap[header] + 1;
     requests.getRange(rowIndex, col).setValue(updates[header]);
   });
+  writeContactCell_(requests, rowIndex, headerMap, plan.finalContacts.phone); // review находка №12
 }
 
 function readPendingCorrections_() {
@@ -234,15 +291,80 @@ function clearPendingCorrection_(pending, leafId) {
   delete pending[leafId];
 }
 
+// review находка №8: цикл исправлений — журналируется один раз при обнаружении,
+// алертится системным получателям через 24ч, симметрично waiting_for_original.
+function readPendingCycles_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('pendingCorrectionCycles');
+  return raw ? JSON.parse(raw) : {};
+}
+function writePendingCycles_(pendingCycles) {
+  PropertiesService.getScriptProperties().setProperty('pendingCorrectionCycles', JSON.stringify(pendingCycles));
+}
+function trackPendingCycle_(pendingCycles, leafId, cycleIds, now, ss, config) {
+  var entry = pendingCycles[leafId];
+  if (!entry) {
+    entry = { firstSeenAt: now.toISOString(), cycleIds: cycleIds, logged: false, alerted: false };
+    pendingCycles[leafId] = entry;
+  }
+  if (!entry.logged) {
+    var journal = ss.getSheetByName(SHEET_JOURNAL_);
+    appendJournalRow_(journal, now, leafId, 'correction_cycle_detected', 'sent', 'internal',
+      'Цикл исправлений: ' + cycleIds.join(' -> '), 'correction_cycle:' + leafId);
+    entry.logged = true;
+  }
+  var ageMs = now.getTime() - new Date(entry.firstSeenAt).getTime();
+  if (!entry.alerted && ageMs >= 24 * 3600 * 1000) {
+    var journal2 = ss.getSheetByName(SHEET_JOURNAL_);
+    sendNotificationOnce_(journal2, 'correction_cycle_alert:' + leafId, leafId, 'correction_cycle_24h', 'email',
+      config.systemAlertRecipients, 'CRM: цикл исправлений >24ч без решения',
+      'submission_id ' + leafId + ' — цикл исправлений (' + cycleIds.join(' -> ') + ') держится дольше 24 часов.');
+    entry.alerted = true;
+  }
+}
+function clearPendingCycle_(pendingCycles, leafId) {
+  delete pendingCycles[leafId];
+}
+
+// review находка №10: intake — append-only; watermark хранит, сколько строк
+// данных уже обработано, чтобы syncIntakeToRequests_ не пересканировал лист
+// целиком каждый tick навсегда. Анти-дубль всё равно re-validated по
+// submission_id (existingBySubmissionId в syncIntakeToRequests_), watermark —
+// только оптимизация, не единственная защита от дублей.
+function readIntakeWatermark_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('intakeProcessedRows');
+  var n = raw ? parseInt(raw, 10) : 0;
+  return isNaN(n) || n < 0 ? 0 : n;
+}
+function writeIntakeWatermark_(n) {
+  PropertiesService.getScriptProperties().setProperty('intakeProcessedRows', String(Math.max(0, n)));
+}
+
+// review находка №12: «Связаться» — RichTextValue с настоящей кликабельной
+// ссылкой (WhatsApp), а не текст "tel:... https://wa.me/...". tel: не делаем
+// ссылкой — см. Utils.gs buildContactCellPlan_ и README "Не проверено".
+function buildContactRichText_(phone) {
+  var plan = buildContactCellPlan_(phone);
+  if (!plan.text) return null;
+  var builder = SpreadsheetApp.newRichTextValue().setText(plan.text);
+  plan.links.forEach(function (l) { builder.setLinkUrl(l.start, l.end, l.url); });
+  return builder.build();
+}
+function writeContactCell_(sheet, rowIndex, headerMap, phone) {
+  var cell = sheet.getRange(rowIndex, headerMap['Связаться'] + 1);
+  var richText = buildContactRichText_(phone);
+  if (richText) {
+    cell.setRichTextValue(richText);
+  } else {
+    cell.setValue('');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // SLA (§5.5, Sla.gs)
 // ---------------------------------------------------------------------------
 
-function processSla_(ss, config, now) {
-  var requests = ss.getSheetByName(SHEET_REQUESTS_);
-  var values = requests.getDataRange().getValues();
-  if (values.length < 2) return;
-  var headerMap = colByHeader_(values[0]);
+function processSla_(ss, config, now, values, headerMap) {
+  if (!values || values.length < 2) return;
   var journal = ss.getSheetByName(SHEET_JOURNAL_);
 
   for (var i = 1; i < values.length; i++) {
@@ -258,7 +380,12 @@ function processSla_(ss, config, now) {
       { receivedAt: new Date(receivedAt), firstAttemptAt: firstAttemptAt ? new Date(firstAttemptAt) : null },
       now, config.calendar, config.thresholds
     );
-    if (state.firstAttemptDue === null) continue; // первая попытка уже была
+    // review находка №11а: сентинел "первая попытка уже была" — это поле
+    // businessMinutesElapsed, равное null (см. Sla.gs evaluateSlaState_).
+    // Старая версия проверяла другое поле (firstAttemptDue) на такое же
+    // значение — то поле у evaluateSlaState_ всегда boolean, такого значения
+    // не бывает никогда, и старая проверка была мёртвым кодом.
+    if (state.businessMinutesElapsed === null) continue; // первая попытка уже была
 
     var leadNo = getCell_(row, headerMap, '№');
     var rowNumber = i + 1;
@@ -275,7 +402,7 @@ function processSla_(ss, config, now) {
 // Дайджест и недельная сводка (§5.6)
 // ---------------------------------------------------------------------------
 
-function maybeSendDigest_(ss, config, now) {
+function maybeSendDigest_(ss, config, now, values, headerMap) {
   var todayKey = digestDayKey_(now, config.tz);
   var dow = dowOfDate_.apply(null, todayKey.split('-').map(Number));
   if (config.calendar.businessDays.indexOf(dow) === -1) return; // не рабочий день
@@ -289,18 +416,15 @@ function maybeSendDigest_(ss, config, now) {
   var lastSentKey = props.getProperty('lastDigestDayKey');
   if (!shouldSendDigestToday_(lastSentKey, todayKey)) return;
 
-  var stats = computeDigestStats_(ss, config, now);
+  var stats = computeDigestStats_(values, headerMap, config, now);
   var digest = composeDigest_(stats);
   var journal = ss.getSheetByName(SHEET_JOURNAL_);
   var result = notifyDigest_(journal, todayKey, config.officeRecipients, digest);
   if (result.sent) props.setProperty('lastDigestDayKey', todayKey);
 }
 
-function computeDigestStats_(ss, config, now) {
-  var requests = ss.getSheetByName(SHEET_REQUESTS_);
-  var values = requests.getDataRange().getValues();
-  if (values.length < 2) return {};
-  var headerMap = colByHeader_(values[0]);
+function computeDigestStats_(values, headerMap, config, now) {
+  if (!values || values.length < 2) return {};
   var todayKey = digestDayKey_(now, config.tz);
   var stats = { newCount: 0, waitingFirstCallCount: 0, consultationsTodayCount: 0, overdueCount: 0 };
 
@@ -399,8 +523,7 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, now) {
   appendJournalRow_(journal, now, leadNo, 'status_changed', 'sent', 'internal', 'status=' + (status || '(пусто)'), 'status_change:' + leadNo + ':' + now.getTime());
 
   if (telephone) {
-    var links = buildContactLinks_(telephone);
-    sheet.getRange(rowIndex, headerMap['Связаться'] + 1).setValue(links.telHref ? (links.telHref + '  ' + links.waHref) : '');
+    writeContactCell_(sheet, rowIndex, headerMap, telephone); // review находка №12
   }
 }
 
@@ -430,7 +553,11 @@ function removeTriggers() {
 function doGet(e) {
   var token = PropertiesService.getScriptProperties().getProperty('healthEndpointToken');
   var providedToken = e && e.parameter ? e.parameter.token : null;
-  if (!token || providedToken !== token) {
+  // review находка №11б: сравнение токена — timingSafeEqual_ (Utils.gs), в
+  // постоянное время. Прямое строковое сравнение с коротким замыканием по
+  // первому несовпавшему символу теоретически утекает через тайминг ответа.
+  // Ответ по-прежнему только счётчики, без PII (не меняем).
+  if (!token || !timingSafeEqual_(providedToken, token)) {
     return ContentService.createTextOutput(JSON.stringify({ error: 'unauthorized' }))
       .setMimeType(ContentService.MimeType.JSON);
   }
@@ -448,35 +575,58 @@ function doGet(e) {
 }
 
 // ---------------------------------------------------------------------------
-// Меню «CRM» (§5.2)
+// Административные действия ADFIX (review находка №2 — меню «CRM» УБРАНО)
 // ---------------------------------------------------------------------------
 
-function onOpen() {
-  SpreadsheetApp.getUi().createMenu('CRM')
-    .addItem('Проверить сейчас', 'tick')
-    .addItem('Тест уведомления', 'menuSendTestNotification_')
-    .addSeparator()
-    .addItem('Архивировать закрытые…', 'menuArchiveClosed_')
-    .addToUi();
-}
-
+/**
+ * Review находка №2: меню «CRM» и onOpen() удалены, а не переведены на
+ * installable-триггер. Причина — официальная документация Google однозначна:
+ * getUi()/меню требуют ПРИВЯЗАННОГО скрипта, а design §5.1 сознательно ставит
+ * скрипт СТАНДАЛОН-проектом (находка Codex №1 в design.md), и это не зависит
+ * от типа триггера (simple vs installable):
+ *
+ *   "Only bound scripts can create menus. To display the menu when the user
+ *    opens a file, write the menu code within an onOpen function."
+ *    — Custom menus, https://developers.google.com/apps-script/guides/menus
+ *
+ *   "A script can only interact with the UI for the current instance of an
+ *    open spreadsheet, and only if the script is bound to the spreadsheet."
+ *    — SpreadsheetApp.getUi(),
+ *    https://developers.google.com/apps-script/reference/spreadsheet/spreadsheet-app#getui()
+ *
+ *   "The script must be bound to a Google Sheets, Slides, Docs, or Forms file,
+ *    or else be an add-on that extends one of those applications."
+ *    — Understanding triggers (Restrictions on simple triggers),
+ *    https://developers.google.com/apps-script/guides/triggers
+ *
+ * Отдельно: простой onOpen(e) в standalone-проекте вообще не запускается сам
+ * (та же страница triggers) — installTriggers() его и не устанавливал. Ставить
+ * installable onOpen ради getUi() тоже бессмысленно — второй и третий источник
+ * выше говорят, что дело не в типе триггера, а в bound/standalone статусе
+ * самого проекта. Поэтому: административные действия ADFIX запускает вручную
+ * из редактора Apps Script (Run -> имя функции), результат смотрит в логе
+ * выполнения (View -> Executions/Logs), не во всплывающем диалоге —
+ * см. README «Установка» шаг 8.
+ */
 function menuSendTestNotification_() {
   var config = loadConfig_();
   var journal = SpreadsheetApp.openById(SPREADSHEET_ID_).getSheetByName(SHEET_JOURNAL_);
   var result = sendNotificationOnce_(journal, 'test:' + Date.now(), 'TEST', 'manual_test', 'email',
-    config.systemAlertRecipients, 'CRM: тестовое уведомление', 'Ручной тест из меню «CRM».');
-  SpreadsheetApp.getUi().alert(result.sent ? 'Отправлено' : 'Не отправлено: ' + result.reason);
+    config.systemAlertRecipients, 'CRM: тестовое уведомление', 'Ручной тест из редактора Apps Script.');
+  Logger.log('menuSendTestNotification_: %s', result.sent ? 'отправлено' : ('не отправлено: ' + result.reason));
+  return result;
 }
 
 /**
- * Разрушающее действие — только из меню (§5.2). Design §5: "хранение закрытых —
- * бессрочно" (§12.5) — эта функция НЕ удаляет данные, только позволяет владельцу
- * вручную скрыть/сгруппировать закрытые строки в будущем; на 2026-09-23 оставлена
- * заглушкой, т.к. авто-архивация закрытых прямо запрещена решением владельца.
+ * Разрушающее действие — раньше "только из меню" (§5.2), меню больше нет
+ * (review находка №2) — запускается вручную из редактора Apps Script. Design §5:
+ * "хранение закрытых — бессрочно" (§12.5) — эта функция НЕ удаляет данные,
+ * только сообщает об этом; авто-архивация закрытых прямо запрещена решением
+ * владельца.
  */
 function menuArchiveClosed_() {
-  SpreadsheetApp.getUi().alert(
-    'Закрытые заявки хранятся бессрочно (решение владельца, design §12.5). ' +
-    'Автоматической архивации нет — используйте фильтр по статусу вручную.'
-  );
+  var message = 'Закрытые заявки хранятся бессрочно (решение владельца, design §12.5). ' +
+    'Автоматической архивации нет — используйте фильтр по статусу вручную.';
+  Logger.log('menuArchiveClosed_: %s', message);
+  return message;
 }

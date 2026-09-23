@@ -111,3 +111,35 @@ test('ночная заявка -> в дайджест, не отдельным 
   const fridayNoon = ctx.zonedTimeToUtc_(fri.y, fri.mo, fri.d, 12, 0, 0, cal.tz);
   assert.equal(ctx.decideNewLeadNotification_(fridayNoon, cal), 'digest');
 });
+
+// --- review находка №13 / design §12 строка 7: дежурный на выходные/ночь —
+// настройка «Настроек», по умолчанию ВЫКЛЮЧЕНА. ------------------------------
+
+test('decideNewLeadNotification_: вне рабочего времени, дежурный ВЫКЛЮЧЕН (default) -> digest (текущее поведение не меняется)', () => {
+  const cal = baseCalendar();
+  const thu = findDateOnOrAfter(2026, 4, 1, 4);
+  const night = ctx.zonedTimeToUtc_(thu.y, thu.mo, thu.d, 23, 0, 0, cal.tz);
+  assert.equal(ctx.decideNewLeadNotification_(night, cal, { enabled: false, email: '' }), 'digest');
+  assert.equal(ctx.decideNewLeadNotification_(night, cal), 'digest', 'без 3-го аргумента (старые вызовы) поведение как раньше');
+});
+
+test('decideNewLeadNotification_: вне рабочего времени, дежурный ВКЛЮЧЁН и email указан -> immediate_duty (design item 13)', () => {
+  const cal = baseCalendar();
+  const thu = findDateOnOrAfter(2026, 4, 1, 4);
+  const night = ctx.zonedTimeToUtc_(thu.y, thu.mo, thu.d, 23, 0, 0, cal.tz);
+  assert.equal(ctx.decideNewLeadNotification_(night, cal, { enabled: true, email: 'duty@x.com' }), 'immediate_duty');
+});
+
+test('decideNewLeadNotification_: дежурный включён, но email не указан -> всё равно digest (не шлём в никуда)', () => {
+  const cal = baseCalendar();
+  const thu = findDateOnOrAfter(2026, 4, 1, 4);
+  const night = ctx.zonedTimeToUtc_(thu.y, thu.mo, thu.d, 23, 0, 0, cal.tz);
+  assert.equal(ctx.decideNewLeadNotification_(night, cal, { enabled: true, email: '' }), 'digest');
+});
+
+test('decideNewLeadNotification_: рабочее время -> immediate независимо от настройки дежурного', () => {
+  const cal = baseCalendar();
+  const thu = findDateOnOrAfter(2026, 4, 1, 4);
+  const day = ctx.zonedTimeToUtc_(thu.y, thu.mo, thu.d, 12, 0, 0, cal.tz);
+  assert.equal(ctx.decideNewLeadNotification_(day, cal, { enabled: true, email: 'duty@x.com' }), 'immediate');
+});

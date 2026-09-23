@@ -15,7 +15,12 @@ const testFiles = [
   './digest.test.mjs',
   './source-and-numbering.test.mjs',
   './sync-plan.test.mjs',
-  './config.test.mjs'
+  './config.test.mjs',
+  './utils.test.mjs',
+  './sheets-protection.test.mjs',
+  './code-corrections.test.mjs',
+  './code-integration.test.mjs',
+  './static-checks.test.mjs'
 ];
 
 console.log('apps-script/test/run.mjs — GAS_SRC_DIR=' + (process.env.GAS_SRC_DIR || '(по умолчанию: ../src)'));

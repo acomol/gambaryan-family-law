@@ -1,0 +1,284 @@
+// Структурные фейки GAS-сервисов для тестирования GAS-only кода (Sheets.gs,
+// Code.gs, Notifications.gs) в Node — без обращения к настоящему Google API.
+// Покрывают только то подмножество методов SpreadsheetApp/Session/PropertiesService/
+// LockService/ScriptApp/ContentService/MailApp, которое реально вызывают src/*.gs
+// (см. grep в отчёте задачи). Задача этих фейков — не эмулировать Google Sheets
+// целиком, а дать детерминированную, интроспектируемую замену ровно тех операций,
+// которые проверяемый код выполняет.
+
+function makeFakeProtection(initialEmails, type) {
+  var emails = (initialEmails || []).slice();
+  var description = '';
+  var domainEdit = true;
+  var warningOnly = false;
+  function userObj(email) { return { getEmail: function () { return email; } }; }
+  var protection = {
+    _type: type || 'SHEET',
+    getEditors: function () { return emails.map(userObj); },
+    removeEditors: function (list) {
+      var toRemove = (list || []).map(function (e) { return typeof e === 'string' ? e : e.getEmail(); });
+      emails = emails.filter(function (e) { return toRemove.indexOf(e) === -1; });
+      return protection;
+    },
+    addEditors: function (list) {
+      (list || []).forEach(function (e) {
+        var email = typeof e === 'string' ? e : e.getEmail();
+        // Реальный Protection.addEditors бросает на невалидный email — пустая
+        // строка (например Session.getEffectiveUser().getEmail() без scope
+        // userinfo.email) сюда попадать не должна (review находка №4). Фейк
+        // сознательно бросает, а не молча игнорирует — иначе баг "забыли
+        // проверить на пустую строку" не проявляется ни в одном тесте.
+        if (!email) throw new Error('Protection.addEditors: invalid email address ""');
+        if (emails.indexOf(email) === -1) emails.push(email);
+      });
+      return protection;
+    },
+    setDescription: function (d) { description = d; return protection; },
+    getDescription: function () { return description; },
+    canDomainEdit: function () { return domainEdit; },
+    setDomainEdit: function (v) { domainEdit = v; return protection; },
+    setWarningOnly: function (v) { warningOnly = v; return protection; },
+    isWarningOnly: function () { return warningOnly; },
+    _emails: function () { return emails.slice(); }
+  };
+  return protection;
+}
+
+function makeFakeRange(sheet, row, col, numRows, numCols) {
+  numRows = numRows || 1;
+  numCols = numCols || 1;
+  var range = {
+    getValues: function () {
+      var out = [];
+      for (var r = 0; r < numRows; r++) {
+        var dataRow = sheet._data[row - 1 + r] || [];
+        var line = [];
+        for (var c = 0; c < numCols; c++) {
+          var v = dataRow[col - 1 + c];
+          line.push(v === undefined ? '' : v);
+        }
+        out.push(line);
+      }
+      return out;
+    },
+    getValue: function () { return range.getValues()[0][0]; },
+    setValues: function (values) {
+      for (var r = 0; r < values.length; r++) {
+        var idx = row - 1 + r;
+        while (sheet._data.length <= idx) sheet._data.push([]);
+        for (var c = 0; c < values[r].length; c++) {
+          sheet._data[idx][col - 1 + c] = values[r][c];
+        }
+      }
+      return range;
+    },
+    setValue: function (v) { return range.setValues([[v]]); },
+    setFormula: function (f) { return range.setValue(f); },
+    setNumberFormat: function (fmt) {
+      sheet._numberFormats = sheet._numberFormats || {};
+      for (var r = 0; r < numRows; r++) {
+        for (var c = 0; c < numCols; c++) {
+          sheet._numberFormats[(row + r) + ':' + (col + c)] = fmt;
+        }
+      }
+      return range;
+    },
+    setDataValidation: function () { return range; },
+    setRichTextValue: function (rtv) {
+      sheet._richText = sheet._richText || {};
+      sheet._richText[row + ':' + col] = rtv;
+      range.setValue(rtv && rtv.getText ? rtv.getText() : '');
+      return range;
+    },
+    getRichTextValue: function () {
+      return (sheet._richText && sheet._richText[row + ':' + col]) || null;
+    },
+    protect: function () {
+      var p = makeFakeProtection([], 'RANGE');
+      p._rangeInfo = { row: row, col: col, numRows: numRows, numCols: numCols };
+      sheet._protections.push(p);
+      return p;
+    },
+    getRow: function () { return row; },
+    getColumn: function () { return col; },
+    getNumRows: function () { return numRows; },
+    getNumColumns: function () { return numCols; }
+  };
+  return range;
+}
+
+export function makeFakeSheet(name, opts) {
+  opts = opts || {};
+  var sheet = {
+    _name: name,
+    _data: (opts.data || []).map(function (r) { return r.slice(); }),
+    _protections: [],
+    _maxRows: opts.maxRows || 1000,
+    _getDataRangeCallCount: 0,
+    getName: function () { return sheet._name; },
+    setName: function (n) { sheet._name = n; },
+    getRange: function (row, col, numRows, numCols) { return makeFakeRange(sheet, row, col, numRows, numCols); },
+    getDataRange: function () {
+      sheet._getDataRangeCallCount++;
+      var rows = Math.max(sheet._data.length, 1);
+      var cols = Math.max(sheet.getLastColumn(), 1);
+      return makeFakeRange(sheet, 1, 1, rows, cols);
+    },
+    getLastRow: function () { return sheet._data.length; },
+    getLastColumn: function () {
+      return sheet._data.reduce(function (m, r) { return Math.max(m, r.length); }, 0);
+    },
+    getMaxRows: function () { return Math.max(sheet._maxRows, sheet._data.length); },
+    appendRow: function (row) { sheet._data.push(row.slice()); },
+    setFrozenRows: function () {},
+    setFrozenColumns: function () {},
+    hideColumns: function () {},
+    autoResizeColumns: function () {},
+    getProtections: function (type) {
+      return sheet._protections.filter(function (p) { return !type || p._type === type; });
+    },
+    protect: function () {
+      var p = makeFakeProtection([], 'SHEET');
+      sheet._protections.push(p);
+      return p;
+    },
+    setConditionalFormatRules: function () {}
+  };
+  return sheet;
+}
+
+export function makeFakeSpreadsheet(sheetsByName) {
+  var sheets = {};
+  Object.keys(sheetsByName || {}).forEach(function (n) { sheets[n] = sheetsByName[n]; });
+  return {
+    getSheetByName: function (n) { return sheets[n] || null; },
+    insertSheet: function (n) { var s = makeFakeSheet(n); sheets[n] = s; return s; },
+    _sheets: sheets
+  };
+}
+
+export function makeFakeSpreadsheetApp(spreadsheetsById) {
+  function fakeValidationBuilder() {
+    var built = {};
+    var api = {
+      requireValueInList: function (list, showDropdown) { built.list = list; built.showDropdown = showDropdown; return api; },
+      setAllowInvalid: function (v) { built.allowInvalid = v; return api; },
+      build: function () { return built; }
+    };
+    return api;
+  }
+  function fakeCFRuleBuilder() {
+    var built = {};
+    var api = {
+      whenFormulaSatisfied: function (f) { built.formula = f; return api; },
+      setBackground: function (c) { built.background = c; return api; },
+      setBold: function (v) { built.bold = v === undefined ? true : v; return api; },
+      setItalic: function () { return api; },
+      setStrikethrough: function (v) { built.strikethrough = v === undefined ? true : v; return api; },
+      setFontColor: function () { return api; },
+      setRanges: function (r) { built.ranges = r; return api; },
+      build: function () { return built; }
+    };
+    return api;
+  }
+  return {
+    openById: function (id) { return spreadsheetsById[id]; },
+    newDataValidation: fakeValidationBuilder,
+    newConditionalFormatRule: fakeCFRuleBuilder,
+    newRichTextValue: function () {
+      var text = '';
+      var links = [];
+      var builder = {
+        setText: function (t) { text = t; return builder; },
+        setLinkUrl: function (a, b, c) {
+          if (arguments.length === 1) {
+            links.push({ start: 0, end: text.length, url: a });
+          } else {
+            links.push({ start: a, end: b, url: c });
+          }
+          return builder;
+        },
+        build: function () {
+          var builtText = text;
+          var builtLinks = links.slice();
+          return { getText: function () { return builtText; }, _links: builtLinks };
+        }
+      };
+      return builder;
+    },
+    ProtectionType: { SHEET: 'SHEET', RANGE: 'RANGE' }
+  };
+}
+
+export function makeFakeSession(email) {
+  return { getEffectiveUser: function () { return { getEmail: function () { return email; } }; } };
+}
+
+export function makeFakePropertiesService(initialProps) {
+  var store = Object.assign({}, initialProps || {});
+  var scriptProps = {
+    getProperty: function (k) { return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null; },
+    setProperty: function (k, v) { store[k] = String(v); }
+  };
+  return { getScriptProperties: function () { return scriptProps; }, _store: store };
+}
+
+export function makeFakeLockService() {
+  return { getScriptLock: function () { return { tryLock: function () { return true; }, releaseLock: function () {} }; } };
+}
+
+export function makeFakeMailApp(opts) {
+  opts = opts || {};
+  var sent = [];
+  return {
+    sendEmail: function (msg) {
+      if (opts.shouldThrow) throw new Error(typeof opts.shouldThrow === 'string' ? opts.shouldThrow : 'MailApp: forced failure');
+      sent.push(msg);
+    },
+    _sent: sent
+  };
+}
+
+export function makeFakeScriptApp() {
+  var triggers = [];
+  function triggerBuilder(handler) {
+    var t = { handler: handler, type: null };
+    var api = {
+      timeBased: function () { t.type = 'time'; return api; },
+      everyMinutes: function (n) { t.everyMinutes = n; return api; },
+      forSpreadsheet: function (id) { t.spreadsheetId = id; return api; },
+      onEdit: function () { t.type = 'onEdit'; return api; },
+      onOpen: function () { t.type = 'onOpen'; return api; },
+      create: function () {
+        var handle = { getHandlerFunction: function () { return handler; }, _t: t };
+        triggers.push(handle);
+        return handle;
+      }
+    };
+    return api;
+  }
+  return {
+    newTrigger: function (handler) { return triggerBuilder(handler); },
+    getProjectTriggers: function () { return triggers.slice(); },
+    deleteTrigger: function (t) {
+      var i = triggers.indexOf(t);
+      if (i !== -1) triggers.splice(i, 1);
+    },
+    _triggers: triggers
+  };
+}
+
+export function makeFakeContentService() {
+  return {
+    createTextOutput: function (text) {
+      var mime = null;
+      var out = {
+        setMimeType: function (m) { mime = m; return out; },
+        getContent: function () { return text; },
+        _mimeType: function () { return mime; }
+      };
+      return out;
+    },
+    MimeType: { JSON: 'JSON' }
+  };
+}

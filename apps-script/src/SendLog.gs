@@ -10,6 +10,15 @@
 var SEND_STATES_ = { PENDING: 'pending', SENT: 'sent', FAILED: 'failed', UNKNOWN: 'unknown' };
 
 /**
+ * Design review находка №7: PENDING без таймаута висит вечно, если тик умер
+ * сразу после появления pending-записи (например, между appendJournalRow_ pending
+ * и MailApp.sendEmail — квота/таймаут скрипта) — уведомление молчит навсегда.
+ * PENDING старше этого порога считается протухшим и обрабатывается как UNKNOWN
+ * (следует той же политике ретрая retryAfterMs).
+ */
+var PENDING_TIMEOUT_MS_ = 10 * 60000;
+
+/**
  * @param {string} leadNo
  * @param {string} event
  * @param {string} version
@@ -27,10 +36,12 @@ function makeSendKey_(leadNo, event, version) {
  * @param {{state:string, updated_at:(Date|string)}|null} existingEntry
  * @param {Date} now
  * @param {number} [retryAfterMs] default 15 минут
+ * @param {number} [pendingTimeoutMs] default 10 минут (находка №7)
  * @return {'send'|'skip'}
  */
-function decideSendAction_(existingEntry, now, retryAfterMs) {
+function decideSendAction_(existingEntry, now, retryAfterMs, pendingTimeoutMs) {
   retryAfterMs = retryAfterMs === undefined ? 15 * 60000 : retryAfterMs;
+  pendingTimeoutMs = pendingTimeoutMs === undefined ? PENDING_TIMEOUT_MS_ : pendingTimeoutMs;
   if (!existingEntry) return 'send';
   switch (existingEntry.state) {
     case SEND_STATES_.SENT:
@@ -38,7 +49,11 @@ function decideSendAction_(existingEntry, now, retryAfterMs) {
     case SEND_STATES_.FAILED:
       return 'send';
     case SEND_STATES_.PENDING:
-      return 'skip';
+      var pendingElapsed = now.getTime() - new Date(existingEntry.updated_at).getTime();
+      if (pendingElapsed < pendingTimeoutMs) return 'skip'; // тик мог быть ещё жив — ждём
+      // старше таймаута — тик, скорее всего, умер между pending и sent/failed;
+      // считаем запись "unknown" и следуем той же политике ретрая (находка №7)
+      return pendingElapsed >= retryAfterMs ? 'send' : 'skip';
     case SEND_STATES_.UNKNOWN:
       var elapsed = now.getTime() - new Date(existingEntry.updated_at).getTime();
       return elapsed >= retryAfterMs ? 'send' : 'skip';

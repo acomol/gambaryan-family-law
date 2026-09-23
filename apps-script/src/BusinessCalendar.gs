@@ -171,9 +171,20 @@ function isWithinBusinessHours_(date, calendar) {
 /**
  * Новая заявка вне рабочего времени -> в утренний дайджест, а не отдельным письмом.
  * Design §5.5 / §12.1 ("вне рабочего времени письма о новых заявках не шлются
- * по одной — они идут в утренний дайджест").
- * @return {'immediate'|'digest'}
+ * по одной — они идут в утренний дайджест"); §12 строка 7 (review находка №13):
+ * дежурный на выходные/ночь — настройка «Настроек», по умолчанию ВЫКЛЮЧЕНА
+ * (владелец: «пока нет»). Если включена и указан email — вне рабочего времени
+ * уходит немедленное уведомление дежурному вместо ожидания дайджеста; системные
+ * тревоги (notifySystemAlert_) в это решение не входят — они не проверяют
+ * рабочее время нигде в коде и уходят всегда немедленно (design §12 строка 7).
+ * @param {Date} receivedAt
+ * @param {Object} calendar
+ * @param {{enabled:boolean, email:string}} [weekendDuty] default выключено
+ * @return {'immediate'|'immediate_duty'|'digest'}
  */
-function decideNewLeadNotification_(receivedAt, calendar) {
-  return isWithinBusinessHours_(receivedAt, calendar) ? 'immediate' : 'digest';
+function decideNewLeadNotification_(receivedAt, calendar, weekendDuty) {
+  if (isWithinBusinessHours_(receivedAt, calendar)) return 'immediate';
+  var duty = weekendDuty || { enabled: false, email: '' };
+  if (duty.enabled && duty.email) return 'immediate_duty';
+  return 'digest';
 }

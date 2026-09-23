@@ -26,7 +26,16 @@ var DEFAULT_SETTINGS_ = {
   owner_summary_recipient: 'gambarian@gmail.com',
   default_duty_officer: 'cityr.ta@gmail.com',
   staff_list: 'cityr.ta@gmail.com,justicetelaviv@gmail.com',
-  observer_stale_minutes: '30'
+  observer_stale_minutes: '30',
+  // review находка №5: ОДНО место хранения — строка «Настроек», не Script
+  // Property (README раньше противоречил коду). Пустой дефолт — заполняется
+  // вручную при подключении Albato; пока пусто, protectIntakeSheet_ работает
+  // в режиме предупреждения (см. Sheets.gs), а не жёстко блокирует Albato.
+  albato_editor_email: '',
+  // review находка №13 / design §12 строка 7: дежурный на выходные/ночь —
+  // настройка «Настроек», по умолчанию ВЫКЛЮЧЕНА (владелец: «пока нет»).
+  weekend_duty_enabled: 'false',
+  weekend_duty_email: ''
 };
 
 // Ключи, по которым владелец ещё не подтвердил значение (design §12.2) —
@@ -39,7 +48,10 @@ var SETTINGS_COMMENTS_ = {
   default_duty_officer: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ владельца — design §12.2 ("дежурный")',
   office_recipients: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ владельца — design §12.2',
   owner_summary_recipient: 'воскресная сводка (design §5.6)',
-  system_alert_recipients: 'heartbeat / независимый наблюдатель (design §5.7)'
+  system_alert_recipients: 'heartbeat / независимый наблюдатель (design §5.7)',
+  albato_editor_email: 'email аккаунта Albato для доступа к «Входящие» — заполнить при подключении Albato (design §5.1, review №5); пока пусто — защита «Входящие» в режиме предупреждения',
+  weekend_duty_enabled: 'true/false — дежурный на выходные/ночь (design §12 строка 7). По умолчанию false',
+  weekend_duty_email: 'email дежурного вне рабочего времени, используется только если weekend_duty_enabled=true'
 };
 
 /**
@@ -114,6 +126,11 @@ function normalizeSettings_(raw, holidaysAndShortDays) {
     ownerSummaryRecipient: raw.owner_summary_recipient,
     defaultDutyOfficer: raw.default_duty_officer,
     staffList: splitList_(raw.staff_list),
-    observerStaleMinutes: parseInt(raw.observer_stale_minutes, 10)
+    observerStaleMinutes: parseInt(raw.observer_stale_minutes, 10),
+    albatoEditorEmail: raw.albato_editor_email || '',
+    weekendDuty: {
+      enabled: String(raw.weekend_duty_enabled).trim().toLowerCase() === 'true',
+      email: raw.weekend_duty_email || ''
+    }
   };
 }

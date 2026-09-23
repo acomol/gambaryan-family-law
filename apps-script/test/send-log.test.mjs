@@ -35,6 +35,34 @@ test('decideSendAction_: state=pending — не дублировать в рам
   assert.equal(ctx.decideSendAction_(entry, new Date()), 'skip');
 });
 
+// --- review находка №7: PENDING без таймаута висит вечно, если тик умер сразу
+// после появления pending-записи — уведомление молчит навсегда. -------------
+
+test('decideSendAction_: PENDING моложе 10 минут — ждём, тик мог быть ещё жив', () => {
+  const now = new Date('2026-01-01T12:00:00Z');
+  const entry = { state: 'pending', updated_at: new Date('2026-01-01T11:55:00Z') }; // 5 мин
+  assert.equal(ctx.decideSendAction_(entry, now), 'skip');
+});
+
+test('decideSendAction_: PENDING старше 10 минут, но моложе окна ретрая — всё ещё ждём', () => {
+  const now = new Date('2026-01-01T12:00:00Z');
+  const entry = { state: 'pending', updated_at: new Date('2026-01-01T11:48:00Z') }; // 12 мин
+  assert.equal(ctx.decideSendAction_(entry, now), 'skip');
+});
+
+test('decideSendAction_: PENDING старше окна ретрая (тик умер после pending) — считается unknown и повторяется (design item 7)', () => {
+  const now = new Date('2026-01-01T12:00:00Z');
+  const entry = { state: 'pending', updated_at: new Date('2026-01-01T11:44:00Z') }; // 16 мин
+  assert.equal(ctx.decideSendAction_(entry, now), 'send', 'PENDING старше 10 мин должен вести себя как unknown и следовать retry policy');
+});
+
+test('decideSendAction_: пороги PENDING-таймаута и retry настраиваются явными аргументами', () => {
+  const now = new Date('2026-01-01T12:00:00Z');
+  const entry = { state: 'pending', updated_at: new Date('2026-01-01T11:59:00Z') }; // 1 мин
+  // pendingTimeoutMs=0 -> сразу считаем unknown; retryAfterMs=0 -> сразу повторяем
+  assert.equal(ctx.decideSendAction_(entry, now, 0, 0), 'send');
+});
+
 test('transitionAfterSend_: строит запись состояния с message_id', () => {
   const now = new Date();
   const entry = ctx.transitionAfterSend_('sent', now, 'msg-1');

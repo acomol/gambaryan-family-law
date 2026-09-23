@@ -13,19 +13,22 @@ import { formatDate as mockFormatDate } from './mock-utilities.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SRC_DIR = path.join(__dirname, '..', '..', 'src');
 
-export function loadGasContext(fileNames) {
+export function loadGasContext(fileNames, overrides) {
   const srcDir = process.env.GAS_SRC_DIR
     ? path.resolve(process.env.GAS_SRC_DIR)
     : DEFAULT_SRC_DIR;
 
-  const sandbox = {
+  const sandbox = Object.assign({
     console,
     Utilities: { formatDate: mockFormatDate },
     Logger: { log: () => {} },
     // Остальные GAS-сервисы файлы верхнего уровня не вызывают при загрузке
     // (только объявляют функции) — пустых объектов достаточно, чтобы файлы,
     // ссылающиеся на них внутри тел функций, которые тесты не вызывают,
-    // загрузились без ошибок парсинга/выполнения верхнего уровня.
+    // загрузились без ошибок парсинга/выполнения верхнего уровня. Тесты,
+    // которым нужно реально ВЫЗВАТЬ GAS-only код (Sheets.gs/Code.gs/
+    // Notifications.gs), передают вторым аргументом структурные фейки из
+    // test/helpers/gas-fakes.mjs, которые здесь подмешиваются поверх заглушек.
     SpreadsheetApp: {},
     MailApp: {},
     PropertiesService: {},
@@ -33,7 +36,7 @@ export function loadGasContext(fileNames) {
     LockService: {},
     ContentService: {},
     Session: {}
-  };
+  }, overrides || {});
   vm.createContext(sandbox);
 
   const files = fileNames || fs.readdirSync(srcDir).filter((f) => f.endsWith('.gs')).sort();

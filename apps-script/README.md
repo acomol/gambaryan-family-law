@@ -21,19 +21,21 @@ apps-script/
     Numbering.gs            # №-нумерация — ЧИСТАЯ ЛОГИКА
     SyncPlan.gs              # дедуп submission_id — ЧИСТАЯ ЛОГИКА
     Config.gs                # дефолты/парсинг «Настроек» — ЧИСТАЯ ЛОГИКА (кроме чтения листа)
-    Sheets.gs                 # setupCrm() — GAS-only, НЕ тестируется в Node
+    Sheets.gs                 # setupCrm() — GAS-only, тестируется через фейки (gas-fakes.mjs)
     Notifications.gs           # MailApp + журнал — GAS-only
-    Code.gs                     # tick(), onEdit, триггеры, doGet, меню — GAS-only
+    Code.gs                     # tick(), onEdit, триггеры, doGet, admin-функции — GAS-only, тестируется через фейки
   test/
     run.mjs                     # node apps-script/test/run.mjs
-    helpers/                     # harness, vm-загрузчик .gs, независимый oracle, фикстуры
-    *.test.mjs                   # 40 тестов чистой логики
+    helpers/                     # harness, vm-загрузчик .gs, gas-fakes (структурные фейки GAS-сервисов), независимый oracle, фикстуры
+    *.test.mjs                   # 83 теста (чистая логика + GAS-only через структурные фейки)
 ```
 
 Модули «ЧИСТАЯ ЛОГИКА» не знают о `SpreadsheetApp`/`MailApp` (кроме одной точки —
 `Utilities.formatDate`, см. ниже) и поэтому одинаково выполняются и в Apps Script,
 и в Node (`vm`-контекст с маленьким моком). `Sheets.gs`/`Notifications.gs`/`Code.gs` —
-интеграционный слой, вызывает чистую логику и настоящие GAS-сервисы; тестами не покрыт.
+интеграционный слой, вызывает чистую логику и настоящие GAS-сервисы; тестируется через
+структурные фейки этих сервисов (`test/helpers/gas-fakes.mjs` — in-memory лист/протекшн/
+PropertiesService/MailApp/ScriptApp/ContentService), не живым Google API.
 
 ## Тесты
 
@@ -41,7 +43,14 @@ apps-script/
 node apps-script/test/run.mjs
 ```
 
-40/40 зелёных, exit code 0. Единственная зависимость чистой логики от Apps Script —
+83/83 зелёных, exit code 0 (40 исходных + 43 добавленных при разборе двух независимых
+ревью коммита `1d64f41`, см. `test/utils.test.mjs`, `test/sheets-protection.test.mjs`,
+`test/code-corrections.test.mjs`, `test/code-integration.test.mjs`,
+`test/static-checks.test.mjs` и дополнения в существующих файлах). GAS-only код
+(`Sheets.gs`/`Code.gs`/`Notifications.gs`) тестируется через структурные фейки
+GAS-сервисов — `test/helpers/gas-fakes.mjs` (in-memory лист/протекшн/PropertiesService/
+MailApp/ScriptApp/ContentService), а не пропускается. Единственная зависимость чистой
+логики от Apps Script —
 `Utilities.formatDate(date, tz, "yyyy-MM-dd'T'HH:mm:ss")` (стабильный документированный
 API — https://developers.google.com/apps-script/reference/utilities/utilities#formatDate);
 в Node он подменяется мок-функцией на `Intl.DateTimeFormat` (`test/helpers/mock-utilities.mjs`).
@@ -90,6 +99,21 @@ node apps-script/test/run.mjs
 Правится прямо в листе «Настройки», без изменения кода — `loadConfig_()` читает их
 при каждом `tick()`.
 
+Ещё два ключа (review находка №13 / design §12 строка 7 — дежурный на выходные/ночь,
+по умолчанию выключен, владелец: «пока нет»):
+
+| Ключ | Дефолт | Смысл |
+|---|---|---|
+| `weekend_duty_enabled` | `false` | `true`/`false` — включить дежурного вне рабочего времени |
+| `weekend_duty_email` | *(пусто)* | email дежурного; используется только если `weekend_duty_enabled=true` |
+
+И один ключ для Albato (review находка №5 — заменяет ошибочное упоминание Script
+Property в старой версии этого README, см. «Установка» шаг 5):
+
+| Ключ | Дефолт | Смысл |
+|---|---|---|
+| `albato_editor_email` | *(пусто)* | email аккаунта Albato для доступа к «Входящие»; пока пусто — защита листа в режиме предупреждения, не жёсткая |
+
 Праздники и сокращённые дни **не** заполняются автоматически: список меняется каждый
 год, и хардкодить конкретные даты в код — риск ошибиться без второго источника
 (`behavioral-corrections.md`, "2+ источника на технический вывод"). Добавляются вручную
@@ -114,21 +138,43 @@ Design §12.3: владелец скрипта — **alex@adfix.co.il** (явн�
    `appsscript.json` (`spreadsheets`, `script.send_mail`, `script.scriptapp`).
 5. Script Properties (Project Settings -> Script Properties):
    - `healthEndpointToken` — случайная строка для `doGet` (внешний наблюдатель, §5.7).
-   - `albato_editor_email` — email аккаунта Albato, когда он появится (нужен для
-     `protectIntakeSheet_`, иначе редактором «Входящих» остаётся только сам скрипт).
+   - `albato_editor_email` здесь НЕ заводится (review находка №5 — раньше этот пункт
+     противоречил коду): это строка листа «Настройки» (пустой дефолт создаёт
+     `setupCrm()`), не Script Property. Заполняется прямо в таблице при подключении
+     Albato. Пока пусто — `protectIntakeSheet_` держит «Входящие» в режиме
+     предупреждения (`Protection.setWarningOnly(true)`), не блокирует Albato молча.
 6. Запустить `setupCrm()` вручную один раз (Run -> setupCrm). Проверить: лист «2026»
    переименован в «Входящие» (если «Входящие» ещё не было), появились «Заявки»,
    «Сегодня», «Сводка», «Настройки» с дефолтами, «Журнал».
 7. Запустить `installTriggers()` вручную один раз — создаст `tick` (каждые 5 мин) и
    `handleEdit_` (installable onEdit) триггеры.
-8. Открыть таблицу — должно появиться меню «CRM». Пункт «Тест уведомления» — проверить,
-   что письмо реально приходит на `system_alert_recipients`.
+8. Меню «CRM» в таблице НЕ появляется (review находка №2 — сознательно убрано, не
+   баг): скрипт — standalone-проект (design §5.1), а официальная документация Google
+   однозначна — `SpreadsheetApp.getUi()`/меню работают только у скрипта, привязанного
+   к таблице:
+   > "Only bound scripts can create menus. To display the menu when the user opens
+   > a file, write the menu code within an onOpen function."
+   — [Custom menus](https://developers.google.com/apps-script/guides/menus)
+   > "A script can only interact with the UI for the current instance of an open
+   > spreadsheet, and only if the script is bound to the spreadsheet."
+   — [SpreadsheetApp.getUi()](https://developers.google.com/apps-script/reference/spreadsheet/spreadsheet-app#getui())
+
+   Это не зависит от типа триггера (простой `onOpen(e)` или installable) — дело в
+   bound/standalone статусе самого проекта. Административные действия ADFIX выполняет
+   вручную из редактора Apps Script: открыть проект -> выбрать функцию
+   `menuSendTestNotification_` или `menuArchiveClosed_` в выпадающем списке -> Run;
+   результат смотреть в логе выполнения (View -> Executions / Logger), не во
+   всплывающем диалоге. Проверить, что тестовое письмо реально приходит на
+   `system_alert_recipients`.
 
 **Не проверено вживую** (см. также раздел отчёта задачи «не проверено»):
 - Точные тексты ошибок `MailApp.sendEmail` при квотах/невалидных адресах —
   `classifySendError_` в `Notifications.gs` — эвристика, не подтверждённая живым вызовом.
-- Полный список из 24 полей маппинга Albato (design §7) — `INTAKE_HEADERS_` в
-  `Sheets.gs` реконструирован из упоминаний в дизайне, не из реального сценария Albato.
+- `INTAKE_HEADERS_` в `Sheets.gs` — реальные 24 поля маппинга Albato (владелец
+  подтвердил порядок A..X, review находка №3, разбор двух независимых ревью
+  коммита `1d64f41`); `setupCrm()` их только сверяет (`verifyIntakeHeaders_`,
+  расхождение — строка в «Журнал»), никогда не переставляет/не дописывает.
+  Живого прогона против настоящего сценария Albato (bundle 389466) всё ещё не было.
 - `ConditionalFormatRuleBuilder` не имеет метода для рамки (border) — design §4 просит
   «красную рамку» для просроченного/пустого обязательного поля; реализовано как жирный
   красный фон (`applyRequestsConditionalFormatting_`). Если рамка нужна визуально
@@ -138,11 +184,19 @@ Design §12.3: владелец скрипта — **alex@adfix.co.il** (явн�
   из standalone-проекта — механизм задокументирован (installable triggers,
   https://developers.google.com/apps-script/guides/triggers/installable), но сам вызов
   ни разу не выполнялся против реальной таблицы в рамках этой задачи.
-- `SpreadsheetApp.newRichTextValue()` для колонки «Связаться» НЕ использован — вместо
-  rich-text с двумя кликабельными ссылками в ячейку пишется обычный текст
-  `tel:... https://wa.me/...` (см. `buildNewRequestRow_`/`applyCorrectionToRow_` в
-  `Code.gs`). Работает как текст, но не как готовые ссылки в интерфейсе Sheets —
-  первое, что стоит доделать при живой проверке.
+- «Связаться» теперь пишется как `SpreadsheetApp.newRichTextValue()` с настоящей
+  кликабельной ссылкой на WhatsApp (`buildContactCellPlan_` в `Utils.gs`,
+  `writeContactCell_`/`buildContactRichText_` в `Code.gs`) — review находка №12.
+  `tel:` НЕ сделан ссылкой: официальная документация `RichTextValueBuilder.setLinkUrl()`
+  не описывает поддерживаемые URL-схемы явно
+  (https://developers.google.com/apps-script/reference/spreadsheet/rich-text-value-builder),
+  а независимые источники (справка/форум Google Docs, проверено поиском 2026-09-23)
+  сообщают, что штатный `HYPERLINK()` в Google Sheets поддерживает кликабельными
+  только http/https/mailto — устойчивой поддержки `tel:` не подтверждено. Телефон
+  остаётся видимым текстом в той же ячейке («Позвонить: +972…  WhatsApp»), ссылка —
+  только на слово WhatsApp. `[likely]`, не проверено вживую на реальной таблице —
+  первое, что стоит перепроверить при живой приёмке (может оказаться, что `tel:`
+  на мобильном Sheets всё-таки кликабелен — тогда стоит вернуть его как ссылку).
 
 ## Приёмочный тест Albato (design §7)
 
