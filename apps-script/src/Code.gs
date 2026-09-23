@@ -84,6 +84,13 @@ function tick() {
       reconcilePendingEdits_(requests, reqHeaderMap, ss.getSheetByName(SHEET_JOURNAL_), service, serviceHeaderMap, now);
     });
 
+    // build-round (owner-approved): независимый наблюдатель за резервным
+    // бэкап/ретрай-воркером (pipeline-health v1, PipelineHealth.gs) — раз в
+    // час, собственный шаг, падение здесь не должно ронять синхронизацию.
+    stepResults.pipeline_health = runStepSafely_('pipeline_health', function () {
+      checkPipelineHealth_(ss, config, now);
+    });
+
     writeHeartbeat_(now);
     reportCycleHealth_(ss, config, now, stepResults);
   } catch (err) {

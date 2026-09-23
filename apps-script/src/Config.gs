@@ -35,7 +35,12 @@ var DEFAULT_SETTINGS_ = {
   // review находка №13 / design §12 строка 7: дежурный на выходные/ночь —
   // настройка «Настроек», по умолчанию ВЫКЛЮЧЕНА (владелец: «пока нет»).
   weekend_duty_enabled: 'false',
-  weekend_duty_email: ''
+  weekend_duty_email: '',
+  // build-round (owner-approved addition, pipeline-health v1 contract):
+  // здоровье бэкап/ретрай-воркера (Cloudflare, gambarian-lead-cron) — сугубо
+  // техническая настройка, офис её не видит (design: «Настройки» и так не
+  // видит офис — см. docs/MINI-CRM-DESIGN.md §2).
+  pipeline_health_url: 'https://gambarian-lead-cron.alex-799.workers.dev/health'
 };
 
 // Ключи, по которым владелец ещё не подтвердил значение (design §12.2) —
@@ -51,7 +56,8 @@ var SETTINGS_COMMENTS_ = {
   system_alert_recipients: 'heartbeat / независимый наблюдатель (design §5.7)',
   albato_editor_email: 'email аккаунта Albato для доступа к «Входящие» — заполнить при подключении Albato (design §5.1, review №5); пока пусто — защита «Входящие» в режиме предупреждения',
   weekend_duty_enabled: 'true/false — дежурный на выходные/ночь (design §12 строка 7). По умолчанию false',
-  weekend_duty_email: 'email дежурного вне рабочего времени, используется только если weekend_duty_enabled=true'
+  weekend_duty_email: 'email дежурного вне рабочего времени, используется только если weekend_duty_enabled=true',
+  pipeline_health_url: 'GET .../health (pipeline-health v1) — проверяется раз в час из tick(), алерт system_alert_recipients при деградации'
 };
 
 /**
@@ -143,6 +149,7 @@ function normalizeSettings_(raw, holidaysAndShortDays) {
     weekendDuty: {
       enabled: String(raw.weekend_duty_enabled).trim().toLowerCase() === 'true',
       email: raw.weekend_duty_email || ''
-    }
+    },
+    pipelineHealthUrl: raw.pipeline_health_url || ''
   };
 }

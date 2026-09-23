@@ -36,6 +36,7 @@ export function loadGasContext(fileNames, overrides) {
     LockService: {},
     ContentService: {},
     Session: {},
+    UrlFetchApp: {},
     // Charts — дашборд «Сводка» (5 графиков, EmbeddedChartBuilder использует
     // Charts.ChartType.* как перечисление типа при sheet.newChart().setChartType(...)).
     Charts: { ChartType: { LINE: 'LINE', BAR: 'BAR', COLUMN: 'COLUMN', PIE: 'PIE' } }

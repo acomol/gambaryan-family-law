@@ -373,6 +373,34 @@ export function makeFakeMailApp(opts) {
   };
 }
 
+/**
+ * pipeline-health v1 — UrlFetchApp.fetch(url, params) фейк. opts.responses —
+ * очередь {code, body} (или {shouldThrow} для симуляции сетевой ошибки/таймаута),
+ * по одной на КАЖДЫЙ вызов fetch(); когда очередь короче числа вызовов,
+ * последний элемент переиспользуется (удобно для "все последующие проверки
+ * успешны/неуспешны одинаково"). muteHttpExceptions в params — как в реальном
+ * UrlFetchApp, здесь просто игнорируется (фейк никогда не бросает на
+ * неуспешном коде ответа сам по себе, только когда явно указан shouldThrow).
+ */
+export function makeFakeUrlFetchApp(opts) {
+  opts = opts || {};
+  var responses = opts.responses || [{ code: 200, body: '{}' }];
+  var calls = [];
+  return {
+    fetch: function (url, params) {
+      calls.push({ url: url, params: params });
+      var idx = Math.min(calls.length - 1, responses.length - 1);
+      var resp = responses[idx];
+      if (resp.shouldThrow) throw new Error(typeof resp.shouldThrow === 'string' ? resp.shouldThrow : 'UrlFetchApp: forced failure');
+      return {
+        getResponseCode: function () { return resp.code; },
+        getContentText: function () { return resp.body; }
+      };
+    },
+    _calls: calls
+  };
+}
+
 export function makeFakeScriptApp() {
   var triggers = [];
   function triggerBuilder(handler) {

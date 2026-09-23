@@ -36,12 +36,15 @@ const templates = [
     key: 'new-lead',
     label: 'Новая заявка',
     render: function () {
+      // build-round: длинное составное имя/email — EMAIL-CRITIQUE.md "Mobile
+      // wrapping" рекомендовал добавить это в фикстуры превью (не было сделано
+      // в design-only задаче, эта — код-раунд, .mjs трогаем).
       return ctx.renderNewLeadEmail_({
-        leadNo: 'G-0034',
-        receivedAtLabel: '23.09.2026 14:05',
-        name: 'Мария Соколова',
-        phone: '+972501234567',
-        email: 'maria.sokolova@example.com',
+        leadNo: 'G-0052',
+        receivedAtLabel: '23.09.2026 17:52',
+        name: 'Александра Никифорова-Штейнберг',
+        phone: '+972502223344',
+        email: 'a.nikiforova-steinberg@example.com',
         source: 'Google Ads',
         sheetUrl: FICTIONAL_SHEET_URL
       });
