@@ -17,6 +17,12 @@ P0 — теги живые на lp и проверены. Пока P0 не за�
 - Кнопки «Позвонить» показываются только в рабочее время (задумано) — проверять днём
 - `page_view` пока без `design_version` (ранний push в сборке — P1)
 
+P0-LEAD — сохранение лидов по плейбуку (ADFIX-SITE-SYSTEM v2 §1.6 L1–L15), **блокер запуска рекламы**:
+- Аудит 2026-09-23: `functions/api/lead.js` только пересылает в Albato, 0 копий; нет outbox, ретраев, KV/D1/R2, крона, бэкапа, `/admin`, алертов; в проекте CF нет ни биндингов, ни секретов → форма сейчас 503
+- [ ] Перенос эталона Assuta (`feature/luxemed-new-lending` @ 613cdd30) → ветка `claude/gambarian-lead-pipeline` (агент, без деплоя)
+- [ ] Проверка переноса мной + Codex; создание KV/D1/R2 + cron-worker; секреты владельца; деплой после «да»; контрольный лид → строка в Sheet + D1 + R2
+- Память владельца (`personal-brain`) не читается: brainctl «CLAUDE.md no longer matches its verified bytes» — починить валидацию (план в `~/.claude/plans/claude-md-restructure-2026-09-23.md`, п.1)
+
 P1 — после P0: правки агента (хвосты параметров, ранний `design_version`) → передеплой; аудитории по потоку lp; фильтр внутреннего трафика → Active; Codex по итогу; документы.
 P2 — вторичное: карточки WhatsApp/Telegram, Rich Results, чистка комментариев в head.
 
