@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Сводка — mock</title>
+<style>
+  :root{
+    --wine:#8a1f1f; --wine-hover:#a02626; --gold:#f0ae1f; --amber:#c9880a;
+    --ink:#14191f; --ink2:#4b5158; --ink3:#6b7280; --ink4:#9ca3af;
+    --cream:#f6f1e8; --line:#e1e3e6; --line-strong:#c7cad0;
+    --status-new:#FFF9C4; --status-nodial:#FFCC80; --status-work:#81D4FA;
+    --status-consult1:#CE93D8; --status-consult2:#64B5F6; --status-done:#A5D6A7;
+    --status-overdue:#FFCDD2;
+    --sheet-font: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    --colw:128px; --roww:22px; --gutter:36px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#e8eaed;font-family:var(--sheet-font);color:var(--ink);}
+  .app{width:1160px;margin:0 auto;background:#fff;}
+  .titlebar{display:flex;align-items:center;gap:10px;padding:8px 14px 2px;border-bottom:1px solid var(--line);}
+  .titlebar .sheeticon{width:26px;height:26px;border-radius:4px;background:linear-gradient(135deg,#1a7a3d,#0f5c2c);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;}
+  .titlebar .name{font-size:15px;color:#3c4043;}
+  .titlebar .menu{display:flex;gap:14px;margin-left:8px;font-size:12px;color:#5f6368;}
+  .toolbar{display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid var(--line);}
+  .toolbar .btn{width:22px;height:22px;border-radius:3px;background:#f1f3f4;}
+  .toolbar .divider{width:1px;height:18px;background:var(--line-strong);margin:0 4px;}
+  .toolbar .fx{font-family:Georgia,serif;font-style:italic;color:#5f6368;font-size:13px;padding:0 6px;}
+
+  .colheads{display:flex;padding-left:var(--gutter);border-bottom:1px solid var(--line-strong);background:#f8f9fa;}
+  .colheads div{width:var(--colw);text-align:center;font-size:11px;color:#5f6368;padding:3px 0;border-right:1px solid var(--line);}
+
+  .sheetbody{display:flex;}
+  .rownums{width:var(--gutter);background:#f8f9fa;border-right:1px solid var(--line-strong);flex-shrink:0;}
+  .rownums div{height:var(--roww);line-height:var(--roww);text-align:center;font-size:10px;color:#5f6368;border-bottom:1px solid var(--line);}
+
+  .grid{
+    position:relative;
+    display:grid;
+    grid-template-columns: repeat(8, var(--colw));
+    grid-auto-rows: var(--roww);
+    background-image:
+      repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--colw)),
+      repeating-linear-gradient(to bottom, var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--roww));
+  }
+  .g{ } /* generic grid item, position via inline style grid-row/grid-column */
+  .txt{font-size:11px;color:var(--ink);display:flex;align-items:center;padding:0 6px;background:#fff;}
+  .sheet-title{font-size:16px;font-weight:600;color:var(--ink);display:flex;align-items:center;background:#fff;padding:0 6px;}
+  .sheet-updated{font-size:11px;color:var(--ink3);display:flex;align-items:center;justify-content:flex-end;background:#fff;padding:0 6px;}
+
+  .card{border:1px solid var(--line-strong);border-radius:2px;background:var(--cream);display:flex;flex-direction:column;justify-content:center;gap:3px;padding:10px 14px;}
+  .card .label{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.03em;}
+  .card .big{font-size:26px;font-weight:700;color:var(--ink);line-height:1.1;}
+  .card .sub{font-size:12px;color:var(--ink2);}
+  .card .delta-up{color:#1a7a3d;font-weight:600;font-size:12px;}
+  .card.good{background:var(--status-done);}
+  .card.bad{background:var(--status-overdue);}
+  .spark{display:flex;align-items:flex-end;gap:2px;height:20px;margin-top:2px;}
+  .spark i{display:block;width:5px;background:var(--wine);border-radius:1px 1px 0 0;}
+
+  .chart-block{border:1px solid var(--line-strong);background:#fff;padding:14px 18px 10px;border-radius:2px;}
+  .chart-title{font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .chart-sub{font-size:11px;color:var(--ink3);margin-bottom:8px;}
+  .linechart{width:100%;height:170px;}
+  .funnelchart .row{display:flex;align-items:center;gap:10px;margin:9px 0;}
+  .funnelchart .stagelabel{width:150px;font-size:12px;color:var(--ink2);text-align:right;flex-shrink:0;}
+  .funnelchart .bar{height:26px;border-radius:2px;display:flex;align-items:center;color:#fff;font-size:12px;font-weight:700;padding:0 10px;}
+  .funnelchart .bar.light{color:var(--ink);}
+  .srcchart .row{display:flex;align-items:center;gap:10px;margin:10px 0;}
+  .srcchart .stagelabel{width:110px;font-size:12px;color:var(--ink2);text-align:right;flex-shrink:0;}
+  .srcchart .bar{height:28px;border-radius:2px;display:flex;align-items:center;color:#fff;font-size:12px;font-weight:700;padding:0 10px;}
+  .reasonchart .row{display:flex;align-items:center;gap:10px;margin:7px 0;}
+  .reasonchart .stagelabel{width:180px;font-size:12px;color:var(--ink2);text-align:right;flex-shrink:0;}
+  .reasonchart .bar{height:18px;background:var(--ink2);border-radius:2px;}
+  .reasonchart .n{font-size:11px;color:var(--ink3);width:22px;}
+  .statusmix{display:flex;height:34px;border-radius:3px;overflow:hidden;border:1px solid var(--line-strong);}
+  .statusmix .seg{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;}
+  .legend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;}
+  .legend .item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2);}
+  .legend .sw{width:10px;height:10px;border-radius:2px;}
+
+  .tabbar{display:flex;align-items:center;gap:2px;border-top:1px solid var(--line-strong);background:#f8f9fa;padding:4px 8px;font-size:12px;color:#5f6368;}
+  .tab{padding:6px 12px;border-radius:4px 4px 0 0;}
+  .tab.locked::after{content:" \1F512";font-size:10px;}
+  .tab.active{background:#fff;color:var(--ink);font-weight:600;border-top:3px solid #1a7a3d;position:relative;top:1px;}
+  .tab.dim{color:var(--ink4);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="titlebar">
+    <div class="sheeticon">&#1046;</div>
+    <div class="name">Leads_web_LP</div>
+    <div class="menu"><span>Файл</span><span>Правка</span><span>Вид</span><span>Формулы</span><span>Данные</span></div>
+  </div>
+  <div class="toolbar">
+    <div class="btn"></div><div class="btn"></div><div class="divider"></div>
+    <div class="btn"></div><div class="btn"></div><div class="divider"></div>
+    <span class="fx">fx</span>
+  </div>
+
+  <div class="colheads">
+    <div>A</div><div>B</div><div>C</div><div>D</div><div>E</div><div>F</div><div>G</div><div>H</div>
+  </div>
+
+  <div class="sheetbody">
+    <div class="rownums" id="rownums"></div>
+    <div class="grid">
+
+      <div class="g sheet-title" style="grid-column:1/5;grid-row:1/2;">Сводка — Гамбарян и партнёры</div>
+      <div class="g sheet-updated" style="grid-column:5/9;grid-row:1/2;">Обновлено: 23.09.2026 14:32</div>
+
+      <!-- KPI 1: rows 3-6 -->
+      <div class="g card" style="grid-column:1/5;grid-row:3/7;">
+        <div class="label">Заявок · 7 дней</div>
+        <div class="big">12 <span class="delta-up">&#9650;+3</span></div>
+        <div class="sub">пред. 7 дней: 9</div>
+        <div class="spark"><i style="height:6px"></i><i style="height:10px"></i><i style="height:14px"></i><i style="height:8px"></i><i style="height:18px"></i><i style="height:12px"></i><i style="height:16px"></i></div>
+      </div>
+
+      <!-- KPI 2: rows 8-11 -->
+      <div class="g card" style="grid-column:1/5;grid-row:8/12;">
+        <div class="label">Заявок · 30 дней</div>
+        <div class="big">41</div>
+        <div class="sub">≈9-10 / нед.</div>
+        <div class="spark"><i style="height:10px"></i><i style="height:14px"></i><i style="height:9px"></i><i style="height:16px"></i><i style="height:12px"></i><i style="height:18px"></i><i style="height:11px"></i><i style="height:15px"></i></div>
+      </div>
+
+      <!-- KPI 3: rows 13-16 -->
+      <div class="g card" style="grid-column:1/5;grid-row:13/17;">
+        <div class="label">До консультации · 30д</div>
+        <div class="big">9</div>
+        <div class="sub">из 41 (22%)</div>
+      </div>
+
+      <!-- KPI 4: rows 18-21 -->
+      <div class="g card good" style="grid-column:1/5;grid-row:18/22;">
+        <div class="label">Договоров</div>
+        <div class="big">7 <span class="sub" style="font-size:13px;">всего · 11%</span></div>
+        <div class="sub">+2 за 30 дней</div>
+        <div class="sub">n = 62 заявки за всё время</div>
+      </div>
+
+      <!-- KPI 5: rows 23-26 -->
+      <div class="g card good" style="grid-column:1/5;grid-row:23/27;">
+        <div class="label">Медиана до 1-й попытки</div>
+        <div class="big">18 мин</div>
+        <div class="sub">порог SLA: 30 мин</div>
+      </div>
+
+      <!-- KPI 6: rows 28-31 -->
+      <div class="g card bad" style="grid-column:1/5;grid-row:28/32;">
+        <div class="label">Просрочено сейчас</div>
+        <div class="big">2 заявки</div>
+        <div class="sub">«Следующий шаг» в прошлом</div>
+      </div>
+
+      <!-- Chart 1: rows 34-49 -->
+      <div class="g chart-block" style="grid-column:1/9;grid-row:34/50;">
+        <div class="chart-title">Заявки по неделям</div>
+        <div class="chart-sub">8 недель · линия «Заявки», раб. окно вс-чт 09:00-18:00 не влияет на этот график</div>
+        <svg class="linechart" viewBox="0 0 1000 170" preserveAspectRatio="none">
+          <line x1="0" y1="140" x2="1000" y2="140" stroke="#e1e3e6" stroke-width="1"/>
+          <line x1="0" y1="100" x2="1000" y2="100" stroke="#e1e3e6" stroke-width="1"/>
+          <line x1="0" y1="60" x2="1000" y2="60" stroke="#e1e3e6" stroke-width="1"/>
+          <line x1="0" y1="20" x2="1000" y2="20" stroke="#e1e3e6" stroke-width="1"/>
+          <polyline fill="none" stroke="#8a1f1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+            points="15,110 140,90 265,120 390,70 515,95 640,50 765,75 890,35"/>
+          <g fill="#8a1f1f">
+            <circle cx="15" cy="110" r="4"/><circle cx="140" cy="90" r="4"/><circle cx="265" cy="120" r="4"/>
+            <circle cx="390" cy="70" r="4"/><circle cx="515" cy="95" r="4"/><circle cx="640" cy="50" r="4"/>
+            <circle cx="765" cy="75" r="4"/><circle cx="890" cy="35" r="4"/>
+          </g>
+          <g font-size="11" fill="#6b7280" font-family="Arial">
+            <text x="0" y="160">25.07</text><text x="120" y="160">01.08</text><text x="245" y="160">08.08</text>
+            <text x="370" y="160">15.08</text><text x="495" y="160">22.08</text><text x="620" y="160">29.08</text>
+            <text x="745" y="160">05.09</text><text x="865" y="160">12.09</text>
+          </g>
+          <text x="895" y="26" font-size="13" fill="#14191f" font-weight="700" font-family="Arial">12</text>
+        </svg>
+      </div>
+
+      <!-- Chart 2: funnel, rows 51-61 -->
+      <div class="g chart-block" style="grid-column:1/9;grid-row:51/62;">
+        <div class="chart-title">Воронка · за 30 дней</div>
+        <div class="chart-sub">Счёт на каждом шаге (не проценты — n мало для достоверной конверсии между шагами)</div>
+        <div class="funnelchart">
+          <div class="row"><div class="stagelabel">Заявки</div><div class="bar light" style="width:600px;background:#d9a8a8;">41</div></div>
+          <div class="row"><div class="stagelabel">Первая попытка</div><div class="bar" style="width:497px;background:#c68080;">34</div></div>
+          <div class="row"><div class="stagelabel">Консультация</div><div class="bar" style="width:263px;background:#a85552;">18</div></div>
+          <div class="row"><div class="stagelabel">Договор</div><div class="bar" style="width:40px;background:#8a1f1f;">2</div></div>
+        </div>
+      </div>
+
+      <!-- Chart 3: source split, rows 48-54 -->
+      <div class="g chart-block" style="grid-column:1/9;grid-row:63/70;">
+        <div class="chart-title">Источники · за 30 дней</div>
+        <div class="chart-sub">n = 41</div>
+        <div class="srcchart">
+          <div class="row"><div class="stagelabel">Google Ads</div><div class="bar" style="width:480px;background:#a02626;">29 (71%)</div></div>
+          <div class="row"><div class="stagelabel">Другое</div><div class="bar" style="width:205px;background:#c9880a;">12 (29%)</div></div>
+        </div>
+      </div>
+
+      <!-- Chart 4: reasons of loss, rows 71-81 -->
+      <div class="g chart-block" style="grid-column:1/9;grid-row:71/82;">
+        <div class="chart-title">Причины отказа · за всё время</div>
+        <div class="chart-sub">n = 14 отказов · один нейтральный цвет — категории уже подписаны слева</div>
+        <div class="reasonchart">
+          <div class="row"><div class="stagelabel">Не дозвонились (3+)</div><div class="bar" style="width:300px;"></div><div class="n">6</div></div>
+          <div class="row"><div class="stagelabel">Дорого</div><div class="bar" style="width:200px;"></div><div class="n">4</div></div>
+          <div class="row"><div class="stagelabel">Выбрал другого юриста</div><div class="bar" style="width:100px;"></div><div class="n">2</div></div>
+          <div class="row"><div class="stagelabel">Передумал</div><div class="bar" style="width:50px;"></div><div class="n">1</div></div>
+          <div class="row"><div class="stagelabel">Не наш профиль</div><div class="bar" style="width:50px;"></div><div class="n">1</div></div>
+        </div>
+      </div>
+
+      <!-- Chart 5: status mix, rows 83-90 -->
+      <div class="g chart-block" style="grid-column:1/9;grid-row:83/91;">
+        <div class="chart-title">Срез статусов сейчас · открытые заявки</div>
+        <div class="chart-sub">n = 12 открытых · цвета — те же, что в «Заявках» (не новая палитра)</div>
+        <div class="statusmix">
+          <div class="seg" style="width:25%;background:#FFF9C4;">3</div>
+          <div class="seg" style="width:25%;background:#FFCC80;">3</div>
+          <div class="seg" style="width:33.3%;background:#81D4FA;">4</div>
+          <div class="seg" style="width:16.7%;background:#CE93D8;">2</div>
+        </div>
+        <div class="legend">
+          <div class="item"><div class="sw" style="background:#FFF9C4;"></div>Новая</div>
+          <div class="item"><div class="sw" style="background:#FFCC80;"></div>Не дозвонились</div>
+          <div class="item"><div class="sw" style="background:#81D4FA;"></div>В работе</div>
+          <div class="item"><div class="sw" style="background:#CE93D8;"></div>Консультация назначена</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab dim">Входящие</div>
+    <div class="tab dim">Заявки</div>
+    <div class="tab dim locked">Служебное</div>
+    <div class="tab dim">Сегодня</div>
+    <div class="tab active">Сводка</div>
+    <div class="tab dim">Настройки</div>
+    <div class="tab dim">Журнал</div>
+  </div>
+
+</div>
+<script>
+  var rn = document.getElementById('rownums');
+  var html = '';
+  for (var i = 1; i <= 91; i++) { html += '<div>' + i + '</div>'; }
+  rn.innerHTML = html;
+</script>
+</body>
+</html>
