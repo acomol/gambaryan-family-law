@@ -16,11 +16,17 @@ function makeFakeProtection(initialEmails, type) {
     _type: type || 'SHEET',
     getEditors: function () { return emails.map(userObj); },
     removeEditors: function (list) {
+        // Real run 2026-09-23 (private copy): "Exception: The method 'removeEditor' is not
+        // available on Protection objects where isWarningOnly is true."
+        if (warningOnly) throw new Error("The method 'removeEditor' is not available on Protection objects where isWarningOnly is true.");
       var toRemove = (list || []).map(function (e) { return typeof e === 'string' ? e : e.getEmail(); });
       emails = emails.filter(function (e) { return toRemove.indexOf(e) === -1; });
       return protection;
     },
     addEditors: function (list) {
+        // Real run 2026-09-23 (private copy): "Exception: The method 'removeEditor' is not
+        // available on Protection objects where isWarningOnly is true."
+        if (warningOnly) throw new Error("The method 'addEditor' is not available on Protection objects where isWarningOnly is true.");
       (list || []).forEach(function (e) {
         var email = typeof e === 'string' ? e : e.getEmail();
         // Реальный Protection.addEditors бросает на невалидный email — пустая

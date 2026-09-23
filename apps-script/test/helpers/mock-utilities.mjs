@@ -8,6 +8,12 @@ const ISO_PATTERN = "yyyy-MM-dd'T'HH:mm:ss";
 const RU_DATETIME_PATTERN = 'dd.MM.yyyy HH:mm';
 
 export function formatDate(date, timeZone, pattern) {
+  if (pattern === 'HH:mm') {
+    // settingsCellToString_ (Config.gs): время из ячейки «Настроек» -> «HH:mm».
+    const dtf = new Intl.DateTimeFormat('en-US', { timeZone, hour12: false, hour: '2-digit', minute: '2-digit' });
+    const parts = Object.fromEntries(dtf.formatToParts(date).map((p) => [p.type, p.value]));
+    return `${parts.hour === '24' ? '00' : parts.hour}:${parts.minute}`;
+  }
   if (pattern === ISO_PATTERN) {
     const dtf = new Intl.DateTimeFormat('en-US', {
       timeZone,

@@ -107,7 +107,8 @@ test('protectOfficeScriptColumns_: скрипт-колонки «Заявки» 
   assert.ok(rangeProt.length >= 1, 'должна появиться хотя бы одна RANGE-защита скрипт-колонок');
   rangeProt.forEach((p) => {
     assert.equal(p.isWarningOnly(), true, 'скрипт-колонки «Заявки» — предупреждение, не жёсткий блок (в отличие от «Служебное»)');
-    assert.deepEqual(p._emails(), ['alex@adfix.co.il']);
+    // Живой прогон 2026-09-23: у warning-only защиты Google запрещает
+    // removeEditor/addEditor — редакторов не трогаем (фейк теперь бросает так же).
   });
 });
 

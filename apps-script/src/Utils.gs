@@ -107,7 +107,13 @@ function buildContactLinks_(phone) {
  *   опасного символа; иначе та же строка с ведущим апострофом.
  */
 function sheetSafeValue_(value) {
-  return typeof value === 'string' && /^[=+\-@\t\r]/.test(value) ? "'" + value : value;
+  if (typeof value !== 'string') return value;
+  if (/^[=+\-@\t\r]/.test(value)) return "'" + value;
+  // Живой прогон 2026-09-23: «0509998877» записался числом 509998877 — таблица
+  // превращает текст из одних цифр в число и теряет ведущий ноль телефона.
+  // Апостроф заставляет хранить текст (в ячейке не виден).
+  if (/^0[\d\s\-()]*$/.test(value) && value.length > 1) return "'" + value;
+  return value;
 }
 
 /**

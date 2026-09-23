@@ -169,7 +169,13 @@ function ensureSettingsSheet_(sheet) {
     var data = sheet.getRange(1, 1, lastRow, 1).getValues();
     data.forEach(function (r) { if (r[0]) existingKeys[String(r[0]).trim()] = true; });
   }
-  var allRows = buildDefaultSettingsRows_();
+  // Живой прогон 2026-09-23: «09:00»/«08:30» таблица превращала во время, и
+  // рабочие часы читались как «Sat Dec 30 1899 …» — письма о новых заявках
+  // уходили в дайджест даже днём. Значения пишем текстом (апостроф).
+  var allRows = buildDefaultSettingsRows_().map(function (row, i) {
+    if (i === 0 || typeof row[1] !== 'string' || row[1] === '') return row;
+    return [row[0], "'" + row[1], row[2]];
+  });
   if (lastRow === 0) {
     sheet.getRange(1, 1, allRows.length, 3).setValues(allRows);
   } else {
@@ -510,6 +516,11 @@ function getOrCreateRangeProtectionByDescription_(sheet, description, makeRange)
  * @param {string[]} emails
  */
 function resetEditorsTo_(protection, emails) {
+  // Живой прогон 2026-09-23 (приватная копия таблицы): у защиты «только
+  // предупреждение» Google не даёт менять редакторов — removeEditor/addEditor
+  // бросают исключение, и setupCrm падал на protectOfficeScriptColumns_.
+  // Список редакторов у такой защиты не действует — пропускаем.
+  if (protection.isWarningOnly()) return;
   protection.removeEditors(protection.getEditors());
   var valid = (emails || []).filter(function (e) { return !!e; });
   if (valid.length) protection.addEditors(valid);

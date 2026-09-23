@@ -114,6 +114,21 @@ function splitList_(s) {
  * (миграция схемы — buildDefaultSettingsRows_ дописывает новые ключи одной
  * строкой, ensureSettingsSheet_ в Sheets.gs).
  */
+/**
+ * Живой прогон 2026-09-23: таблица сама превращает «09:00» во время (Date на
+ * 30.12.1899), а числа — в Number. Приводим обратно к строке настройки:
+ * время → «HH:mm» в часовом поясе скрипта (Asia/Jerusalem, appsscript.json),
+ * ведущий апостроф (им пишется текст) снимаем.
+ */
+function settingsCellToString_(value) {
+  if (value === undefined || value === null) return '';
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm');
+  }
+  var s = String(value);
+  return s.charAt(0) === "'" ? s.slice(1) : s;
+}
+
 function parseSettingsRows_(rows) {
   var raw = {};
   Object.keys(DEFAULT_SETTINGS_).forEach(function (k) { raw[k] = DEFAULT_SETTINGS_[k]; });
@@ -122,8 +137,7 @@ function parseSettingsRows_(rows) {
     if (!key) return;
     key = String(key).trim();
     if (!key) return;
-    var value = row[1];
-    raw[key] = value === undefined || value === null ? '' : String(value);
+    raw[key] = settingsCellToString_(row[1]);
   });
   return raw;
 }
