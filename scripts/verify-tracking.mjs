@@ -94,6 +94,17 @@ async function fill(page, email = PII[3]) {
 async function setup(page, baseUrl) {
   await page.goto(baseUrl);
   await page.evaluate(() => document.fonts.ready);
+  // Write-ahead outbox (site/app.js) persists in localStorage across
+  // navigations on the same origin/context. This test intentionally leaves
+  // failed-delivery entries behind (e.g. the 503/network/500 cases below) to
+  // assert on the UI's error state, not to exercise the outbox's own retry —
+  // clear it on every fresh setup() so a leftover entry's on-load/interval
+  // flush can never send an unexpected extra /api/lead POST or generate_lead
+  // into a later chapter's dataLayer snapshot (see scripts/verify-lead-form.mjs
+  // for the same fix, and docs/LEAD-PIPELINE.md for the outbox contract).
+  await page.evaluate(() => {
+    try { localStorage.removeItem("gambarian_lead_outbox_v1"); } catch (e) {}
+  });
   // Звонки, WhatsApp и карта не покидают локальную страницу.
   await page.evaluate(() => document.addEventListener("click", e => {
     const link = e.target.closest("a");

@@ -75,7 +75,8 @@ attribution передаётся пустая строка.
 значения из формы и URL (`name`, `phone`, `email`, `landing_path`, `referrer_host`, UTM и click-id), которые
 начинаются с `=`, `+`, `-`, `@`, табуляции или CR, сервер отправляет с апострофом впереди: `'+972 50 000 0000`.
 Таблица апостроф не показывает и хранит значение текстом; без него телефон становился `#ERROR!`, а формула из
-поля формы выполнилась бы (OWASP, formula injection). Остальные потребители payload должны снимать ведущий `'`.
+поля формы выполнилась бы (OWASP, formula injection). Апостроф ставится **только на выходе в Albato**
+(`sheetSafePayload` в `functions/api/lead.js` и `cron-worker`): KV, D1 и R2 хранят исходные значения.
 
 Не отправляются IP, User-Agent, полный URL/referrer, cookie/GA client ID,
 topic и свободный текст дела. Payload и webhook URL не логируются.
@@ -148,8 +149,15 @@ Webhook не вызывается, заявка не логируется, `lf_h
 - ошибки ввода, отсутствие сети, timeout, временная недоступность и прочие
   сбои доставки показываются как разные причины; поля всегда сохраняются;
 - двойная отправка блокируется; ручный повтор неизменённых данных сохраняет
-  тот же `submission_id`; сам endpoint не хранит состояние — dedup обязан быть
-  настроен в Albato/destination;
+  тот же `submission_id`. С `2026-09-23` в `functions/api/lead.js` есть
+  опциональный write-through пайплайн (`docs/LEAD-PIPELINE.md`): пока
+  Cloudflare KV/D1/R2 не привязаны (текущее состояние — **не активировано**),
+  endpoint по-прежнему не хранит состояние и dedup обязан быть настроен в
+  Albato/destination, как раньше. После активации endpoint сам дедуплицирует
+  повторные POST с тем же `submission_id` (не форвардит в Albato второй раз),
+  а браузер получает write-ahead outbox (localStorage) с автоматическими
+  ретраями и dead-letter маяком `POST /api/lead-dead-letter` (агрегатный
+  счётчик, без PII) при потере записи по TTL;
 - новая принятая заявка → `generate_lead` с `form_id`, `submission_id`,
   `seconds_to_lead` (видимое время); исправление → `lead_corrected` с новым ID
   и `corrects_submission_id`. Ошибка → `form_error` с `error_type` и `http_status`

@@ -3024,9 +3024,217 @@ picture { display: block; }
     return;
   }
   var LEAD_ENDPOINT = LEAD_CONTRACT.endpoint;
+  var LEAD_DEAD_LETTER_ENDPOINT = "/api/lead-dead-letter";
   var LEAD_FORM_ID = LEAD_CONTRACT.formId;
   var LEAD_ATTRIBUTION_STORAGE_KEY = LEAD_CONTRACT.attributionStorageKey;
   var LEAD_ATTRIBUTION_KEYS = LEAD_CONTRACT.attributionFields;
+
+  /* --- Надёжная доставка: write-ahead outbox (localStorage) --------------
+     Порт контракта «никогда не терять лид» (ADFIX-SITE-SYSTEM-PLAYBOOK.md
+     §1.6, L2/L6/L9/L11) под текущую форму Гамбаряна: запись уходит в outbox
+     ДО сети; ретраи при загрузке / online / раз в 60 с / pagehide
+     (sendBeacon); запись убирается по 2xx или по окончательно отклонённым
+     422 (retry того же payload бессмыслен — пользователь уже видит ошибку и
+     исправит поле, получив новый submission_id); просроченные (>7 дней)
+     записи считаются потерей и шлют dead-letter маяк без PII. Сервер
+     (functions/api/lead.js) дедуплицирует повторные POST по submission_id,
+     когда LEADS_KV привязан — до этого ретраи безвредны, но и не идемпотентны
+     на стороне Albato (см. docs/LEAD-PIPELINE.md). */
+  var OUTBOX_KEY = "gambarian_lead_outbox_v1";
+  var SENT_KEY = "gambarian_lead_sent_v1";
+  var OUTBOX_LOCK_NAME = "gambarian_lead_outbox_lock";
+  var SENT_LOCK_NAME = "gambarian_lead_sent_lock";
+  var OUTBOX_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  var OUTBOX_RETRY_MS = 60000;
+  var SENT_IDS_MAX = 200;
+
+  // Cross-tab mutual exclusion (review 2026-09-23, finding 6, P1): two tabs
+  // of the same origin share localStorage but not JS state, so an unguarded
+  // read-modify-write (outbox array, sent-ID set) can interleave and lose an
+  // update — a tab calling enqueueOutbox() can overwrite a write from a
+  // different tab, or both tabs
+  // race fireLeadOnce() and both fire generate_lead for the same lead.
+  // navigator.locks.request() serialises a named critical section across
+  // ALL tabs/pages of this origin (Web Locks API — supported in every
+  // Chromium/Firefox/Safari shipping today, secure-context only, which
+  // 127.0.0.1/HTTPS both satisfy). Residual risk, documented per the review
+  // ask: on a browser without Web Locks at all, this degrades to the old
+  // unguarded behaviour — no cross-tab exclusion, same race as before this
+  // fix — see docs/LEAD-PIPELINE.md "Review 2026-09-23" table.
+  function withLock(name, fn) {
+    if (window.navigator && navigator.locks && typeof navigator.locks.request === "function") {
+      return navigator.locks.request(name, fn);
+    }
+    return new Promise(function (resolve) { resolve(fn()); });
+  }
+
+  function readJSON(key, fallback) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+  function writeJSON(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      // Storage опционален — недоступность не должна ломать отправку.
+    }
+  }
+  function readOutbox() {
+    var value = readJSON(OUTBOX_KEY, []);
+    return Array.isArray(value) ? value : [];
+  }
+  function writeOutbox(entries) {
+    writeJSON(OUTBOX_KEY, entries);
+  }
+  function enqueueOutbox(data) {
+    if (data.lf_hp) return Promise.resolve(); // ловушка — не лид, ретраить нечего
+    return withLock(OUTBOX_LOCK_NAME, function () {
+      var entries = readOutbox().filter(function (entry) {
+        return entry.submission_id !== data.submission_id;
+      });
+      entries.push({ submission_id: data.submission_id, data: data, created_at: Date.now(), attempts: 0 });
+      writeOutbox(entries);
+    });
+  }
+  function dequeueOutbox(submissionId) {
+    return withLock(OUTBOX_LOCK_NAME, function () {
+      writeOutbox(readOutbox().filter(function (entry) { return entry.submission_id !== submissionId; }));
+    });
+  }
+
+  function sentLeadIds() {
+    var value = readJSON(SENT_KEY, []);
+    return Array.isArray(value) ? value : [];
+  }
+  // Дедуп по submission_id, общий для generate_lead И lead_corrected
+  // (review round 2, finding F, P2): каждый submission_id — либо новый лид,
+  // либо коррекция, никогда оба сразу, так что один персистентный Set,
+  // защищённый локом, безопасно накрывает оба типа событий. Раньше
+  // lead_corrected слался безусловно (без какого-либо дедупа) — две
+  // вкладки, ретраящие одну и ту же коррекцию, обе фиксировали конверсию,
+  // даже при наличии блокировки на саму мутацию outbox (блокировка защищает
+  // запись в хранилище, а не количество попыток доставки).
+  function fireEventOnce(submissionId, send) {
+    return withLock(SENT_LOCK_NAME, function () {
+      var sent = sentLeadIds();
+      if (sent.indexOf(submissionId) !== -1) return false;
+      send();
+      sent.push(submissionId);
+      if (sent.length > SENT_IDS_MAX) sent = sent.slice(sent.length - SENT_IDS_MAX);
+      writeJSON(SENT_KEY, sent);
+      return true;
+    });
+  }
+  function fireLeadOnce(submissionId, params) {
+    return fireEventOnce(submissionId, function () { pushFormEvent("generate_lead", params); });
+  }
+  function fireCorrectionOnce(submissionId, correctsSubmissionId) {
+    return fireEventOnce(submissionId, function () {
+      track("lead_corrected", { submission_id: submissionId, corrects_submission_id: correctsSubmissionId });
+    });
+  }
+
+  // Один обработчик принятой заявки для ручной отправки и ретрая из outbox
+  // (review 2026-09-23, finding 8, P2): раньше повтор коррекции из outbox
+  // безусловно слал generate_lead, хотя запись несёт corrects_submission_id
+  // и обязана слать lead_corrected, как и ручная отправка той же коррекции.
+  // Источник истины — сами данные (corrects_submission_id), а не UI-флаг
+  // editingContacts, которого в записи outbox не существует.
+  function handleLeadAccepted(data, submissionId, secondsToLead) {
+    if (data.lf_hp) return; // ловушка отфильтрована раньше — событий не считаем
+    if (data.corrects_submission_id) {
+      fireCorrectionOnce(submissionId, data.corrects_submission_id);
+    } else {
+      fireLeadOnce(submissionId, {
+        submission_id: submissionId,
+        seconds_to_lead: secondsToLead,
+      });
+    }
+  }
+
+  function sendDeadLetterBeacon(reason, attempts) {
+    try {
+      if (!navigator.sendBeacon) return;
+      var body = JSON.stringify({ form_id: LEAD_FORM_ID, reason: reason, attempts: attempts });
+      navigator.sendBeacon(LEAD_DEAD_LETTER_ENDPOINT, new Blob([body], { type: "application/json" }));
+    } catch (error) {
+      // Наблюдательный маяк — не должен ронять остальной flow.
+    }
+  }
+
+  // Защита от гонки: автоматический ретрай не должен дублировать активную
+  // ручную отправку того же submission_id (только эта вкладка, в памяти, не
+  // персистится). Без неё flush, попавший между enqueueOutbox() и ответом
+  // основной отправки, мог бы породить второй одновременный POST.
+  var inFlightSubmissions = {};
+
+  function deliverOutboxEntry(entry, useBeacon) {
+    if (inFlightSubmissions[entry.submission_id]) return;
+    if (useBeacon) {
+      try {
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(LEAD_ENDPOINT, new Blob([JSON.stringify(entry.data)], { type: "application/json" }));
+        }
+      } catch (error) {
+        // best-effort — следующий цикл (load/online/60с) подтвердит результат
+      }
+      return;
+    }
+    submitLead(entry.data).then(
+      function (response) {
+        var submissionId = response.submission_id || entry.submission_id;
+        dequeueOutbox(entry.submission_id);
+        handleLeadAccepted(entry.data, submissionId, Math.max(0, Math.round((Date.now() - entry.created_at) / 1000)));
+      },
+      function (error) {
+        if (error.status === 422) {
+          // Отклонено окончательно — повтор того же payload бессмыслен.
+          dequeueOutbox(entry.submission_id);
+        }
+        // Иначе — транзиентная ошибка: запись остаётся, следующий цикл попробует снова.
+      }
+    );
+  }
+
+  function flushOutbox(useBeacon) {
+    // Мутация самого outbox (чтение + чистка TTL + инкремент attempts +
+    // запись) — одна блокировка на весь проход. Сетевые попытки — уже ВНЕ
+    // лока: сетевой запрос не должен держать блокировку и мешать другой
+    // вкладке.
+    withLock(OUTBOX_LOCK_NAME, function () {
+      var now = Date.now();
+      var entries = readOutbox();
+      var alive = [];
+      var toDeliver = [];
+      var expired = [];
+      var changed = false;
+      entries.forEach(function (entry) {
+        if (now - entry.created_at > OUTBOX_TTL_MS) {
+          expired.push(entry);
+          changed = true;
+          return;
+        }
+        entry.attempts = (entry.attempts || 0) + 1;
+        alive.push(entry);
+        changed = true;
+        toDeliver.push(entry);
+      });
+      if (changed) writeOutbox(alive);
+      return { toDeliver: toDeliver, expired: expired };
+    }).then(function (result) {
+      (result.expired || []).forEach(function (entry) { sendDeadLetterBeacon("ttl", entry.attempts || 0); });
+      (result.toDeliver || []).forEach(function (entry) { deliverOutboxEntry(entry, useBeacon); });
+    });
+  }
+
+  window.setTimeout(function () { flushOutbox(false); }, 1500);
+  window.addEventListener("online", function () { flushOutbox(false); });
+  window.setInterval(function () { flushOutbox(false); }, OUTBOX_RETRY_MS);
+  window.addEventListener("pagehide", function () { flushOutbox(true); });
 
   function readFirstTouchAttribution() {
     try {
@@ -3495,30 +3703,27 @@ picture { display: block; }
 
       hideFormError();
       setSubmitting(true);
+      inFlightSubmissions[data.submission_id] = true;
 
-      submitLead(data).then(
+      // write-ahead: enqueueOutbox() (взяв лок) обязан ЗАВЕРШИТЬСЯ до сети,
+      // иначе сбой fetch мог бы терять заявку, которую ещё не успели записать.
+      enqueueOutbox(data).then(function () {
+        return submitLead(data);
+      }).then(
         function (response) {
           setSubmitting(false);
+          delete inFlightSubmissions[data.submission_id];
           acceptedSubmissionId = response.submission_id || data.submission_id;
           acceptedContacts = JSON.parse(contactFingerprint);
-          if (!data.lf_hp) {
-            if (editingContacts) {
-              track('lead_corrected', {
-                submission_id: acceptedSubmissionId,
-                corrects_submission_id: data.corrects_submission_id
-              });
-            } else {
-              pushFormEvent('generate_lead', {
-                submission_id: acceptedSubmissionId,
-                seconds_to_lead: visibleSeconds()
-              });
-            }
-          }
+          dequeueOutbox(data.submission_id);
+          handleLeadAccepted(data, acceptedSubmissionId, visibleSeconds());
           editingContacts = false;
           showSuccess(acceptedContacts);
         },
         function (error) {
           setSubmitting(false);
+          delete inFlightSubmissions[data.submission_id];
+          if (error.status === 422) dequeueOutbox(data.submission_id); // отклонено окончательно — ретраить нечего
           showFields(false);
           pushFormEvent('form_error', {
             error_type: error.status === 422 ? 'validation'

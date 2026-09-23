@@ -17,12 +17,16 @@ python -B scripts/build-review-numbered.py | tail -1
 python -B scripts/verify-client-copy.py | tail -1
 python -m unittest discover -s scripts/tests 2>&1 | tail -1
 node scripts/verify-lead-hook.mjs | tail -1
+node --experimental-sqlite test/lead-qa.mjs | tail -1
+node --experimental-sqlite test/cron-backup-qa.mjs | tail -1
+node scripts/verify-lead-pipeline-remap.mjs | tail -1
 # Форме нужен локальный адрес: сам скрипт сервер не поднимает.
 python -m http.server 8098 --bind 127.0.0.1 >/dev/null 2>&1 &
 server=$!
 trap 'kill $server 2>/dev/null' EXIT
 until curl -fsS -o /dev/null http://127.0.0.1:8098/build/variants/final-dev5/; do sleep 1; done
 node scripts/verify-lead-form.mjs | grep -E "status|layouts"
+node scripts/verify-lead-outbox.mjs
 node scripts/verify-tracking.mjs
 git diff --check && echo "git diff --check: чисто"
 

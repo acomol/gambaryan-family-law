@@ -155,6 +155,13 @@ export async function verifyLeadForm(page, baseUrl) {
   assert.equal(requests.at(-1).corrects_submission_id, undefined);
   assert.notEqual(requests.at(-1).submission_id, lastCorrectionId);
 
+  // The write-ahead outbox (site/app.js) may still hold the earlier simulated
+  // 503 attempt (status was flipped back to 202 above without that specific
+  // submission_id ever succeeding). The page.goto() below fires `pagehide`
+  // on the current document, which would replay that stale entry via
+  // sendBeacon and inflate requests.length. This block only checks that an
+  // incompatible contract blocks NEW submissions, so clear the outbox first.
+  await page.evaluate(() => { try { localStorage.removeItem("gambarian_lead_outbox_v1"); } catch (e) {} });
   const countBeforeMismatch = requests.length;
   const contractUrl = /\/lead-contract\.js(?:\?.*)?$/;
   for (const contractScript of [
