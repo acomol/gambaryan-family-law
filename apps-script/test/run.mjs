@@ -24,7 +24,8 @@ const testFiles = [
   './email-templates.test.mjs',
   './codex-review-fixes.test.mjs',
   './dashboard.test.mjs',
-  './pipeline-health.test.mjs'
+  './pipeline-health.test.mjs',
+  './fix-a.test.mjs'
 ];
 
 console.log('apps-script/test/run.mjs — GAS_SRC_DIR=' + (process.env.GAS_SRC_DIR || '(по умолчанию: ../src)'));

@@ -68,6 +68,66 @@ function buildContactLinks_(phone) {
   };
 }
 
+/**
+ * P1 A1 (root-cause fix, review "formula injection"): единая защита от
+ * formula/CSV injection для ЛЮБОЙ внешней строки, которая пишется в лист
+ * через Range.setValue()/setValues()/Sheet.appendRow(). Официальная
+ * документация Apps Script для ВСЕХ трёх точек записи прочитана 2026-09-23
+ * и не содержит исключения по формату ячейки:
+ *   - https://developers.google.com/apps-script/reference/spreadsheet/range
+ *     (setValue(value): "If it begins with '=' it is interpreted as a
+ *     formula."; setValues(values): "If a value begins with =, it's
+ *     interpreted as a formula.")
+ *   - https://developers.google.com/apps-script/reference/spreadsheet/sheet
+ *     (appendRow(rowContents): "If a cell's content begins with =, it's
+ *     interpreted as a formula.")
+ * Ни один из трёх методов не упоминает setNumberFormat('@') ("обычный
+ * текст") как исключение из этого поведения — прежняя защита
+ * (protectExternalTextColumns_/setPlainTextValue_ в Code.gs, только формат
+ * ячейки ДО значения) НЕ подтверждена этой докой и полагаться на неё как на
+ * ЕДИНСТВЕННЫЙ контроль нельзя (задача этого раунда, root cause: код ни разу
+ * не запускался на настоящей таблице). Официальная документация Sheets API
+ * v4 (https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append
+ * — ValueInputOption.USER_ENTERED: "parsed as if the user typed them into
+ * the UI... following the same rules ... as entering text into a cell via
+ * the Google Sheets UI") подтверждает, что Apps Script использует ТУ ЖЕ
+ * "умную" разбор-логику, что ручной ввод — а в ручном вводе ведущий апостроф
+ * (') — стандартный, повсеместно документированный способ форсировать
+ * значение как текст (тот же приём уже используется и проверен на пути
+ * Albato -> «Входящие»: functions/api/lead.js sheetSafe(), сам сославшийся
+ * на OWASP formula-injection guidance для =, +, -, @, tab, CR). Эта функция —
+ * ТА ЖЕ проверка/приём, применённая к записи из Apps Script в «Заявки»/
+ * «Служебное»/«Журнал», чтобы оба пути записи в одну и ту же таблицу
+ * защищались одинаково. Важно: если значение начинается с апострофа, оно уже
+ * НЕ начинается с "=" — то есть даже без учёта UI-паритета парсинга,
+ * буквальное правило докой ("if it begins with '='") больше не срабатывает
+ * ни при каком толковании.
+ * @param {*} value
+ * @return {*} value без изменений, если это не строка или не начинается с
+ *   опасного символа; иначе та же строка с ведущим апострофом.
+ */
+function sheetSafeValue_(value) {
+  return typeof value === 'string' && /^[=+\-@\t\r]/.test(value) ? "'" + value : value;
+}
+
+/**
+ * P1 A6 (review): темы писем строятся конкатенацией внешних значений
+ * (Имя приходит с формы, № генерируется скриптом, но обе попадают в subject
+ * как обычные строки). Официальная документация MailApp.sendEmail()
+ * (https://developers.google.com/apps-script/reference/mail/mail-app#sendemailmessage,
+ * прочитано 2026-09-23) описывает subject как "String — the subject of the
+ * email" БЕЗ упоминания какой-либо санитизации управляющих символов; RFC
+ * 5322 §2.2 запрещает "голый" CR/LF внутри значения заголовка письма (основа
+ * классической атаки email header injection — лишние заголовки/строки).
+ * Единая защита — вырезать CR/LF и остальные control-символы (\x00-\x1F,
+ * \x7F) из всего, что попадает в subject.
+ * @param {*} value
+ * @return {string}
+ */
+function stripSubjectControlChars_(value) {
+  return String(value === undefined || value === null ? '' : value).replace(/[\x00-\x1F\x7F]/g, '');
+}
+
 function pad4_(n) {
   n = Math.floor(n);
   if (n < 10) return '000' + n;

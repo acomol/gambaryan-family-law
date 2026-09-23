@@ -132,6 +132,15 @@ function runStepSafely_(name, fn) {
  * ok -> degraded уходит алерт системному получателю ОДИН раз на инцидент (не
  * на каждый тик, пока деградация продолжается), на переходе обратно в ok флаг
  * тихо снимается (следующая деградация — новый инцидент, новый алерт).
+ *
+ * P1 A5 (review gas-runtime #2): раньше 'tickDegraded' взводился в 'true'
+ * ДО попытки отправки алерта — сбой самой отправки (MailApp упал/квота/
+ * пустые systemAlertRecipients) молча "тушил" все будущие попытки алерта
+ * этого инцидента навсегда, хотя реально ушло 0 писем. Флаг взводится ТОЛЬКО
+ * после подтверждённой отправки (sendNotificationOnce_ вернула sent:true);
+ * иначе — retry на следующем тике (ключ 'tick_degraded:'+now.getTime()
+ * уникален на каждый вызов, поэтому decideSendAction_ не примет его за
+ * "уже отправленный").
  * @param {Object<string,{ok:boolean}>} stepResults
  */
 function reportCycleHealth_(ss, config, now, stepResults) {
@@ -143,14 +152,16 @@ function reportCycleHealth_(ss, config, now, stepResults) {
     return;
   }
   var wasDegraded = props.getProperty('tickDegraded') === 'true';
-  props.setProperty('tickDegraded', 'true');
-  if (wasDegraded) return; // уже алертили этот инцидент
+  if (wasDegraded) return; // уже алертили этот инцидент (флаг взводится только после успешной отправки — см. ниже)
 
   var failedSteps = Object.keys(stepResults).filter(function (name) { return !stepResults[name].ok; });
   var journal = ss.getSheetByName(SHEET_JOURNAL_);
-  sendNotificationOnce_(journal, 'tick_degraded:' + now.getTime(), '', 'tick_degraded', 'email',
+  var result = sendNotificationOnce_(journal, 'tick_degraded:' + now.getTime(), '', 'tick_degraded', 'email',
     config.systemAlertRecipients, 'CRM: часть шагов tick() не выполнилась',
     'Провалились шаги: ' + failedSteps.join(', ') + '. Подробности — «Журнал» (tick_step_error).');
+  if (result && result.sent) {
+    props.setProperty('tickDegraded', 'true'); // P1 A5: только после подтверждённой отправки
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -158,17 +169,20 @@ function reportCycleHealth_(ss, config, now, stepResults) {
 // ---------------------------------------------------------------------------
 
 /**
- * Codex review item1 (CRITICAL): строки из «Входящих» (Имя/Телефон/Email/
- * Откуда/submission_id — заполняются посетителем формы или query-параметрами
- * лендинга, включая utm_source) пишутся через Range.setValue()/setValues().
- * Официальная семантика Class Range: значение, начинающееся с "=", парсится
- * как формула НЕЗАВИСИМО от источника записи (API/UI). Значение вида "=1+1",
- * "+CMD(...)" превращается в исполняемую формулу на «Заявки»/«Служебное».
- * Стандартная защита (formula/CSV injection) — формат ячейки "обычный текст"
- * ("@"), выставленный ДО setValue()/setValues(): движок не парсит содержимое
- * ячейки с этим форматом как формулу. Формат ставится на ЦЕЛЕВЫЕ ячейки
- * НЕПОСРЕДСТВЕННО перед каждой записью — не полагаемся на разовую настройку
- * колонки при setupCrm() (которая могла не запуститься на этой копии/версии).
+ * Codex review item1, ПЕРЕСМОТРЕНО в раунде P1 A1 (root cause: код ни разу не
+ * запускался на настоящей таблице — прежний комментарий утверждал, что
+ * setNumberFormat('@') ("обычный текст") ДО setValue()/setValues() защищает
+ * от formula re-injection. Официальная документация Class Range/Sheet
+ * (см. sheetSafeValue_ в Utils.gs — точные цитаты и URL, прочитано
+ * 2026-09-23) НЕ содержит такого исключения: "if it begins with '=' it is
+ * interpreted as a formula" ничем не обусловлено форматом ячейки. Реальная
+ * защита — sheetSafeValue_() (ведущий апостроф, тот же приём, что и
+ * функция sheetSafe() на сервере — functions/api/lead.js), применяется к
+ * значению ДО записи в appendRequestRowSafely_/appendServiceRowSafely_/
+ * appendJournalRow_/setPlainTextValue_. setNumberFormat('@') здесь оставлен
+ * ТОЛЬКО как display-удобство (не даёт Sheets свернуть телефон/№ в число и
+ * съесть ведущий 0/+) — на защиту от формул он больше НЕ считается
+ * влияющим.
  * @param {Sheet} sheet
  * @param {number} rowIndex 1-based
  * @param {Object<string,number>} headerMap
@@ -182,10 +196,14 @@ function protectExternalTextColumns_(sheet, rowIndex, headerMap, headers) {
   });
 }
 
-/** design item1: одна ячейка — формат "обычный текст" ДО значения, одним вызовом. */
+/**
+ * Одна ячейка — формат "обычный текст" (display-удобство, см. комментарий
+ * выше protectExternalTextColumns_) + sheetSafeValue_() (реальная защита от
+ * formula re-injection, P1 A1) ДО значения, одним вызовом.
+ */
 function setPlainTextValue_(range, value) {
   range.setNumberFormat('@');
-  range.setValue(value);
+  range.setValue(sheetSafeValue_(value));
   return range;
 }
 
@@ -302,6 +320,21 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
  * appendRow). Использует тот же №, что уже зарезервирован в «Служебное» — не
  * создаёт вторую заявку. Идемпотентно: если «Заявки» уже на месте, ничего не
  * делает.
+ *
+ * P1 A3 (Codex P1-3 + review sync-loss #1): докрутка САМА ПО СЕБЕ раньше
+ * никогда не вызывала notifyNewLead_ — если скрипт падал МЕЖДУ появлением
+ * строки «Служебное» и решением/отправкой уведомления в syncIntakeToRequests_
+ * (которое выполняется ПОСЛЕ появления обеих строк), лид навсегда оставался
+ * без email офису в рабочие часы: обязательство уведомить нигде не
+ * сохранялось, оно жило только "в процессе выполнения" упавшего тика. Ниже —
+ * ТО ЖЕ решение (decideNewLeadNotification_), что и в обычном создании;
+ * sendNotificationOnce_ (SendLog.gs) идемпотентна по ключу
+ * leadNo:new_lead:1 — повторный вызов для уже отправленного письма безопасно
+ * пропускается (skip), поэтому звать его можно без риска дубля, даже если
+ * письмо каким-то образом уже ушло до сбоя. Вне рабочего времени (и без
+ * включённого дежурного) ничего дополнительно не делаем — строка «Заявки»
+ * теперь на месте ДО шага digest в этом же tick() (design item8), поэтому
+ * лид естественным образом попадёт в утренний дайджест.
  */
 function completeOrphanedLeads_(ss, requests, reqValues, reqHeaderMap, serviceValues, serviceHeaderMap, config, now) {
   var existingLeadNumbers = {};
@@ -326,6 +359,8 @@ function completeOrphanedLeads_(ss, requests, reqValues, reqHeaderMap, serviceVa
     if (rec.submission_id) recordsById[rec.submission_id] = rec;
   });
 
+  var journal = ss.getSheetByName(SHEET_JOURNAL_);
+
   orphans.forEach(function (svcRow) {
     var leadNo = getCell_(svcRow, serviceHeaderMap, '№');
     var submissionId = getCell_(svcRow, serviceHeaderMap, 'submission_id');
@@ -335,6 +370,23 @@ function completeOrphanedLeads_(ss, requests, reqValues, reqHeaderMap, serviceVa
     var row = buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now);
     var newRowIndex = appendRequestRowSafely_(requests, reqHeaderMap, row); // item1 защита
     writeContactCell_(requests, newRowIndex, reqHeaderMap, rec.phone);
+
+    // P1 A3: та же нотификация, что и в обычном пути создания — см.
+    // комментарий у функции.
+    var notification = decideNewLeadNotification_(now, config.calendar, config.weekendDuty);
+    if (notification === 'immediate' || notification === 'immediate_duty') {
+      var leadData = {
+        name: rec.name || '',
+        phone: rec.phone || '',
+        email: rec.email || '',
+        source: detectSource_(rec),
+        receivedAtLabel: Utilities.formatDate(now, config.tz, 'dd.MM.yyyy HH:mm')
+      };
+      var recipients = notification === 'immediate' ? config.officeRecipients : [config.weekendDuty.email];
+      notifyNewLead_(journal, requests, leadNo, newRowIndex, recipients, leadData, config.systemAlertRecipients);
+    }
+    // 'digest' — строка «Заявки» уже на месте до шага digest этого же tick()
+    // (design item8) — попадёт в утренний дайджест сама собой.
   });
 }
 
@@ -349,7 +401,7 @@ function completeOrphanedLeads_(ss, requests, reqValues, reqHeaderMap, serviceVa
 function appendRequestRowSafely_(requests, reqHeaderMap, row) {
   var futureRowIndex = requests.getLastRow() + 1;
   protectExternalTextColumns_(requests, futureRowIndex, reqHeaderMap, ['Имя', 'Телефон', 'Email']);
-  requests.appendRow(row);
+  requests.appendRow(row.map(sheetSafeValue_)); // P1 A1 — реальная защита, формат выше — только display
   return requests.getLastRow();
 }
 
@@ -357,7 +409,7 @@ function appendRequestRowSafely_(requests, reqHeaderMap, row) {
 function appendServiceRowSafely_(service, serviceHeaderMap, row) {
   var futureRowIndex = service.getLastRow() + 1;
   protectExternalTextColumns_(service, futureRowIndex, serviceHeaderMap, ['submission_id', 'все submission_id', 'Откуда']);
-  service.appendRow(row);
+  service.appendRow(row.map(sheetSafeValue_)); // P1 A1
   return service.getLastRow();
 }
 
@@ -504,19 +556,35 @@ function findServiceRowIndexByLeadNo_(service, headerMap, leadNo) {
 }
 
 /**
- * design fix item3 (Codex review, "reproduced G-0001/G-0002"): раньше Имя/
- * Телефон/Email писались ОТДЕЛЬНЫМИ setValue() при заранее вычисленном
- * rowIndex — сортировка «Заявки» МЕЖДУ этими вызовами приводила к тому, что
- * часть контактных полей попадала в СТАРУЮ физическую строку, а часть — в
- * НОВУЮ (после сортировки там оказывается уже ДРУГАЯ заявка) — контакты
- * "расползались" по двум клиентам. Теперь: строка находится ЗАНОВО по № (design
- * §1), читается и правится В ПАМЯТИ и пишется ОДНИМ setValues() на весь office-
- * диапазон строки — Имя/Телефон/Email физически не могут попасть в РАЗНЫЕ
- * строки одним вызовом API. До и после записи № сверяется: если он не
- * совпадает с ожидаемым (строка успела уехать в узком окне между чтением и
- * записью), запись НЕ производится (проверка до) либо ОТКАТЫВАЕТСЯ к
- * прочитанным значениям (проверка после) — исправление не помечается
- * применённым и будет повторено следующим тиком, чужая заявка не портится.
+ * design fix item3 (Codex review, "reproduced G-0001/G-0002") — строка ищется
+ * ЗАНОВО по № (design §1), не по кэшу.
+ *
+ * P1 A2, ПЕРЕСМОТРЕНО (Codex P1-2 + review — root cause: код ни разу не
+ * запускался на настоящей таблице): версия item3 читала ВСЮ office-строку
+ * (все 14 колонок, включая Статус/Ответственный/Попыток дозвона/Комментарий)
+ * ОДНИМ getValues(), патчила в памяти только 3 контактных поля и писала ВСЮ
+ * строку назад ОДНИМ setValues(). Между этим чтением и записью нет блокировки
+ * со стороны офиса (LockService защищает только код скрипта, design §1) —
+ * если офис в этот момент правил ЛЮБОЕ другое поле ТОЙ ЖЕ строки (Статус/
+ * Комментарий и т.п.), запись отменяла эту правку офиса, откатывая её к
+ * устаревшему прочитанному значению. Хуже: "проверка после записи" читала №
+ * из ЯЧЕЙКИ, В КОТОРУЮ ТОЛЬКО ЧТО САМА ЖЕ ЗАПИСАЛА №, — сравнение было
+ * тавтологией и не могло поймать реальную гонку (сортировку офиса ровно в
+ * момент записи): № всегда "совпадал", потому что его туда только что
+ * положила сама эта строка кода, и исправление помечалось применённым, даже
+ * если запись физически попала в СОСЕДНЮЮ заявку (см. test/fix-a.test.mjs).
+ *
+ * Фикс: пишем ТОЛЬКО контактные ячейки (Имя/Телефон/Email/«Связаться») — №
+ * и office-поля (Статус/Ответственный/...) этой функцией не трогаем вообще,
+ * поэтому конкурентная правка офиса того же лида никогда не может быть
+ * отменена этим кодом. № перечитывается заново непосредственно перед первой
+ * записью (не из старого снимка) и ЕЩЁ РАЗ независимо ПОСЛЕ всех записей —
+ * эта повторная проверка читает ячейку, которую мы НИКОГДА не писали, поэтому
+ * это настоящая (не тавтологичная) проверка: несовпадение значит, что строка
+ * уехала во время записи. В этом случае — не компенсирующий откат (мы больше
+ * не знаем, что именно там теперь), а отказ от отметки "применено": «Служебное»
+ * «все submission_id» не трогаем, следующий тик найдёт корректную строку
+ * заново и повторит попытку.
  */
 function applyCorrectionToRow_(requests, reqHeaderMap, service, serviceHeaderMap, plan) {
   var serviceRowIndex = findServiceRowIndexBySubmissionId_(service, serviceHeaderMap, plan.rootId);
@@ -526,38 +594,34 @@ function applyCorrectionToRow_(requests, reqHeaderMap, service, serviceHeaderMap
   var rowIndex = findRequestRowIndexByLeadNo_(requests, reqHeaderMap, leadNo);
   if (rowIndex === -1) return; // строка «Заявки» исчезла между поиском и записью — следующий тик подтянет
 
-  var lastCol = OFFICE_HEADERS_.length;
-  var rowRange = requests.getRange(rowIndex, 1, 1, lastCol);
-  var originalValues = rowRange.getValues()[0];
-
-  // design item3, проверка ДО записи: строка могла уехать между поиском по №
-  // и этим чтением — если № в прочитанной строке уже не совпадает, это не
-  // наша строка, писать в неё нельзя.
-  if (getCell_(originalValues, reqHeaderMap, '№') !== leadNo) {
+  // P1 A2, проверка ДО записи: № перечитывается ЗАНОВО (не из снимка) —
+  // строка могла уехать между findRequestRowIndexByLeadNo_ и этим моментом.
+  var noBeforeWrite = requests.getRange(rowIndex, reqHeaderMap['№'] + 1).getValue();
+  if (noBeforeWrite !== leadNo) {
     Logger.log('applyCorrectionToRow_: строка %s больше не принадлежит %s (уехала до записи) — пропуск, следующий тик найдёт заново', rowIndex, leadNo);
     return;
   }
 
-  var updatedValues = originalValues.slice();
-  setCell_(updatedValues, reqHeaderMap, 'Имя', plan.finalContacts.name || '');
-  setCell_(updatedValues, reqHeaderMap, 'Телефон', plan.finalContacts.phone || '');
-  setCell_(updatedValues, reqHeaderMap, 'Email', plan.finalContacts.email || '');
+  // P1 A2: пишем ТОЛЬКО контактные поля — никогда №, никогда office-поля
+  // (Статус/Ответственный/Первая попытка/...), которые могла в этот же
+  // момент менять офис. setPlainTextValue_ уже прогоняет значение через
+  // sheetSafeValue_ (P1 A1).
+  protectExternalTextColumns_(requests, rowIndex, reqHeaderMap, ['Имя', 'Телефон', 'Email']); // item1 (display)
+  setPlainTextValue_(requests.getRange(rowIndex, reqHeaderMap['Имя'] + 1), plan.finalContacts.name || '');
+  setPlainTextValue_(requests.getRange(rowIndex, reqHeaderMap['Телефон'] + 1), plan.finalContacts.phone || '');
+  setPlainTextValue_(requests.getRange(rowIndex, reqHeaderMap['Email'] + 1), plan.finalContacts.email || '');
+  writeContactCell_(requests, rowIndex, reqHeaderMap, plan.finalContacts.phone); // review находка №12
 
-  protectExternalTextColumns_(requests, rowIndex, reqHeaderMap, ['Имя', 'Телефон', 'Email']); // item1
-  rowRange.setValues([updatedValues]); // design item3 — ОДИН вызов на всю строку
-
-  // design item3, проверка ПОСЛЕ записи: узкое окно между getValues() и
-  // setValues() этой же строки — если № успел смениться, откатываем запись
-  // (не оставляем чужую заявку испорченной) и не помечаем исправление
-  // применённым (Служебное «все submission_id» ниже не трогаем).
+  // P1 A2, проверка ПОСЛЕ записи: № мы НИКОГДА не писали выше — это
+  // независимое (не тавтологичное) чтение. Несовпадение = строка уехала во
+  // время записи контактных полей; не помечаем исправление применённым, не
+  // пытаемся откатывать (не знаем, что именно там теперь) — следующий тик
+  // найдёт правильную строку заново по № и повторит попытку.
   var noAfterWrite = requests.getRange(rowIndex, reqHeaderMap['№'] + 1).getValue();
   if (noAfterWrite !== leadNo) {
-    Logger.log('applyCorrectionToRow_: № в строке %s изменился на %s (ожидали %s) между чтением и записью — откатываю запись', rowIndex, noAfterWrite, leadNo);
-    rowRange.setValues([originalValues]); // компенсирующий откат к исходным значениям чужой строки
+    Logger.log('applyCorrectionToRow_: № в строке %s изменился на %s (ожидали %s) во время записи контактных полей — исправление НЕ помечено применённым, следующий тик подтянет', rowIndex, noAfterWrite, leadNo);
     return;
   }
-
-  writeContactCell_(requests, rowIndex, reqHeaderMap, plan.finalContacts.phone); // review находка №12
 
   setPlainTextValue_(service.getRange(serviceRowIndex, serviceHeaderMap['все submission_id'] + 1), plan.orderedIds.join(',')); // item1
 }
@@ -569,6 +633,15 @@ function readPendingCorrections_() {
 function writePendingCorrections_(pending) {
   PropertiesService.getScriptProperties().setProperty('pendingCorrections', JSON.stringify(pending));
 }
+/**
+ * P1 A5 (review email-pii #2): 'alerted' раньше взводился в 'true' СРАЗУ
+ * после вызова sendNotificationOnce_, независимо от того, реально ли ушло
+ * письмо (MailApp мог упасть/квота/пустые получатели) — сбой навсегда гасил
+ * будущие попытки алерта по этому же исправлению (ключ 'correction_wait:'+
+ * leafId стабилен, поэтому SendLog сам обеспечивает ретрай при следующем
+ * вызове — но флаг entry.alerted этой функции блокировал даже саму ПОПЫТКУ).
+ * Взводим только после подтверждённой отправки.
+ */
 function trackPendingCorrection_(pending, leafId, missingId, now, ss, config) {
   var entry = pending[leafId];
   if (!entry) {
@@ -578,10 +651,10 @@ function trackPendingCorrection_(pending, leafId, missingId, now, ss, config) {
   var ageMs = now.getTime() - new Date(entry.firstSeenAt).getTime();
   if (!entry.alerted && ageMs >= 24 * 3600 * 1000) {
     var journal = ss.getSheetByName(SHEET_JOURNAL_);
-    sendNotificationOnce_(journal, 'correction_wait:' + leafId, leafId, 'correction_waiting_24h', 'email',
+    var result = sendNotificationOnce_(journal, 'correction_wait:' + leafId, leafId, 'correction_waiting_24h', 'email',
       config.systemAlertRecipients, 'CRM: исправление ждёт оригинал >24ч',
       'submission_id ' + leafId + ' ждёт корень ' + missingId + ' дольше 24 часов.');
-    entry.alerted = true;
+    if (result && result.sent) entry.alerted = true; // P1 A5: только после подтверждённой отправки
   }
 }
 function clearPendingCorrection_(pending, leafId) {
@@ -779,8 +852,34 @@ function writeHeartbeat_(now) {
  * зависшая заявка может съесть много писем/квоты) и проверкой суточной квоты
  * MailApp.getRemainingDailyQuota() (иначе ретраи одного зависшего письма
  * тратят квоту, нужную для остальных).
+ *
+ * P1 A7 (review sync-loss #5): фильтр ключей ниже раньше был подстрочным
+ * (key.indexOf(':new_lead:') !== -1) — это ЛОЖНО совпадает с ключом системного
+ * алерта "пустые получатели" (sendNotificationOnce_ в Notifications.gs шлёт
+ * его под ключом 'empty_recipients:' + <исходный ключ>, т.е. буквально
+ * "empty_recipients:G-0012:new_lead:1" — подстрока ":new_lead:" в нём есть,
+ * хотя это НЕ ключ уведомления о новой заявке). Теперь — точное совпадение
+ * структуры ключа (makeSendKey_: leadNo:event:version, ровно 3 части).
+ *
+ * P1 A4 (Codex P1-4 + review email-pii #1): раньше attempts[key] считал
+ * ТИКИ, а не реальные попытки отправки — тик, в котором decideSendAction_
+ * сама решила подождать (retryAfterMs ещё не прошёл, sendNotificationOnce_
+ * вернула reason:'skip'), всё равно тратил бюджет попытки, хотя ни одного
+ * вызова MailApp не было. После исчерпания счётчик НИКОГДА не сбрасывался
+ * (кроме перехода в SENT) — уведомление, для которого 5 тиков подряд
+ * совпали с окном ожидания, замолкало НАВСЕГДА, хотя реальная отправка не
+ * была предпринята ни разу. Фикс: (1) считаем только тики, где реально был
+ * вызван MailApp.sendEmail (result.reason ни 'skip', ни 'no_recipients');
+ * (2) после исчерпания бюджета — не прекращаем ретраи навсегда, а
+ * откладываем на backoff-окно и сбрасываем счётчик (лид ещё открыт —
+ * уведомление не должно умолкнуть насовсем из-за временного сбоя сети/почты).
+ * Квота (developers.google.com/apps-script/reference/mail/mail-app:
+ * "Quotas are based on the number of email recipients", прочитано
+ * 2026-09-23) сравнивается с ПОЛНЫМ числом получателей — раньше проверка
+ * "> 0" пропускала бы отправку на N получателей, когда остаётся < N.
  */
 var NOTIFICATION_RETRY_MAX_ATTEMPTS_ = 5;
+var NOTIFICATION_RETRY_BACKOFF_MS_ = 6 * 3600000; // 6 часов
 
 function retryPendingNotifications_(ss, config, now, reqHeaderMap, serviceHeaderMap) {
   var journal = ss.getSheetByName(SHEET_JOURNAL_);
@@ -794,7 +893,9 @@ function retryPendingNotifications_(ss, config, now, reqHeaderMap, serviceHeader
   for (var i = rows.length - 1; i >= 0; i--) {
     var row = rows[i];
     var key = row[7];
-    if (!key || key.indexOf(':new_lead:') === -1) continue;
+    if (!key) continue;
+    var keyParts = key.split(':'); // P1 A7: точное совпадение, не substring
+    if (keyParts.length !== 3 || keyParts[1] !== 'new_lead') continue;
     if (latestByKey[key]) continue; // уже нашли более свежую запись этого ключа
     latestByKey[key] = { leadNo: row[1], state: row[5] };
   }
@@ -802,17 +903,22 @@ function retryPendingNotifications_(ss, config, now, reqHeaderMap, serviceHeader
   var attempts = readNotificationRetryAttempts_();
   var requests = ss.getSheetByName(SHEET_REQUESTS_);
   var service = ss.getSheetByName(SHEET_SERVICE_);
-  var quotaOk = typeof MailApp.getRemainingDailyQuota !== 'function' || MailApp.getRemainingDailyQuota() > 0;
+  var recipientCount = (config.officeRecipients || []).length || 1;
+  var quotaOk = typeof MailApp.getRemainingDailyQuota !== 'function' || MailApp.getRemainingDailyQuota() >= recipientCount; // P1 A4
 
   Object.keys(latestByKey).forEach(function (key) {
     var entry = latestByKey[key];
     if (entry.state === SEND_STATES_.SENT) { delete attempts[key]; return; }
+    if (!quotaOk) return; // квоты не хватит даже на одну реальную попытку в этот тик
 
-    var count = attempts[key] || 0;
-    if (count >= NOTIFICATION_RETRY_MAX_ATTEMPTS_ || !quotaOk) return; // item5: ограничение попыток / квота
+    var record = attempts[key] || { count: 0, backoffUntil: null };
+    if (record.count >= NOTIFICATION_RETRY_MAX_ATTEMPTS_) {
+      if (record.backoffUntil && now.getTime() < record.backoffUntil) return; // ждём окно backoff
+      record = { count: 0, backoffUntil: null }; // P1 A4: окно прошло — новый цикл попыток, лид ещё открыт
+    }
 
     var leadRow = findRequestRowIndexByLeadNo_(requests, reqHeaderMap, entry.leadNo);
-    if (leadRow === -1) return; // строка исчезла — не на чем ретраить
+    if (leadRow === -1) { attempts[key] = record; return; } // строка исчезла — не на чем ретраить
 
     var rowValues = requests.getRange(leadRow, 1, 1, OFFICE_HEADERS_.length).getValues()[0];
     var serviceRowIndex = findServiceRowIndexByLeadNo_(service, serviceHeaderMap, entry.leadNo);
@@ -831,8 +937,17 @@ function retryPendingNotifications_(ss, config, now, reqHeaderMap, serviceHeader
       receivedAtLabel: receivedAtRaw ? Utilities.formatDate(new Date(receivedAtRaw), config.tz, 'dd.MM.yyyy HH:mm') : ''
     };
 
-    attempts[key] = count + 1;
-    notifyNewLead_(journal, requests, entry.leadNo, leadRow, config.officeRecipients, leadData, config.systemAlertRecipients);
+    var result = notifyNewLead_(journal, requests, entry.leadNo, leadRow, config.officeRecipients, leadData, config.systemAlertRecipients);
+    // P1 A4: считаем попытку только если реально вызывался MailApp (не
+    // 'skip'/'no_recipients' — decideSendAction_/sendNotificationOnce_ сама
+    // решила не пытаться в этот тик).
+    if (result && result.reason !== 'skip' && result.reason !== 'no_recipients') {
+      record.count += 1;
+      if (record.count >= NOTIFICATION_RETRY_MAX_ATTEMPTS_) {
+        record.backoffUntil = now.getTime() + NOTIFICATION_RETRY_BACKOFF_MS_;
+      }
+    }
+    attempts[key] = record;
   });
 
   writeNotificationRetryAttempts_(attempts);

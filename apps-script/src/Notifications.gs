@@ -24,8 +24,14 @@ function findLatestJournalStateForKey_(journalSheet, key) {
   return null;
 }
 
+/**
+ * P1 A1: leadNo/details/key здесь нередко несут внешние данные (submission_id
+ * из «Входящих» — trackPendingCorrection_/trackPendingCycle_ пишут сюда
+ * leafId и цепочки id как есть) — sheetSafeValue_() (Utils.gs) защищает от
+ * formula re-injection на «Журнал» так же, как на «Заявки»/«Служебное».
+ */
 function appendJournalRow_(journalSheet, time, leadNo, event, state, channel, details, key) {
-  journalSheet.appendRow([time, leadNo, event, details || '', channel, state, '', key]);
+  journalSheet.appendRow([time, leadNo, event, details || '', channel, state, '', key].map(sheetSafeValue_));
 }
 
 /**
