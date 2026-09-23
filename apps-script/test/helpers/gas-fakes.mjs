@@ -44,7 +44,7 @@ function makeFakeProtection(initialEmails, type) {
   return protection;
 }
 
-function makeFakeRange(sheet, row, col, numRows, numCols) {
+function makeFakeRange(sheet, row, col, numRows, numCols, isOpenColumn) {
   numRows = numRows || 1;
   numCols = numCols || 1;
   var range = {
@@ -117,7 +117,36 @@ function makeFakeRange(sheet, row, col, numRows, numCols) {
       }
       return range;
     },
-    setDataValidation: function () { return range; },
+    // B6 fix support: реальный Google Sheets НЕ ограничивает data validation
+    // числом строк, зафиксированным в момент вызова, КОГДА диапазон задан
+    // открытой A1-нотацией "<col>2:<col>" (см. Sheets.gs applyRequestsValidation_
+    // и getRange(a1Notation) ниже) — правило применяется к колонке целиком,
+    // включая строки, которых ещё не существовало на момент setDataValidation().
+    // Ограниченный числовой getRange(row,col,numRows,numCols), наоборот,
+    // фиксирует конкретные строки (это и есть баг B6 ДО фикса) — фейк хранит
+    // эти два случая раздельно, чтобы тест мог отличить «выросло вместе с
+    // листом» от «осталось только на исходных строках».
+    setDataValidation: function (rule) {
+      if (isOpenColumn) {
+        sheet._openColumnValidations = sheet._openColumnValidations || [];
+        sheet._openColumnValidations.push({ col: col, fromRow: row, rule: rule });
+      } else {
+        sheet._cellValidations = sheet._cellValidations || {};
+        for (var r = 0; r < numRows; r++) {
+          for (var c = 0; c < numCols; c++) {
+            sheet._cellValidations[(row + r) + ':' + (col + c)] = rule;
+          }
+        }
+      }
+      return range;
+    },
+    getDataValidation: function () {
+      if (sheet._cellValidations && sheet._cellValidations[row + ':' + col]) return sheet._cellValidations[row + ':' + col];
+      var open = (sheet._openColumnValidations || []).filter(function (v) {
+        return v.col === col && row >= v.fromRow;
+      });
+      return open.length ? open[open.length - 1].rule : null;
+    },
     // дашборд «Сегодня»/«Сводка»: несколько отдельных формул одним вызовом
     // (funnel T5:T8) — по одной строке-массиву на ячейку диапазона, как
     // setValues, но каждая помечается формулой (в отличие от одиночной
@@ -140,6 +169,15 @@ function makeFakeRange(sheet, row, col, numRows, numCols) {
       sheet._merges = sheet._merges || [];
       sheet._merges.push({ row: row, col: col, numRows: numRows, numCols: numCols });
       return range;
+    },
+    // B1d fix support: Range.isPartOfMerge() — задокументированный метод
+    // (https://developers.google.com/apps-script/reference/spreadsheet/range#ispartofmerge),
+    // используется Sheets.gs mergeOnce_() чтобы не звать merge() второй раз на
+    // уже смёрженном диапазоне при восстановлении частично упавшей сборки.
+    isPartOfMerge: function () {
+      return (sheet._merges || []).some(function (m) {
+        return row >= m.row && row < m.row + m.numRows && col >= m.col && col < m.col + m.numCols;
+      });
     },
     setRichTextValue: function (rtv) {
       sheet._richText = sheet._richText || {};
@@ -164,6 +202,29 @@ function makeFakeRange(sheet, row, col, numRows, numCols) {
   return range;
 }
 
+// B6 fix support: разбор открытой A1-нотации одной колонки "<COL><row>:<COL>"
+// (например "B2:B") — единственная форма a1Notation, которую реально
+// использует этот код (Sheets.gs applyRequestsValidation_). Полноценный
+// парсер A1 (диапазоны из двух ячеек, "A1:C10" и т.п.) фейку не нужен — он
+// эмулирует ровно то подмножество API, что вызывает src/*.gs (см. шапку
+// файла).
+function columnLetterToIndex_(letters) {
+  var n = 0;
+  for (var i = 0; i < letters.length; i++) {
+    n = n * 26 + (letters.charCodeAt(i) - 64);
+  }
+  return n;
+}
+
+function parseOpenColumnA1_(a1) {
+  var m = /^([A-Z]+)(\d+):\1$/.exec(a1);
+  if (!m) {
+    throw new Error('makeFakeSheet.getRange: неподдерживаемая A1-нотация "' + a1 +
+      '" (фейк реализует только открытый одноколоночный вид "<COL><row>:<COL>")');
+  }
+  return { col: columnLetterToIndex_(m[1]), startRow: parseInt(m[2], 10) };
+}
+
 export function makeFakeSheet(name, opts) {
   opts = opts || {};
   var sheet = {
@@ -171,11 +232,47 @@ export function makeFakeSheet(name, opts) {
     _data: (opts.data || []).map(function (r) { return r.slice(); }),
     _protections: [],
     _maxRows: opts.maxRows || 1000,
+    // B1a fix support: реальный новый лист Google Sheets — 26 колонок (A:Z),
+    // см. Sheets.gs ensureMinColumns_ docstring для источников. Дефолт здесь
+    // ВАЖЕН для теста: без него фейк был бы permissive и не поймал бы баг
+    // "getRange/hideColumns за пределами Z" (см. gas-runtime "the code has
+    // only ever run against permissive fakes").
+    _maxColumns: opts.maxColumns || 26,
     _getDataRangeCallCount: 0,
     getName: function () { return sheet._name; },
     setName: function (n) { sheet._name = n; },
     getSheetId: function () { return opts.sheetId === undefined ? 0 : opts.sheetId; },
-    getRange: function (row, col, numRows, numCols) { return makeFakeRange(sheet, row, col, numRows, numCols); },
+    getMaxColumns: function () { return Math.max(sheet._maxColumns, sheet.getLastColumn()); },
+    // B1a fix support: insertColumnsAfter(afterPosition, howMany) — реальный
+    // метод раздвигает грид на howMany колонок
+    // (https://developers.google.com/apps-script/reference/spreadsheet/sheet#insertcolumnsafterafterposition,-howmany).
+    insertColumnsAfter: function (afterPosition, howMany) {
+      sheet._maxColumns = Math.max(sheet._maxColumns, afterPosition) + (howMany || 0);
+      return sheet;
+    },
+    // B1a fix: getRange() с числовыми координатами за пределами getMaxColumns()
+    // на реальном Sheets бросает исключение времени выполнения (текст не
+    // задокументирован официально, но наблюдаем и воспроизводим — см.
+    // Sheets.gs ensureMinColumns_ docstring). Раньше фейк такие вызовы молча
+    // принимал — фиктивная "успешность" ровно того типа, что и создала баг
+    // B1a (getRange/hideColumns на реальном 26-колоночном листе для T:AH).
+    // Форма с ОДНИМ строковым аргументом — открытая A1-нотация колонки
+    // ("<col>2:<col>", см. parseOpenColumnA1_) для B6.
+    getRange: function (a1OrRow, col, numRows, numCols) {
+      if (typeof a1OrRow === 'string') {
+        var parsed = parseOpenColumnA1_(a1OrRow);
+        var openNumRows = Math.max(sheet.getMaxRows() - parsed.startRow + 1, 1);
+        return makeFakeRange(sheet, parsed.startRow, parsed.col, openNumRows, 1, true);
+      }
+      var row = a1OrRow;
+      var effNumCols = numCols || 1;
+      var maxCols = sheet.getMaxColumns();
+      if (col + effNumCols - 1 > maxCols) {
+        throw new Error('Those columns are out of bounds. The sheet has ' + maxCols +
+          ' columns and you are trying to access column ' + (col + effNumCols - 1) + '.');
+      }
+      return makeFakeRange(sheet, row, col, numRows, numCols);
+    },
     getDataRange: function () {
       sheet._getDataRangeCallCount++;
       var rows = Math.max(sheet._data.length, 1);
@@ -210,9 +307,17 @@ export function makeFakeSheet(name, opts) {
     },
     setFrozenRows: function () {},
     setFrozenColumns: function () {},
+    // B1a fix: та же граница грида, что и getRange() выше — hideColumns() на
+    // реальном Sheets тоже ограничен текущим getMaxColumns().
     hideColumns: function (start, count) {
+      var effCount = count || 1;
+      var maxCols = sheet.getMaxColumns();
+      if (start + effCount - 1 > maxCols) {
+        throw new Error('Those columns are out of bounds. The sheet has ' + maxCols +
+          ' columns and you are trying to access column ' + (start + effCount - 1) + '.');
+      }
       sheet._hiddenColumns = sheet._hiddenColumns || [];
-      sheet._hiddenColumns.push({ start: start, count: count || 1 });
+      sheet._hiddenColumns.push({ start: start, count: effCount });
     },
     autoResizeColumns: function () {},
     setColumnWidth: function (col, width) {
@@ -238,29 +343,54 @@ export function makeFakeSheet(name, opts) {
     // дашборд-тесты (5 графиков «Сводки») — минимальная симуляция
     // EmbeddedChartBuilder: тип/диапазоны/опции записываются, insertChart
     // складывает построенный чарт в sheet._charts для проверки.
+    // B1c fix support: setStacked() документирован ТОЛЬКО на
+    // EmbeddedBarChartBuilder/EmbeddedColumnChartBuilder — не на базовом
+    // EmbeddedChartBuilder, который возвращает newChart() (см. Sheets.gs
+    // insertSummaryCharts_ docstring для точных ссылок на доку). Раньше фейк
+    // был permissive: setStacked() существовал на generic-билдере
+    // безусловно — именно поэтому баг (setStacked() вызывался в цепочке,
+    // начатой с .setChartType(), а не с .asBarChart()) ни разу не проявился
+    // ни в одном тесте. baseMethods() — общий набор методов; specialized-
+    // билдер (после .asBarChart()/.asColumnChart()) добавляет setStacked()
+    // ПОВЕРХ него, generic — нет.
     newChart: function () {
       var built = { chartType: null, ranges: [], options: {}, position: null, numHeaders: 0, stacked: false };
-      var builder = {
-        setChartType: function (t) { built.chartType = t; return builder; },
-        addRange: function (r) { built.ranges.push(r); return builder; },
-        setPosition: function (row, col, offsetX, offsetY) { built.position = { row: row, col: col, offsetX: offsetX, offsetY: offsetY }; return builder; },
-        setOption: function (k, v) { built.options[k] = v; return builder; },
-        setNumHeaders: function (n) { built.numHeaders = n; return builder; },
-        setStacked: function () { built.stacked = true; return builder; },
-        setTitle: function (t) { built.title = t; return builder; },
-        setXAxisTitle: function (t) { built.xAxisTitle = t; return builder; },
-        setYAxisTitle: function (t) { built.yAxisTitle = t; return builder; },
-        setLegendPosition: function (p) { built.legendPosition = p; return builder; },
-        build: function () { return { _built: built }; }
+      function baseMethods() {
+        var api = {};
+        api.setChartType = function (t) { built.chartType = t; return api; };
+        api.addRange = function (r) { built.ranges.push(r); return api; };
+        api.setPosition = function (row, col, offsetX, offsetY) { built.position = { row: row, col: col, offsetX: offsetX, offsetY: offsetY }; return api; };
+        api.setOption = function (k, v) { built.options[k] = v; return api; };
+        api.setNumHeaders = function (n) { built.numHeaders = n; return api; };
+        api.setTitle = function (t) { built.title = t; return api; };
+        api.setXAxisTitle = function (t) { built.xAxisTitle = t; return api; };
+        api.setYAxisTitle = function (t) { built.yAxisTitle = t; return api; };
+        api.setLegendPosition = function (p) { built.legendPosition = p; return api; };
+        api.build = function () { return { _built: built }; };
+        return api;
+      }
+      var generic = baseMethods();
+      generic.asBarChart = function () {
+        built.chartType = 'BAR';
+        var specialized = baseMethods();
+        specialized.setStacked = function () { built.stacked = true; return specialized; };
+        return specialized;
       };
-      return builder;
+      generic.asColumnChart = function () {
+        built.chartType = 'COLUMN';
+        var specialized = baseMethods();
+        specialized.setStacked = function () { built.stacked = true; return specialized; };
+        return specialized;
+      };
+      return generic;
     },
     insertChart: function (chart) {
       sheet._charts = sheet._charts || [];
       sheet._charts.push(chart._built);
     },
     removeChart: function (chart) {
-      sheet._charts = (sheet._charts || []).filter(function (c) { return c !== (chart && chart._built); });
+      var target = chart && chart._built ? chart._built : chart;
+      sheet._charts = (sheet._charts || []).filter(function (c) { return c !== target; });
     },
     getCharts: function () { return (sheet._charts || []).slice(); }
   };

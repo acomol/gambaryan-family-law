@@ -117,7 +117,7 @@ function setupCrm() {
   // (тот же приём, что buildRequestRowLink_ в Notifications.gs, design item
   // "resolved at send time" — здесь "resolved at setup time").
   ensureTodayFormulas_(today, requests);
-  ensureSummaryFormulas_(summary);
+  ensureSummaryFormulas_(summary, requests, service);
   // P1 (build-round blocker "data reaches a sheet the office sees"): «Сводка» и
   // «Сегодня» — весь лист только для чтения офисом (design docs/MINI-CRM-DESIGN.md
   // §2 «Защита: весь лист»). Раньше ни один код не защищал их вовсе — любой
@@ -223,20 +223,35 @@ function formatRequestsSheet_(sheet) {
   // setFrozenColumns/hideColumns для "служебного хвоста" убраны, скрывать нечего.
 }
 
+/**
+ * B6 fix (review gas-runtime #5): раньше диапазон валидации брался как снимок
+ * sheet.getMaxRows() НА МОМЕНТ setupCrm() — конечный, фиксированный getRange(row,
+ * col, numRows, 1). Реальный Sheets НЕ распространяет data validation на строки,
+ * которые появляются ПОСЛЕ создания правила (Albato appendRow, ручная строка
+ * офиса) — новая строка молча остаётся без выпадающего списка «Статус»/«Причина
+ * закрытия». Открытая A1-нотация "<col>2:<col>" (колонка целиком от строки 2 до
+ * конца листа, без верхней границы) — задокументированный способ адресации
+ * (Sheet.getRange(a1Notation),
+ * https://developers.google.com/apps-script/reference/spreadsheet/sheet#getrangea1notation)
+ * и тот же механизм полного столбца, что уже используют формулы этого файла
+ * (`'Заявки'!B:B` и т.п.) — такой диапазон не «замораживает» число строк, а
+ * растёт вместе с листом, поэтому новые строки автоматически наследуют правило.
+ */
 function applyRequestsValidation_(sheet) {
   var headerMap = colByHeader_(sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]);
-  var maxRows = Math.max(sheet.getMaxRows() - 1, 1);
+  var statusColLetter = columnLetter_(headerMap['Статус'] + 1);
+  var reasonColLetter = columnLetter_(headerMap['Причина закрытия'] + 1);
   var statusRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(STATUS_OPTIONS_, true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, headerMap['Статус'] + 1, maxRows, 1).setDataValidation(statusRule);
+  sheet.getRange(statusColLetter + '2:' + statusColLetter).setDataValidation(statusRule);
 
   var reasonRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(CLOSING_REASONS_, true)
     .setAllowInvalid(true) // §4: обязателен для «Отказ», не для всех — не блокируем ввод жёстко
     .build();
-  sheet.getRange(2, headerMap['Причина закрытия'] + 1, maxRows, 1).setDataValidation(reasonRule);
+  sheet.getRange(reasonColLetter + '2:' + reasonColLetter).setDataValidation(reasonRule);
 }
 
 /**
@@ -289,6 +304,42 @@ function applyRequestsConditionalFormatting_(sheet) {
     .setRanges([fullRowRange])
     .build());
   sheet.setConditionalFormatRules(rules);
+}
+
+/**
+ * B1a fix (Codex P1-7): реальный новый лист Google Sheets — 26 колонок (A:Z);
+ * Sheet.getRange()/hideColumns() за пределами текущего Sheet.getMaxColumns()
+ * бросают исключение времени выполнения (документированного точного текста
+ * нет — https://developers.google.com/apps-script/reference/spreadsheet/sheet#getrangerow,-column,-numrows,-numcolumns
+ * не описывает граничное поведение явно, но оно наблюдаемо и воспроизводимо,
+ * см. например https://github.com/mogsdad/SheetConverter/issues/20 —
+ * "Those columns are out of bounds"). insertColumnsAfter()/getMaxColumns() —
+ * задокументированный официальный способ раздвинуть грид ПЕРЕД обращением
+ * (https://developers.google.com/apps-script/reference/spreadsheet/sheet#insertcolumnsafterafterposition,-howmany,
+ * https://developers.google.com/apps-script/reference/spreadsheet/sheet#getmaxcolumns).
+ */
+function ensureMinColumns_(sheet, minColumns) {
+  var current = sheet.getMaxColumns();
+  if (current < minColumns) {
+    sheet.insertColumnsAfter(current, minColumns - current);
+  }
+}
+
+/**
+ * B1d fix: merge() на диапазоне, который УЖЕ является частью существующего
+ * merge (например, при повторной сборке после частично упавшего setupCrm()),
+ * — поведение официально не описано (Class Range,
+ * https://developers.google.com/apps-script/reference/spreadsheet/range не
+ * документирует повторный merge того же диапазона). Range.isPartOfMerge() —
+ * задокументированный метод именно для такой проверки
+ * (https://developers.google.com/apps-script/reference/spreadsheet/range#ispartofmerge),
+ * поэтому merge() вызывается только если диапазон ещё не смёржен — это делает
+ * восстановление частично собранного дашборда (см. ensureTodayFormulas_/
+ * ensureSummaryFormulas_) безопасным.
+ */
+function mergeOnce_(range) {
+  if (!range.isPartOfMerge()) range.merge();
+  return range;
 }
 
 function columnLetter_(colIndex1based) {
@@ -552,14 +603,27 @@ function buildOpenLinkArrayFormula_(anchorRange, requestsSheetId) {
 }
 
 /** Один информационный блок «Сегодня»: заголовок + подзаголовки + QUERY + ссылка «Открыть». design §3.2/§3.3. */
-var TODAY_BLOCK_DATA_ROWS_ = 10; // фиксированный запас строк на блок — QUERY переменной длины спиллится внутрь
+// B2 fix (Codex P1-8, "spilled arrays collide with fixed cells"): запас на блок
+// поднят с 10 до 200 строк — QUERY-спилл одного блока (например «Новые», если
+// накопится больше 10 необработанных заявок) раньше долетал до заголовка
+// следующего блока и ломал оба (Sheets: "Array result was not expanded because
+// it would overwrite data"). Позиции заголовков блоков ниже (см.
+// ensureTodayFormulas_) пересчитаны с учётом этого запаса, чтобы ни один блок
+// не мог задеть следующий вплоть до 200 заявок в блоке.
+var TODAY_BLOCK_CAPACITY_ = 200;
 
 function buildTodayBlock_(sheet, headerRow, headerText, subheads, queryFormula, requestsSheetId) {
-  sheet.getRange(headerRow, 1, 1, 4).merge().setValue(headerText);
+  mergeOnce_(sheet.getRange(headerRow, 1, 1, 4)).setValue(headerText);
   sheet.getRange(headerRow + 1, 1, 1, 4).setValues([subheads]);
   var dataRow = headerRow + 2;
   sheet.getRange(dataRow, 1).setFormula(queryFormula);
-  var anchorRange = columnLetter_(1) + dataRow + ':' + columnLetter_(1) + (dataRow + TODAY_BLOCK_DATA_ROWS_ - 1);
+  // B2 fix, вторая часть: якорь ссылки «Открыть» раньше был жёстко ограничен
+  // TODAY_BLOCK_DATA_ROWS_=10 строками независимо от фактического размера
+  // QUERY — заявки за пределами первых 10 молча оставались без ссылки. Теперь
+  // якорь покрывает ВСЮ ёмкость блока; buildOpenLinkArrayFormula_ уже
+  // оборачивает результат в IF(anchorRange="","",...), поэтому пустой хвост
+  // диапазона безопасен.
+  var anchorRange = columnLetter_(1) + dataRow + ':' + columnLetter_(1) + (dataRow + TODAY_BLOCK_CAPACITY_ - 1);
   sheet.getRange(dataRow, 4).setFormula(buildOpenLinkArrayFormula_(anchorRange, requestsSheetId));
   return dataRow;
 }
@@ -576,56 +640,84 @@ function buildTodayBlock_(sheet, headerRow, headerText, subheads, queryFormula, 
  * от значения).
  * @param {Sheet} requestsSheet лист «Заявки» — для gid ссылки «Открыть» (§3.3)
  */
+// B2 fix: позиции блоков раздвинуты на TODAY_BLOCK_CAPACITY_(200) строк вместо
+// прежних 10, чтобы спилл QUERY одного блока не мог задеть заголовок
+// следующего (см. buildTodayBlock_/TODAY_BLOCK_CAPACITY_ выше).
+var TODAY_HEADER_ROW_OVERDUE_ = 3;
+var TODAY_HEADER_ROW_NEW_ = TODAY_HEADER_ROW_OVERDUE_ + 2 + TODAY_BLOCK_CAPACITY_ + 1; // 206
+var TODAY_HEADER_ROW_CONSULT_ = TODAY_HEADER_ROW_NEW_ + 2 + TODAY_BLOCK_CAPACITY_ + 1; // 409
+
 function ensureTodayFormulas_(sheet, requestsSheet) {
   if (sheet.getRange(1, 1).getValue()) return; // уже настроено — не перезаписываем
   var requestsSheetId = requestsSheet.getSheetId();
 
-  var noCol = 'Col' + (OFFICE_HEADERS_.indexOf('№') + 1);           // Col1
-  var statusCol = 'Col' + (OFFICE_HEADERS_.indexOf('Статус') + 1);   // Col2
-  var receivedCol = 'Col' + (OFFICE_HEADERS_.indexOf('Получена') + 1); // Col3
-  var nameCol = 'Col' + (OFFICE_HEADERS_.indexOf('Имя') + 1);        // Col4
-  var phoneCol = 'Col' + (OFFICE_HEADERS_.indexOf('Телефон') + 1);   // Col5
-  var nextStepCol = 'Col' + (OFFICE_HEADERS_.indexOf('Следующий шаг') + 1); // Col11
-  var consultCol = 'Col' + (OFFICE_HEADERS_.indexOf('Консультация') + 1);   // Col12
-  var lastColLetter = columnLetter_(OFFICE_HEADERS_.length);
+  // B3 fix (review sheet-robustness №2): колонки «Заявки» раньше резолвились
+  // по СТАТИЧЕСКОМУ OFFICE_HEADERS_.indexOf(...), а не по факту реальной
+  // строки заголовков листа — переставь/вставь офис колонку вручную, и
+  // Col-индексы QUERY/адреса тихо съезжали бы на чужие данные. Теперь читаем
+  // заголовки ЖИВЫМ вызовом (design "resolved at install time", тот же приём,
+  // что уже применён для requestsSheetId ниже).
+  var reqHeaderMap = colByHeader_(requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn()).getValues()[0]);
+  var noCol = 'Col' + (reqHeaderMap['№'] + 1);
+  var statusCol = 'Col' + (reqHeaderMap['Статус'] + 1);
+  var receivedCol = 'Col' + (reqHeaderMap['Получена'] + 1);
+  var nameCol = 'Col' + (reqHeaderMap['Имя'] + 1);
+  var phoneCol = 'Col' + (reqHeaderMap['Телефон'] + 1);
+  var nextStepCol = 'Col' + (reqHeaderMap['Следующий шаг'] + 1);
+  var consultCol = 'Col' + (reqHeaderMap['Консультация'] + 1);
+  var noColLetter = columnLetter_(reqHeaderMap['№'] + 1);
+  var statusColLetter = columnLetter_(reqHeaderMap['Статус'] + 1);
+  var nextStepColLetter = columnLetter_(reqHeaderMap['Следующий шаг'] + 1);
+  var consultColLetter = columnLetter_(reqHeaderMap['Консультация'] + 1);
+  var lastColLetter = columnLetter_(requestsSheet.getLastColumn());
   var reqRange = "'" + SHEET_REQUESTS_ + "'!A2:" + lastColLetter;
   var notClosed = statusCol + ' <> \'Клиент — договор\' and ' +
     statusCol + ' <> \'Отказ\' and ' + statusCol + ' <> \'Дубль / спам\'';
 
-  // design §3.3: A1 — счётчик-баннер, переиспользует те же условия, что и блоки ниже.
-  var overdueCond = '\'' + SHEET_REQUESTS_ + '\'!' + columnLetter_(OFFICE_HEADERS_.indexOf('Следующий шаг') + 1) + ':' + columnLetter_(OFFICE_HEADERS_.indexOf('Следующий шаг') + 1);
-  sheet.getRange(1, 1, 1, 4).merge().setFormula(
-    '="Сегодня: "&COUNTIFS(' + overdueCond + ',"<"&TODAY(),' + overdueCond + ',"<>")&' +
-    '" просрочки · "&COUNTIFS(\'' + SHEET_REQUESTS_ + '\'!' +
-    columnLetter_(OFFICE_HEADERS_.indexOf('Статус') + 1) + ':' + columnLetter_(OFFICE_HEADERS_.indexOf('Статус') + 1) + ',"")&' +
-    '" новых · "&COUNTIFS(\'' + SHEET_REQUESTS_ + '\'!' +
-    columnLetter_(OFFICE_HEADERS_.indexOf('Консультация') + 1) + ':' + columnLetter_(OFFICE_HEADERS_.indexOf('Консультация') + 1) +
-    ',">="&TODAY(),\'' + SHEET_REQUESTS_ + '\'!' + columnLetter_(OFFICE_HEADERS_.indexOf('Консультация') + 1) + ':' +
-    columnLetter_(OFFICE_HEADERS_.indexOf('Консультация') + 1) + ',"<"&(TODAY()+1))&" консультация(й)"'
-  );
-
-  // Блок 1: Просрочено (строки 3-4 заголовок/подзаголовки, данные 5-14)
+  // Блок 1: Просрочено
   var overdueQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + nextStepCol +
     ' where ' + nextStepCol + ' < date \'"&TEXT(TODAY(),"yyyy-MM-dd")&"\' and ' + nextStepCol + ' is not null and ' +
     notClosed + ' order by ' + nextStepCol + ' asc",0),"")';
-  buildTodayBlock_(sheet, 3, '🔴 ПРОСРОЧЕНО — следующий шаг прошёл',
+  buildTodayBlock_(sheet, TODAY_HEADER_ROW_OVERDUE_, '🔴 ПРОСРОЧЕНО — следующий шаг прошёл',
     ['№', 'Имя', 'Шаг был', 'Открыть'], overdueQuery, requestsSheetId);
-  sheet.getRange(3, 1, 1, 4).setBackground('#FFCDD2'); // design §3.4 — тот же красный, что overdue в «Заявках»
+  sheet.getRange(TODAY_HEADER_ROW_OVERDUE_, 1, 1, 4).setBackground('#FFCDD2'); // design §3.4 — тот же красный, что overdue в «Заявках»
 
-  // Блок 2: Новые — ждут первой попытки (заголовок 16, данные 18-27)
+  // Блок 2: Новые — ждут первой попытки
   var newQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + phoneCol +
     ' where ' + statusCol + ' = \'\' or ' + statusCol + ' is null order by ' + receivedCol + ' asc",0),"")';
-  buildTodayBlock_(sheet, 16, '🟡 НОВЫЕ — ждут первой попытки',
+  buildTodayBlock_(sheet, TODAY_HEADER_ROW_NEW_, '🟡 НОВЫЕ — ждут первой попытки',
     ['№', 'Имя', 'Телефон', 'Открыть'], newQuery, requestsSheetId);
-  sheet.getRange(16, 1, 1, 4).setBackground('#FFF9C4'); // design §3.4 — тот же жёлтый, что «Новая» в «Заявках»
+  sheet.getRange(TODAY_HEADER_ROW_NEW_, 1, 1, 4).setBackground('#FFF9C4'); // design §3.4 — тот же жёлтый, что «Новая» в «Заявках»
 
-  // Блок 3: Консультации сегодня (заголовок 29, данные 31-40)
+  // Блок 3: Консультации сегодня
   var consultQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + consultCol +
     ' where ' + consultCol + ' >= date \'"&TEXT(TODAY(),"yyyy-MM-dd")&"\' and ' + consultCol +
     ' < date \'"&TEXT(TODAY()+1,"yyyy-MM-dd")&"\' order by ' + consultCol + ' asc",0),"")';
-  buildTodayBlock_(sheet, 29, '🟣 КОНСУЛЬТАЦИИ СЕГОДНЯ',
+  buildTodayBlock_(sheet, TODAY_HEADER_ROW_CONSULT_, '🟣 КОНСУЛЬТАЦИИ СЕГОДНЯ',
     ['№', 'Имя', 'Время', 'Открыть'], consultQuery, requestsSheetId);
-  sheet.getRange(29, 1, 1, 4).setBackground('#CE93D8'); // design §3.4 — тот же сиреневый, что «Консультация назначена»
+  sheet.getRange(TODAY_HEADER_ROW_CONSULT_, 1, 1, 4).setBackground('#CE93D8'); // design §3.4 — тот же сиреневый, что «Консультация назначена»
+
+  // design §3.3: A1 — счётчик-баннер, переиспользует те же условия, что и блоки
+  // выше. B1d fix (Codex P1-7 "recover a partially built dashboard"): баннер
+  // пишется ПОСЛЕДНИМ — если построение блока выше упадёт с исключением, A1
+  // останется пустым и следующий вызов setupCrm() перестроит «Сегодня» с нуля
+  // (см. ранний return выше), а не тихо решит, что лист уже готов.
+  // B4 fix ("new-leads counter counts empty rows of a whole column"):
+  // COUNTIFS(Статус:Статус,"") раньше считал ВСЕ пустые ячейки колонки на всю
+  // высоту листа (типично 1000 строк) — то есть счётчик «новых» включал
+  // сотни пустых строк без единой реальной заявки. Условие "№ не пусто"
+  // ограничивает счёт настоящими строками (№ пишет скрипт для каждой
+  // реальной заявки, design item3/SCRIPT_WRITTEN_OFFICE_COLUMNS_).
+  var overdueCond = '\'' + SHEET_REQUESTS_ + '\'!' + nextStepColLetter + ':' + nextStepColLetter;
+  var consultCond = '\'' + SHEET_REQUESTS_ + '\'!' + consultColLetter + ':' + consultColLetter;
+  var noCond = '\'' + SHEET_REQUESTS_ + '\'!' + noColLetter + ':' + noColLetter;
+  var statusCond = '\'' + SHEET_REQUESTS_ + '\'!' + statusColLetter + ':' + statusColLetter;
+  mergeOnce_(sheet.getRange(1, 1, 1, 4)).setFormula(
+    '="Сегодня: "&COUNTIFS(' + overdueCond + ',"<"&TODAY(),' + overdueCond + ',"<>")&' +
+    '" просрочки · "&COUNTIFS(' + noCond + ',"<>",' + statusCond + ',"")&' +
+    '" новых · "&COUNTIFS(' + consultCond + ',">="&TODAY(),' + consultCond + ',"<"&(TODAY()+1))&' +
+    '" консультация(й)"'
+  );
 }
 
 // --- Сводка (владелец) ------------------------------------------------------
@@ -634,22 +726,45 @@ var SUMMARY_CHART_DATA_ROW_DATES_ = 1;   // T1:AG1 — 14 дат
 var SUMMARY_CHART_DATA_ROW_DAILY_ = 2;   // T2:AG2 — счёт по дням (14 дней)
 var SUMMARY_CHART_DATA_ROW_WEEKLY_ = 3;  // T3:AA3 — счёт по неделям (8 недель)
 var SUMMARY_CHART_DATA_ROW_FUNNEL_ = 5;  // T5:T8  — воронка, 4 значения (вертикально)
-var SUMMARY_CHART_DATA_ROW_SOURCES_ = 10; // T10:U… — QUERY источников
-var SUMMARY_CHART_DATA_ROW_REASONS_ = 15; // T15:U… — QUERY причин отказа
-var SUMMARY_CHART_DATA_ROW_STATUSMIX_ = 20; // T20:U… — QUERY статус-микса
+// B5 fix (review gas-runtime #3, "fixed undersized addRange for open-ended
+// QUERY categories"): «Откуда» — открытый список источников (не фиксированный
+// enum вроде статусов/причин закрытия), поэтому у него отдельная явная ёмкость
+// с запасом, а не жёстко "2 категории". B2 fix (Codex P1-8, "T15 reasons vs
+// T20"): интервалы между T10/REASONS/STATUSMIX пересчитаны так, чтобы спилл
+// QUERY одного блока (в пределах его капасити) не долетал до начала соседнего
+// — раньше REASONS (T15) и STATUSMIX (T20) стояли впритык: 6 возможных причин
+// закрытия (CLOSING_REASONS_.length) спиллятся ровно в T20, где стартует
+// QUERY статус-микса ("Array result was not expanded because it would
+// overwrite data").
+var SUMMARY_SOURCES_CAPACITY_ = 15;
+var SUMMARY_CHART_DATA_ROW_SOURCES_ = 10;   // T10:U24 — QUERY источников (запас)
+var SUMMARY_CHART_DATA_ROW_REASONS_ = 26;   // T26:U(26+CLOSING_REASONS_.length-1) — причины отказа
+var SUMMARY_STATUSMIX_CAPACITY_ = (STATUS_OPTIONS_.length - CLOSED_STATUSES_.length) + 1; // открытые статусы + запас
+var SUMMARY_CHART_DATA_ROW_STATUSMIX_ = 33; // T33:U(33+capacity-1) — срез статусов сейчас
 
-/** Пишет скрытые данные графиков (T:AH) — design §2.6. Однострочные ARRAYFORMULA/QUERY, без ручного копирования. */
-function writeSummaryChartData_(sheet) {
+/**
+ * Пишет скрытые данные графиков (T:AH) — design §2.6. Однострочные
+ * ARRAYFORMULA/QUERY, без ручного копирования.
+ * B1a fix: столбцы T:AH (20-34) — за пределами 26-колоночного грида нового
+ * листа, поэтому вызывающая сторона (ensureSummaryFormulas_) обязана вызвать
+ * ensureMinColumns_ ДО этой функции.
+ * B3 fix: колонки «Заявки»/«Служебное» резолвятся по РЕАЛЬНОЙ строке
+ * заголовков этих листов (requestsSheet/serviceSheet), а не по статическому
+ * OFFICE_HEADERS_/SERVICE_SHEET_HEADERS_.indexOf(...).
+ */
+function writeSummaryChartData_(sheet, requestsSheet, serviceSheet) {
   var t = 20; // колонка T
   var req = "'" + SHEET_REQUESTS_ + "'!";
   var svc = "'" + SHEET_SERVICE_ + "'!";
-  var receivedColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('Получена') + 1);
-  var firstAttemptColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('Первая попытка') + 1);
-  var consultColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('Консультация') + 1);
-  var reasonColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('Причина закрытия') + 1);
-  var contractColLetter = columnLetter_(SERVICE_SHEET_HEADERS_.indexOf('Договор') + 1);
-  var sourceColLetter = columnLetter_(SERVICE_SHEET_HEADERS_.indexOf('Откуда') + 1);
-  var statusColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('Статус') + 1);
+  var reqHeaderMap = colByHeader_(requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn()).getValues()[0]);
+  var svcHeaderMap = colByHeader_(serviceSheet.getRange(1, 1, 1, serviceSheet.getLastColumn()).getValues()[0]);
+  var receivedColLetter = columnLetter_(reqHeaderMap['Получена'] + 1);
+  var firstAttemptColLetter = columnLetter_(reqHeaderMap['Первая попытка'] + 1);
+  var consultColLetter = columnLetter_(reqHeaderMap['Консультация'] + 1);
+  var reasonColLetter = columnLetter_(reqHeaderMap['Причина закрытия'] + 1);
+  var contractColLetter = columnLetter_(svcHeaderMap['Договор'] + 1);
+  var sourceColLetter = columnLetter_(svcHeaderMap['Откуда'] + 1);
+  var statusColLetter = columnLetter_(reqHeaderMap['Статус'] + 1);
 
   // T1: 14 дат (сегодня и 13 дней до)
   sheet.getRange(SUMMARY_CHART_DATA_ROW_DATES_, t).setFormula(
@@ -660,10 +775,18 @@ function writeSummaryChartData_(sheet) {
     '=ARRAYFORMULA(MAP(' + columnLetter_(t) + SUMMARY_CHART_DATA_ROW_DATES_ + ':' + columnLetter_(t + 13) + SUMMARY_CHART_DATA_ROW_DATES_ +
     ',LAMBDA(d,COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&d,' + req + receivedColLetter + ':' + receivedColLetter + ',"<"&d+1))))'
   );
-  // T3: счёт по неделям (8 недель, старая -> новая)
+  // T3: счёт по неделям (8 недель, старая -> новая). B4 fix ("the weekly
+  // series slides by days not weeks"): SEQUENCE(1,8,7,-1) раньше давало
+  // daysAgo = 7,6,5,...,0 — соседние окна COUNTIFS сдвигались на 1 ДЕНЬ, а не
+  // на 7, то есть 8 значений были почти полностью перекрывающимися 7-дневными
+  // окнами вместо 8 РАЗНЫХ недель. Формула ниже — та же, что в самом design-
+  // документе (docs/crm-dashboard/DESIGN.md §2.6, строка "T3 (счёт по
+  // неделям...)"): SEQUENCE(1,8,0,-1) даёт w = 0,-1,-2,...,-7, и окно
+  // [TODAY()-7*(1-w)-7, TODAY()-7*(1-w)) сдвигается РОВНО на 7 дней между
+  // соседними значениями w — 8 непересекающихся календарных недель.
   sheet.getRange(SUMMARY_CHART_DATA_ROW_WEEKLY_, t).setFormula(
-    '=ARRAYFORMULA(MAP(SEQUENCE(1,8,7,-1),LAMBDA(daysAgo,COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter +
-    ',">="&(TODAY()-daysAgo-6),' + req + receivedColLetter + ':' + receivedColLetter + ',"<"&(TODAY()-daysAgo+1)))))'
+    '=ARRAYFORMULA(MAP(SEQUENCE(1,8,0,-1),LAMBDA(w,COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter +
+    ',">="&(TODAY()-7*(1-w)-7),' + req + receivedColLetter + ':' + receivedColLetter + ',"<"&(TODAY()-7*(1-w))))))'
   );
   // T5:T8: воронка (Заявки/Первая попытка/Консультация/Договор), 30 дней, вертикально
   sheet.getRange(SUMMARY_CHART_DATA_ROW_FUNNEL_, t, 4, 1).setFormulas([
@@ -677,12 +800,12 @@ function writeSummaryChartData_(sheet) {
     '=IFERROR(QUERY(' + svc + sourceColLetter + '2:' + sourceColLetter +
     ',"select Col1, count(Col1) where Col1 is not null group by Col1 order by count(Col1) desc",0),"")'
   );
-  // T15: причины отказа (Заявки!Причина закрытия), по убыванию
+  // T26: причины отказа (Заявки!Причина закрытия), по убыванию
   sheet.getRange(SUMMARY_CHART_DATA_ROW_REASONS_, t).setFormula(
     '=IFERROR(QUERY(' + req + reasonColLetter + '2:' + reasonColLetter +
     ',"select Col1, count(Col1) where Col1 is not null group by Col1 order by count(Col1) desc",0),"")'
   );
-  // T20: срез статусов сейчас (только открытые — design §2.4 чарт 5 исключает закрытые)
+  // T33: срез статусов сейчас (только открытые — design §2.4 чарт 5 исключает закрытые)
   sheet.getRange(SUMMARY_CHART_DATA_ROW_STATUSMIX_, t).setFormula(
     '=IFERROR(QUERY(' + req + statusColLetter + '2:' + statusColLetter +
     ',"select Col1, count(Col1) where Col1 is not null and Col1 <> \'Клиент — договор\' and Col1 <> \'Отказ\' and Col1 <> \'Дубль / спам\' group by Col1",0),"")'
@@ -699,15 +822,20 @@ function writeSummaryChartData_(sheet) {
  * setupCrm() про 1440/desktop — эта функция реализует §2.1 "как написано":
  * реальный грид Sheets единый для всех устройств.
  */
-function writeSummaryKpis_(sheet) {
+function writeSummaryKpis_(sheet, requestsSheet, serviceSheet) {
   var req = "'" + SHEET_REQUESTS_ + "'!";
   var svc = "'" + SHEET_SERVICE_ + "'!";
-  var receivedColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('Получена') + 1);
-  var statusColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('Статус') + 1);
-  var noColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('№') + 1);
-  var consultColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('Консультация') + 1);
-  var nextStepColLetter = columnLetter_(OFFICE_HEADERS_.indexOf('Следующий шаг') + 1);
-  var contractColLetter = columnLetter_(SERVICE_SHEET_HEADERS_.indexOf('Договор') + 1);
+  // B3 fix: те же заголовки, что и writeSummaryChartData_, резолвятся по
+  // реальной строке заголовков «Заявки»/«Служебное», а не по статическому
+  // массиву OFFICE_HEADERS_/SERVICE_SHEET_HEADERS_.
+  var reqHeaderMap = colByHeader_(requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn()).getValues()[0]);
+  var svcHeaderMap = colByHeader_(serviceSheet.getRange(1, 1, 1, serviceSheet.getLastColumn()).getValues()[0]);
+  var receivedColLetter = columnLetter_(reqHeaderMap['Получена'] + 1);
+  var statusColLetter = columnLetter_(reqHeaderMap['Статус'] + 1);
+  var noColLetter = columnLetter_(reqHeaderMap['№'] + 1);
+  var consultColLetter = columnLetter_(reqHeaderMap['Консультация'] + 1);
+  var nextStepColLetter = columnLetter_(reqHeaderMap['Следующий шаг'] + 1);
+  var contractColLetter = columnLetter_(svcHeaderMap['Договор'] + 1);
   var slaMedianColLetter = columnLetter_(10); // 'J' — design §0: новый столбец «Служебное», ещё не реализован (не эта задача)
 
   // KPI 1: заявок за 7 дней (строки 3-6)
@@ -753,13 +881,19 @@ function writeSummaryKpis_(sheet) {
   sheet.getRange(25, 1).setFormula('=IF($A$24="—","—",$A$24&" мин (порог "&' +
     'IFERROR(VLOOKUP("sla_first_attempt_minutes",' + "'" + SETTINGS_SHEET_NAME_ + "'" + '!$A:$B,2,FALSE),30)&")")');
 
-  // KPI 6: просрочено сейчас (строки 28-31)
+  // KPI 6: просрочено сейчас (строки 28-31). B4 fix ("KPI overdue uses
+  // 'Заявки'!B instead of B:B"): notClosed раньше начинался с голого
+  // statusColLetter ("B") БЕЗ префикса листа и БЕЗ ":B" — итоговая формула
+  // получала аргумент COUNTIFS вида 'Заявки'!B,"<>...", что не является
+  // валидной A1-нотацией диапазона (нужен полный столбец "B:B") и на реальном
+  // Sheets дало бы ошибку разбора формулы. Каждое вхождение теперь — полный
+  // 'Заявки'!B:B, как и остальные условия этой же COUNTIFS.
   sheet.getRange(28, 1).setValue('Просрочено сейчас');
-  var notClosed = statusColLetter + ',"<>Клиент — договор",' +
+  var notClosed = req + statusColLetter + ':' + statusColLetter + ',"<>Клиент — договор",' +
     req + statusColLetter + ':' + statusColLetter + ',"<>Отказ",' +
     req + statusColLetter + ':' + statusColLetter + ',"<>Дубль / спам"';
   sheet.getRange(29, 1).setFormula('=COUNTIFS(' + req + nextStepColLetter + ':' + nextStepColLetter + ',"<"&TODAY(),' +
-    req + nextStepColLetter + ':' + nextStepColLetter + ',"<>",' + req + notClosed + ')');
+    req + nextStepColLetter + ':' + nextStepColLetter + ',"<>",' + notClosed + ')');
   sheet.getRange(30, 1).setFormula('=IF($A$29=0,"Просрочек нет",$A$29&" заявок")');
 }
 
@@ -772,8 +906,14 @@ function applySummaryConditionalFormatting_(sheet) {
     .setBold(true)
     .setRanges([sheet.getRange(28, 1, 4, 4)])
     .build());
+  // B1b fix: custom-formula условное форматирование НЕ может напрямую
+  // ссылаться на другой лист — "Formulas can only reference the same sheet...
+  // To reference another sheet in the formula, use the INDIRECT function."
+  // (https://support.google.com/docs/answer/78413). Прямая ссылка
+  // 'Настройки'!$A:$B здесь была бы синтаксически невалидна на реальном
+  // Sheets — исправлено на INDIRECT("'Настройки'!A:B").
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($A$24<>"—",$A$24>IFERROR(VLOOKUP("sla_first_attempt_minutes",\'' + SETTINGS_SHEET_NAME_ + '\'!$A:$B,2,FALSE),30))')
+    .whenFormulaSatisfied('=AND($A$24<>"—",$A$24>IFERROR(VLOOKUP("sla_first_attempt_minutes",INDIRECT("\'' + SETTINGS_SHEET_NAME_ + '\'!A:B"),2,FALSE),30))')
     .setBackground('#FFCC80')
     .setRanges([sheet.getRange(23, 1, 4, 4)])
     .build());
@@ -787,6 +927,12 @@ function applySummaryConditionalFormatting_(sheet) {
 
 /** design §2.4: 5 графиков — тип/серии/цвет/диапазоны данных (T:AH, см. writeSummaryChartData_). */
 function insertSummaryCharts_(sheet) {
+  // B1d fix (Codex P1-7, "a rerun rebuilds missing charts... instead of
+  // skipping"): insertChart() ДОБАВЛЯЕТ график, а не заменяет — если
+  // предыдущий setupCrm() упал ПОСЛЕ вставки части из 5 графиков, повторный
+  // вызов без этой очистки удвоил бы уже вставленные. Чистим перед пересборкой,
+  // чтобы функция была безопасно вызываема повторно в любой момент.
+  sheet.getCharts().forEach(function (chart) { sheet.removeChart(chart); });
   var col = function (c) { return columnLetter_(c); };
   var chart1 = sheet.newChart()
     .setChartType(Charts.ChartType.LINE)
@@ -808,9 +954,16 @@ function insertSummaryCharts_(sheet) {
     .build();
   sheet.insertChart(chart2);
 
+  // B5 fix (review gas-runtime #3, "fixed undersized addRange for open-ended
+  // QUERY categories"): раньше addRange был жёстко (2,2)/(6,2)/(5,2) строк
+  // независимо от реального размера данных T10/T26/T33 — источники («Откуда»)
+  // особенно открытый список, где 2 строки — заведомо мало. Диапазоны теперь
+  // размером ровно в капасити блока (SUMMARY_SOURCES_CAPACITY_) или в реальный
+  // размер enum (CLOSING_REASONS_.length/SUMMARY_STATUSMIX_CAPACITY_), т.е.
+  // растут вместе с writeSummaryChartData_ вместо магических чисел.
   var chart3 = sheet.newChart()
     .setChartType(Charts.ChartType.BAR)
-    .addRange(sheet.getRange(SUMMARY_CHART_DATA_ROW_SOURCES_, 20, 2, 2))
+    .addRange(sheet.getRange(SUMMARY_CHART_DATA_ROW_SOURCES_, 20, SUMMARY_SOURCES_CAPACITY_, 2))
     .setOption('title', 'Источники · 30 дней')
     .setOption('colors', ['#a02626', '#c9880a'])
     .setPosition(63, 1, 0, 0)
@@ -819,19 +972,29 @@ function insertSummaryCharts_(sheet) {
 
   var chart4 = sheet.newChart()
     .setChartType(Charts.ChartType.BAR)
-    .addRange(sheet.getRange(SUMMARY_CHART_DATA_ROW_REASONS_, 20, 6, 2))
+    .addRange(sheet.getRange(SUMMARY_CHART_DATA_ROW_REASONS_, 20, CLOSING_REASONS_.length, 2))
     .setOption('title', 'Причины отказа · за всё время')
     .setOption('colors', ['#4b5158'])
     .setPosition(71, 1, 0, 0)
     .build();
   sheet.insertChart(chart4);
 
+  // B1c fix (Codex P1-7, "setStacked() exists on EmbeddedBarChartBuilder...
+  // not on the generic EmbeddedChartBuilder"): setStacked() документирован
+  // только на EmbeddedBarChartBuilder/EmbeddedColumnChartBuilder
+  // (https://developers.google.com/apps-script/reference/spreadsheet/embedded-bar-chart-builder#setstacked),
+  // НЕ на базовом EmbeddedChartBuilder, который возвращает newChart()
+  // (https://developers.google.com/apps-script/reference/spreadsheet/embedded-chart-builder
+  // — в списке методов setStacked() нет). .asBarChart() — задокументированный
+  // способ получить именно EmbeddedBarChartBuilder и одновременно задать тип
+  // (https://developers.google.com/apps-script/reference/spreadsheet/embedded-chart-builder#asbarchart),
+  // поэтому явный .setChartType(Charts.ChartType.BAR) здесь больше не нужен.
   var chart5 = sheet.newChart()
-    .setChartType(Charts.ChartType.BAR)
-    .addRange(sheet.getRange(SUMMARY_CHART_DATA_ROW_STATUSMIX_, 20, 5, 2))
-    .setStacked()
+    .asBarChart()
+    .addRange(sheet.getRange(SUMMARY_CHART_DATA_ROW_STATUSMIX_, 20, SUMMARY_STATUSMIX_CAPACITY_, 2))
     .setOption('title', 'Срез статусов сейчас')
     .setOption('colors', ['#FFF9C4', '#FFCC80', '#81D4FA', '#CE93D8', '#64B5F6'])
+    .setStacked()
     .setPosition(83, 1, 0, 0)
     .build();
   sheet.insertChart(chart5);
@@ -856,13 +1019,28 @@ function insertSummaryCharts_(sheet) {
  * (жертвует "без горизонтальной прокрутки на телефоне", см. §2.1 аргумент) и
  * требует отдельного подтверждения.
  */
-function ensureSummaryFormulas_(sheet) {
+function ensureSummaryFormulas_(sheet, requestsSheet, serviceSheet) {
   if (sheet.getRange(1, 1).getValue()) return;
-  sheet.getRange(1, 1).setValue('Сводка — Гамбарян и партнёры');
+
+  // B1a fix: T:AH (столбцы 20-34) выходят за пределы 26-колоночного грида
+  // нового листа — раздвигаем ДО первого обращения к этим столбцам
+  // (writeSummaryChartData_/insertSummaryCharts_ ниже).
+  ensureMinColumns_(sheet, 34);
+
   sheet.getRange(1, 8).setFormula('="Обновлено: "&TEXT(NOW(),"dd.MM.yyyy HH:mm")');
 
-  writeSummaryChartData_(sheet);
-  writeSummaryKpis_(sheet);
+  writeSummaryChartData_(sheet, requestsSheet, serviceSheet);
+  writeSummaryKpis_(sheet, requestsSheet, serviceSheet);
   applySummaryConditionalFormatting_(sheet);
   insertSummaryCharts_(sheet);
+
+  // B1d fix (Codex P1-7, "recover a partially built dashboard: set the
+  // marker only after full success"): заголовок A1 — он же маркер «уже
+  // настроено» (проверяется в самом начале функции) — раньше писался ПЕРВЫМ
+  // шагом. Если что-то ниже (например insertSummaryCharts_) падало с
+  // исключением, следующий setupCrm() видел непустой A1 и молча пропускал
+  // достройку недостающих графиков/KPI. Теперь маркер пишется ПОСЛЕДНИМ —
+  // недостроенный лист остаётся с пустым A1 и будет пересобран с нуля при
+  // следующем вызове.
+  sheet.getRange(1, 1).setValue('Сводка — Гамбарян и партнёры');
 }
