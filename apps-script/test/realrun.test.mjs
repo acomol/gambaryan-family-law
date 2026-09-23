@@ -6,7 +6,7 @@ import { test, assert } from './helpers/harness.mjs';
 import { loadGasContext } from './helpers/load-gas.mjs';
 import { makeFakeSheet } from './helpers/gas-fakes.mjs';
 
-const ctx = loadGasContext(['Utils.gs', 'Config.gs', 'Sheets.gs'], {
+const ctx = loadGasContext(['Utils.gs', 'Config.gs', 'Sheets.gs', 'Code.gs'], {
   Session: { getScriptTimeZone: () => 'Asia/Jerusalem', getEffectiveUser: () => ({ getEmail: () => 'alex@adfix.co.il' }) }
 });
 
@@ -84,6 +84,13 @@ test('установка на боевой таблице: «Сегодня» Н
   assert.ok(newCell, 'повторный вызов переписал формулу блока НОВЫЕ');
   assert.match(newCell, /Col1 <> ''/);
   assert.match(newCell, /limit 200/);
+});
+
+test('боевая таблица: после удаления строк «Входящих» новая заявка всё равно попадает в «Заявки» (нет watermark по номеру строки)', () => {
+  const src = ctx.syncIntakeToRequests_ ? ctx.syncIntakeToRequests_.toString() : '';
+  assert.ok(src, 'syncIntakeToRequests_ загружен');
+  assert.match(src, /intakeValues\.slice\(1\)\.map/, 'читаются ВСЕ строки «Входящих»');
+  assert.doesNotMatch(src, /readIntakeWatermark_|writeIntakeWatermark_/, 'watermark по номеру строки убран');
 });
 
 test('живой прогон: setupCrm пишет значения «Настроек» текстом (апостроф), заголовок и пустые — без изменений', () => {

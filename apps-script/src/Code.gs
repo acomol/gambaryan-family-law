@@ -250,10 +250,11 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
   var intakeValues = intake.getDataRange().getValues();
   if (intakeValues.length < 2) return;
   var intakeHeaderMap = colByHeader_(intakeValues[0]);
-  var dataRowCount = intakeValues.length - 1;
-  var watermark = Math.min(readIntakeWatermark_(), dataRowCount);
-
-  var incoming = intakeValues.slice(1 + watermark).map(function (row) {
+  // Боевая таблица 2026-09-24: после удаления строк «Входящих» watermark
+  // (число прочитанных строк) указывал мимо, и заявка в освободившейся строке
+  // пропускалась навсегда. Читаем ВСЕ строки каждый тик; дубли отсекает
+  // existingBySubmissionId ниже (по submission_id), объём мал.
+  var incoming = intakeValues.slice(1).map(function (row) {
     return rowToRecord_(row, intakeHeaderMap);
   }).filter(function (r) { return r.submission_id && !r.corrects_submission_id; }); // корневые заявки — исправления §5.4 отдельно
 
@@ -312,8 +313,6 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
       }
     });
   }
-
-  writeIntakeWatermark_(dataRowCount); // append-only — следующий tick начнёт отсюда
 }
 
 /**
@@ -695,20 +694,6 @@ function trackPendingCycle_(pendingCycles, leafId, cycleIds, now, ss, config) {
 }
 function clearPendingCycle_(pendingCycles, leafId) {
   delete pendingCycles[leafId];
-}
-
-// review находка №10: intake — append-only; watermark хранит, сколько строк
-// данных уже обработано, чтобы syncIntakeToRequests_ не пересканировал лист
-// целиком каждый tick навсегда. Анти-дубль всё равно re-validated по
-// submission_id (existingBySubmissionId в syncIntakeToRequests_), watermark —
-// только оптимизация, не единственная защита от дублей.
-function readIntakeWatermark_() {
-  var raw = PropertiesService.getScriptProperties().getProperty('intakeProcessedRows');
-  var n = raw ? parseInt(raw, 10) : 0;
-  return isNaN(n) || n < 0 ? 0 : n;
-}
-function writeIntakeWatermark_(n) {
-  PropertiesService.getScriptProperties().setProperty('intakeProcessedRows', String(Math.max(0, n)));
 }
 
 // review находка №12: «Связаться» — RichTextValue с настоящей кликабельной
