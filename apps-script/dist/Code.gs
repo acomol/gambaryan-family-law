@@ -2,7 +2,7 @@
 //
 // Built by scripts/bundle-apps-script.mjs from apps-script/src/*.gs
 // (fixed order — see FILE_ORDER in that script).
-// Source commit: d874313e4f90214355fb295b39a1c4130a26954f
+// Source commit: e8ef07b4e38cdafd7878f8ce2574586346b36bed
 // Generated: 2026-09-23
 //
 // To change behavior, edit the corresponding file under apps-script/src/
@@ -72,11 +72,33 @@ function buildContactLinks_(phone) {
   var raw = String(phone === undefined || phone === null ? '' : phone);
   var withPlus = raw.replace(/[^\d+]/g, '');
   var digitsOnly = withPlus.replace(/^\+/, '');
+  var waNumber = normalizeWhatsAppNumber_(raw);
   return {
     digitsOnly: digitsOnly,
     telHref: digitsOnly ? 'tel:' + withPlus : '',
-    waHref: digitsOnly ? 'https://wa.me/' + digitsOnly : ''
+    waHref: waNumber ? 'https://wa.me/' + waNumber : ''
   };
+}
+
+/**
+ * Номер для wa.me в международном формате. Официально (WhatsApp Help Center,
+ * «How to use click to chat», прочитано 2026-09-24): "Use https://wa.me/<number>
+ * where the <number> is a full phone number in international format. Omit any
+ * zeroes, brackets, or dashes". Раньше «0501112233» давал wa.me/0501112233 —
+ * WhatsApp такой номер не открывает (живой прогон 2026-09-23).
+ * Израиль: ведущий 0 -> 972; городские (972 + не 5) -> null (без кнопки).
+ * @return {string|null} только цифры, 10–15 знаков, или null
+ */
+function normalizeWhatsAppNumber_(raw) {
+  var s = String(raw === undefined || raw === null ? '' : raw).replace(/[^\d+]/g, '');
+  if (s.charAt(0) === '+') s = s.slice(1);
+  else if (s.indexOf('00') === 0) s = s.slice(2);
+  else if (s.charAt(0) === '0') s = '972' + s.slice(1);
+  else if (/^5\d{8}$/.test(s)) s = '972' + s;
+  s = s.replace(/\D/g, '');
+  if (!/^\d{10,15}$/.test(s)) return null;
+  if (s.indexOf('972') === 0 && s.charAt(3) !== '5') return null;
+  return s;
 }
 
 /**
@@ -1100,6 +1122,12 @@ var SETTINGS_SHEET_NAME_ = 'Настройки';
 // воскресная сводка владельцу отложены до v2 — в день запуска данных нет,
 // графики пустые. Код сохранён: включить = true и повторно запустить setupCrm().
 var SUMMARY_SHEET_ENABLED_ = false;
+
+// v1 (2026-09-23): письмо о новой заявке шлёт Albato (шаг Gmail в сценарии
+// GAMB_ADV, как у Assuta) — сразу и круглосуточно. CRM его НЕ шлёт, иначе
+// офис получит два письма на заявку. SLA-напоминания, эскалации, дайджест —
+// остаются за CRM. Включить обратно = true.
+var NEW_LEAD_EMAIL_ENABLED_ = false;
 
 var DEFAULT_SETTINGS_ = {
   tz: 'Asia/Jerusalem',
@@ -2780,6 +2808,7 @@ function buildRequestRowLink_(requestsSheet, rowNumber) {
  * @param {string[]} [systemAlertRecipients] design fix item2 — алерт на пустых получателей
  */
 function notifyNewLead_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData, systemAlertRecipients) {
+  if (!NEW_LEAD_EMAIL_ENABLED_) return { sent: false, reason: 'skip' }; // письмо шлёт Albato (Config.gs)
   leadData = leadData || {};
   var email = renderNewLeadEmail_({
     leadNo: leadNo,
