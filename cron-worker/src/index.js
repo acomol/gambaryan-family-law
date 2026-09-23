@@ -187,6 +187,42 @@ async function insertD1IfMissing(env, rec) {
 // correctly sees it as still held (delivered_at > expiredBefore) and backs
 // off with 'pending'. A readback of delivered_at after a successful claim
 // (the "owner token" check) guards against any UPDATE result miscount.
+// Review round 3, finding 2 (mirrors functions/api/lead.js's
+// upsertLeadD1Guarded): a completion write for a forwarding attempt this
+// worker believes it still owns must not clobber a row a DIFFERENT actor
+// (an admin delete via functions/api/admin.js, or a newer isolate that
+// reclaimed an expired lease) has since moved to a different/terminal
+// state in D1. Guarded UPDATE restricts the write to rows STILL
+// 'forwarding' under precisely OUR OWN lease timestamp
+// (status='forwarding' AND delivered_at=expectedLeaseStart).
+//
+// Return contract: true (applied, or a plain/insert path succeeded) |
+// false (D1 unavailable or errored) | "not_owner" (the row exists but is no
+// longer under our active lease — callers MUST skip their own subsequent
+// KV write and delivery notification, see sweepPending below).
+async function upsertD1Guarded(env, rec, expectedLeaseStart) {
+  if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return false;
+  if (!expectedLeaseStart) return upsertD1(env, rec);
+  try {
+    // Placeholder numbers stay in ASCENDING TEXTUAL order matching the
+    // .bind() argument order — see the identical note on
+    // functions/api/lead.js's upsertLeadD1Guarded (the test harness's mock
+    // D1 binds anonymous `?` positionally, not by `?N` index).
+    const cols = D1_COLUMNS.filter(c => c !== "submission_id");
+    const setClause = cols.map((c, i) => `${c}=?${i + 1}`).join(",");
+    const values = d1Values(rec);
+    const submissionPlaceholder = `?${cols.length + 1}`;
+    const guardPlaceholder = `?${cols.length + 2}`;
+    const result = await env.LEADS_DB.prepare(
+      `UPDATE leads SET ${setClause}
+       WHERE submission_id=${submissionPlaceholder} AND status='forwarding' AND delivered_at=${guardPlaceholder}`
+    ).bind(...values.slice(1), rec.submission_id, expectedLeaseStart).run();
+    if (d1Changes(result) > 0) return true;
+    const probe = await env.LEADS_DB.prepare("SELECT 1 AS found FROM leads WHERE submission_id=?1").bind(rec.submission_id).all();
+    if (probe && probe.results && probe.results[0]) return "not_owner"; // exists, but not under OUR active lease (stolen, released, or already terminal) — do not touch
+    return (await insertD1IfMissing(env, rec)) !== null; // never existed — a plain insert is safe
+  } catch (e) { return false; }
+}
 async function claimD1Lease(env, rec, startedAt) {
   if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return "unavailable";
   await insertD1IfMissing(env, rec);
@@ -393,19 +429,22 @@ async function sweepPending(env) {
         rec.delivered_at = deliveredAt;
         rec.albato_delivered_at = deliveredAt;
         delete rec.forwarding_started_at;
-        await upsertD1(env, rec);
-        await putRecordWithRetry(env, key.name, rec, true);
-        await notifyTelegram(env, newLeadMsg(rec.fields || {}));
+        const d1Result = await upsertD1Guarded(env, rec, startedAt);
+        if (d1Result !== "not_owner") {
+          await putRecordWithRetry(env, key.name, rec, true);
+          await notifyTelegram(env, newLeadMsg(rec.fields || {}));
+        }
         continue;
       }
 
       rec.status = "pending";
       delete rec.forwarding_started_at;
+      const d1ReleaseResult = await upsertD1Guarded(env, rec, startedAt);
+      if (d1ReleaseResult === "not_owner") continue;
       const age = Date.now() - new Date(rec.received_at || Date.now()).getTime();
       if (age > ALERT_AFTER_MS && !rec.alerted) {
         rec.alerted = await notifyTelegram(env, undeliveredMsg(rec));
       }
-      await upsertD1(env, rec);
       await putRecord(env, key.name, rec);
     }
   } catch (e) { /* best-effort — KV-phase failure must not block the D1 phase below */ }
@@ -465,14 +504,16 @@ async function sweepPending(env) {
           rec.delivered_at = deliveredAt;
           rec.albato_delivered_at = deliveredAt;
           delete rec.forwarding_started_at;
-          await upsertD1(env, rec);
-          await putRecordWithRetry(env, key, rec, true);
-          await notifyTelegram(env, newLeadMsg(rec.fields || {}));
+          const d1Result = await upsertD1Guarded(env, rec, startedAt);
+          if (d1Result !== "not_owner") {
+            await putRecordWithRetry(env, key, rec, true);
+            await notifyTelegram(env, newLeadMsg(rec.fields || {}));
+          }
         } else {
           rec.status = "pending";
           delete rec.forwarding_started_at;
-          await upsertD1(env, rec);
-          await putRecord(env, key, rec);
+          const d1ReleaseResult = await upsertD1Guarded(env, rec, startedAt);
+          if (d1ReleaseResult !== "not_owner") await putRecord(env, key, rec);
         }
       }
     } catch (e) { /* best-effort */ }
@@ -715,8 +756,13 @@ async function reconcileR2Presence(env) {
     throw new Error("LEADS_KV, LEADS_DB или LEADS_ARCHIVE не настроен");
   }
   const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  // Review round 3, finding 4: admin-delete best-effort removes the R2 .md
+  // file (functions/api/admin.js deleteLead), so a deleted row will
+  // legitimately have no archive object. Without this filter every normal
+  // delete inside the 14-day window produced a false "no MD file found"
+  // alert for a row that was never supposed to keep one.
   const rows = await queryD1(env,
-    "SELECT submission_id, received_at FROM leads WHERE received_at >= ?1", [since]);
+    "SELECT submission_id, received_at FROM leads WHERE received_at >= ?1 AND status != 'deleted'", [since]);
   const byDay = new Map();
   for (const row of rows) {
     const day = String(row.received_at || "").slice(0, 10);
@@ -778,4 +824,5 @@ export {
   sweepPending,
   claimD1Lease,
   insertD1IfMissing,
+  upsertD1Guarded,
 };

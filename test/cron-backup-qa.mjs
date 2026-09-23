@@ -32,6 +32,7 @@ let purgeExpiredDumps;
 let probeD1;
 let reconcile;
 let claimD1Lease;
+let upsertD1Guarded;
 try {
   ({
     default: worker,
@@ -41,6 +42,7 @@ try {
     probeD1,
     reconcile,
     claimD1Lease,
+    upsertD1Guarded,
   } = await import('../cron-worker/src/index.js'));
 } catch (error) {
   console.error('HARNESS ERROR: worker module unavailable:', error);
@@ -487,6 +489,61 @@ async function run() {
     await runScheduled('*/5 * * * *', withAlerts({ LEADS_KV: brokenKv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.local/hook' }));
     check('D1-only retry still runs and delivers when LEADS_KV.list() throws',
       db._get(d1OnlyId)?.status === 'delivered', JSON.stringify(db._get(d1OnlyId)));
+  }
+
+  /* ============ Round 3 re-review (base ed4033f) — findings 2 and 4 on the
+     cron side. See docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 3". */
+
+  // [finding 2, round 3, P1] A STALE completion write (this worker's own
+  // attempt, delayed) must not clobber a row a NEWER isolate has since
+  // reclaimed and is ACTIVELY forwarding under its own lease. Before this
+  // fix, cron-worker's completion writes called plain upsertD1() with no
+  // guard at all — its CASE WHEN only protects a 'delivered'/'deleted'
+  // TERMINAL state from regressing, so it did nothing to stop a stale write
+  // from overwriting another isolate's still-'forwarding' active lease
+  // (wrong status and/or wiping out its delivered_at lease timestamp),
+  // corrupting the cross-isolate exactly-one-forward bookkeeping.
+  {
+    const id = 'cron-race-active-lease';
+    const receivedAt = isoOffset(-1);
+    const staleLeaseStart = new Date(Date.now() - 5000).toISOString(); // this worker's own (now-stale) belief
+    const newerLeaseStart = new Date().toISOString(); // a NEWER isolate reclaimed and is actively forwarding right now
+    const db = makeD1([{
+      ...seedRow(id, receivedAt, 'forwarding'), delivered_at: newerLeaseStart,
+      name: 'CronRace', phone: '+972500000077', email: 'cronrace@x.com',
+    }]);
+    // This worker's own (stale) completion write believes it still owns
+    // staleLeaseStart and is releasing the lead back to 'pending' after a
+    // failed Albato attempt.
+    const rec = {
+      submission_id: id, fields: { name: 'CronRace', phone: '+972500000077', email: 'cronrace@x.com' },
+      status: 'pending', received_at: receivedAt,
+    };
+    const result = await upsertD1Guarded({ LEADS_DB: db }, rec, staleLeaseStart);
+    console.log('\n[finding 2, round 3] cron-worker stale completion write must not clobber a newer isolate active lease');
+    check('upsertD1Guarded reports "not_owner" — the lease was reclaimed by a newer isolate',
+      result === 'not_owner', String(result));
+    check('D1 row keeps the NEWER isolate active lease untouched (status=forwarding, its own delivered_at)',
+      db._get(id)?.status === 'forwarding' && db._get(id)?.delivered_at === newerLeaseStart,
+      JSON.stringify(db._get(id)));
+  }
+
+  // [finding 4, round 3, P2] A soft-deleted lead must not trigger a false
+  // "no MD file found" R2-presence alert — admin delete best-effort removes
+  // the R2 .md file (functions/api/admin.js deleteLead), so a deleted row
+  // legitimately has none.
+  {
+    alerts = []; sheetIds = [];
+    const deletedGapDb = makeD1([seedRow('r2-gap-deleted-id', isoOffset(-1), 'deleted')]);
+    const deletedGapEnv = withAlerts({
+      LEADS_KV: makeKV(), LEADS_DB: deletedGapDb, LEADS_ARCHIVE: makeR2(),
+      SHEET_COUNT_URL: 'https://sheet.local/count',
+    });
+    await reconcile(deletedGapEnv);
+    console.log('\n[finding 4, round 3] reconcile leg 4 must not flag a soft-deleted lead as an R2 gap');
+    check('reconcile leg 4 does not alert a missing R2 MD file for a soft-deleted row',
+      !alerts.some(text => text.includes('R2 presence') && text.includes('r2-gap-deleted-id')),
+      JSON.stringify(alerts));
   }
 
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);

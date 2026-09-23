@@ -203,6 +203,25 @@ list` / `wrangler d1 list` / `wrangler r2 bucket list`.
 (readback только в ветке `d1Changes>0`, что и так авторитетно). Если позже
 найдётся эквивалент находки C на стороне cron — потребуется отдельная правка.
 
+## 8. Review 2026-09-23 — раунд 3 (повторное ревью базы `ed4033f`)
+
+Третье ревью подтвердило исправление находок A, D, E, F, G из раздела 7,
+признало находки B и C **частичными**, и нашло 4 новых дефекта — два P1
+(регрессия/недоделка самих находок раунда 2) и два P2 (утечка PII в
+tombstone-строке и ложный алерт в reconcile).
+
+| # | Уровень | Находка | Файл:строка (на `ed4033f`) | Правка | Тест |
+|---|---|---|---|---|---|
+| 1 | P1 | Ошибка чтения D1-статуса ИЛИ KV-tombstone (`isLeadDeleted`, булево) схлопывала «подтверждённо удалён» и «не удалось проверить» в один и тот же результат `true`; на intake это трактовалось как «тихо принять и ничего не делать» — новый, ранее не виданный `submission_id`, у которого ОБА сигнала временно недоступны, получал `202 accepted/dedup`, но не сохранялся НИГДЕ (ни в KV, ни в D1) — полная тихая потеря лида несмотря на то, что `KV.put` сам по себе был исправен | `functions/api/lead.js:527`, `:661` | `isLeadDeleted` заменена на трёхзначную `checkLeadDeletionStatus` → `'deleted' \| 'active' \| 'unknown'`; `'unknown'` (оба сигнала нечитаемы) НИКОГДА не трактуется как «удалён» — на intake проваливается в обычную попытку сохранения (которая и так вернёт ретраябельный `502 not_persisted`, если сохранить действительно нечего); в свипах (`isLeadDeletedForSweep`) `'unknown'` по-прежнему консервативно пропускается («не трогать в этом цикле» — безопасно, кандидат уже существует в durable-хранилище и будет пересмотрен следующим свипом) | `test/lead-qa.mjs` T14b (переписан: раньше допускал `202 ИЛИ 502`, что проходило и на баге; теперь проверяет РЕАЛЬНОЕ сохранение в KV и отсутствие пустого `dedup:true`) |
+| 2 | P1 | CAS-условие guard-UPDATE (находка C, раунд 2) было логически инвертировано: `status != 'forwarding' OR delivered_at=?guard` РАЗРЕШАЛО запись всякий раз, когда строка НЕ в состоянии `forwarding` — включая терминальные состояния (`delivered`, `deleted`), выставленные СОВСЕМ ДРУГИМ актором (admin-delete во время активной доставки, или более новый изолят, довершивший лиз). Запись в KV при этом не была связана с результатом CAS вообще — писалась безусловно | `functions/api/lead.js:456`, `:465-484`; `cron-worker/src/index.js:474` (и ещё 3 аналогичных сайта: `:396`, `:408`, `:468`) | Условие исправлено на `status='forwarding' AND delivered_at=?guard` — запись проходит ТОЛЬКО если строка всё ещё под НАШИМ активным лизом; `upsertLeadD1Guarded`/`upsertD1Guarded` возвращают третье значение `"not_owner"`, и `markLeadDelivered`/`releaseLeadToPending` (и 4 эквивалентных места в `cron-worker`) пропускают последующую запись в KV (и, для `markLeadDelivered`, добавление в `deliveredLeadsInProcess`) при `"not_owner"` | `test/lead-qa.mjs` T17 (прямой вызов `markLeadDelivered`), T17b (`releaseLeadToPending`); `test/cron-backup-qa.mjs` (`upsertD1Guarded` — застаревшая доставка не должна перезаписать активный лиз более нового изолята) |
+| 3 | P2 | Soft-delete (находка B, раунд 2) переключала только `status='deleted'`, но оставляла `name`/`phone`/`email`/`payload_json`/атрибуцию полностью нетронутыми в D1-строке навсегда, несмотря на то что админка сообщает «Удалено»; бэкап-дамп (`dumpD1ToR2`, `SELECT * FROM leads`) забирает эти значения как есть | `functions/api/admin.js:191`, `cron-worker/src/index.js:541` | `deleteLead`'s `ON CONFLICT DO UPDATE` теперь дополнительно зануляет `name/phone/email/corrects_submission_id/form_id/landing_path/referrer_host/utm_*/gclid/gbraid/wbraid/fbclid` и сбрасывает `payload_json` в `'{}'`, оставляя только `submission_id/received_at/status/delivered_at` — минимальный tombstone; `dumpD1ToR2` изменений не потребовал: раз сама строка уже очищена, дамп физически не может забрать то, чего в ней больше нет | `test/lead-qa.mjs` T18 |
+| 4 | P2 | `reconcileR2Presence` не фильтровал `status='deleted'` — admin-delete best-effort удаляет `.md`-файл из R2, поэтому у любой удалённой заявки внутри 14-дневного окна закономерно нет архивного файла, и это подавалось как ложный алерт «нет MD-файлов» | `cron-worker/src/index.js:719` | В запрос добавлено `AND status != 'deleted'` | `test/cron-backup-qa.mjs` (`reconcile leg 4 does not alert a missing R2 MD file for a soft-deleted row`) |
+
+**Проверено и не потребовало правки:** `cron-worker`'s `dumpD1ToR2` (находка 3,
+вторая цитата `:541`) — сам дамп не содержит PII-специфичной логики, он читает
+D1 «как есть»; после правки в `admin.js` очищенная строка автоматически даёт
+очищенный бэкап без отдельного изменения дамп-запроса.
+
 ## Related
 
 - `knowledge/web-dev/ADFIX-SITE-SYSTEM-PLAYBOOK.md` §1.6–1.8 — контракт «никогда не терять лид», админка, крон

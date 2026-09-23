@@ -20,7 +20,10 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { onRequest as leadRequest, sweepPendingLeads, claimLeadD1Lease } from '../functions/api/lead.js';
+import {
+  onRequest as leadRequest, sweepPendingLeads, claimLeadD1Lease,
+  markLeadDelivered, releaseLeadToPending,
+} from '../functions/api/lead.js';
 import { onRequestGet as adminGet, onRequestPost as adminPost } from '../functions/api/admin.js';
 
 function basicAuthHeader(user, pass) {
@@ -453,13 +456,20 @@ const baseLead = (id, extra = {}) => ({
     ok('resubmission does not forward to Albato', albatoHits === before, 'hits=' + (albatoHits - before));
   }
 
-  // T14b [finding B] A tombstone-read error must fail closed: if BOTH the
-  // D1 status lookup and the KV tombstone lookup error out, forwarding must
-  // be refused rather than risk resurrecting a deleted lead.
+  // T14b [finding 1, round 3, P1] A deletion-status read error on BOTH
+  // signals (D1 status lookup AND KV tombstone lookup) is "we cannot tell",
+  // NOT "confirmed deleted". Round 2's boolean isLeadDeleted collapsed the
+  // two into the SAME `true` result, and the intake path treated that as
+  // "silently accept and do nothing" — a BRAND-NEW submission_id whose
+  // status simply couldn't be checked was reported 202 accepted/dedup
+  // WITHOUT EVER being written to KV or D1, a genuine, silent, total loss
+  // even though KV.put itself was perfectly healthy here. This test must
+  // assert NO LOSS, not just an allowed status code — an earlier version of
+  // this test accepted "202 OR 502", which the buggy code also satisfies.
   {
     albatoHits = 0;
     const kv = makeKV();
-    kv.get = async () => { throw new Error('kv get down'); };
+    kv.get = async () => { throw new Error('kv get down'); }; // breaks BOTH the dedup readLeadRecord() call and the tombstone check; kv.put stays healthy
     const db = makeD1();
     const originalPrepare = db.prepare.bind(db);
     db.prepare = (sql) => {
@@ -470,9 +480,11 @@ const baseLead = (id, extra = {}) => ({
     const id = crypto.randomUUID();
     albatoUp = true;
     const r = await post(env, baseLead(id));
-    console.log('\nT14b [finding B] Both deletion-status signals unreadable → fail closed, no forward');
-    ok('a fresh lead still gets a durable, non-forwarding-blocked 202 (this is NOT a deleted id — only the isLeadDeleted check itself must be resilient)',
-      r.status === 202 || r.status === 502, JSON.stringify(r.body));
+    console.log('\nT14b [finding 1, round 3] Both deletion-status signals unreadable → must not silently drop a brand-new lead');
+    ok('the brand-new lead is ACTUALLY persisted in KV — a hollow 202 with zero persistence is the bug',
+      kv._has('lead:' + id), JSON.stringify({ status: r.status, body: r.body, kvHasLead: kv._has('lead:' + id) }));
+    ok('response is not a hollow dedup for a submission_id that was never seen before this request',
+      r.body && r.body.dedup !== true, JSON.stringify(r.body));
   }
 
   // T15 [finding C, P1 pre-existing] Two isolates racing to claim the SAME
@@ -517,6 +529,114 @@ const baseLead = (id, extra = {}) => ({
     ok('the second line inside the cell is prefixed, not a bare formula', csvTxt.includes("'=1+1"), csvTxt);
     ok('no unescaped bare "=1+1" line start survives (would let a lenient CSV parser start a new row)',
       !/[\r\n],?=1\+1/.test(csvTxt.replace(/'=1\+1/g, '')), csvTxt);
+  }
+
+  /* ============ Round 3 re-review (base ed4033f) — findings 1-4. See
+     docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 3" table. Finding 1 is
+     T14b above (strengthened); findings 2 and 3 follow. */
+
+  // T17 [finding 2, round 3, P1] A completion write for a lease this isolate
+  // believes it still owns must NEVER overwrite a TERMINAL state a DIFFERENT
+  // actor produced in the meantime (here: an admin delete while this isolate
+  // was still "in flight"). Round 2's guard read
+  // "status != 'forwarding' OR delivered_at=?guard" — inverted from its
+  // intent, it ALLOWED the write whenever the row was in ANY non-forwarding
+  // state, including a terminal one set by someone else.
+  {
+    const db = makeD1();
+    const kv = makeKV();
+    const id = crypto.randomUUID();
+    const receivedAt = new Date().toISOString();
+    const leaseStart = new Date().toISOString();
+    db._insert({
+      submission_id: id, received_at: receivedAt, status: 'forwarding', delivered_at: leaseStart,
+      name: 'Race2', phone: '+972500000088', email: 'race2@x.com', payload_json: '{}',
+    });
+    const env = { LEADS_DB: db, LEADS_KV: kv };
+    // This isolate's in-memory belief: it claimed the lease at leaseStart and
+    // Albato just accepted the lead.
+    const rec = {
+      submission_id: id, fields: { name: 'Race2', phone: '+972500000088', email: 'race2@x.com' },
+      status: 'forwarding', received_at: receivedAt, forwarding_started_at: leaseStart,
+    };
+    // A DIFFERENT actor (admin delete) changes the row to a terminal state
+    // WHILE this isolate is still mid-flight believing it owns the lease.
+    await db.prepare("UPDATE leads SET status='deleted', delivered_at=?1 WHERE submission_id=?2")
+      .bind(new Date().toISOString(), id).run();
+    const key = 'lead:' + id;
+    const markResult = await markLeadDelivered(env, key, rec);
+    console.log('\nT17 [finding 2, round 3] A stale completion write must not resurrect a row deleted by a different actor');
+    ok('D1 row stays deleted (not flipped back to delivered by the stale completion write)',
+      db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
+    ok('KV is NOT written with this isolate’s stale "delivered" belief (the write is gated on the CAS result)',
+      !(await kv.get(key)), await kv.get(key));
+    ok('markLeadDelivered reports failure once it discovers it lost ownership of the row',
+      markResult === false, String(markResult));
+  }
+
+  // T17b [finding 2, round 3, P1] Same protection for releaseLeadToPending
+  // (the Albato attempt failed): must not regress a row a NEWER isolate
+  // already carried to 'delivered' after reclaiming an expired lease.
+  {
+    const db = makeD1();
+    const kv = makeKV();
+    const id = crypto.randomUUID();
+    const receivedAt = new Date().toISOString();
+    const leaseStart = new Date().toISOString();
+    db._insert({
+      submission_id: id, received_at: receivedAt, status: 'forwarding', delivered_at: leaseStart,
+      name: 'Race3', phone: '+972500000089', email: 'race3@x.com', payload_json: '{}',
+    });
+    const forwardingRec = {
+      submission_id: id, fields: { name: 'Race3' }, status: 'forwarding',
+      received_at: receivedAt, forwarding_started_at: leaseStart,
+    };
+    const key = 'lead:' + id;
+    await kv.put(key, JSON.stringify(forwardingRec));
+    const env = { LEADS_DB: db, LEADS_KV: kv };
+    const rec = {
+      submission_id: id, fields: { name: 'Race3', phone: '+972500000089', email: 'race3@x.com' },
+      status: 'forwarding', received_at: receivedAt, forwarding_started_at: leaseStart,
+    };
+    // A NEWER isolate reclaimed the (now expired, from this isolate's stale
+    // point of view) lease and has ALREADY delivered it.
+    await db.prepare("UPDATE leads SET status='delivered', delivered_at=?1 WHERE submission_id=?2")
+      .bind(new Date().toISOString(), id).run();
+    await releaseLeadToPending(env, key, rec);
+    console.log('\nT17b [finding 2, round 3] Release-to-pending must not regress a row a newer isolate already delivered');
+    ok('D1 row stays delivered (not regressed to pending by the stale release write)',
+      db._get(id)?.status === 'delivered', JSON.stringify(db._get(id)));
+    const kvAfter = JSON.parse(await kv.get(key));
+    ok('KV is NOT regressed to pending either (the write is gated on the CAS result)',
+      kvAfter.status === 'forwarding', JSON.stringify(kvAfter));
+  }
+
+  // T18 [finding 3, round 3, P2] Soft-delete must SCRUB PII from the D1 row,
+  // not just flip status. Round 2's version left name/phone/email/
+  // payload_json fully intact and readable in D1 forever despite the admin
+  // UI reporting "Удалено".
+  {
+    const kv = makeKV();
+    const db = makeD1();
+    const r2 = makeR2();
+    const env = { LEADS_KV: kv, LEADS_DB: db, LEADS_ARCHIVE: r2, ALBATO_WEBHOOK_URL: 'https://albato.example/wh', ADMIN_PASSWORD: 'secret' };
+    albatoUp = true;
+    const id = crypto.randomUUID();
+    await post(env, baseLead(id, { name: 'ПерсональныеДанные', phone: '+972500000066', email: 'pii@x.com' }));
+    const deleteForm = (subId) => { const fd = new FormData(); fd.append('action', 'delete'); fd.append('submission_id', subId); return fd; };
+    const auth = basicAuthHeader('admin', 'secret');
+    await adminPost({ request: new Request(ADMIN_URL, { method: 'POST', headers: auth, body: deleteForm(id) }), env });
+    const row = db._get(id);
+    console.log('\nT18 [finding 3, round 3] Soft-delete scrubs PII from the D1 tombstone row');
+    ok('D1 row is soft-deleted', row?.status === 'deleted', JSON.stringify(row));
+    ok('name/phone/email are scrubbed to NULL, not left intact for a "deleted" row',
+      row && row.name == null && row.phone == null && row.email == null, JSON.stringify(row));
+    ok('payload_json is reset to an empty object, not the original PII blob',
+      row && row.payload_json === '{}', row && row.payload_json);
+    ok('attribution columns are scrubbed too (utm_source, gclid)',
+      row && row.utm_source == null && row.gclid == null, JSON.stringify(row));
+    ok('submission_id/received_at/status/delivered_at are preserved (the minimal tombstone)',
+      row && row.submission_id === id && !!row.received_at && row.status === 'deleted' && !!row.delivered_at);
   }
 
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);

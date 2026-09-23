@@ -424,18 +424,28 @@ async function claimLeadForwarding(env, key, rec) {
   if (check && (check.status === "delivered" || check.albato_delivered_at)) return "delivered";
   return "pending";
 }
-// Review round 2, finding C (P1 pre-existing): a completion/release write
-// that arrives LATE (isolate was delayed after a slow Albato response) must
-// not clobber a lease that has since EXPIRED and been reclaimed by a newer
-// isolate. Guarded UPDATE: only applies if the row still shows the SAME
-// forwarding lease we believe we hold (delivered_at unchanged) or isn't
-// contested at all (not currently 'forwarding'). If the row is 'forwarding'
-// under a DIFFERENT lease, this isolate backs off and leaves D1 alone — the
-// newer isolate's own completion will write the real outcome. Falls back to
-// the plain (CASE WHEN-protected) upsert when there is no lease context to
-// guard against (e.g. repairing a record that never went through
-// claimLeadForwarding in THIS call, such as the KV-delivered-already repair
-// paths above).
+// Review round 2, finding C (P1 pre-existing); CAS condition fixed round 3,
+// finding 2: a completion/release write that arrives LATE (isolate was
+// delayed after a slow Albato response) must not clobber a lease that has
+// since EXPIRED and been reclaimed by a newer isolate, AND must not clobber
+// a TERMINAL state ('delivered'/'deleted') that a DIFFERENT actor produced
+// in the meantime (e.g. an admin delete during active forwarding, or a
+// newer isolate's own completed lease). Round 2's guard read
+// "status != 'forwarding' OR delivered_at=?guard" — logically inverted from
+// its intent, it ALLOWED the write whenever the row was in ANY non-
+// forwarding state, including a terminal one set by someone else. The
+// correct guard restricts the write to rows that are STILL 'forwarding'
+// under precisely OUR OWN lease timestamp: "status='forwarding' AND
+// delivered_at=?guard". Falls back to the plain (CASE WHEN-protected)
+// upsert when there is no lease context to guard against (e.g. repairing a
+// record that never went through claimLeadForwarding in THIS call, such as
+// the KV-delivered-already repair paths above).
+//
+// Return contract: true (write applied, or a plain/insert path succeeded) |
+// false (D1 unavailable or errored) | "not_owner" (the row exists but is no
+// longer under our active lease — a different actor already changed it;
+// callers MUST treat this as "do not touch anything else either", see
+// markLeadDelivered/releaseLeadToPending below).
 async function upsertLeadD1Guarded(env, rec, expectedLeaseStart) {
   if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return false;
   if (!expectedLeaseStart) return upsertLeadD1(env, rec);
@@ -453,11 +463,11 @@ async function upsertLeadD1Guarded(env, rec, expectedLeaseStart) {
     var guardPlaceholder = "?" + (cols.length + 2);
     var result = await env.LEADS_DB.prepare(
       "UPDATE leads SET " + setClause
-      + " WHERE submission_id=" + submissionPlaceholder + " AND (status != 'forwarding' OR delivered_at=" + guardPlaceholder + ")"
+      + " WHERE submission_id=" + submissionPlaceholder + " AND status='forwarding' AND delivered_at=" + guardPlaceholder
     ).bind(...values.slice(1), rec.submission_id, expectedLeaseStart).run();
     if (d1Changes(result) > 0) return true;
     var probe = await env.LEADS_DB.prepare("SELECT 1 AS found FROM leads WHERE submission_id=?1").bind(rec.submission_id).all();
-    if (probe && probe.results && probe.results[0]) return false; // exists, held by a NEWER lease — do not touch
+    if (probe && probe.results && probe.results[0]) return "not_owner"; // exists, but not under OUR active lease (stolen, released, or already terminal) — do not touch
     return (await insertLeadD1IfMissing(env, rec)) !== null; // never existed — a plain insert is safe
   } catch (e) { return false; }
 }
@@ -470,18 +480,28 @@ async function markLeadDelivered(env, key, rec) {
   rec.albato_delivered_at = deliveredAt;
   delete rec.forwarding_started_at;
   delete rec.forwarding_lease_id;
+  var d1Result = await upsertLeadD1Guarded(env, rec, expectedLeaseStart);
+  if (d1Result === "not_owner") {
+    // Review round 3, finding 2: a different actor already moved this row
+    // to a different/terminal state in D1 (admin delete, or a newer
+    // isolate that reclaimed an expired lease). Writing our own "delivered"
+    // belief into KV now would resurrect/overwrite that outcome, and
+    // recording it in deliveredLeadsInProcess would make THIS isolate lie
+    // to itself about owning the delivery. Leave both alone.
+    return false;
+  }
   deliveredLeadsInProcess.add(key);
-  var d1Ok = await upsertLeadD1Guarded(env, rec, expectedLeaseStart);
   var kvOk = await putLeadRecordWithRetry(env, key, rec, true);
-  return kvOk || d1Ok;
+  return kvOk || d1Result;
 }
 async function releaseLeadToPending(env, key, rec) {
   var expectedLeaseStart = rec.forwarding_started_at;
   rec.status = "pending";
   delete rec.forwarding_started_at;
   delete rec.forwarding_lease_id;
+  var d1Result = await upsertLeadD1Guarded(env, rec, expectedLeaseStart);
+  if (d1Result === "not_owner") return; // do not resurrect/overwrite a since-changed row in KV either
   await putLeadRecord(env, key, rec);
-  await upsertLeadD1Guarded(env, rec, expectedLeaseStart);
 }
 
 function jerusalemDay(date) {
@@ -492,20 +512,23 @@ function jerusalemDay(date) {
   var get = function (type) { return (parts.find(function (p) { return p.type === type; }) || {}).value || ""; };
   return get("year") + "-" + get("month") + "-" + get("day");
 }
-/* ---- Deletion status (review 2026-09-23 round 2, finding B): a deleted
-   lead must never be resurrected. D1 `status='deleted'` is now the
-   AUTHORITATIVE marker — functions/api/admin.js soft-deletes (keeps the
-   row) instead of physically removing it, so every ON CONFLICT DO NOTHING
-   insert leaves it alone and every upsert's CASE WHEN protects it from
-   regressing (see upsertLeadD1 below); the claim UPDATE's own WHERE clause
-   (status='pending' OR forwarding-expired) structurally never selects a
-   'deleted' row. The KV tombstone key (`tomb:<id>`, long TTL) is a
-   SECONDARY signal for when D1 itself can't be queried. A read error on
-   BOTH signals fails closed (treated as deleted, no forward) rather than
-   risking a resurrected delivery; a read error on only ONE signal trusts
-   whichever signal DID answer. */
+/* ---- Deletion status (review 2026-09-23 round 2, finding B; TRI-STATE
+   fixed round 3, finding 1): a deleted lead must never be resurrected —
+   D1 `status='deleted'` is the AUTHORITATIVE marker; the KV tombstone key
+   (`tomb:<id>`, long TTL) is a SECONDARY signal for when D1 can't be
+   queried.
+
+   Round 2's boolean version collapsed "confirmed deleted" and "could not
+   confirm either way" into the SAME `true` result, which the intake path
+   (processDurableLead) treated as "silently accept and do nothing" — with
+   BOTH LEADS_KV and LEADS_DB erroring, a brand-new, never-before-seen lead
+   was reported 202 accepted/dedup without ever being written anywhere,
+   then genuinely lost once the client cleared its outbox. Fixed with a
+   proper tri-state: 'deleted' | 'active' | 'unknown'. 'unknown' must NEVER
+   be treated as 'deleted' by a caller that would otherwise skip
+   persistence — see checkLeadDeletionStatus() callers below. */
 function tombstoneKey(submissionId) { return "tomb:" + submissionId; }
-async function isLeadDeleted(env, submissionId) {
+async function checkLeadDeletionStatus(env, submissionId) {
   var d1Status = null;
   var d1Error = false;
   if (env.LEADS_DB && typeof env.LEADS_DB.prepare === "function") {
@@ -515,7 +538,7 @@ async function isLeadDeleted(env, submissionId) {
       d1Status = row ? row.status : null;
     } catch (e) { d1Error = true; }
   }
-  if (d1Status === "deleted") return true;
+  if (d1Status === "deleted") return "deleted";
 
   var kvError = false;
   var kvTombstoned = false;
@@ -523,9 +546,21 @@ async function isLeadDeleted(env, submissionId) {
     try { kvTombstoned = (await env.LEADS_KV.get(tombstoneKey(submissionId))) != null; }
     catch (e) { kvError = true; }
   }
-  if (kvTombstoned) return true;
-  if (d1Error && kvError) return true; // both signals unreadable — fail closed
-  return false;
+  if (kvTombstoned) return "deleted";
+
+  // D1 answered (even "no row") and said not deleted → trust it. If D1
+  // could not answer but KV could, and KV has no tombstone → trust KV.
+  if (!d1Error || !kvError) return "active";
+  return "unknown"; // BOTH signals unreadable — genuinely cannot tell
+}
+// Sweep contexts: the candidate already exists in some durable store, so
+// skipping it for one pass (treating "unknown" the same as "deleted", i.e.
+// "do not touch this cycle") never loses it — a later sweep re-checks.
+// This is the conservative default; only the INTAKE path (which is the
+// ONE place a brand-new record gets its first-ever persistence attempt)
+// needs to distinguish 'unknown' from 'deleted' — see processDurableLead.
+async function isLeadDeletedForSweep(env, submissionId) {
+  return (await checkLeadDeletionStatus(env, submissionId)) !== "active";
 }
 
 async function countLeadHoneypot(env) {
@@ -559,7 +594,7 @@ async function sweepPendingLeads(env, excludeKey) {
       var now = Date.now();
       for (const k of pending) {
         if (attempts >= LEAD_SWEEP_LIMIT) break;
-        if (await isLeadDeleted(env, k.name.slice("lead:".length))) continue;
+        if (await isLeadDeletedForSweep(env, k.name.slice("lead:".length))) continue;
         const rec = await readLeadRecord(env, k.name);
         if (!rec || rec.status === "delivered") continue;
         if (rec.albato_delivered_at) {
@@ -609,7 +644,7 @@ async function sweepPendingLeads(env, excludeKey) {
         if (d1Attempts >= LEAD_SWEEP_LIMIT) break;
         var rowKey = "lead:" + row.submission_id;
         if (rowKey === excludeKey) continue;
-        if (await isLeadDeleted(env, row.submission_id)) continue;
+        if (await isLeadDeletedForSweep(env, row.submission_id)) continue;
 
         // Finding A (review round 2, P1 regression): KV is the delivery
         // source of truth. If Albato already accepted this lead but the
@@ -659,10 +694,15 @@ async function processDurableLead(env, payload, submissionId, key) {
   // scoped to "no record yet" to avoid an extra D1 round-trip on every
   // already-in-flight retry).
   if (!record) {
-    var deleted = await isLeadDeleted(env, submissionId);
-    if (deleted) {
+    var deletionStatus = await checkLeadDeletionStatus(env, submissionId);
+    if (deletionStatus === "deleted") {
       return { status: 202, body: { ok: true, status: "accepted", submission_id: submissionId, dedup: true } };
     }
+    // "unknown" (both D1 and KV unreadable) falls through to normal intake
+    // below — review round 3, finding 1: a transient read failure on both
+    // signals must never be silently treated as "this lead was deleted".
+    // The persisted/delivered tracking further down already returns a
+    // retryable 502 not_persisted if nothing could actually be saved.
   }
 
   var kvOk = !!record;
@@ -859,4 +899,5 @@ export async function onRequest(context) {
 export {
   LEAD_CONTRACT, buildPayload, readBodyWithLimit, validateLead,
   hasDurableStorage, sweepPendingLeads, D1_COLUMNS, claimLeadD1Lease,
+  markLeadDelivered, releaseLeadToPending, checkLeadDeletionStatus,
 };

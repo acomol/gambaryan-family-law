@@ -158,8 +158,8 @@ function htmlPage(title, inner) {
 //      repairs) is then a no-op against it, and every upsertLeadD1's CASE
 //      WHEN protects 'deleted' from regressing back to pending/forwarding/
 //      delivered. functions/api/lead.js checks this status at intake
-//      (isLeadDeleted) and both its sweep sources; cron-worker/src/index.js
-//      checks it in its sweep too.
+//      (checkLeadDeletionStatus) and both its sweep sources;
+//      cron-worker/src/index.js checks it in its sweep too.
 //   2. KV `tomb:<id>` (long TTL) stays as a SECONDARY signal for when D1
 //      itself can't be queried; also delete the live KV copy.
 //   3. R2 archive delete stays best-effort and outside the pass/fail
@@ -169,6 +169,17 @@ function htmlPage(title, inner) {
 //      delete, the KV tombstone write, and the KV data delete are all
 //      confirmed. A caller can safely retry: every step here is idempotent
 //      once it has already succeeded.
+//   5. (Review round 3, finding 3, P2) The soft-delete UPSERT now also
+//      SCRUBS every PII/attribution column to NULL and payload_json to
+//      '{}' on conflict — round 2's version only ever set
+//      status='deleted', leaving name/phone/email/payload_json fully
+//      intact and readable in D1 forever despite the admin UI saying
+//      "Удалено". cron-worker's dumpD1ToR2 (SELECT * FROM leads, no PII
+//      filter of its own) backs up whatever is actually stored, so a
+//      minimal tombstone here is also what every future backup will see —
+//      no separate change needed on the backup side. The row keeps only
+//      submission_id, received_at, status='deleted' and delivered_at
+//      (repurposed as deleted_at).
 const TOMBSTONE_TTL_SECONDS = 90 * 24 * 60 * 60;
 function tombstoneKey(submissionId) { return "tomb:" + submissionId; }
 
@@ -188,7 +199,12 @@ async function deleteLead(env, submissionId) {
       await env.LEADS_DB.prepare(
         "INSERT INTO leads (submission_id, received_at, status, delivered_at, payload_json)"
         + " VALUES (?1, ?2, 'deleted', ?3, '{}')"
-        + " ON CONFLICT(submission_id) DO UPDATE SET status='deleted', delivered_at=excluded.delivered_at"
+        + " ON CONFLICT(submission_id) DO UPDATE SET"
+        + " status='deleted', delivered_at=excluded.delivered_at,"
+        + " name=NULL, phone=NULL, email=NULL, corrects_submission_id=NULL,"
+        + " form_id=NULL, landing_path=NULL, referrer_host=NULL,"
+        + " utm_source=NULL, utm_medium=NULL, utm_campaign=NULL, utm_id=NULL, utm_term=NULL, utm_content=NULL,"
+        + " gclid=NULL, gbraid=NULL, wbraid=NULL, fbclid=NULL, payload_json='{}'"
       ).bind(submissionId, receivedAt || deletedAt, deletedAt).run();
     } catch (e) { d1Ok = false; }
   }
