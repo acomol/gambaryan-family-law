@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const EXPECTED_VERSION = "2.4.0";
 const EXPECTED_DATE = "2026-09-22";
@@ -7,10 +9,12 @@ const BASE_URL = "https://gambarian-landing.pages.dev/api/lead";
 
 const functionSource = fs.readFileSync("functions/api/lead.js", "utf8");
 const publicContractSource = fs.readFileSync("site/lead-contract.js", "utf8");
-const testableFunctionSource = functionSource.replace(
-  'import "../../site/lead-contract.js";',
-  publicContractSource,
-);
+// The module runs from a data: URL, where relative imports cannot resolve, so
+// the shared email renderer import is rewritten to an absolute file URL.
+const sharedEmailUrl = pathToFileURL(path.resolve("shared/lead-email.js")).href;
+const testableFunctionSource = functionSource
+  .replace('import "../../site/lead-contract.js";', publicContractSource)
+  .replace('"../../shared/lead-email.js"', JSON.stringify(sharedEmailUrl));
 const moduleUrl =
   "data:text/javascript;base64," +
   Buffer.from(testableFunctionSource).toString("base64");
