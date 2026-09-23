@@ -75,7 +75,8 @@ attribution передаётся пустая строка.
 значения из формы и URL (`name`, `phone`, `email`, `landing_path`, `referrer_host`, UTM и click-id), которые
 начинаются с `=`, `+`, `-`, `@`, табуляции или CR, сервер отправляет с апострофом впереди: `'+972 50 000 0000`.
 Таблица апостроф не показывает и хранит значение текстом; без него телефон становился `#ERROR!`, а формула из
-поля формы выполнилась бы (OWASP, formula injection). Остальные потребители payload должны снимать ведущий `'`.
+поля формы выполнилась бы (OWASP, formula injection). Апостроф ставится **только на выходе в Albato**
+(`sheetSafePayload` в `functions/api/lead.js` и `cron-worker`): KV, D1 и R2 хранят исходные значения.
 
 Не отправляются IP, User-Agent, полный URL/referrer, cookie/GA client ID,
 topic и свободный текст дела. Payload и webhook URL не логируются.

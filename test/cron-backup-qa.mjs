@@ -59,6 +59,7 @@ let pass = 0;
 let fail = 0;
 let alerts = [];
 let albatoHits = 0;
+let lastAlbatoBody = null;
 let sheetIds = [];
 
 function check(name, condition, extra = '') {
@@ -85,6 +86,7 @@ global.fetch = async (url, init = {}) => {
   }
   if (target.startsWith('https://albato.local/')) {
     albatoHits++;
+    try { lastAlbatoBody = JSON.parse(String(init.body || '{}')); } catch (e) { lastAlbatoBody = null; }
     return new Response('OK', { status: 200 });
   }
   throw new Error(`unexpected fetch: ${target}`);
@@ -431,6 +433,9 @@ async function run() {
     }));
     check('cron sweep retries a D1-only pending row missing from KV entirely',
       d1OnlySweepDb._get(d1OnlyId)?.status === 'delivered', JSON.stringify(d1OnlySweepDb._get(d1OnlyId)));
+    check('cron forward to Albato is sheet-safe (phone gets a leading apostrophe)',
+      lastAlbatoBody && typeof lastAlbatoBody.phone === 'string' && lastAlbatoBody.phone.startsWith("'+"),
+      JSON.stringify(lastAlbatoBody && lastAlbatoBody.phone));
   }
 
   // [finding 4, P1] claimD1Lease must never regress a LIVE (unexpired)

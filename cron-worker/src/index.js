@@ -234,6 +234,18 @@ async function putRecordWithRetry(env, key, rec, deliveredTtl = false) {
   if (await putRecord(env, key, rec, deliveredTtl)) return true;
   return putRecord(env, key, rec, deliveredTtl);
 }
+// Same sink rule as functions/api/lead.js: Albato writes to Google Sheets as typed input,
+// so values starting with = + - @ tab CR get a leading apostrophe on the way OUT only.
+const SHEET_SAFE_KEYS = ["landing_path", "name", "phone", "email", "referrer_host",
+  "utm_source", "utm_medium", "utm_campaign", "utm_id", "utm_term", "utm_content",
+  "gclid", "gbraid", "wbraid", "fbclid"];
+function sheetSafePayload(fields) {
+  const out = { ...fields };
+  for (const key of SHEET_SAFE_KEYS) {
+    if (typeof out[key] === "string" && /^[=+\-@\t\r]/.test(out[key])) out[key] = "'" + out[key];
+  }
+  return out;
+}
 async function forwardToAlbato(env, fields) {
   if (!env.ALBATO_WEBHOOK_URL) return false;
   const ctrl = new AbortController();
@@ -242,7 +254,7 @@ async function forwardToAlbato(env, fields) {
     const res = await fetch(env.ALBATO_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify(fields),
+      body: JSON.stringify(sheetSafePayload(fields)),
       signal: ctrl.signal,
     });
     return !!(res && res.ok);

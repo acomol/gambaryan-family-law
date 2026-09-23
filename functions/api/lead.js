@@ -100,16 +100,24 @@ function validateLead(value) {
 // Albato записывает payload в Google Sheets как ввод с клавиатуры: «+972…» превращается
 // в формулу (#ERROR!), «=…» из поля формы выполнилось бы. Значения из формы и URL,
 // начинающиеся с = + - @ / tab / CR, получают апостроф (OWASP: formula injection);
-// таблица его не показывает и хранит значение текстом.
+// таблица его не показывает и хранит значение текстом. Применяется ТОЛЬКО на выходе
+// в Albato (sheetSafePayload): KV/D1/R2 хранят исходные значения.
 function sheetSafe(value) {
   return typeof value === "string" && /^[=+\-@\t\r]/.test(value) ? "'" + value : value;
 }
 
-function buildPayload(lead) {
-  var attribution = {};
-  Object.keys(lead.attribution).forEach(function (key) {
-    attribution[key] = sheetSafe(lead.attribution[key]);
+var SHEET_SAFE_KEYS = ["landing_path", "name", "phone", "email", "referrer_host"]
+  .concat(LEAD_CONTRACT.attributionFields);
+
+function sheetSafePayload(fields) {
+  var out = Object.assign({}, fields);
+  SHEET_SAFE_KEYS.forEach(function (key) {
+    if (Object.prototype.hasOwnProperty.call(out, key)) out[key] = sheetSafe(out[key]);
   });
+  return out;
+}
+
+function buildPayload(lead) {
   return Object.assign(
     {
       schema_version: LEAD_CONTRACT.schemaVersion,
@@ -120,14 +128,14 @@ function buildPayload(lead) {
       corrects_submission_id: lead.correctsSubmissionId,
       submitted_at: new Date().toISOString(),
       form_id: LEAD_CONTRACT.formId,
-      landing_path: sheetSafe(lead.landingPath),
+      landing_path: lead.landingPath,
       landing_language: LEAD_CONTRACT.landingLanguage,
-      name: sheetSafe(lead.name),
-      phone: sheetSafe(lead.phone),
-      email: sheetSafe(lead.email),
-      referrer_host: sheetSafe(lead.referrerHost),
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      referrer_host: lead.referrerHost,
     },
-    attribution,
+    lead.attribution,
   );
 }
 
@@ -342,7 +350,7 @@ async function forwardToAlbato(env, fields) {
     var res = await fetch(env.ALBATO_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify(fields),
+      body: JSON.stringify(sheetSafePayload(fields)),
       signal: controller.signal,
     });
     return !!(res && res.ok);
@@ -793,7 +801,7 @@ export async function onRequest(context) {
       upstream = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(sheetSafePayload(payload)),
         signal: controller.signal,
       });
     } catch (error) {

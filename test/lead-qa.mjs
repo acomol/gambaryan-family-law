@@ -86,11 +86,12 @@ function makeR2() {
 }
 
 /* ---- controllable fetch (Albato up/down; Telegram swallowed) ---- */
-let albatoUp = true; let albatoHits = 0; let telegramHits = 0; let albatoDelayMs = 0;
-global.fetch = async (url) => {
+let albatoUp = true; let albatoHits = 0; let telegramHits = 0; let albatoDelayMs = 0; let lastAlbatoBody = null;
+global.fetch = async (url, init = {}) => {
   const u = String(url);
   if (u.includes('api.telegram.org')) { telegramHits++; return new Response('{}', { status: 200 }); }
   albatoHits++;
+  try { lastAlbatoBody = JSON.parse(String(init.body || '{}')); } catch (e) { lastAlbatoBody = null; }
   if (albatoDelayMs) await new Promise(resolve => setTimeout(resolve, albatoDelayMs));
   return new Response(albatoUp ? 'OK' : 'ERR', { status: albatoUp ? 200 : 502 });
 };
@@ -137,6 +138,11 @@ const baseLead = (id, extra = {}) => ({
     ok('KV has the lead', env.LEADS_KV._size() === 1);
     ok('R2 archived an .md file', env.LEADS_ARCHIVE._keys().some(k => k.endsWith(idUp + '.md')));
     ok('Telegram new-lead alert fired', telegramHits >= 1);
+    // Sheet-safe only at the Albato sink: stored copies keep the raw value.
+    const kvRec = JSON.parse(await env.LEADS_KV.get('lead:' + idUp));
+    ok('D1 stores the raw phone (no sheet apostrophe)', env.LEADS_DB._get(idUp).phone === '+972 50 000 0000', env.LEADS_DB._get(idUp).phone);
+    ok('KV stores the raw phone (no sheet apostrophe)', kvRec.fields.phone === '+972 50 000 0000', kvRec.fields.phone);
+    ok('Albato body carries the sheet-safe phone', lastAlbatoBody && lastAlbatoBody.phone === "'+972 50 000 0000", JSON.stringify(lastAlbatoBody && lastAlbatoBody.phone));
   }
 
   // T2 — Albato DOWN: lead is NOT lost (KV+D1 pending, recoverable), client gets 202
