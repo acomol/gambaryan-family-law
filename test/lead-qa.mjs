@@ -983,6 +983,46 @@ const baseLead = (id, extra = {}) => ({
     ok('D1 row stays deleted', db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
   }
 
+  // T27 [branded Albato email, owner request] Albato payload carries a
+  // branded office email rendered from the RAW fields: email_subject/
+  // email_html present, HTML injected via the name is neutralized, and the
+  // phone shown in email_html has no sheetSafe() apostrophe (unlike the
+  // top-level `phone` field, which keeps it — that escaping is only for
+  // Albato's own Sheets step).
+  {
+    const idEmail = crypto.randomUUID();
+    const env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = true;
+    const maliciousName = '<script>alert(1)</script><a href="https://evil.example">click</a>';
+    const r = await post(env, baseLead(idEmail, { name: maliciousName, phone: '+972 50 000 0000' }));
+    console.log('\nT27 [branded Albato email] payload carries email_subject/email_html, escapes the name, keeps the phone apostrophe-free');
+    ok('202 accepted', r.status === 202 && r.body.ok === true, JSON.stringify(r.body));
+    ok('Albato payload has email_subject', typeof lastAlbatoBody?.email_subject === 'string' && lastAlbatoBody.email_subject.length > 0, JSON.stringify(lastAlbatoBody?.email_subject));
+    ok('Albato payload has email_html', typeof lastAlbatoBody?.email_html === 'string' && lastAlbatoBody.email_html.length > 0);
+    ok('email_html HTML-escapes <script> from the name (no raw tag survives)',
+      !lastAlbatoBody?.email_html?.includes('<script>') && lastAlbatoBody?.email_html?.includes('&lt;script&gt;'));
+    ok('email_html HTML-escapes the injected <a href> from the name',
+      !lastAlbatoBody?.email_html?.includes('<a href="https://evil.example">'));
+    ok('email_html tel: link has no leading sheetSafe apostrophe even for a "+972..." phone',
+      lastAlbatoBody?.email_html?.includes('href="tel:+972500000000"') && !lastAlbatoBody?.email_html?.includes("'tel:"));
+    ok('top-level (Sheets-bound) phone still keeps its sheetSafe apostrophe, unaffected',
+      lastAlbatoBody?.phone === "'+972 50 000 0000", JSON.stringify(lastAlbatoBody?.phone));
+  }
+
+  // T28 [branded Albato email, owner request] An Israeli mobile typed
+  // without the leading 0 must resolve to wa.me/972501234567 in email_html —
+  // official WhatsApp click-to-chat format (digits only, no "+").
+  {
+    const idWa = crypto.randomUUID();
+    const env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = true;
+    const r = await post(env, baseLead(idWa, { phone: '0501234567' }));
+    console.log('\nT28 [branded Albato email] 0501234567 gives a wa.me/972501234567 WhatsApp link in email_html');
+    ok('202 accepted', r.status === 202 && r.body.ok === true, JSON.stringify(r.body));
+    ok('email_html contains https://wa.me/972501234567',
+      lastAlbatoBody?.email_html?.includes('https://wa.me/972501234567'), lastAlbatoBody?.email_html?.slice(0, 200));
+  }
+
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('HARNESS ERROR:', e); process.exit(2); });

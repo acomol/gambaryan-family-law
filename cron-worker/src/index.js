@@ -26,6 +26,8 @@
    corrects_submission_id, full attribution set — no Assuta medical columns).
    Deploy: owner-only; this repository change does not deploy the Worker. */
 
+import { renderNewLeadEmail } from "../../shared/lead-email.js";
+
 const TTL_SECONDS = 7 * 24 * 60 * 60;
 const SWEEP_LIMIT = 25;
 const ALERT_AFTER_MS = 15 * 60 * 1000;
@@ -343,10 +345,16 @@ async function forwardToAlbato(env, fields) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), FWD_TIMEOUT_MS);
   try {
+    // Branded office email (owner request), same renderer as
+    // functions/api/lead.js — from the RAW fields, before
+    // sheetSafePayload() below, so it never shows a sheetSafe() apostrophe.
+    // Nothing is stored anywhere; a cron RETRY renders it again too.
+    const email = renderNewLeadEmail(fields);
+    const outgoing = { ...sheetSafePayload(fields), email_subject: email.subject, email_html: email.html };
     const res = await fetch(env.ALBATO_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify(sheetSafePayload(fields)),
+      body: JSON.stringify(outgoing),
       signal: ctrl.signal,
     });
     return !!(res && res.ok);

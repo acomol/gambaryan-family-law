@@ -1180,6 +1180,28 @@ async function run() {
       JSON.stringify(leadIds.map(id => ({ id, attempt_count: db._get(id)?.attempt_count }))));
   }
 
+  // [branded Albato email, owner request] the cron-worker retry path
+  // (sweepPending -> forwardToAlbato, for a lead that was pending because
+  // Albato was down at intake time) must ALSO carry email_subject/
+  // email_html on its retry POST — same shared renderer, same RAW fields,
+  // proving the branding isn't intake-only.
+  {
+    alerts = []; albatoHits = 0; lastAlbatoBody = null;
+    const id = 'branded-email-retry';
+    const receivedAt = isoOffset(-1);
+    const kv = makeKV();
+    await kv.put(`lead:${id}`, JSON.stringify(kvRecord(id, receivedAt, 'pending')),
+      { metadata: { status: 'pending', received_at: receivedAt } });
+    const db = makeD1([seedRow(id, receivedAt, 'pending')]);
+    const env = withAlerts({ LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.local/hook' });
+    await sweepPending(env);
+    console.log('\n[branded Albato email, owner request] cron retry (sweepPending) POST also carries email_subject/email_html');
+    check('cron retry reached Albato', albatoHits > 0, `hits=${albatoHits}`);
+    check('cron retry payload has email_subject', typeof lastAlbatoBody?.email_subject === 'string' && lastAlbatoBody.email_subject.length > 0,
+      JSON.stringify(lastAlbatoBody?.email_subject));
+    check('cron retry payload has email_html', typeof lastAlbatoBody?.email_html === 'string' && lastAlbatoBody.email_html.length > 0);
+  }
+
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
   process.exit(fail ? 1 : 0);
 }
