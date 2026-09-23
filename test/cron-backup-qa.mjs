@@ -546,6 +546,41 @@ async function run() {
       JSON.stringify(alerts));
   }
 
+  /* ============ Round 4 re-review (base e7a719e) — finding C on the cron
+     side. See docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 4". */
+
+  // [finding C, round 4, P2] An error IN the CAS guard itself (D1 down at
+  // the exact moment of the completion write) must be treated like
+  // "not_owner" — never like the legacy "no D1 configured" `false`
+  // fallback. Round 3's fix only special-cased "not_owner"; a genuine D1
+  // exception fell through the SAME path as "D1 unbound" and would have let
+  // callers mark the lead delivered and alert regardless.
+  {
+    const id = 'cron-guard-error';
+    const receivedAt = isoOffset(-1);
+    const leaseStart = new Date().toISOString();
+    const db = makeD1([{
+      ...seedRow(id, receivedAt, 'forwarding'), delivered_at: leaseStart,
+      name: 'CronGuardErr', phone: '+972500000033', email: 'cronguarderr@x.com',
+    }]);
+    const originalPrepare = db.prepare.bind(db);
+    db.prepare = (sql) => {
+      if (/AND status='forwarding' AND delivered_at=/.test(sql)) throw new Error('d1 down mid-guard');
+      return originalPrepare(sql);
+    };
+    const rec = {
+      submission_id: id, fields: { name: 'CronGuardErr', phone: '+972500000033', email: 'cronguarderr@x.com' },
+      status: 'delivered', received_at: receivedAt, delivered_at: new Date().toISOString(),
+    };
+    const result = await upsertD1Guarded({ LEADS_DB: db }, rec, leaseStart);
+    console.log('\n[finding C, round 4] cron-worker CAS-guard error must be distinguished from "no D1 configured"');
+    check('upsertD1Guarded reports "error" (D1 exception), not the "no D1 bound" false',
+      result === 'error', String(result));
+    check('D1 row is untouched (still forwarding under the original lease)',
+      db._get(id)?.status === 'forwarding' && db._get(id)?.delivered_at === leaseStart,
+      JSON.stringify(db._get(id)));
+  }
+
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
   process.exit(fail ? 1 : 0);
 }

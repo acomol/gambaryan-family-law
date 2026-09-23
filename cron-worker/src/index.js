@@ -197,9 +197,14 @@ async function insertD1IfMissing(env, rec) {
 // (status='forwarding' AND delivered_at=expectedLeaseStart).
 //
 // Return contract: true (applied, or a plain/insert path succeeded) |
-// false (D1 unavailable or errored) | "not_owner" (the row exists but is no
-// longer under our active lease — callers MUST skip their own subsequent
-// KV write and delivery notification, see sweepPending below).
+// false (NO D1 binding configured at all — legacy KV/Albato-only mode,
+// unrelated to CAS) | "not_owner" (the row exists but is no longer under
+// our active lease) | "error" (review round 4, finding C: D1 IS bound but
+// the guarded query itself threw — e.g. a transient D1 outage. This is NOT
+// the same as "no D1 configured": we cannot confirm ownership, so it must
+// be treated exactly like "not_owner"). Callers MUST skip their own
+// subsequent KV write and delivery notification on EITHER "not_owner" OR
+// "error" — see sweepPending below.
 async function upsertD1Guarded(env, rec, expectedLeaseStart) {
   if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return false;
   if (!expectedLeaseStart) return upsertD1(env, rec);
@@ -221,7 +226,7 @@ async function upsertD1Guarded(env, rec, expectedLeaseStart) {
     const probe = await env.LEADS_DB.prepare("SELECT 1 AS found FROM leads WHERE submission_id=?1").bind(rec.submission_id).all();
     if (probe && probe.results && probe.results[0]) return "not_owner"; // exists, but not under OUR active lease (stolen, released, or already terminal) — do not touch
     return (await insertD1IfMissing(env, rec)) !== null; // never existed — a plain insert is safe
-  } catch (e) { return false; }
+  } catch (e) { return "error"; } // D1 bound but the query itself failed — CANNOT confirm ownership; never conflate with "not configured"
 }
 async function claimD1Lease(env, rec, startedAt) {
   if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return "unavailable";
@@ -430,7 +435,10 @@ async function sweepPending(env) {
         rec.albato_delivered_at = deliveredAt;
         delete rec.forwarding_started_at;
         const d1Result = await upsertD1Guarded(env, rec, startedAt);
-        if (d1Result !== "not_owner") {
+        // Review round 4, finding C: an "error" (D1 bound but the guard
+        // query itself threw) must be treated exactly like "not_owner" —
+        // never like the legacy "no D1 configured" `false` fallback.
+        if (d1Result !== "not_owner" && d1Result !== "error") {
           await putRecordWithRetry(env, key.name, rec, true);
           await notifyTelegram(env, newLeadMsg(rec.fields || {}));
         }
@@ -440,7 +448,7 @@ async function sweepPending(env) {
       rec.status = "pending";
       delete rec.forwarding_started_at;
       const d1ReleaseResult = await upsertD1Guarded(env, rec, startedAt);
-      if (d1ReleaseResult === "not_owner") continue;
+      if (d1ReleaseResult === "not_owner" || d1ReleaseResult === "error") continue;
       const age = Date.now() - new Date(rec.received_at || Date.now()).getTime();
       if (age > ALERT_AFTER_MS && !rec.alerted) {
         rec.alerted = await notifyTelegram(env, undeliveredMsg(rec));
@@ -505,7 +513,9 @@ async function sweepPending(env) {
           rec.albato_delivered_at = deliveredAt;
           delete rec.forwarding_started_at;
           const d1Result = await upsertD1Guarded(env, rec, startedAt);
-          if (d1Result !== "not_owner") {
+          // Round 4, finding C: "error" must be skipped exactly like
+          // "not_owner" (see the KV-loop above).
+          if (d1Result !== "not_owner" && d1Result !== "error") {
             await putRecordWithRetry(env, key, rec, true);
             await notifyTelegram(env, newLeadMsg(rec.fields || {}));
           }
@@ -513,7 +523,7 @@ async function sweepPending(env) {
           rec.status = "pending";
           delete rec.forwarding_started_at;
           const d1ReleaseResult = await upsertD1Guarded(env, rec, startedAt);
-          if (d1ReleaseResult !== "not_owner") await putRecord(env, key, rec);
+          if (d1ReleaseResult !== "not_owner" && d1ReleaseResult !== "error") await putRecord(env, key, rec);
         }
       }
     } catch (e) { /* best-effort */ }

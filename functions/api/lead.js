@@ -442,10 +442,16 @@ async function claimLeadForwarding(env, key, rec) {
 // the KV-delivered-already repair paths above).
 //
 // Return contract: true (write applied, or a plain/insert path succeeded) |
-// false (D1 unavailable or errored) | "not_owner" (the row exists but is no
-// longer under our active lease — a different actor already changed it;
-// callers MUST treat this as "do not touch anything else either", see
-// markLeadDelivered/releaseLeadToPending below).
+// false (NO D1 binding configured at all — legacy KV/Albato-only mode,
+// unrelated to CAS, callers may proceed as before) | "not_owner" (the row
+// exists but is no longer under our active lease — a different actor
+// already changed it) | "error" (review round 4, finding C: D1 IS bound
+// but the guarded query itself threw — e.g. a transient D1 outage. This is
+// NOT the same as "no D1 configured": we cannot confirm whether the row is
+// still ours, so it must be treated exactly like "not_owner", never like
+// the legacy fallback). Callers MUST treat BOTH "not_owner" and "error" as
+// "do not touch anything else either — no KV write, no notification, defer
+// to the next sweep" — see markLeadDelivered/releaseLeadToPending below.
 async function upsertLeadD1Guarded(env, rec, expectedLeaseStart) {
   if (!env.LEADS_DB || typeof env.LEADS_DB.prepare !== "function") return false;
   if (!expectedLeaseStart) return upsertLeadD1(env, rec);
@@ -469,9 +475,14 @@ async function upsertLeadD1Guarded(env, rec, expectedLeaseStart) {
     var probe = await env.LEADS_DB.prepare("SELECT 1 AS found FROM leads WHERE submission_id=?1").bind(rec.submission_id).all();
     if (probe && probe.results && probe.results[0]) return "not_owner"; // exists, but not under OUR active lease (stolen, released, or already terminal) — do not touch
     return (await insertLeadD1IfMissing(env, rec)) !== null; // never existed — a plain insert is safe
-  } catch (e) { return false; }
+  } catch (e) { return "error"; } // D1 bound but the query itself failed — CANNOT confirm ownership; never conflate with "not configured"
 }
 
+// Callers check the return with strict equality (=== false), not
+// truthiness, because the "no D1 bound" legacy fallback is boolean `false`
+// while "not_owner"/"error" are distinct truthy strings that must ALSO
+// block the KV write and any notification — see the not_owner/error checks
+// in markLeadDelivered/releaseLeadToPending below and every caller of them.
 async function markLeadDelivered(env, key, rec) {
   var expectedLeaseStart = rec.forwarding_started_at;
   var deliveredAt = new Date().toISOString();
@@ -481,27 +492,36 @@ async function markLeadDelivered(env, key, rec) {
   delete rec.forwarding_started_at;
   delete rec.forwarding_lease_id;
   var d1Result = await upsertLeadD1Guarded(env, rec, expectedLeaseStart);
-  if (d1Result === "not_owner") {
-    // Review round 3, finding 2: a different actor already moved this row
-    // to a different/terminal state in D1 (admin delete, or a newer
-    // isolate that reclaimed an expired lease). Writing our own "delivered"
-    // belief into KV now would resurrect/overwrite that outcome, and
-    // recording it in deliveredLeadsInProcess would make THIS isolate lie
-    // to itself about owning the delivery. Leave both alone.
+  if (d1Result === "not_owner" || d1Result === "error") {
+    // Review round 3, finding 2 (not_owner) + round 4, finding C (error): a
+    // different actor already moved this row to a different/terminal state
+    // in D1 (admin delete, or a newer isolate that reclaimed an expired
+    // lease) — OR we simply could not confirm either way because the guard
+    // query itself errored (treat that exactly like not_owner, never like
+    // "no D1 configured"). Writing our own "delivered" belief into KV now
+    // would resurrect/overwrite an unknown outcome, and recording it in
+    // deliveredLeadsInProcess would make THIS isolate lie to itself about
+    // owning the delivery. Leave both alone; a later sweep resolves it.
     return false;
   }
   deliveredLeadsInProcess.add(key);
   var kvOk = await putLeadRecordWithRetry(env, key, rec, true);
   return kvOk || d1Result;
 }
+// Returns true only when this isolate still owns the row and the release
+// write (or the legacy no-D1 KV write) actually applied — review round 4,
+// finding B: callers MUST check this before sending any "undelivered" alert
+// or rewriting their own copy of `rec` (which still carries PII) into KV;
+// see sweepPendingLeads below.
 async function releaseLeadToPending(env, key, rec) {
   var expectedLeaseStart = rec.forwarding_started_at;
   rec.status = "pending";
   delete rec.forwarding_started_at;
   delete rec.forwarding_lease_id;
   var d1Result = await upsertLeadD1Guarded(env, rec, expectedLeaseStart);
-  if (d1Result === "not_owner") return; // do not resurrect/overwrite a since-changed row in KV either
-  await putLeadRecord(env, key, rec);
+  if (d1Result === "not_owner" || d1Result === "error") return false; // do not resurrect/overwrite a since-changed row in KV, and do not act as if we still own it
+  var kvOk = await putLeadRecord(env, key, rec);
+  return kvOk || d1Result;
 }
 
 function jerusalemDay(date) {
@@ -606,18 +626,28 @@ async function sweepPendingLeads(env, excludeKey) {
         if (claim !== "claimed") continue;
         attempts++;
         if (await forwardToAlbato(env, rec.fields)) {
-          await markLeadDelivered(env, k.name, rec);
-          await notifyTelegram(env, newLeadTelegramMessage(rec.fields));
+          // Review round 4, finding B: only announce delivery if we still
+          // own the row after the completion write — a not_owner/error
+          // result means a different actor already changed it, and this
+          // isolate's belief is stale.
+          if (await markLeadDelivered(env, k.name, rec)) {
+            await notifyTelegram(env, newLeadTelegramMessage(rec.fields));
+          }
         } else {
-          await releaseLeadToPending(env, k.name, rec);
-          const age = now - new Date(rec.received_at || now).getTime();
-          if (age > LEAD_ALERT_AFTER_MS && !rec.alerted) {
-            const notified = await notifyTelegram(env, undeliveredTelegramMessage(rec));
-            if (notified) {
-              rec.alerted = true;
-              await putLeadRecord(env, k.name, rec);
+          const stillOwned = await releaseLeadToPending(env, k.name, rec);
+          if (stillOwned) {
+            const age = now - new Date(rec.received_at || now).getTime();
+            if (age > LEAD_ALERT_AFTER_MS && !rec.alerted) {
+              const notified = await notifyTelegram(env, undeliveredTelegramMessage(rec));
+              if (notified) {
+                rec.alerted = true;
+                await putLeadRecord(env, k.name, rec);
+              }
             }
           }
+          // stillOwned === false: a different actor changed this row while
+          // our forward was in flight — do not alert, do not rewrite our
+          // stale PII-carrying `rec` into KV; a later sweep resolves it.
         }
       }
     } catch (e) { /* best-effort */ }
@@ -664,8 +694,11 @@ async function sweepPendingLeads(env, excludeKey) {
         if (claim !== "claimed") continue;
         d1Attempts++;
         if (await forwardToAlbato(env, rec.fields)) {
-          await markLeadDelivered(env, rowKey, rec);
-          await notifyTelegram(env, newLeadTelegramMessage(rec.fields));
+          // Review round 4, finding B (consistency with the KV-loop above):
+          // only alert if we still own the row after the completion write.
+          if (await markLeadDelivered(env, rowKey, rec)) {
+            await notifyTelegram(env, newLeadTelegramMessage(rec.fields));
+          }
         } else {
           await releaseLeadToPending(env, rowKey, rec);
         }
@@ -698,11 +731,28 @@ async function processDurableLead(env, payload, submissionId, key) {
     if (deletionStatus === "deleted") {
       return { status: 202, body: { ok: true, status: "accepted", submission_id: submissionId, dedup: true } };
     }
-    // "unknown" (both D1 and KV unreadable) falls through to normal intake
-    // below — review round 3, finding 1: a transient read failure on both
-    // signals must never be silently treated as "this lead was deleted".
-    // The persisted/delivered tracking further down already returns a
-    // retryable 502 not_persisted if nothing could actually be saved.
+    if (deletionStatus === "unknown") {
+      // Review round 4, finding A (P1 regression from round 3's fix): round
+      // 3 let "unknown" fall through to normal intake, reasoning that the
+      // persisted/delivered tracking below would fail safe with a retryable
+      // 502 if nothing could actually be saved. But if this id WAS
+      // genuinely already deleted (D1 secretly still holds status='deleted'
+      // — we just cannot read it right now because of a real D1/KV outage),
+      // falling through RESURRECTS it: fresh PII gets written to KV/R2 and
+      // one Albato POST fires before either signal ever resolves. Refuse
+      // instead, BEFORE any write/archive/send — the client's write-ahead
+      // outbox keeps the lead and retries once the outage clears, so
+      // nothing is lost and nothing is resurrected.
+      //
+      // Guardrail: "unknown" can ONLY occur when a binding EXISTS and its
+      // read failed — checkLeadDeletionStatus resolves to "active" whenever
+      // NEITHER LEADS_DB nor LEADS_KV is bound at all (both error flags stay
+      // false), so a deploy with no bindings configured (legacy Albato-only
+      // mode, pipeline not yet activated) never reaches this branch and
+      // keeps working exactly as before this change.
+      return { status: 503, body: { ok: false, error: "deletion_status_unknown" } };
+    }
+    // "active" falls through to normal intake below.
   }
 
   var kvOk = !!record;
@@ -739,9 +789,17 @@ async function processDurableLead(env, payload, submissionId, key) {
   }
 
   var delivered = await forwardToAlbato(env, record.fields);
-  if (delivered) await markLeadDelivered(env, key, record);
+  // Review round 4, finding B: `delivered` only reflects whether Albato
+  // itself accepted the lead (used below for the client-facing
+  // not_persisted check, which must stay true even if OUR bookkeeping
+  // write loses a race) — `stillOwnsCompletion` tracks whether THIS
+  // isolate's own completion write actually won ownership. Only alert when
+  // both are true; a not_owner/error result means a different actor
+  // already changed the row, and this isolate's belief is stale.
+  var stillOwnsCompletion = true;
+  if (delivered) stillOwnsCompletion = await markLeadDelivered(env, key, record);
   else await releaseLeadToPending(env, key, record);
-  if (delivered) await notifyTelegram(env, newLeadTelegramMessage(record.fields));
+  if (delivered && stillOwnsCompletion) await notifyTelegram(env, newLeadTelegramMessage(record.fields));
 
   if (!persisted && !delivered) {
     return { status: 502, body: { ok: false, error: "not_persisted" } };

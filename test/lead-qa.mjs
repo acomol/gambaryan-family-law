@@ -456,20 +456,23 @@ const baseLead = (id, extra = {}) => ({
     ok('resubmission does not forward to Albato', albatoHits === before, 'hits=' + (albatoHits - before));
   }
 
-  // T14b [finding 1, round 3, P1] A deletion-status read error on BOTH
-  // signals (D1 status lookup AND KV tombstone lookup) is "we cannot tell",
-  // NOT "confirmed deleted". Round 2's boolean isLeadDeleted collapsed the
-  // two into the SAME `true` result, and the intake path treated that as
-  // "silently accept and do nothing" — a BRAND-NEW submission_id whose
-  // status simply couldn't be checked was reported 202 accepted/dedup
-  // WITHOUT EVER being written to KV or D1, a genuine, silent, total loss
-  // even though KV.put itself was perfectly healthy here. This test must
-  // assert NO LOSS, not just an allowed status code — an earlier version of
-  // this test accepted "202 OR 502", which the buggy code also satisfies.
+  // T14b [finding 1, round 3, P1 — SUPERSEDED by round 4, finding A below]
+  // A deletion-status read error on BOTH signals (D1 status lookup AND KV
+  // tombstone lookup) is "we cannot tell", NOT "confirmed deleted". Round
+  // 2's boolean isLeadDeleted collapsed the two into the SAME `true`
+  // result, and the intake path treated that as "silently accept and do
+  // nothing" — a genuine, silent, total loss. Round 3 fixed this by falling
+  // through to normal intake on "unknown" — but round 4's re-review (finding
+  // A) found THAT fix could resurrect a genuinely-deleted lead when the
+  // outage hid its tombstone (see T19 below). The contract is now: "unknown"
+  // → refuse with a retryable 503 BEFORE any write, never persist AND never
+  // silently drop. This test now asserts the round-4 contract for a
+  // brand-new (never actually deleted) id: no loss AND no resurrection risk
+  // — a 503 the client's outbox will retry, with zero premature writes.
   {
     albatoHits = 0;
     const kv = makeKV();
-    kv.get = async () => { throw new Error('kv get down'); }; // breaks BOTH the dedup readLeadRecord() call and the tombstone check; kv.put stays healthy
+    kv.get = async () => { throw new Error('kv get down'); }; // breaks BOTH the dedup readLeadRecord() call and the tombstone check
     const db = makeD1();
     const originalPrepare = db.prepare.bind(db);
     db.prepare = (sql) => {
@@ -479,12 +482,15 @@ const baseLead = (id, extra = {}) => ({
     const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
     const id = crypto.randomUUID();
     albatoUp = true;
+    const before = albatoHits;
     const r = await post(env, baseLead(id));
-    console.log('\nT14b [finding 1, round 3] Both deletion-status signals unreadable → must not silently drop a brand-new lead');
-    ok('the brand-new lead is ACTUALLY persisted in KV — a hollow 202 with zero persistence is the bug',
-      kv._has('lead:' + id), JSON.stringify({ status: r.status, body: r.body, kvHasLead: kv._has('lead:' + id) }));
-    ok('response is not a hollow dedup for a submission_id that was never seen before this request',
-      r.body && r.body.dedup !== true, JSON.stringify(r.body));
+    console.log('\nT14b [finding 1, round 3 / finding A, round 4] Both deletion-status signals unreadable → retryable 503, no premature write');
+    ok('response is a retryable 503, not a silent 202 dedup and not a premature persist',
+      r.status === 503, JSON.stringify(r.body));
+    ok('nothing was written to KV for this never-before-seen id (client outbox will retry)',
+      !kv._has('lead:' + id));
+    ok('no Albato POST fired before the deletion status could be confirmed',
+      albatoHits === before, 'hits=' + (albatoHits - before));
   }
 
   // T15 [finding C, P1 pre-existing] Two isolates racing to claim the SAME
@@ -637,6 +643,166 @@ const baseLead = (id, extra = {}) => ({
       row && row.utm_source == null && row.gclid == null, JSON.stringify(row));
     ok('submission_id/received_at/status/delivered_at are preserved (the minimal tombstone)',
       row && row.submission_id === id && !!row.received_at && row.status === 'deleted' && !!row.delivered_at);
+  }
+
+  /* ============ Round 4 re-review (base e7a719e) — findings A, B, C. See
+     docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 4" table. */
+
+  // T19 [finding A, P1 regression] The exact resurrection scenario: the id
+  // WAS genuinely deleted (D1 secretly still has status='deleted'), but the
+  // deletion-status SELECT throws (real D1 outage) so intake cannot see it.
+  // Round 3's fix fell through to normal intake here, which would write
+  // fresh PII to KV and fire one Albato POST — resurrecting a dead lead.
+  {
+    albatoHits = 0;
+    const kv = makeKV();
+    kv.get = async () => { throw new Error('kv get down'); };
+    const db = makeD1();
+    const id = crypto.randomUUID();
+    db._insert({
+      submission_id: id, received_at: new Date().toISOString(), status: 'deleted',
+      delivered_at: new Date().toISOString(), payload_json: '{}',
+    });
+    const originalPrepare = db.prepare.bind(db);
+    db.prepare = (sql) => {
+      if (/SELECT status FROM leads WHERE submission_id/.test(sql)) throw new Error('d1 select down');
+      return originalPrepare(sql);
+    };
+    const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = true;
+    const before = albatoHits;
+    const r = await post(env, baseLead(id));
+    console.log('\nT19 [finding A, round 4] Both deletion-status signals unreadable → refuse (503), never resurrect');
+    ok('response is a retryable 503, not a false 202', r.status === 503, JSON.stringify(r.body));
+    ok('D1 row stays deleted — untouched by the refused intake attempt',
+      db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
+    ok('no lead: key was written to KV (no PII resurrected)', !kv._has('lead:' + id));
+    ok('no Albato POST fired', albatoHits === before, 'hits=' + (albatoHits - before));
+  }
+
+  // T19b [finding A guardrail, round 4] "unknown" can only occur when a
+  // binding EXISTS and its read failed (see checkLeadDeletionStatus's
+  // `!d1Error || !kvError` logic) — with NO KV/D1 bindings at all (legacy
+  // Albato-only mode, pipeline not yet activated), intake must behave
+  // exactly as before this change: normal 202, delivered.
+  {
+    albatoHits = 0;
+    const env = { ALBATO_WEBHOOK_URL: 'https://albato.example/wh' }; // no LEADS_KV, no LEADS_DB at all
+    albatoUp = true;
+    const id = crypto.randomUUID();
+    const before = albatoHits;
+    const r = await post(env, baseLead(id));
+    console.log('\nT19b [finding A guardrail, round 4] No bindings at all → legacy mode unaffected by the 503 refusal');
+    ok('202 accepted, delivered normally (unaffected by the round-4 fix)',
+      r.status === 202 && r.body.ok === true, JSON.stringify(r.body));
+    ok('Albato was actually reached (legacy Albato-only mode keeps working)', albatoHits - before === 1);
+  }
+
+  // T20 [finding B, P2] sweepPendingLeads' KV-loop must not send an
+  // "undelivered" alert or rewrite the KV pending record (carrying PII)
+  // when releaseLeadToPending discovers a different actor already changed
+  // the row between this sweep's claim and its own release write.
+  {
+    telegramHits = 0;
+    const kv = makeKV();
+    const db = makeD1();
+    const id = crypto.randomUUID();
+    const oldReceivedAt = new Date(Date.now() - 20 * 60 * 1000).toISOString(); // old enough to trigger the undelivered alert if not gated
+    const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.example/wh', TELEGRAM_TOKEN: 't', TELEGRAM_CHAT_ID: 'c' };
+    albatoUp = false; // this sweep pass's own Albato attempt fails
+    const fields = { name: 'FindingB', phone: '+972500000055', email: 'findingb@x.com' };
+    await kv.put('lead:' + id, JSON.stringify({
+      submission_id: id, fields, status: 'pending', received_at: oldReceivedAt,
+    }), { metadata: { status: 'pending', received_at: oldReceivedAt } });
+    db._insert({
+      submission_id: id, received_at: oldReceivedAt, status: 'pending', delivered_at: null,
+      name: fields.name, phone: fields.phone, email: fields.email, payload_json: JSON.stringify(fields),
+    });
+    const originalPrepare = db.prepare.bind(db);
+    let sideEffectFired = false;
+    db.prepare = (sql) => {
+      if (!sideEffectFired && /AND status='forwarding' AND delivered_at=/.test(sql)) {
+        sideEffectFired = true;
+        // A DIFFERENT actor (e.g. admin delete) changes the row to a
+        // terminal state right between this sweep's claim and its own
+        // release-to-pending write.
+        originalPrepare("UPDATE leads SET status='deleted', delivered_at=?1 WHERE submission_id=?2")
+          .bind(new Date().toISOString(), id).run();
+      }
+      return originalPrepare(sql);
+    };
+    await sweepPendingLeads(env, '');
+    console.log('\nT20 [finding B, round 4] sweep must not alert or rewrite KV when release loses ownership mid-flight');
+    ok('D1 row stays deleted (the release write was correctly rejected)',
+      db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
+    const kvAfter = JSON.parse(await kv.get('lead:' + id));
+    ok('KV keeps the claim-time "forwarding" state — NOT rewritten to pending+alerted with stale PII',
+      kvAfter.status === 'forwarding' && !kvAfter.alerted, JSON.stringify(kvAfter));
+    ok('no Telegram alert was sent for a row we no longer own', telegramHits === 0, 'hits=' + telegramHits);
+  }
+
+  // T21 [finding B, P2] processDurableLead's direct-forward path must not
+  // fire the "new lead" Telegram alert when markLeadDelivered discovers a
+  // different actor already changed the row between this isolate's claim
+  // and its own completion write (Albato itself DID accept the lead, so the
+  // client still gets a normal 202 — only the internal alert is suppressed).
+  {
+    telegramHits = 0; albatoHits = 0;
+    const kv = makeKV();
+    const db = makeD1();
+    const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.example/wh', TELEGRAM_TOKEN: 't', TELEGRAM_CHAT_ID: 'c' };
+    albatoUp = true;
+    const id = crypto.randomUUID();
+    const originalPrepare = db.prepare.bind(db);
+    let sideEffectFired = false;
+    db.prepare = (sql) => {
+      if (!sideEffectFired && /AND status='forwarding' AND delivered_at=/.test(sql)) {
+        sideEffectFired = true;
+        originalPrepare("UPDATE leads SET status='deleted', delivered_at=?1 WHERE submission_id=?2")
+          .bind(new Date().toISOString(), id).run();
+      }
+      return originalPrepare(sql);
+    };
+    const r = await post(env, baseLead(id));
+    console.log('\nT21 [finding B, round 4] intake must not alert when markLeadDelivered loses ownership mid-flight');
+    ok('D1 row stays deleted (the delivered-completion write was correctly rejected)',
+      db._get(id)?.status === 'deleted', JSON.stringify(db._get(id)));
+    ok('no "new lead" Telegram alert fired for a row we no longer own', telegramHits === 0, 'hits=' + telegramHits);
+    ok('client still gets a normal 202 (Albato itself DID accept the lead)', r.status === 202, JSON.stringify(r.body));
+  }
+
+  // T22 [finding C, P2] An error IN the CAS guard itself (D1 down at the
+  // exact moment of the completion write) must be treated like not_owner —
+  // never like the legacy "no D1 configured" fallback. Round 3's fix only
+  // special-cased "not_owner"; a genuine D1 exception fell through the SAME
+  // path as "D1 unbound" and still marked the lead delivered in KV.
+  {
+    telegramHits = 0;
+    const kv = makeKV();
+    const db = makeD1();
+    const id = crypto.randomUUID();
+    const leaseStart = new Date().toISOString();
+    db._insert({
+      submission_id: id, received_at: new Date().toISOString(), status: 'forwarding', delivered_at: leaseStart,
+      name: 'FindingC', phone: '+972500000044', email: 'findingc@x.com', payload_json: '{}',
+    });
+    const env = { LEADS_KV: kv, LEADS_DB: db, TELEGRAM_TOKEN: 't', TELEGRAM_CHAT_ID: 'c' };
+    const originalPrepare = db.prepare.bind(db);
+    db.prepare = (sql) => {
+      if (/AND status='forwarding' AND delivered_at=/.test(sql)) throw new Error('d1 down mid-guard');
+      return originalPrepare(sql);
+    };
+    const rec = {
+      submission_id: id, fields: { name: 'FindingC', phone: '+972500000044', email: 'findingc@x.com' },
+      status: 'forwarding', received_at: new Date().toISOString(), forwarding_started_at: leaseStart,
+    };
+    const key = 'lead:' + id;
+    const result = await markLeadDelivered(env, key, rec);
+    console.log('\nT22 [finding C, round 4] A D1 error inside the CAS guard must be treated like not_owner, not "no D1 configured"');
+    ok('markLeadDelivered reports failure (D1-errored guard, not a legit legacy fallback)', result === false, String(result));
+    ok('KV was NOT written to delivered — deferred to the next sweep instead', !(await kv.get(key)), await kv.get(key));
+    ok('D1 row is untouched (still forwarding under the original lease)',
+      db._get(id)?.status === 'forwarding' && db._get(id)?.delivered_at === leaseStart, JSON.stringify(db._get(id)));
   }
 
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
