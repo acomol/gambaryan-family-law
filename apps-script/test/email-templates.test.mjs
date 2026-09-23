@@ -145,3 +145,66 @@ test('renderSlaEscalationEmail_: короткий — subject содержит "
   assert.match(email.subject, /Эскалация/);
   assert.ok(email.html.indexOf('2 рабочих часа') !== -1);
 });
+
+// =============================================================================
+// Build-round email v2 (docs/crm-dashboard/EMAIL-CRITIQUE.md top-5 + owner
+// correction b — «Позвонить»/WhatsApp равной ширины и высоты)
+// =============================================================================
+
+test('email v2: «Позвонить»/«Написать в WhatsApp» — блочные, равной ширины (100%), стек с гарантированным зазором (owner correction b)', () => {
+  const email = ctx.renderNewLeadEmail_(baseNewLeadData());
+  const buttonBlocks = email.html.match(/<a href="tel:[^"]*" style="[^"]*"/) || [];
+  assert.ok(buttonBlocks.length > 0, 'кнопка «Позвонить» должна быть найдена');
+  assert.ok(email.html.indexOf('display:block;width:100%') !== -1,
+    'кнопки должны быть блочными на всю ширину — единственный способ гарантировать равную ширину независимо от длины текста');
+  // обе кнопки должны использовать ОДНУ И ТУ ЖЕ базовую разметку (высота/ширина/центрирование)
+  const telButtonMatch = email.html.match(/<a href="tel:[^"]*" style="([^"]*)"/);
+  const waButtonMatch = email.html.match(/<a href="https:\/\/wa\.me\/[^"]*" class="btn-secondary" style="([^"]*)"/);
+  assert.ok(telButtonMatch && waButtonMatch, 'обе кнопки должны присутствовать');
+  ['display:block', 'width:100%', 'min-height:44px', 'line-height:44px', 'text-align:center'].forEach((token) => {
+    assert.ok(telButtonMatch[1].indexOf(token) !== -1, '«Позвонить» должна иметь ' + token);
+    assert.ok(waButtonMatch[1].indexOf(token) !== -1, '«Написать в WhatsApp» должна иметь ' + token);
+  });
+  assert.ok(waButtonMatch[1].indexOf('margin-top:8px') !== -1, 'вертикальный зазор — явный margin, не побочный line-height (recommendation №5)');
+});
+
+test('email v2: то же для короткого SLA/эскалации шаблона — равная ширина кнопок применена ко ВСЕМ трём письмам, не только new-lead', () => {
+  const email = ctx.renderSlaFirstAttemptEmail_({ leadNo: 'G-0030', name: 'Тест', phone: '+972501234567', sheetUrl: 'https://x/edit#gid=0&range=A2:N2' });
+  assert.ok(email.html.indexOf('display:block;width:100%') !== -1);
+  assert.ok(email.html.indexOf('class="btn-secondary"') !== -1);
+});
+
+test('email v2 recommendation №1: WhatsApp-кнопка — видимая граница + кремовая заливка (WCAG 1.4.11, было 1.24:1 белое-на-белом)', () => {
+  const email = ctx.renderNewLeadEmail_(baseNewLeadData());
+  const waButtonMatch = email.html.match(/<a href="https:\/\/wa\.me\/[^"]*" class="btn-secondary" style="([^"]*)"/);
+  assert.ok(waButtonMatch, 'кнопка WhatsApp должна иметь класс btn-secondary для тёмного оверрайда');
+  assert.ok(waButtonMatch[1].indexOf('border:1px solid #6b7280') !== -1, 'граница — ink3 (#6b7280), не невидимый #d1d5db');
+  assert.ok(waButtonMatch[1].indexOf('background:#f6f1e8') !== -1, 'заливка — кремовая (--bg-cream), не белая-на-белой карточке');
+  assert.ok(email.html.indexOf('.btn-secondary{background:#1c232c') !== -1, 'тёмный оверрайд кнопки должен присутствовать в <style>');
+});
+
+test('email v2 recommendation №2: футер — ink2 (#4b5158, 7.14:1 PASS) на кремовом фоне, не ink3 (#6b7280, 4.3:1 FAIL AA)', () => {
+  const email = ctx.renderNewLeadEmail_(baseNewLeadData());
+  const footerSpan = email.html.match(/<span class="email-text-muted" style="([^"]*)">Автоматическое/);
+  assert.ok(footerSpan, 'футер должен быть найден');
+  assert.ok(footerSpan[1].indexOf('color:#4b5158') !== -1, 'футер на кремовом фоне должен использовать ink2, не ink3 (WCAG AA)');
+});
+
+test('email v2 recommendation №3: «Открыть заявку» — outline (transparent + wine border/text), не filled — не конкурирует с «Позвонить»', () => {
+  const email = ctx.renderNewLeadEmail_(baseNewLeadData());
+  const ctaMatch = email.html.match(/<a href="https:\/\/docs\.google\.com[^"]*" class="btn-outline" style="([^"]*)">/);
+  assert.ok(ctaMatch, '«Открыть заявку» должна иметь класс btn-outline');
+  assert.ok(ctaMatch[1].indexOf('background:transparent') !== -1);
+  assert.ok(ctaMatch[1].indexOf('border:1px solid #8a1f1f') !== -1);
+  assert.ok(ctaMatch[1].indexOf('color:#8a1f1f') !== -1);
+  assert.ok(email.html.indexOf('.btn-outline{border-color:#c9736f') !== -1, 'тёмный оверрайд outline-кнопки должен присутствовать');
+});
+
+test('email v2 recommendation №4: эскалация несёт wine-бейдж «ЭСКАЛАЦИЯ» — рутинный SLA-реминдер его НЕ несёт', () => {
+  const escalation = ctx.renderSlaEscalationEmail_({ leadNo: 'G-0040', name: 'Т', phone: '+972501234567', sheetUrl: 'https://x/edit#gid=0&range=A2:N2' });
+  assert.ok(escalation.html.indexOf('Эскалация</span>') !== -1, 'бейдж «Эскалация» должен присутствовать');
+  assert.ok(escalation.html.indexOf('background:#8a1f1f;color:#fff') !== -1, 'бейдж — существующий цвет wine, не новый');
+
+  const reminder = ctx.renderSlaFirstAttemptEmail_({ leadNo: 'G-0041', name: 'Т', phone: '+972501234567', sheetUrl: 'https://x/edit#gid=0&range=A2:N2' });
+  assert.ok(reminder.html.indexOf('border-radius:999px') === -1, 'рутинное SLA-напоминание НЕ должно нести бейдж — иначе оно неотличимо от эскалации');
+});

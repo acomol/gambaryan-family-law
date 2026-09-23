@@ -36,6 +36,12 @@ var EMAIL_BRAND_ = {
   ink3: '#6b7280',
   ink3Dark: '#9ca3af',
   border: '#d1d5db',
+  // build-round email v2 (docs/crm-dashboard/EMAIL-CRITIQUE.md, top-5, owner "да"):
+  // тёмные оверрайды secondary/outline кнопок — существующие оттенки бренда,
+  // не новая палитра (см. email-v2.html, уже одобренный владельцем мокап).
+  secondaryBgDark: '#1c232c',
+  outlineBorderDark: '#c9736f',
+  outlineTextDark: '#e7b0ad',
   fontStack: "'Onest', Helvetica, Arial, sans-serif"
 };
 
@@ -54,17 +60,48 @@ function escapeHtml_(value) {
     .replace(/'/g, '&#39;');
 }
 
-/** Кнопка-ссылка ≥44px высотой (line-height трюк — надёжен в Gmail web/mobile). */
+/**
+ * Кнопка-ссылка ≥44px высотой (line-height трюк — надёжен в Gmail web/mobile).
+ * @param {{bg, color, border, className}} [opts] className — для тёмных
+ *   CSS-оверрайдов (см. renderEmailShellHtml_ .btn-outline и
+ *   emailContactButtonsHtml_ .btn-secondary).
+ */
 function emailButtonHtml_(label, href, opts) {
   opts = opts || {};
   var bg = opts.bg || EMAIL_BRAND_.gold;
   var color = opts.color || EMAIL_BRAND_.ink;
   var border = opts.border ? ('border:1px solid ' + opts.border + ';') : '';
+  var classAttr = opts.className ? (' class="' + opts.className + '"') : '';
   var style = 'display:inline-block;min-height:44px;line-height:44px;padding:0 22px;' +
     'background:' + bg + ';color:' + color + ';' + border +
     'font-family:' + EMAIL_BRAND_.fontStack + ';font-weight:700;font-size:13px;' +
     'border-radius:8px;text-decoration:none;white-space:nowrap;';
-  return '<a href="' + escapeHtml_(href) + '" style="' + style + '">' + escapeHtml_(label) + '</a>';
+  return '<a href="' + escapeHtml_(href) + '"' + classAttr + ' style="' + style + '">' + escapeHtml_(label) + '</a>';
+}
+
+/**
+ * Build-round owner correction (b): «Позвонить»/«Написать в WhatsApp» — РАВНОЙ
+ * ширины и высоты, выровнены на 390px (мокап-стек с двумя разноширинными
+ * inline-кнопками этому не удовлетворял: "Позвонить" короче "Написать в
+ * WhatsApp"). Обе кнопки — блочные, шириной 100% контейнера, одна под другой —
+ * это ОДНА разметка, работающая одинаково на 390 и 1024 без медиа-запроса на
+ * переключение layout (email-клиенты поддерживают @media выборочно, а
+ * "стек, обе на всю ширину" — один из двух вариантов, явно допущенных в задаче).
+ * Заодно закрывает EMAIL-CRITIQUE.md рекомендацию №1 (контраст WhatsApp-кнопки,
+ * WCAG 1.4.11 1.24:1 → ≥3:1: кремовая заливка + видимая граница вместо белого
+ * на белом) и №5 (гарантированный вертикальный зазор — margin-top, не побочный
+ * line-height).
+ */
+function emailContactButtonsHtml_(telHref, waHref) {
+  var base = 'display:block;width:100%;box-sizing:border-box;min-height:44px;line-height:44px;text-align:center;' +
+    'font-family:' + EMAIL_BRAND_.fontStack + ';font-weight:700;font-size:13px;border-radius:8px;text-decoration:none;';
+  var callStyle = base + 'background:' + EMAIL_BRAND_.gold + ';color:' + EMAIL_BRAND_.ink + ';';
+  var waStyle = base + 'background:' + EMAIL_BRAND_.bgOuterLight + ';color:' + EMAIL_BRAND_.ink +
+    ';border:1px solid ' + EMAIL_BRAND_.ink3 + ';margin-top:8px;';
+  return '<div style="margin-top:10px;">' +
+    '<a href="' + escapeHtml_(telHref) + '" style="' + callStyle + '">Позвонить</a>' +
+    '<a href="' + escapeHtml_(waHref) + '" class="btn-secondary" style="' + waStyle + '">Написать в WhatsApp</a>' +
+    '</div>';
 }
 
 /** Одна подписанная строка карточки: слева серая метка, справа значение (HTML уже готов). */
@@ -108,6 +145,12 @@ function renderEmailShellHtml_(parts) {
     '.email-text{color:' + b.inkOnDark + ' !important;}' +
     '.email-text-muted{color:' + b.ink3Dark + ' !important;}' +
     '.email-row{border-color:' + b.dividerDark + ' !important;}' +
+    // EMAIL-CRITIQUE.md recommendation №1/№3: secondary (WhatsApp) и outline
+    // («Открыть заявку») кнопки не переопределялись под тёмный режим вовсе —
+    // secondary оставался плоским белым пятном на тёмной карточке, outline
+    // держал винный бордер, малозаметный на почти чёрном фоне.
+    '.btn-secondary{background:' + b.secondaryBgDark + ' !important;border-color:' + b.ink3Dark + ' !important;color:' + b.inkOnDark + ' !important;}' +
+    '.btn-outline{border-color:' + b.outlineBorderDark + ' !important;color:' + b.outlineTextDark + ' !important;}' +
     '}' +
     '</style>' +
     '</head>' +
@@ -132,7 +175,11 @@ function renderEmailShellHtml_(parts) {
     '</table>' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;">' +
     '<tr><td align="center" style="padding:18px 32px;">' +
-    '<span class="email-text-muted" style="font-family:' + b.fontStack + ';font-size:12px;color:' + b.ink3 + ';">' + escapeHtml_(parts.footerText || '') + '</span>' +
+    // EMAIL-CRITIQUE.md recommendation №2: ink3 (#6b7280) на кремовом фоне
+    // страницы (#f6f1e8) — WCAG AA FAIL, 4.3:1 < 4.5:1 (вычислено). ink2
+    // (#4b5158) на том же фоне — 7.14:1, PASS с запасом. Только light — dark
+    // override (.email-text-muted -> ink3Dark) уже проходил, не тронут.
+    '<span class="email-text-muted" style="font-family:' + b.fontStack + ';font-size:12px;color:' + b.ink2 + ';">' + escapeHtml_(parts.footerText || '') + '</span>' +
     '</td></tr>' +
     '</table>' +
     '</td></tr>' +
@@ -161,11 +208,7 @@ function renderNewLeadEmail_(data) {
 
   var phoneValueHtml = escapeHtml_(phone);
   if (links.digitsOnly) {
-    phoneValueHtml += '<div style="margin-top:10px;">' +
-      emailButtonHtml_('Позвонить', links.telHref, { bg: EMAIL_BRAND_.gold, color: EMAIL_BRAND_.ink }) +
-      '<span style="display:inline-block;width:8px;">&nbsp;</span>' +
-      emailButtonHtml_('Написать в WhatsApp', links.waHref, { bg: '#ffffff', color: EMAIL_BRAND_.ink, border: EMAIL_BRAND_.border }) +
-      '</div>';
+    phoneValueHtml += emailContactButtonsHtml_(links.telHref, links.waHref);
   }
 
   var rows = emailLabelledRowHtml_('Имя', escapeHtml_(name), { noBorderTop: true });
@@ -175,7 +218,10 @@ function renderNewLeadEmail_(data) {
   }
   rows += emailLabelledRowHtml_('Откуда', escapeHtml_(source || '—'));
 
-  var cta = emailButtonHtml_('Открыть заявку', sheetUrl, { bg: EMAIL_BRAND_.wine, color: '#ffffff' });
+  // EMAIL-CRITIQUE.md recommendation №3: «Открыть заявку» — outline, не filled.
+  // «Позвонить» стартует SLA (design §5.5) и остаётся единственной loud-кнопкой;
+  // «Открыть заявку» — административный шаг, не должен конкурировать взглядом.
+  var cta = emailButtonHtml_('Открыть заявку', sheetUrl, { bg: 'transparent', color: EMAIL_BRAND_.wine, border: EMAIL_BRAND_.wine, className: 'btn-outline' });
   var titleHtml = 'Новая заявка ' + escapeHtml_(leadNo) +
     '<div style="margin-top:4px;font-size:13px;font-weight:400;color:' + EMAIL_BRAND_.ink3 + ';">Получена ' + escapeHtml_(receivedAtLabel) + ' (Израиль)</div>';
   var footerText = 'Автоматическое уведомление о новой заявке · Гамбарян и партнёры';
@@ -225,18 +271,18 @@ function renderShortLeadEmail_(data) {
 
   var phoneValueHtml = escapeHtml_(phone);
   if (links.digitsOnly) {
-    phoneValueHtml += '<div style="margin-top:10px;">' +
-      emailButtonHtml_('Позвонить', links.telHref, { bg: EMAIL_BRAND_.gold, color: EMAIL_BRAND_.ink }) +
-      '<span style="display:inline-block;width:8px;">&nbsp;</span>' +
-      emailButtonHtml_('Написать в WhatsApp', links.waHref, { bg: '#ffffff', color: EMAIL_BRAND_.ink, border: EMAIL_BRAND_.border }) +
-      '</div>';
+    phoneValueHtml += emailContactButtonsHtml_(links.telHref, links.waHref);
   }
 
   var rows = emailLabelledRowHtml_('Имя', escapeHtml_(name), { noBorderTop: true });
   rows += emailLabelledRowHtml_('Телефон', phoneValueHtml);
 
-  var cta = emailButtonHtml_('Открыть заявку', sheetUrl, { bg: EMAIL_BRAND_.wine, color: '#ffffff' });
-  var titleHtml = escapeHtml_(data.titleText || '') + ' ' + escapeHtml_(leadNo) +
+  var cta = emailButtonHtml_('Открыть заявку', sheetUrl, { bg: 'transparent', color: EMAIL_BRAND_.wine, border: EMAIL_BRAND_.wine, className: 'btn-outline' });
+  // EMAIL-CRITIQUE.md recommendation №4: эскалация визуально неотличима от
+  // рутинного SLA-напоминания — бейдж только здесь (renderSlaEscalationEmail_
+  // передаёт data.badgeHtml), существующий цвет (wine), не новый.
+  var badgeHtml = data.badgeHtml ? (data.badgeHtml + '<div style="height:8px;"></div>') : '';
+  var titleHtml = badgeHtml + escapeHtml_(data.titleText || '') + ' ' + escapeHtml_(leadNo) +
     '<div style="margin-top:4px;font-size:13px;font-weight:400;color:' + EMAIL_BRAND_.ink3 + ';">' + escapeHtml_(waitingLabel) + '</div>';
 
   var html = renderEmailShellHtml_({
@@ -292,6 +338,8 @@ function renderSlaEscalationEmail_(data) {
     titleText: 'Эскалация: нет первой попытки 2ч',
     subjectPrefix: 'Эскалация: нет первой попытки 2ч',
     waitingLabel: 'Эскалация владельцу — 2 рабочих часа без первой попытки',
-    footerText: 'Автоматическая эскалация CRM · Гамбарян и партнёры'
+    footerText: 'Автоматическая эскалация CRM · Гамбарян и партнёры',
+    badgeHtml: '<span style="background:' + EMAIL_BRAND_.wine + ';color:#fff;font-size:11px;font-weight:700;' +
+      'letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;">Эскалация</span>'
   });
 }
