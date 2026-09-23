@@ -1,4 +1,5 @@
 import "../../site/lead-contract.js";
+import { renderNewLeadEmail } from "../../shared/lead-email.js";
 
 const LEAD_CONTRACT = globalThis.GAMBARIAN_LEAD_CONTRACT;
 
@@ -355,10 +356,21 @@ async function forwardToAlbato(env, fields) {
   var controller = new AbortController();
   var timeoutId = setTimeout(function () { controller.abort(); }, LEAD_CONTRACT.upstreamTimeoutMs);
   try {
+    // Branded office email (owner request): rendered from the RAW fields —
+    // BEFORE sheetSafePayload() below — so email_html never shows a
+    // sheetSafe() apostrophe prefix (that escaping exists only for
+    // Albato's own Sheets step, not for a human reading an email). Nothing
+    // here is stored in KV/D1/R2 — rendered fresh on every send, including
+    // a cron-worker retry of the same lead.
+    var email = renderNewLeadEmail(fields);
+    var outgoing = Object.assign({}, sheetSafePayload(fields), {
+      email_subject: email.subject,
+      email_html: email.html,
+    });
     var res = await fetch(env.ALBATO_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify(sheetSafePayload(fields)),
+      body: JSON.stringify(outgoing),
       signal: controller.signal,
     });
     return !!(res && res.ok);

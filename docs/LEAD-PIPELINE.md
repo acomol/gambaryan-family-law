@@ -458,6 +458,50 @@ opportunistic-свип) и проходит после фикса.
 → green); `test/lead-qa.mjs` — T2 переписан под контракт «recovery теперь
 только через cron-worker».
 
+## 15. Брендированное офисное письмо в Albato (owner request, база `0fcf61b`)
+
+**Что сделано:** Albato-шаг Gmail раньше слал письмо plain text. Добавлены
+два поля в JSON, который уходит в Albato (ТОЛЬКО на этом шаге — Sheets-поля
+и `sheetSafePayload()` не тронуты):
+
+- `email_subject` — `"Новая заявка с сайта — <имя>"` (RAW имя, вырезаны
+  control-символы — защита от email header injection, RFC 5322 §2.2);
+- `email_html` — полное HTML-письмо, тот же брендинг/вёрстка, что и новое
+  письмо мини-CRM (`gamb-mini-crm-fix` `apps-script/src/EmailTemplates.gs`,
+  `renderNewLeadEmail_`), но только светлая тема (Gmail не гарантирует
+  `prefers-color-scheme`), без номера заявки CRM, время получения —
+  Asia/Jerusalem `dd.MM.yyyy HH:mm` из `submitted_at`, «Открыть таблицу» —
+  фиксированный URL таблицы.
+
+**Модуль:** `shared/lead-email.js` — чистые функции, без доступа к
+KV/D1/R2/fetch; импортируется ОБОИМИ `forwardToAlbato` (`functions/api/lead.js`
+и `cron-worker/src/index.js`) через относительный ESM `import`. Проверено,
+что бандлер резолвит этот cross-directory import в обоих рантаймах:
+`npx wrangler deploy --dry-run` (`cron-worker/`) и
+`npx wrangler pages functions build functions --outdir <tmp>` — оба
+успешны, во втором бандле `renderNewLeadEmail` присутствует.
+
+**Рендерится из RAW полей** (`fields`, ДО `sheetSafePayload()`), поэтому
+`email_html`/`email_subject` никогда не несут sheetSafe-апостроф (та защита —
+только для шага Sheets в Albato). Всё экранируется через `escapeHtml()`
+(имя/email/UTM приходят с публичной формы). WhatsApp-ссылка —
+`normalizeWhatsAppNumber()`, точный официальный алгоритм click-to-chat
+(WhatsApp Help Center, «How to use click to chat», прочитано 2026-09-24):
+израильский `0…` → `972…`, `+…`/`00…` — по стандартным правилам, израильские
+городские (972 + не 5) — кнопка скрывается. `tel:`-ссылка — отдельная,
+более простая нормализация (`telHrefFromPhone`), сохраняющая ведущий `+`,
+если он был в исходном номере. Ничего не пишется в KV/D1/R2 — письмо
+рендерится заново при каждой отправке, включая cron-ретрай.
+
+**Тесты** (`test/lead-qa.mjs` T27–T28, `test/cron-backup-qa.mjs` — новый
+блок «cron retry»): красный на `0fcf61b` (email_subject/email_html
+отсутствуют) → зелёный после правки; payload с письмом ≈6.7 КБ (лимит 20 КБ
+соблюдён); превью с тестовыми данными — `I:/Temp/claude/lead-email-preview.html`
+(не коммитится, локальный артефакт).
+
+**Не задеплоено и Albato не тронут** — по требованию владельца, деплой и
+настройку Albato делает он сам.
+
 ## Related
 
 - `knowledge/web-dev/ADFIX-SITE-SYSTEM-PLAYBOOK.md` §1.6–1.8 — контракт «никогда не терять лид», админка, крон
