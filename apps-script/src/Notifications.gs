@@ -32,8 +32,13 @@ function appendJournalRow_(journalSheet, time, leadNo, event, state, channel, de
  * Отправляет письмо один раз на ключ, с журналированием (§5.6). Пропускает,
  * если по decideSendAction_ отправлять не нужно (уже sent/pending, либо unknown
  * моложе окна ретрая).
+ * @param {string} [htmlBody] задача 0.4.0 (Task B): брендированный HTML —
+ *   MailApp.sendEmail({htmlBody}) добавляет HTML-версию, body остаётся
+ *   plain-text альтернативой (обязательна для клиентов без HTML — сама задача
+ *   требует "plain-text alternative body"). Не передан — письмо остаётся
+ *   чистым plain-text, как раньше (дайджест/сводка/системные тревоги).
  */
-function sendNotificationOnce_(journalSheet, key, leadNo, event, channel, recipients, subject, body) {
+function sendNotificationOnce_(journalSheet, key, leadNo, event, channel, recipients, subject, body, htmlBody) {
   var now = new Date();
   var existing = findLatestJournalStateForKey_(journalSheet, key);
   var action = decideSendAction_(existing, now);
@@ -45,7 +50,9 @@ function sendNotificationOnce_(journalSheet, key, leadNo, event, channel, recipi
 
   appendJournalRow_(journalSheet, now, leadNo, event, SEND_STATES_.PENDING, channel, '', key);
   try {
-    MailApp.sendEmail({ to: recipients.join(','), subject: subject, body: body });
+    var message = { to: recipients.join(','), subject: subject, body: body };
+    if (htmlBody) message.htmlBody = htmlBody;
+    MailApp.sendEmail(message);
     appendJournalRow_(journalSheet, new Date(), leadNo, event, SEND_STATES_.SENT, channel, '', key);
     return { sent: true };
   } catch (err) {
@@ -65,27 +72,66 @@ function classifySendError_(err) {
   return SEND_STATES_.UNKNOWN;
 }
 
-/** Ссылка на строку заявки в «Заявки» по её № (используется в письмах и «Сегодня»). */
-function buildRequestRowLink_(rowNumber) {
-  return 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID_ + '/edit#gid=0&range=A' + rowNumber;
+/**
+ * Ссылка на строку заявки в «Заявки» по её № (используется в письмах и «Сегодня»).
+ * Задача 0.4.0 (Task B): gid листа читается ЖИВЫМ вызовом sheet.getSheetId() в
+ * момент отправки — не захардкожен как 0, диапазон — вся строка office-полей
+ * (A..<последняя колонка OFFICE_HEADERS_>), не одна ячейка A.
+ * @param {Sheet} requestsSheet лист «Заявки» (для getSheetId())
+ * @param {number} rowNumber 1-based номер строки
+ */
+function buildRequestRowLink_(requestsSheet, rowNumber) {
+  var lastColLetter = columnLetter_(OFFICE_HEADERS_.length);
+  var range = 'A' + rowNumber + ':' + lastColLetter + rowNumber;
+  return 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID_ + '/edit#gid=' + requestsSheet.getSheetId() + '&range=' + range;
 }
 
-function notifyNewLead_(journalSheet, leadNo, rowNumber, recipients) {
+/**
+ * Задача 0.4.0 (Task B): полноценное брендированное письмо (EmailTemplates.gs)
+ * вместо трёх строк текста — № и время получения (Израиль), Имя, Телефон
+ * (кнопки «Позвонить»/WhatsApp), Email, Откуда, кнопка «Открыть заявку».
+ * @param {Sheet} requestsSheet лист «Заявки» — для ссылки на строку
+ * @param {{name, phone, email, source, receivedAtLabel}} leadData
+ */
+function notifyNewLead_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData) {
+  leadData = leadData || {};
+  var email = renderNewLeadEmail_({
+    leadNo: leadNo,
+    receivedAtLabel: leadData.receivedAtLabel,
+    name: leadData.name,
+    phone: leadData.phone,
+    email: leadData.email,
+    source: leadData.source,
+    sheetUrl: buildRequestRowLink_(requestsSheet, rowNumber)
+  });
   return sendNotificationOnce_(journalSheet, makeSendKey_(leadNo, 'new_lead', '1'), leadNo, 'new_lead', 'email',
-    recipients, 'Новая заявка ' + leadNo,
-    'Заявка ' + leadNo + '\n' + buildRequestRowLink_(rowNumber) + '\nСрочность: новая заявка');
+    recipients, email.subject, email.text, email.html);
 }
 
-function notifySlaFirstAttempt_(journalSheet, leadNo, rowNumber, recipients) {
+/** @param {Sheet} requestsSheet лист «Заявки» @param {{name, phone}} leadData */
+function notifySlaFirstAttempt_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData) {
+  leadData = leadData || {};
+  var email = renderSlaFirstAttemptEmail_({
+    leadNo: leadNo,
+    name: leadData.name,
+    phone: leadData.phone,
+    sheetUrl: buildRequestRowLink_(requestsSheet, rowNumber)
+  });
   return sendNotificationOnce_(journalSheet, makeSendKey_(leadNo, 'sla_first_attempt', '1'), leadNo, 'sla_first_attempt', 'email',
-    recipients, 'SLA: нет первой попытки — ' + leadNo,
-    'Заявка ' + leadNo + '\n' + buildRequestRowLink_(rowNumber) + '\nСрочность: 30 рабочих минут без первой попытки');
+    recipients, email.subject, email.text, email.html);
 }
 
-function notifySlaEscalation_(journalSheet, leadNo, rowNumber, recipients) {
+/** @param {Sheet} requestsSheet лист «Заявки» @param {{name, phone}} leadData */
+function notifySlaEscalation_(journalSheet, requestsSheet, leadNo, rowNumber, recipients, leadData) {
+  leadData = leadData || {};
+  var email = renderSlaEscalationEmail_({
+    leadNo: leadNo,
+    name: leadData.name,
+    phone: leadData.phone,
+    sheetUrl: buildRequestRowLink_(requestsSheet, rowNumber)
+  });
   return sendNotificationOnce_(journalSheet, makeSendKey_(leadNo, 'sla_escalation', '1'), leadNo, 'sla_escalation', 'email',
-    recipients, 'Эскалация: нет первой попытки 2ч — ' + leadNo,
-    'Заявка ' + leadNo + '\n' + buildRequestRowLink_(rowNumber) + '\nСрочность: эскалация владельцу');
+    recipients, email.subject, email.text, email.html);
 }
 
 function notifyDigest_(journalSheet, dayKey, recipients, digest) {

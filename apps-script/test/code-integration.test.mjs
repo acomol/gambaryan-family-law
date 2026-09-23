@@ -235,3 +235,38 @@ test('syncIntakeToRequests_: вне рабочего времени, дежур�
 
   assert.equal(mail._sent.length, 0, 'вне рабочего времени без дежурного — попадёт в дайджест, не отдельным письмом');
 });
+
+// --- задача 0.4.0 (Task B): письмо о новой заявке — брендированный HTML,
+// ссылка «Открыть заявку» резолвит РЕАЛЬНЫЙ gid листа «Заявки» ------------
+
+test('syncIntakeToRequests_: письмо о новой заявке уходит с htmlBody, ссылка «Открыть заявку» несёт живой gid листа «Заявки» (не захардкожен 0)', () => {
+  const spreadsheetApp = makeFakeSpreadsheetApp({});
+  const mail = makeFakeMailApp();
+  const ctx = loadGasContext(undefined, { SpreadsheetApp: spreadsheetApp, MailApp: mail, PropertiesService: makeFakePropertiesService({}) });
+
+  const reqHeaders = Array.from(ctx.REQUESTS_HEADERS_);
+  const requests = makeFakeSheet('Заявки', { data: [reqHeaders], sheetId: 777 }); // gid НЕ 0 — проверяем, что берётся живьём
+  const service = emptyServiceSheet(ctx);
+  const serviceHeaderMap = ctx.colByHeader_(Array.from(ctx.SERVICE_SHEET_HEADERS_));
+  const intakeHeaders = Array.from(ctx.INTAKE_HEADERS_);
+  const intake = makeFakeSheet('Входящие', {
+    data: [intakeHeaders, buildRow(intakeHeaders, {
+      submission_id: 'S1', submitted_at: '2026-01-05T10:00:00Z', name: 'Ivan Petrov', phone: '+972501234567', email: 'a@x.com'
+    })]
+  });
+  const journal = makeFakeSheet('Журнал');
+  const ss = makeFakeSpreadsheet({ 'Входящие': intake, 'Заявки': requests, 'Служебное': service, 'Журнал': journal });
+  spreadsheetApp.openById = () => ss;
+  const reqHeaderMap = ctx.colByHeader_(reqHeaders);
+  const config = buildConfig();
+
+  ctx.syncIntakeToRequests_(ss, config, new Date('2026-01-05T10:05:00Z'), requests, [reqHeaders], reqHeaderMap,
+    service, [Array.from(ctx.SERVICE_SHEET_HEADERS_)], serviceHeaderMap);
+
+  assert.equal(mail._sent.length, 1);
+  const sent = mail._sent[0];
+  assert.equal(sent.subject, 'Новая заявка G-0001 — Ivan Petrov');
+  assert.ok(sent.htmlBody, 'письмо должно уйти с htmlBody (брендированный шаблон), не только plain body');
+  assert.ok(sent.htmlBody.indexOf('gid=777') !== -1, 'ссылка «Открыть заявку» должна резолвить РЕАЛЬНЫЙ gid листа «Заявки», не 0');
+  assert.ok(sent.body && sent.body.indexOf('<') === -1, 'body остаётся plain-text альтернативой');
+});

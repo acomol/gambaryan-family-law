@@ -20,7 +20,8 @@ const testFiles = [
   './sheets-protection.test.mjs',
   './code-corrections.test.mjs',
   './code-integration.test.mjs',
-  './static-checks.test.mjs'
+  './static-checks.test.mjs',
+  './email-templates.test.mjs'
 ];
 
 console.log('apps-script/test/run.mjs — GAS_SRC_DIR=' + (process.env.GAS_SRC_DIR || '(по умолчанию: ../src)'));

@@ -133,12 +133,21 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
 
       var notification = decideNewLeadNotification_(now, config.calendar, config.weekendDuty);
       if (plan.toNotify.indexOf(rec.submission_id) !== -1) {
+        // Task B: данные для брендированного письма — только то, что задача
+        // разрешает в письме (никаких UTM/технических полей).
+        var leadData = {
+          name: rec.name || '',
+          phone: rec.phone || '',
+          email: rec.email || '',
+          source: detectSource_(rec),
+          receivedAtLabel: Utilities.formatDate(now, config.tz, 'dd.MM.yyyy HH:mm')
+        };
         if (notification === 'immediate') {
-          notifyNewLead_(journal, leadNo, newRowIndex, config.officeRecipients);
+          notifyNewLead_(journal, requests, leadNo, newRowIndex, config.officeRecipients, leadData);
         } else if (notification === 'immediate_duty') {
           // review находка №13 / design §12 строка 7: дежурный на выходные/ночь,
           // выключен по умолчанию — включается настройкой «Настроек»
-          notifyNewLead_(journal, leadNo, newRowIndex, [config.weekendDuty.email]);
+          notifyNewLead_(journal, requests, leadNo, newRowIndex, [config.weekendDuty.email], leadData);
         }
         // 'digest' — вне рабочего времени и дежурный выключен: не шлём по одной
         // (§12.1), попадёт в дайджест сам фактом присутствия в «Заявки» без
@@ -415,6 +424,7 @@ function writeContactCell_(sheet, rowIndex, headerMap, phone) {
 function processSla_(ss, config, now, values, headerMap) {
   if (!values || values.length < 2) return;
   var journal = ss.getSheetByName(SHEET_JOURNAL_);
+  var requests = ss.getSheetByName(SHEET_REQUESTS_); // Task B: ссылка «Открыть заявку» в письме
 
   for (var i = 1; i < values.length; i++) {
     var row = values[i];
@@ -438,11 +448,12 @@ function processSla_(ss, config, now, values, headerMap) {
 
     var leadNo = getCell_(row, headerMap, '№');
     var rowNumber = i + 1;
+    var leadData = { name: getCell_(row, headerMap, 'Имя') || '', phone: getCell_(row, headerMap, 'Телефон') || '' };
     if (state.escalationDue) {
-      notifySlaEscalation_(journal, leadNo, rowNumber, config.escalationRecipients);
+      notifySlaEscalation_(journal, requests, leadNo, rowNumber, config.escalationRecipients, leadData);
     } else if (state.firstAttemptDue) {
       var responsible = getCell_(row, headerMap, 'Ответственный') || config.defaultDutyOfficer;
-      notifySlaFirstAttempt_(journal, leadNo, rowNumber, [responsible]);
+      notifySlaFirstAttempt_(journal, requests, leadNo, rowNumber, [responsible], leadData);
     }
   }
 }

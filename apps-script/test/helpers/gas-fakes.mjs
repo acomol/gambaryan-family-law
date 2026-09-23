@@ -117,6 +117,7 @@ export function makeFakeSheet(name, opts) {
     _getDataRangeCallCount: 0,
     getName: function () { return sheet._name; },
     setName: function (n) { sheet._name = n; },
+    getSheetId: function () { return opts.sheetId === undefined ? 0 : opts.sheetId; },
     getRange: function (row, col, numRows, numCols) { return makeFakeRange(sheet, row, col, numRows, numCols); },
     getDataRange: function () {
       sheet._getDataRangeCallCount++;

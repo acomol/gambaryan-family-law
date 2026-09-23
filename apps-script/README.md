@@ -1,7 +1,9 @@
 # Мини-CRM lp.gambarian.com — Apps Script
 
-Реализация design-документа `docs/MINI-CRM-DESIGN.md` версии **0.3.0** (коммит `b055d8a`),
-раздел §12 — решения владельца. Код здесь **не выполнялся вживую** ни разу — ни на
+Реализация design-документа `docs/MINI-CRM-DESIGN.md` версии **0.4.0** —
+раздел §12 — решения владельца, и владельческое решение 2026-09-23: «Заявки»
+несёт только поля офиса, вся техника — на скрытом защищённом листе
+«Служебное» (§2, §3.2). Код здесь **не выполнялся вживую** ни разу — ни на
 реальной таблице, ни как задеплоенный проект. Всё, что ниже помечено «не проверено»,
 нужно пройти вручную перед подключением рекламы/Albato.
 
@@ -20,14 +22,17 @@ apps-script/
     Source.gs               # «Откуда» — ЧИСТАЯ ЛОГИКА
     Numbering.gs            # №-нумерация — ЧИСТАЯ ЛОГИКА
     SyncPlan.gs              # дедуп submission_id — ЧИСТАЯ ЛОГИКА
+    EmailTemplates.gs         # брендированные HTML/plain-text письма — ЧИСТАЯ ЛОГИКА (Task B, задача 0.4.0)
     Config.gs                # дефолты/парсинг «Настроек» — ЧИСТАЯ ЛОГИКА (кроме чтения листа)
-    Sheets.gs                 # setupCrm() — GAS-only, тестируется через фейки (gas-fakes.mjs)
-    Notifications.gs           # MailApp + журнал — GAS-only
-    Code.gs                     # tick(), onEdit, триггеры, doGet, admin-функции — GAS-only, тестируется через фейки
+    Sheets.gs                 # setupCrm() — GAS-only, тестируется через фейки (gas-fakes.mjs); «Заявки» (14 office-полей) + «Служебное» (скрыт, защищён)
+    Notifications.gs           # MailApp (htmlBody+body через EmailTemplates.gs) + журнал — GAS-only
+    Code.gs                     # tick(), onEdit, триггеры, doGet, admin-функции — GAS-only, тестируется через фейки; sync/corrections/onEdit пишут в «Заявки» и «Служебное», связь по №
   test/
     run.mjs                     # node apps-script/test/run.mjs
     helpers/                     # harness, vm-загрузчик .gs, gas-fakes (структурные фейки GAS-сервисов), независимый oracle, фикстуры
-    *.test.mjs                   # 83 теста (чистая логика + GAS-only через структурные фейки)
+    *.test.mjs                   # 108 тестов (чистая логика + GAS-only через структурные фейки)
+  preview/
+    render-previews.mjs           # рендерит новые письма (new-lead/SLA/эскалация) в HTML + PNG-скриншоты (Playwright) — docs/email-previews/
 ```
 
 Модули «ЧИСТАЯ ЛОГИКА» не знают о `SpreadsheetApp`/`MailApp` (кроме одной точки —
@@ -43,10 +48,11 @@ PropertiesService/MailApp/ScriptApp/ContentService), не живым Google API.
 node apps-script/test/run.mjs
 ```
 
-83/83 зелёных, exit code 0 (40 исходных + 43 добавленных при разборе двух независимых
-ревью коммита `1d64f41`, см. `test/utils.test.mjs`, `test/sheets-protection.test.mjs`,
-`test/code-corrections.test.mjs`, `test/code-integration.test.mjs`,
-`test/static-checks.test.mjs` и дополнения в существующих файлах). GAS-only код
+108/108 зелёных, exit code 0 (83 после разбора двух независимых ревью коммита `1d64f41`
++ 20 задачи 0.4.0 «Служебное» split (`test/sheets-protection.test.mjs`,
+`test/code-corrections.test.mjs`, `test/code-integration.test.mjs`) + 12 задачи 0.4.0
+Task B — брендированные письма и HTML-escaping (`test/email-templates.test.mjs` и
+дополнение в `code-integration.test.mjs`)). GAS-only код
 (`Sheets.gs`/`Code.gs`/`Notifications.gs`) тестируется через структурные фейки
 GAS-сервисов — `test/helpers/gas-fakes.mjs` (in-memory лист/протекшн/PropertiesService/
 MailApp/ScriptApp/ContentService), а не пропускается. Единственная зависимость чистой
