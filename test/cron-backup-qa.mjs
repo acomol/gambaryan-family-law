@@ -115,6 +115,37 @@ function makeKV() {
     _entry(key) { return data.get(key); },
   };
 }
+// Review round 7, finding P1(c) (Codex gpt-6-sol on live 0aaf9e1): real
+// Cloudflare KV allows only 1 write per second PER KEY
+// (https://developers.cloudflare.com/kv/platform/limits/) — plain makeKV()
+// above does not enforce this, so it could not have caught round 6's own
+// bug (a same-key, same-second double write silently losing its second
+// write in production, but succeeding harmlessly in the unlimited fake).
+// A SEPARATE factory, used only where this limit is the point of the test:
+// makeKV() itself stays unlimited because several PRE-EXISTING, unrelated
+// tests (e.g. probeD1's own "ops:d1_probe_fail" bookkeeping) legitimately
+// call put() on the SAME key many times back-to-back, simulating separate
+// 5-minutes-apart cron runs without a fake clock — those are not the bug
+// this finding is about. Only SUCCESSFUL writes count toward the per-key
+// cooldown — a write that itself gets rejected never happened, so it
+// cannot also consume the next slot (matches putRecordWithRetry's
+// immediate-retry-after-failure use).
+const KV_WRITE_COOLDOWN_MS = 1000;
+function makeRateLimitedKV() {
+  const kv = makeKV();
+  const lastWriteAt = new Map();
+  const originalPut = kv.put.bind(kv);
+  kv.put = async (key, value, options = {}) => {
+    const now = Date.now();
+    const last = lastWriteAt.get(key);
+    if (last != null && now - last < KV_WRITE_COOLDOWN_MS) {
+      throw new Error(`KV rate limit: 1 write/sec per key exceeded for "${key}"`);
+    }
+    lastWriteAt.set(key, now);
+    return originalPut(key, value, options);
+  };
+  return kv;
+}
 
 function bytesOf(value) {
   if (typeof value === 'string') return encoder.encode(value);
@@ -890,18 +921,25 @@ async function run() {
     const db = makeD1([seedRow(id, receivedAt, 'pending')]);
     const kv = makeKV();
     const env = { LEADS_DB: db, LEADS_KV: kv, ALBATO_WEBHOOK_URL: 'https://albato.local/hook' };
-    const key = `lead:${id}`;
-    const originalPut = kv.put.bind(kv);
-    let sideEffectFired = false;
-    kv.put = async (k, v, opts) => {
-      const result = await originalPut(k, v, opts);
-      if (!sideEffectFired && k === key && JSON.parse(v).status === 'forwarding') {
-        sideEffectFired = true;
-        await db.prepare(
-          "UPDATE leads SET status='deleted', delivered_at=?1, name=NULL, phone=NULL, email=NULL, payload_json='{}' WHERE submission_id=?2",
-        ).bind(new Date().toISOString(), id).run();
+    // Round 7, finding P1(b) removed the standalone "forwarding" KV write
+    // this test used to hook — there is no longer a KV.put to intercept
+    // between the claim and the send. Hook the D1 SELECT inside
+    // isDeleted() instead (used by BOTH the pre-claim candidate check and
+    // wipeIfDeletedAfterWrite's pre-POST re-check): 1st occurrence must see
+    // "active" so the claim proceeds, 2nd occurrence is the pre-POST
+    // re-check — inject the concurrent admin delete exactly there.
+    const originalPrepare = db.prepare.bind(db);
+    let selectCount = 0;
+    db.prepare = sql => {
+      if (/^SELECT status FROM leads WHERE submission_id=/.test(sql)) {
+        selectCount++;
+        if (selectCount === 2) {
+          originalPrepare(
+            "UPDATE leads SET status='deleted', delivered_at=?1, name=NULL, phone=NULL, email=NULL, payload_json='{}' WHERE submission_id=?2",
+          ).bind(new Date().toISOString(), id).run();
+        }
       }
-      return result;
+      return originalPrepare(sql);
     };
     const before = albatoHits;
     await sweepPending(env);
@@ -1068,6 +1106,78 @@ async function run() {
     console.log('\n[round 6, small item] dumpD1ToR2 uses the threaded `now`, not its own independent clock, for the day key');
     check('dump lands under the explicitly-passed day (2026-01-15), not the real today',
       r2._has('backups/d1/2026-01-15/manifest.json'), r2._putOrder().join(','));
+  }
+
+  /* ============ Round 7 (base 0aaf9e1) — P1: the KV write budget could
+     still be exceeded while Albato is failing FAST. See
+     docs/LEAD-PIPELINE.md "Review 2026-09-23 — round 7". */
+
+  // [round 7, P1] With a KV fake that ENFORCES Cloudflare's real 1-write/
+  // sec/key limit, 4 persistently-failing (fast 502, no delay) pending
+  // leads over 288 simulated sweeps must accept AT MOST 240 total KV.put
+  // calls (60/lead budget x 4) — not the ~1150+/day the coordinator's
+  // repro found once the round-6 claim-write and the release-write landed
+  // in the SAME second and the second was silently rejected (round 6's
+  // OWN mock never enforced the limit, so it could not catch this). D1's
+  // attempt_count must also genuinely advance for every lead, proving the
+  // backoff schedule is followed rather than stuck at 1.
+  {
+    const leadIds = Array.from({ length: 4 }, (_, i) => `round7-p1-lead-${i}`);
+    const receivedAt = isoOffset(-1);
+    const kv = makeRateLimitedKV();
+    for (const id of leadIds) {
+      await kv.put(`lead:${id}`, JSON.stringify(kvRecord(id, receivedAt, 'pending')),
+        { metadata: { status: 'pending', received_at: receivedAt } });
+    }
+    const db = makeD1(leadIds.map(id => seedRow(id, receivedAt, 'pending')));
+    const env = { LEADS_KV: kv, LEADS_DB: db, ALBATO_WEBHOOK_URL: 'https://albato.local/hook-fast502' };
+
+    const realFetch = global.fetch;
+    global.fetch = async url => {
+      const target = String(url);
+      if (target.startsWith('https://albato.local/')) return new Response('bad gateway', { status: 502 }); // fast failure, no delay
+      throw new Error(`unexpected fetch in round-7 P1 test: ${target}`);
+    };
+
+    let acceptedPuts = 0;
+    let rejectedPuts = 0;
+    const rateLimitedPut = kv.put.bind(kv);
+    kv.put = async (...args) => {
+      try {
+        const result = await rateLimitedPut(...args);
+        acceptedPuts++;
+        return result;
+      } catch (e) {
+        rejectedPuts++;
+        throw e;
+      }
+    };
+
+    const RealDate = global.Date;
+    let simulatedNow = RealDate.now();
+    function FakeDate(...args) {
+      if (args.length === 0) return new RealDate(simulatedNow);
+      return new RealDate(...args);
+    }
+    FakeDate.now = () => simulatedNow;
+    FakeDate.prototype = RealDate.prototype;
+    global.Date = FakeDate;
+    try {
+      for (let i = 0; i < 288; i++) {
+        await sweepPending(env);
+        simulatedNow += 5 * 60 * 1000;
+      }
+    } finally {
+      global.Date = RealDate;
+      global.fetch = realFetch;
+    }
+
+    console.log('\n[round 7, P1] KV write-rate-limit collision: 4 fast-failing leads over 288 sweeps must stay within the KV write budget');
+    check('total ACCEPTED KV.put <= 240 across all 4 leads (60/lead budget)',
+      acceptedPuts <= 240, `acceptedPuts=${acceptedPuts} rejectedPuts=${rejectedPuts}`);
+    check('D1 attempt_count genuinely advances past 1 for every lead (backoff schedule followed, not stuck)',
+      leadIds.every(id => (db._get(id)?.attempt_count || 0) > 1),
+      JSON.stringify(leadIds.map(id => ({ id, attempt_count: db._get(id)?.attempt_count }))));
   }
 
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
