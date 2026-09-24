@@ -1,15 +1,43 @@
 # Запуск lp.gambarian.com
 
-**Версия:** `LAUNCH-LP v1.3.0 | 2026-09-23`
+**Версия:** `LAUNCH-LP v1.4.0 | 2026-09-24`
 
-**Статус 2026-09-22:** шаги 2–5 сделаны, домен активен и отдаёт основную версию (отчёт запуска
-19.09). Шаг 1 (секрет Albato) — за владельцем, форма пока отвечает 503. Шаг 7 теперь требует
-ещё и трекинг: конверсия «Заявка» существует только как событие в коде, GTM/GA4 для `lp` не
-созданы (доступа под ADFIX нет ни к одному GA4-ресурсу и ни к одному контейнеру GTM клиента),
-план — `docs/TRACKING-REQUIREMENTS.md` v2.0.0, решения владельца — там же §1. Google Ads
-подтверждён и проверен: `gambarian#2`, `994-218-4821`.
+**Статус 2026-09-24 (`docs/STATE-2026-09-24.md`, живой readback):** шаги 1–6 сделаны — домен
+активен, HTTPS, секрет Albato задан для **Production** (Preview — намеренно без Albato, см.
+шаг 1 ниже), форма принимает заявки, пайплайн (KV+D1+R2 → Albato → Sheets + Gmail) работает
+end-to-end, подтверждено контрольными лидами (последний `b4f5e872`, 08:30 IDT). GTM/GA4 для
+`lp` созданы и опубликованы (workspace 3, живая проверка 23.09 — теги, GA4 Realtime, Ads).
+Шаг 7 (включение рекламы) остаётся закрыт до прохождения гейтов ниже — это решения владельца,
+не технические блокеры.
 
-**SEO-слой 2026-09-23 (`PRODUCTION-BUILD v1.3.0`, в сборке, на Cloudflare ещё не опубликован):** canonical, author, hreflang ru/x-default, favicon 32×32 и apple-touch-icon 180×180, квадрат превью 1254×1254 первым `og:image` (1200×630 — вторым, twitter без изменений), JSON-LD + url/alternateName/logo/image/geo `32.06923, 34.78314` (Nominatim/Photon и ArcGIS, расхождение 14.8 м); `noindex` остаётся — `meta robots` действует на поисковые краулеры, не на AdsBot (developers.google.com/search/docs/crawling-indexing/robots-meta-tag).
+## Гейты перед включением рекламы
+
+Единый список (тот же, что в `TASKS.md`): блокируют рекламу ровно три гейта (a)–(c);
+остальное — housekeeping, не блокирует.
+
+| Гейт | Блокирует рекламу | Статус | Комментарий |
+|---|---|---|---|
+| Приём и сохранение заявок (KV+D1+R2, бэкапы) | нет | ✅ | `/health`: `integrity_ok: true`, `backup.last_ok_at` 2026-09-24T05:00Z; D1 Time Travel 7 дней |
+| Письмо в офис при заявке | нет | ✅ | Albato → Gmail, HTML v2, контроль `b4f5e872` → письмо за 2 с всем 5 получателям |
+| CRM (учёт и статусы заявок) | нет | ✅ | Установлен владельцем 24.09, живая проверка G-0001…G-0006, тесты 207/207 |
+| (a) Приёмка письма v2 (Gmail на телефоне, светлая/тёмная тема) | да | ❓ владелец | Дизайн задеплоен (`1e1523a0`), подтверждения владельца нет |
+| (b) Доступ к таблице заявок закрыт («все по ссылке» → только editors) | да | ❓ владелец | Решение отложено; nat.shurygin@ сделать редактором |
+| (c) Одобрение staging → production (мобильный фикс Hero CTA + success-панель) | да | ❓ владелец | Ветка `claude/gambarian-mobile-cta-success` @ `8696946`, только на staging |
+| Housekeeping (эскалация, `/api/admin` login/delete, MP-секрет, deck-a и т.п.) | нет | в процессе | Полный список — `TASKS.md` → «Нужно от владельца» (не блокирует) |
+| Гейт трекинга | отдельно | ❓ | Проверяется картой трекинга `tracking/TRACKING-MAP.md` (в работе 24.09) — до результата не считать пройденным |
+| Правило: не ставить GAMB_ADV на паузу | всегда в силе | 🔴 | Пауза отвечает 200, но не обрабатывает; заявка теряется из вида (не из хранилища — остаётся в D1/KV/R2) |
+
+Кампания `gambarian_gads_search_leads_il_family_ru` — на паузе, пока три блокирующих гейта
+(a)–(c) не закрыты.
+
+**SEO-слой (`PRODUCTION-BUILD v1.3.0`, коммит `dba7cbf`):** canonical, author, hreflang
+ru/x-default, favicon 32×32 и apple-touch-icon 180×180, квадрат превью 1254×1254 первым
+`og:image` (1200×630 — вторым, twitter без изменений), JSON-LD + url/alternateName/logo/
+image/geo `32.06923, 34.78314` (Nominatim/Photon и ArcGIS, расхождение 14.8 м); `noindex`
+остаётся — `meta robots` действует на поисковые краулеры, не на AdsBot
+(developers.google.com/search/docs/crawling-indexing/robots-meta-tag). ❓ **Не проверено
+24.09:** входит ли этот слой в текущий живой деплой (HTML `sha256 b30026ff27b0d6bc`,
+не менялся с 23.09) — `docs/STATE-2026-09-24.md` это не фиксирует, нужен точечный readback тегов на lp.
 
 Цель: лендинг final-dev5 открывается по адресу `https://lp.gambarian.com`, форма доставляет
 заявки. Порядок важен: шаги 1–4 делаются **до** письма DNS-администратору.
@@ -28,15 +56,18 @@
 
 ## Шаги
 
-| № | Действие | Кто | Проверка |
-|---|---|---|---|
-| 1 | Задать `ALBATO_WEBHOOK_URL` (тип Secret) для **Production** и **Preview**: Cloudflare → Workers & Pages → gambarian-landing → Settings → Variables and Secrets | владелец (секрет не передаётся через чат) | тестовая заявка с именем «ТЕСТ» → ответ 202 и строка в Albato |
-| 2 | Опубликовать основную версию: `python -B scripts/build-production.py`, затем `wrangler pages deploy build/production --project-name=gambarian-landing --branch=main` из корня репозитория (так уходит и `functions/`). Сборка = final-dev5 без демо-переключателя «Авто / Демо» | оператор, после «да» владельца | HTML `gambarian-landing.pages.dev` = `build/production/index.html`; `/api/lead` GET → 405 |
-| 3 | `og:url` и картинка превью ссылки → `https://lp.gambarian.com/`; `noindex` оставить (рекламная страница не конкурирует с www.gambarian.com) — делает `build-production.py` | оператор | readback тегов |
-| 4 | Добавить `lp.gambarian.com` в Custom domains проекта | оператор (API) или владелец в панели | статус домена «Pending / Verifying» |
-| 5 | Письмо DNS-администратору (текст ниже) | владелец | ответ «запись создана» |
-| 6 | Проверка после записи | оператор | `lp.gambarian.com CNAME gambarian-landing.pages.dev`; статус домена Active; HTTPS без ошибок; HTML = основная версия; тестовая заявка 202 |
-| 7 | Сменить конечный URL в рекламе на `https://lp.gambarian.com/` **и включить рекламу** | владелец | переход из объявления открывает lp; **не раньше**, чем закрыт `docs/TRACKING-REQUIREMENTS.md` §11 (запуск — готово, когда) — иначе бюджет идёт без учёта заявок |
+Шаги 1–6 — ✅ сделаны (см. «Статус 2026-09-24» выше). Таблица остаётся как процедурная
+запись — на случай повтора (новый домен, восстановление после отката).
+
+| № | Действие | Кто | Проверка | Статус |
+|---|---|---|---|---|
+| 1 | Задать `ALBATO_WEBHOOK_URL` (тип Secret): Cloudflare → Workers & Pages → gambarian-landing → Settings → Variables and Secrets | владелец (секрет не передаётся через чат) | тестовая заявка с именем «ТЕСТ» → ответ 202 и строка в Albato | Production ✅; Preview — намеренно без Albato (staging никогда не шлёт письмо в офис) |
+| 2 | Опубликовать основную версию: `python -B scripts/build-production.py`, затем `wrangler pages deploy build/production --project-name=gambarian-landing --branch=main` из корня репозитория (так уходит и `functions/`). Сборка = final-dev5 без демо-переключателя «Авто / Демо» | оператор, после «да» владельца | HTML `gambarian-landing.pages.dev` = `build/production/index.html`; `/api/lead` GET → 405 | ✅ |
+| 3 | `og:url` и картинка превью ссылки → `https://lp.gambarian.com/`; `noindex` оставить (рекламная страница не конкурирует с www.gambarian.com) — делает `build-production.py` | оператор | readback тегов | ✅ |
+| 4 | Добавить `lp.gambarian.com` в Custom domains проекта | оператор (API) или владелец в панели | статус домена «Pending / Verifying» | ✅ |
+| 5 | Письмо DNS-администратору (текст ниже) | владелец | ответ «запись создана» | ✅ |
+| 6 | Проверка после записи | оператор | `lp.gambarian.com CNAME gambarian-landing.pages.dev`; статус домена Active; HTTPS без ошибок; HTML = основная версия; тестовая заявка 202 | ✅ |
+| 7 | Сменить конечный URL в рекламе на `https://lp.gambarian.com/` **и включить рекламу** | владелец | переход из объявления открывает lp; **не раньше**, чем закрыты три блокирующих гейта (a)–(c) в разделе «Гейты перед включением рекламы» выше — иначе бюджет идёт без учёта заявок | ❓ |
 
 Почему такой порядок:
 - **CNAME до шага 4** — Cloudflare отдаёт ошибку 522 на адресе, пока домен не добавлен в проект
