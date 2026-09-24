@@ -146,14 +146,40 @@ export async function verifyLeadForm(page, baseUrl) {
   }
   assert.equal(await page.locator(".form-success__contacts").textContent(), "Мы свяжемся с вами по телефону +972 54-000-0000. Ваш e-mail: updated@example.com");
   const lastCorrectionId = requests.at(-1).submission_id;
-  await page.locator(".form-success__again").click();
-  assert.equal(await page.locator("#lead-email").inputValue(), "");
-  assert.equal(await page.locator("#lead-name").inputValue(), "");
-  await fill();
+  const leadsBeforeClose = await leadEvents();
+
+  // "Отправить ещё одну заявку" removed 2026-09-24 (duplicate leads/Ads
+  // conversions). Close (×) collapses the card in place instead: no reload,
+  // the empty form never reappears, and only "Изменить контакты" — the same
+  // correction flow as the open card's own edit button — leads back to it.
+  await page.locator(".form-success__close").click();
+  assert.equal(await page.locator(".form-success__body").isVisible(), false);
+  assert.equal(await page.locator(".lead-form").isVisible(), false, "Closing must not resurface the empty form");
+  assert.equal(await page.locator(".form-success__collapsed").isVisible(), true);
+  assert.equal(
+    (await page.locator(".form-success__collapsed").textContent()).replace(/\s+/g, " ").trim(),
+    "Заявка отправлена — мы свяжемся с вами Изменить контакты"
+  );
+  assert.equal(await page.evaluate(() => document.activeElement.className), "form-success__collapsed");
+
+  await page.locator(".form-success__collapsed-edit").click();
+  assert.equal(await page.locator(".form-success").isVisible(), false);
+  assert.equal(await page.locator("#lead-name").inputValue(), "Другое Имя", "Collapsed edit still corrects, never a blank form");
+  assert.equal(await page.locator("#lead-email").inputValue(), "updated@example.com");
+  assert.equal(await focus(), "lead-name");
+  await page.locator("#lead-email").fill("final@example.com");
   await review(); await send();
   await visible(".form-success");
-  assert.equal(requests.at(-1).corrects_submission_id, undefined);
+  assert.equal(requests.at(-1).corrects_submission_id, lastCorrectionId, "Reopening via the collapsed line keeps correcting the same lead");
   assert.notEqual(requests.at(-1).submission_id, lastCorrectionId);
+  assert.equal(await leadEvents(), leadsBeforeClose, "Close + collapsed-edit must not fire an extra generate_lead");
+
+  // "Продолжить на сайте" is the second, more discoverable affordance for the
+  // same close/collapse action (task spec: "×" top-right plus a secondary
+  // text button) — spot-check it collapses the card the same way.
+  await page.locator(".form-success__continue").click();
+  assert.equal(await page.locator(".form-success__body").isVisible(), false);
+  assert.equal(await page.locator(".form-success__collapsed").isVisible(), true);
 
   // The write-ahead outbox (site/app.js) may still hold the earlier simulated
   // 503 attempt (status was flipped back to 202 above without that specific

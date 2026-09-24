@@ -280,19 +280,38 @@ export async function verifyTracking(page, baseUrl) {
   assert.deepEqual(await named(page, "lead_corrected"), [event("lead_corrected", { submission_id: requests.at(-1).submission_id, corrects_submission_id: first })]);
   assert.equal((await named(page, "generate_lead")).length, 1, "Исправление контактов не создаёт лишний generate_lead");
   assert.notEqual(requests.at(-1).submission_id, first);
-  await click(".form-success__again", null);
-  assert.equal(await page.locator("#lead-name").inputValue(), "");
-  await action(page, () => fill(page), null, "form_start один раз за просмотр");
+  const secondId = requests.at(-1).submission_id;
+
+  // "Отправить ещё одну заявку" убрали 2026-09-24 (дублировала лиды и
+  // конверсии Ads). Закрыть/"Продолжить на сайте" сворачивают карточку без
+  // событий в dataLayer; вернуться можно только через "Изменить контакты" —
+  // тот же reopenForm(), что и у открытой карточки, поэтому это по-прежнему
+  // правка, а не новый лид.
+  await click(".form-success__close", null);
+  assert.equal(await page.locator(".form-success__body").isVisible(), false);
+  assert.equal(await page.locator(".lead-form").isVisible(), false, "Пустая форма не должна появляться снова");
+  assert.equal(await page.locator(".form-success__collapsed").isVisible(), true);
+  assert.equal(await page.evaluate(() => document.activeElement.className), "form-success__collapsed", "Фокус уходит на строку-подтверждение");
+  await click(".form-success__collapsed-edit", null);
+  assert.equal(await page.locator("#lead-name").inputValue(), PII[0], "Свёрнутая правка не даёт пустую форму");
+  await page.locator("#lead-email").fill(PII[7]);
   await action(page, review, formEvent("form_confirm"));
   await send(); await success();
-  leads = await named(page, "generate_lead");
-  assert.equal(leads.length, 2);
-  assert.equal(leads[1].submission_id, requests.at(-1).submission_id);
-  assert.notEqual(leads[1].submission_id, first);
-  assert.equal(requests.at(-1).corrects_submission_id, undefined);
+  assert.deepEqual(await named(page, "lead_corrected"), [
+    event("lead_corrected", { submission_id: secondId, corrects_submission_id: first }),
+    event("lead_corrected", { submission_id: requests.at(-1).submission_id, corrects_submission_id: secondId }),
+  ]);
+  assert.equal((await named(page, "generate_lead")).length, 1, "Закрыть + «Изменить контакты» не создаёт лишний generate_lead");
+  assert.notEqual(requests.at(-1).submission_id, secondId);
 
-  await click(".form-success__again", null);
-  await fill(page);
+  // "Продолжить на сайте" — вторая, более заметная кнопка того же закрытия
+  // (спека задачи: «×» в углу плюс текстовая кнопка) — тем же путём.
+  await click(".form-success__continue", null);
+  assert.equal(await page.locator(".form-success__body").isVisible(), false);
+  assert.equal(await page.locator(".form-success__collapsed").isVisible(), true);
+
+  await click(".form-success__collapsed-edit", null);
+  await action(page, () => fill(page), null, "form_start не повторяется");
   for (const [responseStatus, errorType] of [[503, "unavailable"], ["network", "network"], [500, "server"], [422, "validation"]]) {
     status = responseStatus;
     await action(page, review, formEvent("form_confirm"));
@@ -308,7 +327,10 @@ export async function verifyTracking(page, baseUrl) {
       await business("open");
     }
   }
-  assert.equal((await named(page, "generate_lead")).length, 2);
+  // Единственный generate_lead за весь блок: и "Изменить контакты" (открытая
+  // карточка, свёрнутая строка), и цикл ошибок ниже — всё та же правка,
+  // "Отправить ещё одну заявку" (единственный источник второго лида) убрана.
+  assert.equal((await named(page, "generate_lead")).length, 1);
   await checkPrivacy(page);
 
   // Новая неизменённая заявка после ошибки: тот же ID и одна конверсия.
