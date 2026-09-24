@@ -431,7 +431,7 @@ test('Загрузка: маркеры final-dev4, отсутствие ошиб
   await expect(page.locator('body')).toHaveClass(/page--final-dev3/);
   await expect(page.locator('.hero--final-dev1')).toHaveCount(1);
   const html = await page.content();
-  expect(html).toContain('ACTION-BAR-SPEC v2.5.0');
+  expect(html).toContain('ACTION-BAR-SPEC v2.5.1');
   expect(html).toContain('FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13');
   const cssURL = await page.locator('link[rel="stylesheet"][href]').evaluateAll((links) =>
     (links as HTMLLinkElement[]).map((link) => link.href).find((url) => new URL(url).pathname.endsWith('/client-preview.css')));
