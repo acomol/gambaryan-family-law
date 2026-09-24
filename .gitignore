@@ -7,7 +7,17 @@ node_modules/
 .next/
 out/
 build/
+# Visual captures, contact sheets and Playwright reports (baselines stay tracked).
+build/visual-review/
+playwright-report/
+test-results/
 dist/
+# Exception: apps-script/dist/ is the committed manual-paste bundle (built by
+# scripts/bundle-apps-script.mjs) that the owner copies into script.google.com
+# by hand — see apps-script/README.md "Установка (ручная вставка)". It is
+# generated, but it IS the deliverable, not a throwaway build artifact.
+!apps-script/dist/
+!apps-script/dist/**
 
 # Environment
 .env
@@ -64,3 +74,6 @@ skills-lock.json
 
 # Local temp files
 temp/
+
+# Логи прогонов цикла проверок на Codex (вердикты коммитятся, логи нет)
+docs/reviews/codex-loop/*.log

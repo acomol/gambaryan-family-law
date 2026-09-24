@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Публикация папки site/ на Cloudflare Pages (проект gambarian-landing).
 #
+# ВНИМАНИЕ (2026-09-19): с запуска lp.gambarian.com боевая версия — это
+# build/production (scripts/build-production.py), НЕ сырая site/. Публикация
+# этим скриптом молча вернёт в production демо-переключатель рабочего времени
+# и старый og:url/картинку превью. Для боевого деплоя см. docs/LAUNCH-LP-GAMBARIAN.md,
+# шаг 2. Этот скрипт остаётся для случаев без домена lp — не использовать вслепую.
+#
 # Запускать на своей машине из корня репозитория:
 #   bash scripts/deploy-pages.sh
 #

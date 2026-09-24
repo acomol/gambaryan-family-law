@@ -1,4 +1,4 @@
-/* ACTION-BAR-SPEC v2.4.0 | 2026-08-17
+/* ACTION-BAR-SPEC v2.5.1 | 2026-09-23
    ========================================================================
    Мобильная панель действий: зонная модель.
 
@@ -229,7 +229,9 @@
       (window.dataLayer = window.dataLayer || []).push({
         event: 'contact_click',
         method: link.getAttribute('data-method'),
-        placement: 'action_bar'
+        placement: 'action_bar',
+        business_state: bar.getAttribute('data-business-state'),
+        design_version: 'final-dev5'
       });
     });
   });

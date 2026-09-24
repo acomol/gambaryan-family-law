@@ -1,8 +1,8 @@
-# Одиннадцать Cloudflare Preview-версий для заказчика
+# Двенадцать Cloudflare Preview-версий для заказчика
 
-**Версия документа:** `2.7.1`; исполняемая Preview-карта — `2.4.0`
+**Версия документа:** `2.7.5`; исполняемая Preview-карта — `2.5.0`
 
-**Обновлено:** `2026-09-06`
+**Обновлено:** `2026-09-07`
 
 **Статус:** `final-dev3 LIVE / остальные 10 alias LIVE PENDING / PRODUCTION UNCHANGED`
 
@@ -28,10 +28,12 @@
 | 10 | `action-bar` | Эталон зонной мобильной панели | https://action-bar.gambarian-landing.pages.dev/ |
 | 11 | `review-numbered` | Реально использованные client/owner блоки со служебными номерами | https://review-numbered.gambarian-landing.pages.dev/ |
 
+| 12 | `final-dev4` | Наследник final-dev3 + правки владельцев 2026-09-06 (в работе, spec v0.3.0) | https://final-dev4.gambarian-landing.pages.dev/ |
+
 ## Общее для нового кандидата
 
 - каждый размещённый смысловой блок входит в client allowlist или в точный
-  `OWNER-APPROVED` блок Юлии/`fact-900-v1`; фактически используются `37/45`
+  один из 16 `OWNER-APPROVED` блоков; фактически используются `20/45`
   client ID;
 - все три карточки фактов тёмные; `2.10` имеет единственную золотую рамку,
   `30+` центрировано только на desktop, `Автор / более 900` не переносится;
@@ -44,23 +46,44 @@
   `+12px`; дизайн, шрифты, photo source/crop и межблочные отступы сохраняются;
 - production не меняется.
 
+### Кубики фактов — этап 5, 2026-09-07
+
+Кандидат в `codex/final-dev4-s5-facts`, база `a09f923`. Этапы 1–3 есть в истории;
+этап 4 исключён заданием владельца. Onest уже принят отдельной работой.
+Контракт копирайта 1.4.0: 45 client + 18 owner; numbered-review 2.2.0;
+readback 1.3.0; DARK-FACT-CARDS 2.0.0. На этапе 5 использовался runner 1.4.3; текущий 1.5.0: [этап 6](../reviews/2026-09-07-final-dev4-stage-6-local.md).
+
+- [x] Три кубика перестроены по строкам 7–10; заголовок секции и аккордеон сняты.
+- [x] Copy parser: source, standalone и final-dev4 без ошибок; тексты трёх owner ID точные.
+- [x] Unit-тесты: 17 OK с TEMP/TMP внутри репозитория; lead-hook PASS.
+- [x] Standalone, Hero и numbered-review собраны; 18 client + 18 owner номеров.
+- [ ] Полный copy/preview PASS: сборка шрифтов остановлена ошибкой curl 7,
+      v2–v4 устарели, v1 собран не полностью.
+- [ ] Action Bar builder и browser matrix: Playwright не стартует, WinError 5.
+- [ ] Замеры и PNG 1440/390 v2.0.0; live readback после деплоя владельцем.
+
+Дословные логи и границы проверки: [отчёт этапа 5](../reviews/2026-09-07-final-dev4-stage-5-local.md).
+
 ## Версии контрактов
 
 | Функционал | Версия кандидата | Дата | Статус контракта |
 |---|---:|---:|---:|
 | Action Bar | `2.4.0` | 2026-08-17 | LIVE на `final-dev3`; остальные 10 на `2.3.4` |
 | Client Preview Mobile | `1.1.0` | 2026-08-11 | `LIVE PASS 11/11` |
-| Client Copy contract: 45 allowlist + 2 Owner overrides | `1.1.0` | 2026-08-13 | `LOCAL PASS` |
-| Client Copy verifier | `1.0.0` | 2026-08-11 | `LOCAL PASS 24 targets / 22 unique` |
+| Client Copy contract: 45 allowlist + 18 Owner overrides | `1.4.2` | 2026-09-07 | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
+| Client Copy verifier | `1.1.0` | 2026-09-07 | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
 | Desktop Hero `final-dev1` | `2.0.0` | 2026-08-11 | `LIVE PASS` |
 | `final-dev3` | `2.0.2` | 2026-08-13 | `LIVE PASS` |
+| final-dev4 | `1.0.0` | 2026-09-07 | `LOCAL PASS / LIVE PENDING` |
 | Lead hook / форма (name + phone only) | `2.0.0` | 2026-08-11 | `LIVE PASS` |
-| Review numbering | `2.0.0` | 2026-08-11 | `LIVE PASS` |
+| Review numbering | `2.2.1` | 2026-09-07 | `LOCAL PASS` |
 | Font Variant V2 Mobile | `1.1.0` | 2026-08-13 | `LIVE PASS` |
 | Font Variant V3 Mobile | `1.0.0` | 2026-08-13 | `LIVE PASS` |
-| Browser QA runner | `1.4.0` | 2026-08-13 | `LOCAL PASS 177/177` |
+| Browser QA runner | `1.5.0` | 2026-09-07 | `LOCAL final-dev4 15/15 PASS; 194 cells NOT RUN` |
 
 Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13`.
+
+Marker final-dev4: FINAL-DEV4-DESIGN v1.1.1 | 2026-09-07
 
 ## Историческая live-приёмка
 
@@ -76,7 +99,7 @@ Marker `final-dev3`: `FINAL-DEV3-DESIGN v2.0.2 | 2026-08-13`.
 Claude review. Полный текущий gate —
 `177/177 = 110 main + 55 breakpoint + 8 large + 4 effective-width` плюс ручной
 visual QA — были пройдены локально и на live до обнаружения внутрикардового
-клиппинга. Текущий локальный runner `1.4.0` закрывает этот пробел; новый deploy
+клиппинга. Исторический локальный runner `1.4.0` закрывает этот пробел; новый deploy
 ещё не выполнен. Полные UUID release `75558d9` и erratum:
 [`../reviews/2026-08-13-client-preview-live-release.md`](../reviews/2026-08-13-client-preview-live-release.md).
 
@@ -84,12 +107,12 @@ visual QA — были пройдены локально и на live до об�
 
 | Группа | Источник | Производные |
 |---|---|---|
-| База | `site/` | все одиннадцать Preview |
-| Copy | frozen `docs/sources/client-copy-short-v1.0.0.txt` + `scripts/client_copy_contract.py` | 45 client allowlist, owner overrides Юлии/`fact-900-v1` и статический gate source + builds |
+| База | `site/` | все двенадцать Preview |
+| Copy | frozen `docs/sources/client-copy-short-v1.0.0.txt` + `scripts/client_copy_contract.py` | 45 client allowlist, 18 owner overrides, включая три новых кубика и статический gate source + builds |
 | Action Bar | `site-addons/action-bar/` | общий addon во всех Preview |
-| Hero | `scripts/build-hero-variants.py` | `final-dev1`, `final-dev3`, Hero A/B |
+| Hero | `scripts/build-hero-variants.py` | `final-dev1`, `final-dev3`, `final-dev4`, Hero A/B |
 | Шрифты | `scripts/build-font-variants.py` | четыре font Preview |
-| Review | `scripts/build-review-numbered.py` | `review-numbered`, 37 используемых client ID + 2 owner blocks |
+| Review | `scripts/build-review-numbered.py` | `review-numbered`, 18 используемых client ID + 18 owner blocks |
 
 ## Ограничения
 

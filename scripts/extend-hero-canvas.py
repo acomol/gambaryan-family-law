@@ -9,11 +9,14 @@
 Порядок: продлить кромку -> размыть -> увести в темноту к внешнему краю
 -> вернуть зерно, чтобы стык с фотографией не читался.
 """
+from pathlib import Path
+
 import numpy as np
 from PIL import Image, ImageFilter
 
-SRC = "/tmp/claude-0/-home-user/5f455c01-c3d3-5ae5-8a36-2fa7e928eb20/graded.png"
-OUT = "/tmp/claude-0/-home-user/5f455c01-c3d3-5ae5-8a36-2fa7e928eb20/extended.png"
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "build" / "hero-background" / "graded.png"
+OUT = ROOT / "build" / "hero-background" / "extended.png"
 
 # Справа нужен запас, а не поле: пара должна остаться в правой трети кадра,
 # иначе на десктопе она наезжает на текстовую колонку.

@@ -1,0 +1,34 @@
+{
+  "version": "HEAD-TOP-MEASURE v1.0.0",
+  "url": null,
+  "max_diff": 3,
+  "viewports": [
+    {
+      "viewport": "files",
+      "cards": [
+        {
+          "file": "docs/source-photos/alexander-portrait.jpg",
+          "size": [
+            2794,
+            4284
+          ],
+          "head_top_px": 395,
+          "head_top_percent": 9.22,
+          "annotated": "build/photo-work/originals/attorney-head-top-2026-09-07-files-0-marked.png"
+        },
+        {
+          "file": "docs/source-photos/yulia-portrait.jpg",
+          "size": [
+            1122,
+            1402
+          ],
+          "head_top_px": 15,
+          "head_top_percent": 1.07,
+          "annotated": "build/photo-work/originals/attorney-head-top-2026-09-07-files-1-marked.png"
+        }
+      ],
+      "diff_px": 380,
+      "pass": false
+    }
+  ]
+}

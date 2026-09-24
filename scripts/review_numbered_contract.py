@@ -1,9 +1,36 @@
 """Shared contract for the service-only numbered client review page."""
 
-REVIEW_NUMBERED_VERSION = "2.0.1"
-REVIEW_NUMBERED_UPDATED = "2026-08-13"
+REVIEW_NUMBERED_VERSION = "2.10.0"
+REVIEW_NUMBERED_UPDATED = "2026-09-18"
 
 OWNER_REVIEW_IDS = {
-    "fact-900-v1": "2.14",
-    "yulia-card-v1": "5.18",
+    "hero-title-v2": "1.7",
+    "hero-lede-v2": "1.8",
+    "fact-30-v1": "2.6",
+    "fact-precedent-v1": "2.10",
+    "fact-900-v3": "2.14",
+    "svc-h2-v2": "3.H2",
+    "svc-divorce-title-v1": "3.7",
+    "svc-divorce-lead-v1": "3.8",
+    "svc-property-lead-v1": "3.28",
+    "svc-children-lead-v1": "3.18",
+    "svc-paternity-title-v1": "3.22",
+    "svc-paternity-lead-v1": "3.23",
+    "svc-mediation-lead-v1": "3.33",
+    "svc-prenup-lead-v1": "3.38",
+    "svc-protection-lead-v1": "3.43",
+    # Блок перестроен устным указанием владельца 2026-09-08; номера 4.5/4.6
+    # сохранены за местом в макете, 4.7 — новый второй абзац.
+    "precedent-title-v2": "4.5",
+    "precedent-body-v3": "4.6",
+    "precedent-note-v1": "4.7",
+    "alexander-card-v3": "5.6–5.15",
+    "yulia-card-v3": "5.18",
+    "attorneys-note-v1": "5.19",
+    "contact-h2-v1": "7.4",
+}
+
+OWNER_REVIEW_ANCHORS = {
+    "alexander-card-v3": '<h3 class="attorney-card__name">Александр Гамбарян&nbsp;— семейное право</h3>',
+    "yulia-card-v3": '<h3 class="attorney-card__name">Юлия Саакян</h3>',
 }

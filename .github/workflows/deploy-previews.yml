@@ -1,6 +1,6 @@
 name: Deploy Previews
 
-# Публикация 11 клиентских Preview на Cloudflare Pages из GitHub Actions.
+# Публикация 12 клиентских Preview на Cloudflare Pages из GitHub Actions.
 #
 # Зачем через CI, а не с машины владельца:
 #   - токен живёт в GitHub Secrets и не попадает ни в чат, ни в репозиторий;
@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Один alias (пусто = все 11)"
+        description: "Один alias (пусто = все 12)"
         required: false
         default: ""
 

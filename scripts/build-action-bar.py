@@ -239,14 +239,14 @@ def verify(
         )
         if not re.search(autofill_pattern, html):
             problems.append(f"поле {field_name} не готово к автозаполнению")
-    if re.search(r'<(?:input|select|textarea)\b[^>]*\bname="(?:email|topic)"', html):
-        problems.append("форма должна содержать только поля name и phone")
+    if re.search(r'<(?:input|select|textarea)\b[^>]*\bname="topic"', html):
+        problems.append("форма не должна содержать поле topic")
     for name in ("action-bar.css", "action-bar.js"):
         if name not in html:
             problems.append(f"{name} не подключён в index.html")
         if not (dest / name).exists():
             problems.append(f"{name} не скопирован в сборку")
-    if "wa.me/972545490623" not in html:
+    if "wa.me/972587803188" not in html:
         problems.append("номер WhatsApp должен быть без плюса и пробелов")
     if "?text=" in html:
         problems.append("у WhatsApp остался неутверждённый предзаполненный текст")

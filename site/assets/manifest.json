@@ -83,40 +83,6 @@
       }
     ]
   },
-  "alexander-card": {
-    "alt": "Адвокат Александр Гамбарян",
-    "natural": [
-      2100,
-      2200
-    ],
-    "fallbackExt": "jpg",
-    "variants": [
-      {
-        "width": 480,
-        "height": 503,
-        "webp": "alexander-card-480w.6fabf327.webp",
-        "fallback": "alexander-card-480w.b3b29528.jpg",
-        "webpBytes": 11006,
-        "fallbackBytes": 16647
-      },
-      {
-        "width": 760,
-        "height": 796,
-        "webp": "alexander-card-760w.80f92900.webp",
-        "fallback": "alexander-card-760w.87032526.jpg",
-        "webpBytes": 21666,
-        "fallbackBytes": 33590
-      },
-      {
-        "width": 1100,
-        "height": 1152,
-        "webp": "alexander-card-1100w.a848de45.webp",
-        "fallback": "alexander-card-1100w.435088c9.jpg",
-        "webpBytes": 37300,
-        "fallbackBytes": 60349
-      }
-    ]
-  },
   "alexander-avatar": {
     "alt": "Адвокат Александр Гамбарян",
     "natural": [
@@ -135,38 +101,114 @@
       }
     ]
   },
-  "yulia-card": {
-    "alt": "Адвокат Юлия Саакян",
+  "alexander-card-v4": {
+    "alt": "Адвокат Александр Гамбарян",
     "natural": [
-      1122,
-      1402
+      2792,
+      3490
     ],
     "fallbackExt": "jpg",
-    "variants": [
-      {
-        "width": 480,
-        "height": 600,
-        "webp": "yulia-card-480w.a736c3ca.webp",
-        "fallback": "yulia-card-480w.46c5af85.jpg",
-        "webpBytes": 12564,
-        "fallbackBytes": 18192
+    "variants": {
+      "320w": {
+        "jpg": {
+          "file": "alexander-card-v4-320w.63f9be09.jpg",
+          "bytes": 12517
+        },
+        "webp": {
+          "file": "alexander-card-v4-320w.f6206c77.webp",
+          "bytes": 6818
+        }
       },
-      {
-        "width": 760,
-        "height": 950,
-        "webp": "yulia-card-760w.cb17a9cc.webp",
-        "fallback": "yulia-card-760w.df9bd223.jpg",
-        "webpBytes": 23764,
-        "fallbackBytes": 35913
+      "560w": {
+        "jpg": {
+          "file": "alexander-card-v4-560w.2e48dfb8.jpg",
+          "bytes": 28798
+        },
+        "webp": {
+          "file": "alexander-card-v4-560w.8e0711cd.webp",
+          "bytes": 14566
+        }
       },
-      {
-        "width": 1100,
-        "height": 1375,
-        "webp": "yulia-card-1100w.6f3eba82.webp",
-        "fallback": "yulia-card-1100w.af90eefa.jpg",
-        "webpBytes": 38994,
-        "fallbackBytes": 62946
+      "760w": {
+        "jpg": {
+          "file": "alexander-card-v4-760w.26c259cb.jpg",
+          "bytes": 46799
+        },
+        "webp": {
+          "file": "alexander-card-v4-760w.de07771c.webp",
+          "bytes": 21850
+        }
+      },
+      "1120w": {
+        "jpg": {
+          "file": "alexander-card-v4-1120w.42414a6a.jpg",
+          "bytes": 89429
+        },
+        "webp": {
+          "file": "alexander-card-v4-1120w.d2135cab.webp",
+          "bytes": 38930
+        }
+      },
+      "1520w": {
+        "jpg": {
+          "file": "alexander-card-v4-1520w.ce16bcf2.jpg",
+          "bytes": 149999
+        },
+        "webp": {
+          "file": "alexander-card-v4-1520w.5c9013bd.webp",
+          "bytes": 62754
+        }
       }
-    ]
+    }
+  },
+  "yulia-card-v4": {
+    "alt": "Адвокат Юлия Саакян",
+    "natural": [
+      812,
+      1015
+    ],
+    "fallbackExt": "jpg",
+    "variants": {
+      "320w": {
+        "jpg": {
+          "file": "yulia-card-v4-320w.fc74dd88.jpg",
+          "bytes": 14910
+        },
+        "webp": {
+          "file": "yulia-card-v4-320w.e1ea92a3.webp",
+          "bytes": 8842
+        }
+      },
+      "560w": {
+        "jpg": {
+          "file": "yulia-card-v4-560w.fc807895.jpg",
+          "bytes": 36193
+        },
+        "webp": {
+          "file": "yulia-card-v4-560w.fabe7634.webp",
+          "bytes": 19648
+        }
+      },
+      "760w": {
+        "jpg": {
+          "file": "yulia-card-v4-760w.e05bc5d6.jpg",
+          "bytes": 60257
+        },
+        "webp": {
+          "file": "yulia-card-v4-760w.56414b57.webp",
+          "bytes": 29368
+        }
+      },
+      "812w": {
+        "jpg": {
+          "file": "yulia-card-v4-812w.8635259c.jpg",
+          "bytes": 66957
+        },
+        "webp": {
+          "file": "yulia-card-v4-812w.cc052c0e.webp",
+          "bytes": 32254
+        }
+      }
+    }
   }
 }
