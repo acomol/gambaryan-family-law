@@ -1,7 +1,7 @@
 # План аналитики lp.gambarian.com
 
-**Версия документа:** `2.2.0`
-**Обновлено:** `2026-09-23`
+**Версия документа:** `2.3.0`
+**Обновлено:** `2026-09-24`
 **Статус:** `ЭТАП 1 — LOCAL PASS (full-checks + visual), не опубликован; порог длинных секций утверждён владельцем 2026-09-23 (§4). Этапы 2–4 ждут решений владельца (§1)`
 
 Сайт: `https://lp.gambarian.com` = основная версия проекта `gambarian-landing`, собранная из
@@ -19,11 +19,11 @@ GTM только раздаёт их по платформам; прежняя �
 | Что | Состояние | Как проверено |
 |---|---|---|
 | Код | `gambaryan-family-law`, ветка `codex/final-dev5` | git |
-| Сниппет GTM на `lp` | нет | живой HTML `lp` = `build/production` байт в байт |
+| Сниппет GTM на `lp` | есть — часть публикации GTM v3 (см. строку GTM ниже), фактически грузится и шлёт хиты в GA4 | перехваченный Playwright-прогон на живом `lp.gambarian.com` (`scripts/verify-tracking-map.mjs --live`): GA4-хиты с `measurementId=G-P4MQ85ME2D`, реальная отправка заблокирована (route.abort), 2026-09-24 |
 | GA4 | ресурс **«Gambarian - GA4» `342151343`** (аккаунт `56152515`, создан 2022, LAW_AND_GOVERNMENT, Asia/Jerusalem, валюта **USD**); для `lp` владелец завёл отдельный веб-поток: имя `lp`, URL `https://lp.gambarian.com`, Stream ID `15824242008`, **Measurement ID `G-P4MQ85ME2D`**. Связи с Google Ads нет. Доступ ADFIX — есть с 2026-09-22 (виден через OAuth-коннектор `ga4-mcp-server`) | MCP GA4 (`get_property_details`, `list_google_ads_links`); данные потока — от владельца |
 | Measurement Protocol | создан секрет API с именем `GAMB`. Значение в репозиторий и документы **не записывается**; для плана не нужен (браузерный GTM). Если понадобится серверная отправка — только секретом Cloudflare, заданным владельцем | — |
-| GTM | аккаунт **GAMB_WEB `6378261245`**, контейнер **`lp.gamb` `264873266` = `GTM-MFLHW63Q`** (web). Права: `alex@digitalhook.co.il` и `gambarian@gmail.com` — admin + publish. Живая версия **2**: один тег **Microsoft Clarity** (официальный шаблон, проект `ym9xekxg89`, All Pages, `userId` = Analytics Client ID, `sessionId` = Analytics Session ID, **согласие не настроено**). Тегов GA4/Ads нет, триггеров своих нет | MCP GTM API: `gtm_version live`, `gtm_user_permission list` |
-| Google Ads | `gambarian#2`, `994-218-4821`: создан 2026-08-18 с `gamba.office@gmail.com`, под ADFIX_MCC; ILS, Asia/Jerusalem; оплата APPROVED; проверка рекламодателя пройдена 2026-09-22; авто-разметка и учёт звонков включены; суффикс пуст; конверсия одна — «Calls from ads» (создана Google, основная, «каждая», 60 с); аудиторных списков нет; кампаний нет (одна PMax удалена); промокод ₪4500 активирован 2026-08-18 | API Google Ads (GAQL), письма Google Ads |
+| GTM | аккаунт **GAMB_WEB `6378261245`**, контейнер **`lp.gamb` `264873266` = `GTM-MFLHW63Q`** (web). Права: `alex@digitalhook.co.il` и `gambarian@gmail.com` — admin + publish. **Живая версия 3** «v3 — GA4 + Ads lp (этап 2)», опубликована **2026-09-23**: 19 тегов — GA4 Google tag (конфиг: `traffic_type`, `allow_google_signals=false`, `allow_ad_personalization_signals=false`), 12 тегов GA4-событий по словарю §4 (тег `GA4 - service_select` включает параметр `via`, в т.ч. значение `via=anchor` для прямых ссылок `#svc-<тема>`), Conversion Linker, Microsoft Clarity (согласие `analytics_storage` needed), 3 тега конверсий Google Ads («Заявка», «Обращение WhatsApp», «Клик по телефону»); 15 кастомных триггеров `event equals <имя>` (два — с доп. условием по `method` для WhatsApp/телефона) | MCP GTM API: `gtm_version live` (по `resourceType` tag/trigger/variable/builtInVariable/customTemplate), `gtm_user_permission list`; снимок — `tracking/gtm-baseline.json`, сверка после любых изменений — `node scripts/verify-tracking-map.mjs --gtm <live>` (см. `tracking/TRACKING-MAP.md` → «Как сверять после изменений») |
+| Google Ads | `gambarian#2`, `994-218-4821`: создан 2026-08-18 с `gamba.office@gmail.com`, под ADFIX_MCC; ILS, Asia/Jerusalem; оплата APPROVED; проверка рекламодателя пройдена 2026-09-22; авто-разметка и учёт звонков включены; суффикс пуст; конверсий 5 (GAQL 2026-09-24, все ENABLED, все основные и в столбце «Конверсии»): «Заявка — форма lp.gambarian.com» 7788197742, «Обращение WhatsApp — lp.gambarian.com» 7788197745, «Клик по телефону — lp.gambarian.com» 7788393534, «Calls from ads» 7725063533 (создана Google, 60 с), «Submit lead form» 7788414889 (с lp не отправляется); по §5 основной должна быть только «Заявка» — решение владельца до запуска, см. tracking/TRACKING-MAP.md; аудиторных списков нет; кампания `gambarian_gads_search_leads_il_family_ru` на паузе, MANUAL_CPC (одна PMax удалена); промокод ₪4500 активирован 2026-08-18 | API Google Ads (GAQL), письма Google Ads |
 | Номер в ассете звонка Ads | **058-780-3188**, на сайте везде **054-549-0623** — расхождение | API Google Ads |
 | Meta | пиксель `1778762598801726` на www, на `lp` нет | там же |
 | Серверный GTM (Stape) | не подключён и в этом плане не используется: только Google, браузерный GTM | решение плана; при Meta CAPI — отдельный этап |
@@ -329,8 +329,8 @@ GTM только раздаёт их по платформам; прежняя �
 |---|---|---|---|
 | 0 | Решения §1, доступы GA4 и Ads, создать контейнер GTM, секрет Albato | владелец (контейнер создаю я при доступе) | — |
 | 1 | Код: карта §3 по словарю §4, дефекты §6, сниппет GTM в `build/production` (только для `lp`) | я | автотесты §9 |
-| 2 | GTM: теги GA4 и Ads, согласие, триггеры «событие равно»; GA4 по §7; конверсии Ads по §5 | я | GTM Preview + GA4 DebugView на `lp` |
-| 3 | Запуск (§11) | я + вы с телефоном | см. §11 |
+| 2 | GTM: теги GA4 и Ads, согласие, триггеры «событие равно»; GA4 по §7; конверсии Ads по §5 — **готово, опубликовано как v3 «v3 — GA4 + Ads lp (этап 2)», 2026-09-23** | я | GTM Preview + GA4 DebugView на `lp`; после публикации — `node scripts/verify-tracking-map.mjs --gtm <live>` против `tracking/gtm-baseline.json` (§0, `tracking/TRACKING-MAP.md`) |
+| 3 | Запуск (§11) — не начат: кампания Ads на паузе (MANUAL_CPC), решение 2а (номер) и блокер §5/M3 (primary-конверсии) ещё не закрыты | я + вы с телефоном | см. §11 |
 | 4 | Офлайн-конверсии по `gclid` из CRM, Enhanced conversions с сервера; Meta — по решению | позже | — |
 
 ## 11. Запуск — готово, когда
@@ -359,6 +359,11 @@ GTM только раздаёт их по платформам; прежняя �
 - `docs/LEAD-WEBHOOK-CONTRACT.md` — контракт заявки и атрибуции
 - `docs/LAUNCH-LP-GAMBARIAN.md` — запуск `lp`
 - `docs/HERO-CTA-RESEARCH.md` — откуда паттерн «событие до перехода»
+- `tracking/TRACKING-MAP.md`, `tracking/gtm-baseline.json`, `scripts/verify-tracking-map.mjs` —
+  машиночитаемая карта трекинга и сверка живого GTM после каждого изменения
 - История: v1.1.1 (2026-09-07) описывала схему с триггером GTM по адресу ссылки — заменена
   dataLayer-first в v2.0.0. v2.2.0 (2026-09-23, владелец): якоря `#svc-*` переключают тему услуг
-  по прямой ссылке — новое значение `via=anchor` у `service_select`.
+  по прямой ссылке — новое значение `via=anchor` у `service_select`. v2.3.0 (2026-09-24): §0/§10
+  обновлены под факт — живая версия GTM **3** «v3 — GA4 + Ads lp (этап 2)» (GA4+Ads полностью
+  настроены), опубликована 2026-09-23; до этой правки §0 ошибочно описывал версию 2
+  (только Clarity, без GA4/Ads).

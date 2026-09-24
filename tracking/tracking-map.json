@@ -1,0 +1,354 @@
+{
+  "$schema_note": "Машиночитаемая карта трекинга lp.gambarian.com. Человекочитаемая версия — tracking/TRACKING-MAP.md (там же — по одной строке на каждое взаимодействие пользователя, здесь — по одному объекту на dataLayer-событие, т.к. GTM видит событие+параметры, а не конкретный элемент). Источник содержания — docs/TRACKING-REQUIREMENTS.md §3/§4/§5/§7 + живой снимок GTM tracking/gtm-baseline.json.",
+  "meta": {
+    "site": "https://lp.gambarian.com",
+    "code": {
+      "repo": "gambaryan-family-law",
+      "productionBranch": "codex/final-dev5",
+      "deploySha": "b30026ff27b0d6bc",
+      "note": "deploySha — идентификатор боевого HTML/деплоя, дан задачей как якорь для сверки; не путать с git-коммитом кода (см. verification.sources)."
+    },
+    "gtm": {
+      "publicId": "GTM-MFLHW63Q",
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "liveVersion": "3",
+      "liveVersionName": "v3 — GA4 + Ads lp (этап 2)",
+      "publishedDate": "2026-09-23"
+    },
+    "ga4": {
+      "propertyId": "342151343",
+      "webStreamId": "15824242008",
+      "measurementId": "G-P4MQ85ME2D"
+    },
+    "googleAds": {
+      "conversionId": "18396553571",
+      "customerId": "9942184821",
+      "labels": {
+        "Заявка": "ccbrCO7u2YEdEOPClMRE",
+        "WhatsApp": "HEcnCPHu2YEdEOPClMRE",
+        "phone_click": "RTTHCL7o5YEdEOPClMRE"
+      }
+    },
+    "internalTrafficCookie": { "cookie": "adfix_internal", "value": "1", "mapsTo": "traffic_type=internal via LT - traffic_type" },
+    "commonEventParam": "design_version",
+    "generatedAt": "2026-09-24",
+    "verificationSources": {
+      "1_gtm_live": "GTM API v2 (mcp gtm-stape), gtm_version action=live + gtm_workspace action=getStatus, read-only, 2026-09-24. Evidence: I:/Temp/claude/tracking-map/verify-2026-09-24/gtm-live.json",
+      "2_site_code": "Playwright scripts/verify-tracking.mjs против локального билда. Первый прогон: HEAD 4451006, 2026-09-24 (I:/Temp/claude/tracking-map/gambarian-2026-09-24/TRACKING-MAP-COMPARISON.md). Переподтверждено этим прогоном (map-builder) против свежей пересборки build/variants/final-dev5 на HEAD 94687e0, 2026-09-24 — PASS на 360x640/390x844/1440x900.",
+      "3_live_chain": "Playwright, сеть перехвачена (все *collect*/pagead/ccm/clarity-запросы abort), cookie adfix_internal=1, /api/lead замокан 202, реальный desktop+mobile UA, живой lp.gambarian.com, 2026-09-24. Покрывает не каждое взаимодействие поштучно — см. поле coveredByLiveClick на каждом событии.",
+      "4_ads_gaql": "Google Ads API (GAQL) через mcp__google-ads__execute_gaql_query, customer_id 9942184821, read-only, 2026-09-24: conversion_action (id/name/status/category/type/primary_for_goal/include_in_conversions_metric) для все статусы, плюс conversion_action.tag_snippets для 7788414889 (подтверждает label Wrn7CKmP54EdEOPClMRE). Кампания gambarian_gads_search_leads_il_family_ru — PAUSED, bidding MANUAL_CPC (get_campaign_performance, тот же прогон)."
+    }
+  },
+  "events": [
+    {
+      "event": "generate_lead",
+      "level": "MACRO",
+      "ga4KeyEvent": { "planned": true, "verifiedInGa4Admin": false, "note": "План §7/E04 требует пометить событие звёздочкой в GA4. Сама админ-настройка GA4 (Admin → Events → Mark as key event) в этом прогоне не проверялась ни одним из трёх источников — [unverified]." },
+      "dataLayer": { "params": ["form_id", "submission_id", "seconds_to_lead"], "commonParams": ["design_version"] },
+      "trigger": { "id": "24", "name": "CE - generate_lead", "condition": "event equals generate_lead" },
+      "tags": [
+        { "platform": "GA4", "tagId": "38", "name": "GA4 - generate_lead", "event": "generate_lead", "params": ["form_id", "submission_id", "seconds_to_lead", "design_version"] },
+        { "platform": "GoogleAds", "tagId": "53", "name": "Ads - Заявка (generate_lead)", "conversionId": "18396553571", "conversionLabel": "ccbrCO7u2YEdEOPClMRE", "orderId": "{{DLV - submission_id}}", "status": "основная (primary_for_goal=True)" }
+      ],
+      "interactions": [
+        "§3.9 «Всё верно, отправить» → /api/lead ответил 202 на новую заявку",
+        "§3.9 «Отправить ещё одну заявку» → 202 (новый submission_id)"
+      ],
+      "coveredByLiveClick": true,
+      "verifiedBy": ["1", "2", "3"]
+    },
+    {
+      "event": "lead_corrected",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["submission_id", "corrects_submission_id"], "commonParams": ["design_version"] },
+      "trigger": { "id": "25", "name": "CE - lead_corrected", "condition": "event equals lead_corrected" },
+      "tags": [
+        { "platform": "GA4", "tagId": "39", "name": "GA4 - lead_corrected", "event": "lead_corrected", "params": ["submission_id", "corrects_submission_id", "design_version"] }
+      ],
+      "interactions": ["§3.9 «Указать другие контакты» → отправлено (правит контакты той же заявки, НЕ создаёт generate_lead)"],
+      "coveredByLiveClick": false,
+      "verifiedBy": ["1", "2"],
+      "notes": "GA4 live-данные за 14 дней (source 2/3 report): 0 событий lead_corrected — низкочастотное по сути (исправление контактов случается редко), не подтверждено и не опровергнуто живым кликом в этом прогоне. [unverified]"
+    },
+    {
+      "event": "form_error",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["form_id", "error_type", "http_status"], "commonParams": ["design_version"], "enum": { "error_type": ["validation", "unavailable", "network", "server"] } },
+      "trigger": { "id": "26", "name": "CE - form_error", "condition": "event equals form_error" },
+      "tags": [
+        { "platform": "GA4", "tagId": "40", "name": "GA4 - form_error", "event": "form_error", "params": ["form_id", "error_type", "http_status", "design_version"] }
+      ],
+      "interactions": [
+        "§3.9 «Записаться на консультацию» с ошибками в полях → error_type=validation, http_status=0",
+        "§3.9 «Всё верно, отправить» → ошибка сервера/сети → error_type=unavailable(503)/network(0)/server(500), validation(422)"
+      ],
+      "coveredByLiveClick": false,
+      "verifiedBy": ["1", "2"]
+    },
+    {
+      "event": "form_start",
+      "level": "NOISE",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["form_id"], "commonParams": ["design_version"] },
+      "trigger": { "id": "27", "name": "CE - form_start", "condition": "event equals form_start" },
+      "tags": [
+        { "platform": "GA4", "tagId": "41", "name": "GA4 - form_start", "event": "form_start", "params": ["form_id", "design_version"] }
+      ],
+      "interactions": ["§3.9 первый ввод в любое поле формы (Имя/Телефон/E-mail), один раз за просмотр"],
+      "coveredByLiveClick": true,
+      "verifiedBy": ["1", "2", "3"]
+    },
+    {
+      "event": "form_confirm",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["form_id"], "commonParams": ["design_version"] },
+      "trigger": { "id": "28", "name": "CE - form_confirm", "condition": "event equals form_confirm" },
+      "tags": [
+        { "platform": "GA4", "tagId": "42", "name": "GA4 - form_confirm", "event": "form_confirm", "params": ["form_id", "design_version"] }
+      ],
+      "interactions": ["§3.9 «Записаться на консультацию» без ошибок → показан шаг «Проверьте, как с вами связаться»"],
+      "coveredByLiveClick": true,
+      "verifiedBy": ["1", "2", "3"]
+    },
+    {
+      "event": "form_correct",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["form_id"], "commonParams": ["design_version"] },
+      "trigger": { "id": "29", "name": "CE - form_correct", "condition": "event equals form_correct" },
+      "tags": [
+        { "platform": "GA4", "tagId": "43", "name": "GA4 - form_correct", "event": "form_correct", "params": ["form_id", "design_version"] }
+      ],
+      "interactions": ["§3.9 «Исправить» на шаге проверки → возврат к полям"],
+      "coveredByLiveClick": false,
+      "verifiedBy": ["1", "2"]
+    },
+    {
+      "event": "contact_click",
+      "level": "MICRO",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": {
+        "params": ["method", "placement", "business_state"],
+        "commonParams": ["design_version"],
+        "enum": { "method": ["phone", "whatsapp", "google_maps", "form_anchor"], "business_state": ["open", "closed"] }
+      },
+      "trigger": { "id": "30", "name": "CE - contact_click", "condition": "event equals contact_click" },
+      "tags": [
+        { "platform": "GA4", "tagId": "44", "name": "GA4 - contact_click", "event": "contact_click", "params": ["method", "placement", "business_state", "design_version"] }
+      ],
+      "additionalAdsSubTriggers": [
+        { "triggerId": "52", "condition": "event equals contact_click AND method equals whatsapp", "tag": { "platform": "GoogleAds", "tagId": "54", "name": "Ads - Обращение WhatsApp", "conversionId": "18396553571", "conversionLabel": "HEcnCPHu2YEdEOPClMRE", "status": "план: отдельная цель НЕ-лид; факт в Ads-аккаунте: primary_for_goal=True (см. mismatches)" } },
+        { "triggerId": "55", "condition": "event equals contact_click AND method equals phone", "tag": { "platform": "GoogleAds", "tagId": "56", "name": "Ads - Клик по телефону", "conversionId": "18396553571", "conversionLabel": "RTTHCL7o5YEdEOPClMRE", "status": "тег помечен вспомогательной (план: вторичная/наблюдение); факт в Ads-аккаунте: primary_for_goal=True (см. mismatches)" } }
+      ],
+      "interactions": [
+        "§3.2 меню: «Позвонить» — phone, placement=menu",
+        "§3.3 hero: адрес — google_maps, placement=hero",
+        "§3.3 hero: «Позвонить»/WhatsApp (по business_state) — placement=hero",
+        "§3.6 precedent: «Написать в WhatsApp» — whatsapp, placement=precedent",
+        "§3.8 contacts: телефон/WhatsApp (по business_state) — placement=contacts",
+        "§3.8 contacts: адрес — google_maps, placement=contacts",
+        "§3.9 form_error: «позвонить»/WhatsApp — placement=form_error",
+        "§3.10 footer: адрес — google_maps, placement=footer",
+        "§3.11 action_bar (mobile): «Записаться»/«Позвонить»/WhatsApp — placement=action_bar"
+      ],
+      "coveredByLiveClick": true,
+      "coveredByLiveClickNote": "Живьём кликнуто только method=whatsapp и method=phone на placement=contacts (§3.8). Остальные placement/method комбинации — только [1,2], не кликались индивидуально на проде в этом прогоне.",
+      "verifiedBy": ["1", "2", "3"],
+      "notes": "SOURCE 3: отдельного сетевого GA4-хита именно для contact_click в синтетическом прогоне не зафиксировано (похоже на батчинг gtag.js), но live GA4 report (14 дней) показывает 9 событий contact_click на hostName=lp.gambarian.com — тег реально доходит до GA4 в проде. [verified через живые production-данные, не через синтетический перехват]"
+    },
+    {
+      "event": "form_anchor_click",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["placement", "service", "attorney"], "commonParams": ["design_version"] },
+      "trigger": { "id": "31", "name": "CE - form_anchor_click", "condition": "event equals form_anchor_click" },
+      "tags": [
+        { "platform": "GA4", "tagId": "45", "name": "GA4 - form_anchor_click", "event": "form_anchor_click", "params": ["placement", "service", "attorney", "design_version"] }
+      ],
+      "interactions": [
+        "§3.3 hero: «Записаться на консультацию» — placement=hero",
+        "§3.5 карточка услуги: «Записаться» — placement=services, service=<тема>",
+        "§3.6 precedent: «Записаться» — placement=precedent",
+        "§3.7 attorneys: «Записаться» в карточке Александра/Юлии — placement=attorneys, attorney=alexander|yulia",
+        "§3.8 contacts (нерабочее время): «Заявка · Записаться» — placement=contacts"
+      ],
+      "coveredByLiveClick": false,
+      "verifiedBy": ["1", "2"]
+    },
+    {
+      "event": "nav_click",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["target", "placement"], "commonParams": ["design_version"], "enum": { "placement": ["header", "menu", "footer"] } },
+      "trigger": { "id": "32", "name": "CE - nav_click", "condition": "event equals nav_click" },
+      "tags": [
+        { "platform": "GA4", "tagId": "46", "name": "GA4 - nav_click", "event": "nav_click", "params": ["target", "placement", "design_version"] }
+      ],
+      "interactions": [
+        "§3.1 шапка: Логотип/«Услуги»/«Подготовка»/«Адвокаты»/«Контакты» — placement=header",
+        "§3.2 мобильное меню: те же 4 пункта — placement=menu",
+        "§3.10 подвал: «Подготовьтесь к разговору о разводе» — placement=footer"
+      ],
+      "coveredByLiveClick": false,
+      "verifiedBy": ["1", "2"],
+      "notes": "GA4 live-данные за 14 дней: 0 событий nav_click зафиксировано. Не проверено живым кликом в этом прогоне (правила задачи запрещают слать реальный трафик) — [unverified], не обязательно дефект (может быть низкочастотным на малой выборке трафика)."
+    },
+    {
+      "event": "service_select",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": {
+        "params": ["service", "via"],
+        "commonParams": ["design_version"],
+        "enum": {
+          "service": ["развод", "алименты", "раздел-имущества", "дети", "отцовство", "медиация", "брачный-договор", "защита-при-угрозах"],
+          "via": ["tab", "swipe", "dot", "arrow", "footer", "anchor"]
+        }
+      },
+      "trigger": { "id": "33", "name": "CE - service_select", "condition": "event equals service_select" },
+      "tags": [
+        { "platform": "GA4", "tagId": "47", "name": "GA4 - service_select", "event": "service_select", "params": ["service", "via", "design_version"] }
+      ],
+      "interactions": [
+        "§3.5 8 вкладок тем — via=tab",
+        "§3.5 свайп карточки (телефон) — via=swipe",
+        "§3.5 8 точек — via=dot",
+        "§3.5 стрелки назад/вперёд — via=arrow",
+        "§3.5 прямая ссылка #svc-<тема> (реклама/sitelinks) — via=anchor",
+        "§3.10 подвал: 8 ссылок услуг — via=footer"
+      ],
+      "coveredByLiveClick": true,
+      "coveredByLiveClickNote": "Живьём: via=tab (клик по вкладке «Алименты») и via=anchor (#svc-divorce, #svc-alimony). via=swipe/dot/arrow/footer — только [1,2].",
+      "verifiedBy": ["1", "2", "3"],
+      "mismatchFlag": "via=anchor есть в коде и в GTM данные проходят корректно (тег без условий на via) — и уже описано в docs/TRACKING-REQUIREMENTS.md §3.5/§4 (v2.2.0, 2026-09-23). См. mismatches M1 (изначально ошибочно записана как пробел в докладе, исправлено 2026-09-24)."
+    },
+    {
+      "event": "section_view",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["section"], "commonParams": ["design_version"], "enum": { "section": ["hero", "facts", "services", "precedent", "attorneys", "contact", "footer"] } },
+      "trigger": { "id": "34", "name": "CE - section_view", "condition": "event equals section_view" },
+      "tags": [
+        { "platform": "GA4", "tagId": "48", "name": "GA4 - section_view", "event": "section_view", "params": ["section", "design_version"] }
+      ],
+      "interactions": ["Любой из 7 блоков наполовину в кадре (IntersectionObserver, раз за просмотр) — §3.3/3.4/3.5/3.6/3.7/3.8/3.10"],
+      "coveredByLiveClick": true,
+      "verifiedBy": ["1", "2", "3"]
+    },
+    {
+      "event": "scroll_depth",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["percent"], "commonParams": ["design_version"], "enum": { "percent": [25, 50, 75, 90] } },
+      "trigger": { "id": "35", "name": "CE - scroll_depth", "condition": "event equals scroll_depth" },
+      "tags": [
+        { "platform": "GA4", "tagId": "49", "name": "GA4 - scroll_depth", "event": "scroll_depth", "params": ["percent", "design_version"] }
+      ],
+      "interactions": ["§3.12 прокрутка страницы до 25/50/75/90%, каждый раз за просмотр"],
+      "coveredByLiveClick": true,
+      "verifiedBy": ["1", "2", "3"]
+    },
+    {
+      "event": "time_on_page",
+      "level": "FUNNEL",
+      "ga4KeyEvent": { "planned": false },
+      "dataLayer": { "params": ["seconds"], "commonParams": ["design_version"], "enum": { "seconds": [30, 60, 120, 180] } },
+      "trigger": { "id": "36", "name": "CE - time_on_page", "condition": "event equals time_on_page" },
+      "tags": [
+        { "platform": "GA4", "tagId": "50", "name": "GA4 - time_on_page", "event": "time_on_page", "params": ["seconds", "design_version"] }
+      ],
+      "interactions": ["§3.12 30/60/120/180 секунд ВИДИМОГО времени (вкладка активна)"],
+      "coveredByLiveClick": false,
+      "verifiedBy": ["1", "2"],
+      "notes": "Проверено автотестом (source 2) с управляемыми часами и переключением visibilityState — сильнее живого клика для этого события (нужно реально ждать минуты)."
+    }
+  ],
+  "baseTags": [
+    { "tagId": "37", "name": "GA4 - Google tag", "firesOn": "All Pages (built-in)", "note": "Конфиг-тег: page_view автоматически, design_version(event param), traffic_type(config), allow_google_signals=false, allow_ad_personalization_signals=false" },
+    { "tagId": "4", "name": "Microsoft Clarity - Official", "firesOn": "All Pages (built-in), при analytics_storage=granted" },
+    { "tagId": "51", "name": "Conversion Linker", "firesOn": "All Pages (built-in)" }
+  ],
+  "outOfGtmMap": [
+    { "signal": "page_view", "note": "GA4 автоматический (тег 37), не отдельное customEvent-событие." },
+    { "signal": "engagement_time_msec", "note": "GA4 автоматический, вне dataLayer." },
+    { "signal": "utm_*, gclid, gbraid, wbraid, fbclid, referrer_host", "note": "Уходят в заявку через site/lead-contract.js → CRM, НЕ через GTM/GA4 dataLayer-события. Вне зоны сверки GTM." }
+  ],
+  "mismatches": [
+    {
+      "id": "M1",
+      "class": "RESOLVED",
+      "layer": "docs vs код",
+      "summary": "Первоначально записано как: service_select {via=anchor} есть в коде и в GTM, но НЕ описано в docs/TRACKING-REQUIREMENTS.md §3.5/§4 (там якобы только tab/swipe/dot/arrow/footer). Перепроверено 2026-09-24 прямым grep по §3.5/§4: ЛОЖНАЯ находка — via=anchor уже присутствует в обоих местах, добавлено в v2.2.0 (2026-09-23), т.е. ДО того, как эта находка была впервые записана.",
+      "impact": "Реального разрыва между кодом/GTM и docs/TRACKING-REQUIREMENTS.md нет и не было на момент проверки.",
+      "action": "Нет действия по §3.5/§4. §0 (v2.3.0, 2026-09-24) дополнительно называет via=anchor в сводке по тегу GA4 - service_select — не для устранения несуществующего пробела, а как часть описания живой версии 3 (см. M2).",
+      "sources": ["2", "3"]
+    },
+    {
+      "id": "M2",
+      "class": "HISTORICAL",
+      "layer": "docs vs GTM",
+      "summary": "docs/TRACKING-REQUIREMENTS.md §0 на момент своей последней правки описывал живую версию GTM как «2, только Clarity, тегов GA4/Ads нет». Факт на 2026-09-24: живая версия — 3, 19 тегов, GA4+Ads полностью настроены.",
+      "impact": "Только документ отстал от реальности (этап 2 был опубликован в тот же день, что и последняя правка §0). Сама конфигурация GTM корректна и совпадает с содержательным планом §3/§4/§5.",
+      "action": "Обновить §0 при следующей правке TRACKING-REQUIREMENTS.md.",
+      "sources": ["1", "2"]
+    },
+    {
+      "id": "M3",
+      "class": "CURRENT",
+      "layer": "Google Ads аккаунт (не код, не GTM)",
+      "summary": "GAQL 2026-09-24 (conversion_action, все ENABLED): ПЯТЬ конверсий, у всех primary_for_goal=True И include_in_conversions_metric=True — «Заявка — форма lp.gambarian.com» 7788197742, «Обращение WhatsApp — lp.gambarian.com» 7788197745, «Клик по телефону — lp.gambarian.com» 7788393534, «Calls from ads» 7725063533, «Submit lead form» 7788414889 (см. M4) — вместо одной основной («Заявка»), как в плане §5.",
+      "impact": "Как только реклама включится, Smart Bidding будет оптимизироваться на все пять событий как на равноценные конверсии. Сейчас НЕ активная поломка: кампания gambarian_gads_search_leads_il_family_ru на паузе (PAUSED), ставки MANUAL_CPC — оптимизация по конверсиям ни на что не влияет, пока кампания не включена и не переведена на автобиддинг.",
+      "action": "Решение владельца/PPC-аккаунта до включения рекламы (план §11, чек-лист «готово, когда»): понизить 4 конверсии кроме «Заявки» до secondary в Ads UI. Вне READ-ONLY зоны GTM/GA4/Ads этой сессии — не менялось.",
+      "sources": ["1", "2", "4"]
+    },
+    {
+      "id": "M4",
+      "class": "CURRENT",
+      "layer": "Google Ads аккаунт (не код, не GTM)",
+      "summary": "«Submit lead form» (conversion action id 7788414889, WEBPAGE/SUBMIT_LEAD_FORM, ENABLED, primary_for_goal=True, label Wrn7CKmP54EdEOPClMRE — подтверждён conversion_action.tag_snippets, GAQL 2026-09-24) не входит ни в один из 19 тегов tracking/gtm-baseline.json — с lp.gambarian.com не отправляется никогда.",
+      "impact": "Пустая основная конверсия, НЕ дубль «Заявки» (задвоения на lp нет — событие с lp не уходит вовсе). Шлёт ли её www.gambarian.com (отдельный сайт/конфиг, вне зоны этой карты) — не проверено.",
+      "action": "Владельцу/PPC: понизить до secondary или удалить вместе с M3. Проверить www отдельно, если он тоже на этом Ads-аккаунте.",
+      "sources": ["2", "4"]
+    },
+    {
+      "id": "M5",
+      "class": "HISTORICAL",
+      "layer": "docs vs GA4 property",
+      "summary": "docs/TRACKING-REQUIREMENTS.md §0/§1а на момент своей последней правки: валюта GA4 — USD, решение «перевести на ILS» — «ждёт»; связь GA4↔Ads — «нет». Факт на 2026-09-24: валюта — ILS, связь с Ads создана 2026-09-22T23:57:39Z (ads_personalization_enabled=false, корректно под запрет ремаркетинга §5).",
+      "impact": "Только доклад отстал от факта в течение того же дня — оба решения фактически уже выполнены и корректны.",
+      "action": "Обновить §0/§1а при следующей правке.",
+      "sources": ["1", "2"]
+    },
+    {
+      "id": "M6",
+      "class": "UNVERIFIED",
+      "layer": "методология синтетического теста",
+      "summary": "В синтетическом Playwright-прогоне (source 3) для contact_click (whatsapp/phone) не зафиксирован отдельный сетевой GA4-хит в окне ожидания ~1.8с — похоже на батчинг gtag.js, а не на дефект.",
+      "impact": "Нет — cross-check по живым production-данным GA4 (source 3, run_report за 14 дней) показал 9 событий contact_click на hostName=lp.gambarian.com: тег реально доходит до GA4.",
+      "action": "Нет действия — задокументировано как методологическая оговорка, не как находка о поломке.",
+      "sources": ["3"]
+    },
+    {
+      "id": "M7",
+      "class": "UNVERIFIED",
+      "layer": "живые данные GA4 (14 дней)",
+      "summary": "nav_click и lead_corrected показывают 0 событий в GA4 за последние 14 дней (полный список: section_view 77, scroll_depth 50, time_on_page 31, page_view 23, session_start 15, form_confirm 10, contact_click 9, first_visit 9, user_engagement 9, form_anchor_click 8, form_start 8, generate_lead 5, form_error 4, form_correct 2, service_select 2).",
+      "impact": "Оба события низкочастотные по сути (переход по шапке/подвалу; исправление контактов после заявки) — 0 за 14 дней при малом трафике не обязательно значит поломку, но и не подтверждено живым кликом в правилах этой задачи (запрещено слать реальный трафик).",
+      "action": "Подтвердить на следующей контрольной заявке/живом клике при запуске рекламы (план §11, чек-лист «готово, когда»).",
+      "sources": ["3"]
+    },
+    {
+      "id": "M8",
+      "class": "OUT-OF-SCOPE",
+      "layer": "GA4 property, информационно",
+      "summary": "В GA4 зарегистрирован custom dimension page_title, которого нет в списке 12 параметров плана §7.",
+      "impact": "Не мешает и не дублирует ничего из карты — вероятно, стандартная переменная GA4 для отчётов по страницам.",
+      "action": "Нет действия.",
+      "sources": ["1"]
+    }
+  ]
+}
