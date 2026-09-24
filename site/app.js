@@ -154,6 +154,33 @@
     }
   });
 
+  /* --- CTA "#contact" ведёт к самой форме, а не к верху секции -----------
+     На мобильном контакты и форма стоят друг под другом, и блок контактов
+     (адрес, WhatsApp, ЗАЯВКА-строка) выше формы по вёрстке — переход по
+     нативному якорю показывал только его, а форма уходила за экран (баг,
+     заметил владелец 2026-09-24). href="#contact" и id="contact" не трогаем
+     (от них зависят build-hero-variants.py, qa-browser-matrix.py и
+     verify-tracking.mjs) — только подменяем итоговую точку прокрутки.
+     Пункты меню (шапка и бургер) сюда не входят намеренно: у них «Контакты» —
+     это переход к секции, а не к брони, и invariants.spec.ts §7 проверяет,
+     что они останавливаются на 20 px под шапкой, а не у формы. */
+  var leadFormAnchor = document.querySelector('.contact__form-col');
+  if (leadFormAnchor) {
+    var contactReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    document.addEventListener('click', function (event) {
+      var link = event.target.closest('a[href="#contact"]');
+      if (!link || link.closest('header.site-header')) return;
+      event.preventDefault();
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, '', '#contact');
+      }
+      leadFormAnchor.scrollIntoView({
+        behavior: contactReduceMotion.matches ? 'instant' : 'smooth',
+        block: 'start'
+      });
+    });
+  }
+
   /* --- Бургер-меню ------------------------------------------------------- */
 
   var burger = document.querySelector(".nav-burger");
@@ -931,7 +958,11 @@
 
   var form = document.querySelector(".lead-form");
   var success = document.querySelector(".form-success");
-  var again = document.querySelector(".form-success__again");
+  var successBody = document.querySelector(".form-success__body");
+  var successCollapsed = document.querySelector(".form-success__collapsed");
+  var successClose = document.querySelector(".form-success__close");
+  var successContinue = document.querySelector(".form-success__continue");
+  var successCollapsedEdit = document.querySelector(".form-success__collapsed-edit");
   var editContacts = document.querySelector(".form-success__edit");
   var errorBox = document.querySelector(".lead-form__error");
   var errorTitle = errorBox && errorBox.querySelector(".lead-form__error-title");
@@ -1020,6 +1051,10 @@
   function showSuccess(data) {
     hideFormError();
     form.hidden = true;
+    // Полная карточка, не свёрнутая строка: свежий успех всегда открыт целиком,
+    // даже если предыдущую заявку до этого сворачивали.
+    if (successBody) successBody.hidden = false;
+    if (successCollapsed) successCollapsed.hidden = true;
     success.querySelector(".form-success__contacts").textContent =
       "Мы свяжемся с вами по телефону " + displayPhone(data.phone) + ". Ваш e-mail: " + data.email;
     success.hidden = false;
@@ -1028,6 +1063,18 @@
     if (title) {
       title.setAttribute("tabindex", "-1");
       title.focus();
+    }
+  }
+
+  // Свернуть карточку успеха в одну строку-подтверждение: повторную пустую
+  // форму так не увидеть (защита от дублей-заявок), при этом «Изменить
+  // контакты» остаётся доступной — тот же reopenForm(), что и в открытой
+  // карточке. Перезагрузки страницы нет, событий в dataLayer нет.
+  function collapseSuccess() {
+    if (successBody) successBody.hidden = true;
+    if (successCollapsed) {
+      successCollapsed.hidden = false;
+      successCollapsed.focus();
     }
   }
 
@@ -1339,13 +1386,11 @@
     });
   }
 
-  function reopenForm(reset) {
-    editingContacts = !reset;
-    if (reset) {
-      form.reset();
-      acceptedSubmissionId = "";
-      acceptedContacts = null;
-    }
+  // «Отправить ещё одну заявку» убрали (2026-09-24, владелец: дублирует лиды
+  // и конверсии Ads) — reopenForm() теперь всегда правит контакты последней
+  // принятой заявки, независимого сброса формы больше нет.
+  function reopenForm() {
+    editingContacts = true;
     pendingSubmissionId = "";
     pendingFingerprint = "";
     formInputs.forEach(function (input) {
@@ -1359,9 +1404,11 @@
     showFields(true);
   }
 
-  if (again && editContacts && form && success) {
-    again.addEventListener("click", function () { reopenForm(true); });
-    editContacts.addEventListener("click", function () { reopenForm(false); });
+  if (editContacts && form && success) {
+    editContacts.addEventListener("click", function () { reopenForm(); });
+    if (successCollapsedEdit) successCollapsedEdit.addEventListener("click", function () { reopenForm(); });
+    if (successClose) successClose.addEventListener("click", collapseSuccess);
+    if (successContinue) successContinue.addEventListener("click", collapseSuccess);
   }
 
 })();

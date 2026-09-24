@@ -1562,12 +1562,31 @@ picture { display: block; }
 }
 
 .form-success {
+  position: relative;
   background: var(--bg-card);
   border-radius: 14px;
   padding: clamp(36px, 5vw, 56px) 32px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
   text-align: center;
 }
+/* Закрыть карточку успеха: сворачивает её в строку-подтверждение (не
+   перезагрузка и не повторная пустая форма — просто скрыть/показать). */
+.form-success__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.form-success__close:hover { background: rgba(0, 0, 0, 0.05); color: var(--ink); }
 .form-success__icon {
   display: inline-flex;
   width: 56px;
@@ -1592,7 +1611,7 @@ picture { display: block; }
   line-height: 1.65;
   color: var(--ink-2);
 }
-.form-success__again, .form-success__edit, .lead-form__edit {
+.form-success__continue, .form-success__edit, .lead-form__edit {
   border: 1px solid var(--input-line);
   background: #fff;
   color: var(--ink);
@@ -1604,7 +1623,36 @@ picture { display: block; }
   border-radius: 8px;
   cursor: pointer;
 }
-.form-success__again:hover { border-color: var(--gold); }
+.form-success__continue:hover { border-color: var(--gold); }
+
+/* Свёрнутое состояние после закрытия: одна строка вместо карточки, повторно
+   пустая форма не показывается — только правка контактов той же заявки. */
+/* Специфичность выше ".form-success p" (margin-bottom 24px), поэтому
+   селектор — от родителя: единственный <p> в свёрнутом виде своих
+   отступов не унаследует. */
+.form-success .form-success__collapsed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.form-success .form-success__collapsed[hidden] { display: none; }
+.form-success__collapsed svg { flex: none; }
+.form-success__collapsed-edit {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  color: var(--wine);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 /* --- 8. Футер ------------------------------------------------------------ */
 
@@ -2240,11 +2288,19 @@ picture { display: block; }
         <p class="lead-form__legal" data-copy-id="7.23">Не отправляйте документы и конфиденциальные сведения через форму для назначения консультации.</p>
       </form>
       <div class="form-success" role="status" hidden>
-        <span class="form-success__icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F0AE1F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
-        <div class="form-success__title">Заявка получена</div>
-        <p class="form-success__contacts"></p>
-        <button class="form-success__edit" type="button">Указать другие контакты</button>
-        <button class="form-success__again" type="button">Отправить ещё одну заявку</button>
+        <div class="form-success__body">
+          <button class="form-success__close" type="button" aria-label="Закрыть"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          <span class="form-success__icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F0AE1F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+          <div class="form-success__title">Заявка получена</div>
+          <p class="form-success__contacts"></p>
+          <button class="form-success__edit" type="button">Указать другие контакты</button>
+          <button class="form-success__continue" type="button">Продолжить на сайте</button>
+        </div>
+        <p class="form-success__collapsed" tabindex="-1" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F0AE1F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Заявка отправлена — мы свяжемся с вами</span>
+          <button class="form-success__collapsed-edit" type="button">Изменить контакты</button>
+        </p>
       </div>
     </div>
   </div>
@@ -2570,6 +2626,33 @@ picture { display: block; }
       track('form_anchor_click', params);
     }
   });
+
+  /* --- CTA "#contact" ведёт к самой форме, а не к верху секции -----------
+     На мобильном контакты и форма стоят друг под другом, и блок контактов
+     (адрес, WhatsApp, ЗАЯВКА-строка) выше формы по вёрстке — переход по
+     нативному якорю показывал только его, а форма уходила за экран (баг,
+     заметил владелец 2026-09-24). href="#contact" и id="contact" не трогаем
+     (от них зависят build-hero-variants.py, qa-browser-matrix.py и
+     verify-tracking.mjs) — только подменяем итоговую точку прокрутки.
+     Пункты меню (шапка и бургер) сюда не входят намеренно: у них «Контакты» —
+     это переход к секции, а не к брони, и invariants.spec.ts §7 проверяет,
+     что они останавливаются на 20 px под шапкой, а не у формы. */
+  var leadFormAnchor = document.querySelector('.contact__form-col');
+  if (leadFormAnchor) {
+    var contactReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    document.addEventListener('click', function (event) {
+      var link = event.target.closest('a[href="#contact"]');
+      if (!link || link.closest('header.site-header')) return;
+      event.preventDefault();
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, '', '#contact');
+      }
+      leadFormAnchor.scrollIntoView({
+        behavior: contactReduceMotion.matches ? 'instant' : 'smooth',
+        block: 'start'
+      });
+    });
+  }
 
   /* --- Бургер-меню ------------------------------------------------------- */
 
@@ -3348,7 +3431,11 @@ picture { display: block; }
 
   var form = document.querySelector(".lead-form");
   var success = document.querySelector(".form-success");
-  var again = document.querySelector(".form-success__again");
+  var successBody = document.querySelector(".form-success__body");
+  var successCollapsed = document.querySelector(".form-success__collapsed");
+  var successClose = document.querySelector(".form-success__close");
+  var successContinue = document.querySelector(".form-success__continue");
+  var successCollapsedEdit = document.querySelector(".form-success__collapsed-edit");
   var editContacts = document.querySelector(".form-success__edit");
   var errorBox = document.querySelector(".lead-form__error");
   var errorTitle = errorBox && errorBox.querySelector(".lead-form__error-title");
@@ -3437,6 +3524,10 @@ picture { display: block; }
   function showSuccess(data) {
     hideFormError();
     form.hidden = true;
+    // Полная карточка, не свёрнутая строка: свежий успех всегда открыт целиком,
+    // даже если предыдущую заявку до этого сворачивали.
+    if (successBody) successBody.hidden = false;
+    if (successCollapsed) successCollapsed.hidden = true;
     success.querySelector(".form-success__contacts").textContent =
       "Мы свяжемся с вами по телефону " + displayPhone(data.phone) + ". Ваш e-mail: " + data.email;
     success.hidden = false;
@@ -3445,6 +3536,18 @@ picture { display: block; }
     if (title) {
       title.setAttribute("tabindex", "-1");
       title.focus();
+    }
+  }
+
+  // Свернуть карточку успеха в одну строку-подтверждение: повторную пустую
+  // форму так не увидеть (защита от дублей-заявок), при этом «Изменить
+  // контакты» остаётся доступной — тот же reopenForm(), что и в открытой
+  // карточке. Перезагрузки страницы нет, событий в dataLayer нет.
+  function collapseSuccess() {
+    if (successBody) successBody.hidden = true;
+    if (successCollapsed) {
+      successCollapsed.hidden = false;
+      successCollapsed.focus();
     }
   }
 
@@ -3756,13 +3859,11 @@ picture { display: block; }
     });
   }
 
-  function reopenForm(reset) {
-    editingContacts = !reset;
-    if (reset) {
-      form.reset();
-      acceptedSubmissionId = "";
-      acceptedContacts = null;
-    }
+  // «Отправить ещё одну заявку» убрали (2026-09-24, владелец: дублирует лиды
+  // и конверсии Ads) — reopenForm() теперь всегда правит контакты последней
+  // принятой заявки, независимого сброса формы больше нет.
+  function reopenForm() {
+    editingContacts = true;
     pendingSubmissionId = "";
     pendingFingerprint = "";
     formInputs.forEach(function (input) {
@@ -3776,9 +3877,11 @@ picture { display: block; }
     showFields(true);
   }
 
-  if (again && editContacts && form && success) {
-    again.addEventListener("click", function () { reopenForm(true); });
-    editContacts.addEventListener("click", function () { reopenForm(false); });
+  if (editContacts && form && success) {
+    editContacts.addEventListener("click", function () { reopenForm(); });
+    if (successCollapsedEdit) successCollapsedEdit.addEventListener("click", function () { reopenForm(); });
+    if (successClose) successClose.addEventListener("click", collapseSuccess);
+    if (successContinue) successContinue.addEventListener("click", collapseSuccess);
   }
 
 })();

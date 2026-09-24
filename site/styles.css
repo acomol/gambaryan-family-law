@@ -1462,12 +1462,31 @@ picture { display: block; }
 }
 
 .form-success {
+  position: relative;
   background: var(--bg-card);
   border-radius: 14px;
   padding: clamp(36px, 5vw, 56px) 32px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
   text-align: center;
 }
+/* Закрыть карточку успеха: сворачивает её в строку-подтверждение (не
+   перезагрузка и не повторная пустая форма — просто скрыть/показать). */
+.form-success__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.form-success__close:hover { background: rgba(0, 0, 0, 0.05); color: var(--ink); }
 .form-success__icon {
   display: inline-flex;
   width: 56px;
@@ -1492,7 +1511,7 @@ picture { display: block; }
   line-height: 1.65;
   color: var(--ink-2);
 }
-.form-success__again, .form-success__edit, .lead-form__edit {
+.form-success__continue, .form-success__edit, .lead-form__edit {
   border: 1px solid var(--input-line);
   background: #fff;
   color: var(--ink);
@@ -1504,7 +1523,36 @@ picture { display: block; }
   border-radius: 8px;
   cursor: pointer;
 }
-.form-success__again:hover { border-color: var(--gold); }
+.form-success__continue:hover { border-color: var(--gold); }
+
+/* Свёрнутое состояние после закрытия: одна строка вместо карточки, повторно
+   пустая форма не показывается — только правка контактов той же заявки. */
+/* Специфичность выше ".form-success p" (margin-bottom 24px), поэтому
+   селектор — от родителя: единственный <p> в свёрнутом виде своих
+   отступов не унаследует. */
+.form-success .form-success__collapsed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.form-success .form-success__collapsed[hidden] { display: none; }
+.form-success__collapsed svg { flex: none; }
+.form-success__collapsed-edit {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  color: var(--wine);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 /* --- 8. Футер ------------------------------------------------------------ */
 

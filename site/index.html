@@ -365,11 +365,19 @@
         <p class="lead-form__legal" data-copy-id="7.23">Не отправляйте документы и конфиденциальные сведения через форму для назначения консультации.</p>
       </form>
       <div class="form-success" role="status" hidden>
-        <span class="form-success__icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F0AE1F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
-        <div class="form-success__title">Заявка получена</div>
-        <p class="form-success__contacts"></p>
-        <button class="form-success__edit" type="button">Указать другие контакты</button>
-        <button class="form-success__again" type="button">Отправить ещё одну заявку</button>
+        <div class="form-success__body">
+          <button class="form-success__close" type="button" aria-label="Закрыть"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          <span class="form-success__icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F0AE1F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+          <div class="form-success__title">Заявка получена</div>
+          <p class="form-success__contacts"></p>
+          <button class="form-success__edit" type="button">Указать другие контакты</button>
+          <button class="form-success__continue" type="button">Продолжить на сайте</button>
+        </div>
+        <p class="form-success__collapsed" tabindex="-1" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F0AE1F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Заявка отправлена — мы свяжемся с вами</span>
+          <button class="form-success__collapsed-edit" type="button">Изменить контакты</button>
+        </p>
       </div>
     </div>
   </div>
