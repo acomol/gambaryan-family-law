@@ -5,8 +5,10 @@
     "code": {
       "repo": "gambaryan-family-law",
       "productionBranch": "codex/final-dev5",
-      "deploySha": "b30026ff27b0d6bc",
-      "note": "deploySha — идентификатор боевого HTML/деплоя, дан задачей как якорь для сверки; не путать с git-коммитом кода (см. verification.sources)."
+      "deploySha": "ce53f4d00de81039",
+      "deployId": "c03e51c6",
+      "deployCommit": "60a1cea",
+      "note": "deploySha — sha256 (16 знаков) боевого HTML, пересчитан curl'ом после деплоя Pages c03e51c6 от 2026-09-24; до него — b30026ff27b0d6bc (23.09). Не путать с git-коммитом кода (deployCommit)."
     },
     "gtm": {
       "publicId": "GTM-MFLHW63Q",
@@ -52,8 +54,7 @@
         { "platform": "GoogleAds", "tagId": "53", "name": "Ads - Заявка (generate_lead)", "conversionId": "18396553571", "conversionLabel": "ccbrCO7u2YEdEOPClMRE", "orderId": "{{DLV - submission_id}}", "status": "основная (primary_for_goal=True)" }
       ],
       "interactions": [
-        "§3.9 «Всё верно, отправить» → /api/lead ответил 202 на новую заявку",
-        "§3.9 «Отправить ещё одну заявку» → 202 (новый submission_id)"
+        "§3.9 «Всё верно, отправить» → /api/lead ответил 202 на новую заявку"
       ],
       "coveredByLiveClick": true,
       "verifiedBy": ["1", "2", "3"]
@@ -67,7 +68,10 @@
       "tags": [
         { "platform": "GA4", "tagId": "39", "name": "GA4 - lead_corrected", "event": "lead_corrected", "params": ["submission_id", "corrects_submission_id", "design_version"] }
       ],
-      "interactions": ["§3.9 «Указать другие контакты» → отправлено (правит контакты той же заявки, НЕ создаёт generate_lead)"],
+      "interactions": [
+        "§3.9 «Указать другие контакты» → отправлено (правит контакты той же заявки, НЕ создаёт generate_lead)",
+        "§3.9 «Изменить контакты» в свёрнутой строке панели успеха → отправлено (тот же reopenForm, site/app.js:1409)"
+      ],
       "coveredByLiveClick": false,
       "verifiedBy": ["1", "2"],
       "notes": "GA4 live-данные за 14 дней (source 2/3 report): 0 событий lead_corrected — низкочастотное по сути (исправление контактов случается редко), не подтверждено и не опровергнуто живым кликом в этом прогоне. [unverified]"
