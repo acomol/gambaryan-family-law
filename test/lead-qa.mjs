@@ -1023,6 +1023,68 @@ const baseLead = (id, extra = {}) => ({
       lastAlbatoBody?.email_html?.includes('https://wa.me/972501234567'), lastAlbatoBody?.email_html?.slice(0, 200));
   }
 
+  // T29 [branded email v2, owner request] utm_source containing "test" (e.g.
+  // the team's own "adfix_test" traffic) shows a clear "do not process"
+  // badge next to the title; any other source shows no badge at all.
+  {
+    const idTest = crypto.randomUUID();
+    const idReal = crypto.randomUUID();
+    const badgeText = 'Тестовая заявка — не обрабатывать';
+    let env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = true;
+    let r = await post(env, baseLead(idTest, { utm_source: 'adfix_test' }));
+    console.log('\nT29 [branded email v2] test-lead badge shows for utm_source containing "test", hidden otherwise');
+    ok('202 accepted (test lead)', r.status === 202 && r.body.ok === true, JSON.stringify(r.body));
+    ok('email_html shows the test-lead badge for utm_source=adfix_test',
+      lastAlbatoBody?.email_html?.includes(badgeText), lastAlbatoBody?.email_html?.slice(0, 400));
+
+    env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    r = await post(env, baseLead(idReal, { utm_source: 'google' }));
+    ok('202 accepted (real lead)', r.status === 202 && r.body.ok === true, JSON.stringify(r.body));
+    ok('email_html has NO test-lead badge for a real utm_source=google',
+      !lastAlbatoBody?.email_html?.includes(badgeText));
+  }
+
+  // T30 [branded email v2, owner request] "Страница: Главная" when
+  // landing_path is exactly "/", the raw path otherwise; either way it
+  // links to https://lp.gambarian.com + the path.
+  {
+    const idHome = crypto.randomUUID();
+    const idDeep = crypto.randomUUID();
+    let env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = true;
+    let r = await post(env, baseLead(idHome, { landing_path: '/' }));
+    console.log('\nT30 [branded email v2] landing_path "/" shows "Главная", other paths show the path, both linked to lp.gambarian.com');
+    ok('202 accepted (home)', r.status === 202 && r.body.ok === true, JSON.stringify(r.body));
+    ok('email_html shows "Главная" (not the raw "/") for landing_path="/"',
+      lastAlbatoBody?.email_html?.includes('>Главная<'), lastAlbatoBody?.email_html?.slice(0, 600));
+    ok('the "Главная" link points to https://lp.gambarian.com/',
+      lastAlbatoBody?.email_html?.includes('href="https://lp.gambarian.com/"'));
+
+    env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    r = await post(env, baseLead(idDeep, { landing_path: '/uslugi/razvod' }));
+    ok('202 accepted (deep path)', r.status === 202 && r.body.ok === true, JSON.stringify(r.body));
+    ok('email_html shows the raw path for a non-home landing_path',
+      lastAlbatoBody?.email_html?.includes('>/uslugi/razvod<'));
+    ok('the page link points to https://lp.gambarian.com/uslugi/razvod',
+      lastAlbatoBody?.email_html?.includes('href="https://lp.gambarian.com/uslugi/razvod"'));
+  }
+
+  // T31 [branded email v2, regression guard] the contact block must NOT be
+  // the v1 two-column label/value table — width="92" was v1's fixed label
+  // column width (emailLabelledRowHtml); its absence here proves the
+  // redesign actually replaced that structure rather than just restyling it.
+  {
+    const idNoTable = crypto.randomUUID();
+    const env = { LEADS_KV: makeKV(), LEADS_DB: makeD1(), LEADS_ARCHIVE: makeR2(), ALBATO_WEBHOOK_URL: 'https://albato.example/wh' };
+    albatoUp = true;
+    const r = await post(env, baseLead(idNoTable));
+    console.log('\nT31 [branded email v2] contact block is label-above-value, not the old two-column table');
+    ok('202 accepted', r.status === 202 && r.body.ok === true, JSON.stringify(r.body));
+    ok('email_html has no trace of the old two-column label width (width="92")',
+      !lastAlbatoBody?.email_html?.includes('width="92"'));
+  }
+
   console.log(`\n=== RESULT: ${pass} PASS / ${fail} FAIL ===\n`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('HARNESS ERROR:', e); process.exit(2); });
