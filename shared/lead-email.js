@@ -3,18 +3,38 @@
    forwardToAlbato, right before sheetSafePayload is applied). Imported by
    BOTH — one renderer, one place to fix a bug.
 
-   Ported from the mini-CRM's office-email template
-   (I:/GIT/gamb-mini-crm-fix/apps-script/src/EmailTemplates.gs,
-   renderNewLeadEmail_ + its helpers, branch claude/gambarian-mini-crm-fix@
-   6e01162) — SAME brand tokens/layout/buttons, adapted for this pipeline:
-     - no CRM lead number (this pipeline has none);
-     - received time is Asia/Jerusalem dd.MM.yyyy HH:mm, from submitted_at;
-     - "Открыть таблицу" (outline button) is a FIXED URL, not a per-lead
-       sheet deep link;
-     - WhatsApp normalization is this task's own spec (see
-       normalizeWhatsAppNumber below), not the mini-CRM's buildContactLinks_
-       (this contract accepts a wider range of typed phone shapes than the
-       CRM's own sheet-typed numbers).
+   v1 (2026-09-24, commit 301c9fc) ported the mini-CRM's office-email
+   template (I:/GIT/gamb-mini-crm-fix/apps-script/src/EmailTemplates.gs,
+   renderNewLeadEmail_) as a two-column label/value table with buttons
+   nested inside the phone cell.
+
+   v2 (2026-09-24, owner request after reviewing v1 live in Gmail on his
+   phone, probably dark mode) — restructure, not a spacing tweak. Target
+   order: compact header -> title+time(+test badge) -> ONE contact block
+   (labels ABOVE values, no two-column table) -> two wide stacked action
+   buttons (own block, full card width, not nested in the phone cell) ->
+   muted service block (source/page) -> a neutral (not wine) link to the
+   sheet -> short footer. Public API unchanged: renderNewLeadEmail's return
+   shape ({subject, html}) and the subject format ("Новая заявка с сайта —
+   <name>"), plus escapeHtml/stripSubjectControlChars/
+   formatJerusalemDateTime/telHrefFromPhone/normalizeWhatsAppNumber, are
+   BIT-FOR-BIT IDENTICAL to v1 — only the HTML/CSS composition changed.
+
+   No image icons anywhere (Gmail may block remote images before the first
+   open) — action buttons are text-only, not even a unicode glyph, since
+   that could not be verified to render correctly in real Gmail from this
+   environment; text-only is the documented fallback for that case.
+
+   Colors were chosen to survive Gmail's own dark-mode auto-inversion, not
+   just to look right in light mode: dark text on the gold fill (never
+   white-on-gold), and every text/background pair was computed (see
+   docs/LEAD-PIPELINE.md's contrast table) both normally AND under a
+   simulated `invert(1) hue-rotate(180deg)` filter — the approximation
+   Gmail's own "smart" dark mode uses for HTML it does not recognize as
+   dark-mode-aware. <meta name="color-scheme"> / <meta
+   name="supported-color-schemes"> tell Gmail this design is light-only so
+   it should not auto-invert at all; the filter simulation is the fallback
+   check for when an older client ignores those tags anyway.
 
    Pure functions only — no fetch/KV/D1/R2 access, so this module is safe to
    import from EITHER the Pages Function or the standalone Worker, and to
@@ -28,16 +48,24 @@
    at SEND time, so a cron-worker retry renders it again from whatever
    payload_json/fields it has at that moment. */
 
+// Colors: see docs/LEAD-PIPELINE.md ("Contrast table, v2 redesign") for the
+// full computed WCAG ratio table (normal + simulated Gmail dark-invert).
+// `goldBtnBorder` exists because the gold fill alone (#f0ae1f on white) is
+// only ~1.95:1 against the card — below the 3:1 UI-component floor — so the
+// button gets a solid `ink` border, which alone clears 3:1 against both the
+// fill and the card, giving the button a clearly perceivable boundary.
 const EMAIL_BRAND = Object.freeze({
   bgOuterLight: "#f6f1e8",
   bgHeader: "#0a0b0d",
   bgCardLight: "#ffffff",
   divider: "#e5e0d8",
   gold: "#f0ae1f",
-  wine: "#8a1f1f",
+  goldBtnBorder: "#14191f",
   ink: "#14191f",
-  ink2: "#4b5158",
-  ink3: "#6b7280",
+  muted: "#5b6169",
+  badgeBg: "#fef3c7",
+  badgeText: "#7a4a06",
+  badgeBorder: "#92400e",
   fontStack: "'Onest', Helvetica, Arial, sans-serif",
 });
 
@@ -46,6 +74,7 @@ const EMAIL_BRAND = Object.freeze({
 // device/theme it has — a single, tested light rendering beats an
 // unverified dark-mode branch).
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/1_jhfr7ucoKkbrwWlUQoS9wyw7uHYhe_oOutKpTlcoV4/edit";
+const LANDING_ORIGIN = "https://lp.gambarian.com";
 
 function escapeHtml(value) {
   return String(value === undefined || value === null ? "" : value)
@@ -121,45 +150,60 @@ function normalizeWhatsAppNumber(raw) {
   return value;
 }
 
-function emailButtonHtml(label, href, opts) {
+// Action button — full-width, padding-based (NOT a fixed line-height), so a
+// long/zoomed label grows the box via padding instead of being clipped by a
+// line-height sized for the un-zoomed text. min-height is a FLOOR, not a
+// fixed height. `cls` is a stable hook for QA (Playwright zoom simulation),
+// harmless if a client strips <style>/class since every real style is
+// inline too.
+function actionButtonHtml(label, href, opts) {
   opts = opts || {};
-  var bg = opts.bg || EMAIL_BRAND.gold;
-  var color = opts.color || EMAIL_BRAND.ink;
-  var border = opts.border ? ("border:1px solid " + opts.border + ";") : "";
-  var style = "display:inline-block;min-height:44px;line-height:44px;padding:0 22px;"
-    + "background:" + bg + ";color:" + color + ";" + border
-    + "font-family:" + EMAIL_BRAND.fontStack + ";font-weight:700;font-size:13px;"
-    + "border-radius:8px;text-decoration:none;white-space:nowrap;";
-  return "<a href=\"" + escapeHtml(href) + "\" style=\"" + style + "\">" + escapeHtml(label) + "</a>";
+  var variant = opts.variant || "outline";
+  var cls = opts.cls || "";
+  var fill = variant === "fill"
+    ? ("background:" + EMAIL_BRAND.gold + ";border:1px solid " + EMAIL_BRAND.goldBtnBorder + ";color:" + EMAIL_BRAND.ink + ";")
+    : ("background:" + EMAIL_BRAND.bgCardLight + ";border:1px solid " + EMAIL_BRAND.ink + ";color:" + EMAIL_BRAND.ink + ";");
+  var style = "display:block;width:100%;box-sizing:border-box;min-height:" + (opts.minHeight || 52) + "px;"
+    + "padding:14px 20px;line-height:1.3;text-align:center;" + fill
+    + "font-family:" + EMAIL_BRAND.fontStack + ";font-weight:700;font-size:15px;"
+    + "border-radius:10px;text-decoration:none;";
+  return "<a" + (cls ? " class=\"" + cls + "\"" : "") + " href=\"" + escapeHtml(href) + "\" style=\"" + style + "\">" + escapeHtml(label) + "</a>";
 }
 
-// Equal-size, aligned "Позвонить"/WhatsApp buttons — block-stacked, both
-// full width, one under the other. Same layout for every screen width
-// (no media-query breakpoint to keep track of), ported verbatim from the
-// mini-CRM's emailContactButtonsHtml_.
-function emailContactButtonsHtml(telHref, waHref) {
-  var base = "display:block;width:100%;box-sizing:border-box;min-height:44px;line-height:44px;text-align:center;"
-    + "font-family:" + EMAIL_BRAND.fontStack + ";font-weight:700;font-size:13px;border-radius:8px;text-decoration:none;";
-  var callStyle = base + "background:" + EMAIL_BRAND.gold + ";color:" + EMAIL_BRAND.ink + ";";
-  var html = "<div style=\"margin-top:10px;\">"
-    + "<a href=\"" + escapeHtml(telHref) + "\" style=\"" + callStyle + "\">Позвонить</a>";
+// Two stacked, equal-width, separated action buttons — a standalone block
+// (NOT nested inside the phone value anymore). WhatsApp is omitted entirely
+// when the number does not normalize (existing rule, unchanged).
+function actionsBlockHtml(telHref, waHref) {
+  var html = "<div>" + actionButtonHtml("Позвонить", telHref, { variant: "fill", minHeight: 56, cls: "abx-btn-call abx-btn-label" });
   if (waHref) {
-    var waStyle = base + "background:" + EMAIL_BRAND.bgOuterLight + ";color:" + EMAIL_BRAND.ink
-      + ";border:1px solid " + EMAIL_BRAND.ink3 + ";margin-top:8px;";
-    html += "<a href=\"" + escapeHtml(waHref) + "\" style=\"" + waStyle + "\">Написать в WhatsApp</a>";
+    html += "<div style=\"margin-top:18px;\">"
+      + actionButtonHtml("Написать в WhatsApp", waHref, { variant: "outline", minHeight: 56, cls: "abx-btn-wa abx-btn-label" })
+      + "</div>";
   }
   html += "</div>";
   return html;
 }
 
-function emailLabelledRowHtml(label, valueHtml, opts) {
+// One field in the contact block: label ABOVE the value, full width, no
+// two-column table. `cls` on the value is a QA hook (Playwright zoom test).
+function stackedFieldHtml(label, valueHtml, opts) {
   opts = opts || {};
-  var borderTop = opts.noBorderTop ? "" : ("border-top:1px solid " + EMAIL_BRAND.divider + ";");
-  return "<tr><td style=\"padding:14px 0;" + borderTop + "\">"
-    + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
-    + "<td width=\"92\" valign=\"top\" style=\"font-family:" + EMAIL_BRAND.fontStack + ";font-size:12px;color:" + EMAIL_BRAND.ink3 + ";padding-top:2px;\">" + escapeHtml(label) + "</td>"
-    + "<td style=\"font-family:" + EMAIL_BRAND.fontStack + ";font-size:15px;color:" + EMAIL_BRAND.ink + ";font-weight:600;\">" + valueHtml + "</td>"
-    + "</tr></table></td></tr>";
+  var marginTop = opts.first ? "0" : "16px";
+  var valueSize = opts.fontSize || 16;
+  var valueWeight = opts.fontWeight || 400;
+  return "<div style=\"margin-top:" + marginTop + ";\">"
+    + "<div style=\"font-family:" + EMAIL_BRAND.fontStack + ";font-size:12px;font-weight:600;letter-spacing:0.04em;"
+    + "text-transform:uppercase;color:" + EMAIL_BRAND.muted + ";\">" + escapeHtml(label) + "</div>"
+    + "<div class=\"" + (opts.cls || "") + "\" style=\"margin-top:4px;font-family:" + EMAIL_BRAND.fontStack + ";"
+    + "font-size:" + valueSize + "px;font-weight:" + valueWeight + ";color:" + EMAIL_BRAND.ink + ";"
+    + "word-break:break-word;overflow-wrap:break-word;line-height:1.3;\">" + valueHtml + "</div>"
+    + "</div>";
+}
+
+// A divider is placed BETWEEN GROUPS (contact -> actions, service -> sheet
+// link) — not after every field, unlike the v1 two-column table.
+function dividerHtml() {
+  return "border-top:1px solid " + EMAIL_BRAND.divider + ";margin-top:24px;padding-top:24px;";
 }
 
 function renderEmailShellHtml(parts) {
@@ -169,35 +213,44 @@ function renderEmailShellHtml(parts) {
     + "<head>"
     + "<meta charset=\"utf-8\">"
     + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+    // Tell Gmail (and any other client that honors this) the design is
+    // light-only, so it should not run its own auto-dark inversion on it.
+    + "<meta name=\"color-scheme\" content=\"light\">"
+    + "<meta name=\"supported-color-schemes\" content=\"light\">"
     + "<title>" + escapeHtml(parts.previewText || "") + "</title>"
     + "<style>"
     + "body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}"
     + "img{border:0;outline:none;text-decoration:none;}"
     + "a{text-decoration:none;}"
+    // Reduce side padding on mobile — the card's own inner padding (28px
+    // desktop) drops to 20px, and the outer gutter (16px) drops to 12px, so
+    // long names/phones get more usable width on a 320-390px screen.
+    + "@media (max-width:480px){.abx-card{padding:20px !important;}.abx-outer{padding:20px 12px !important;}}"
     + "</style>"
     + "</head>"
     + "<body style=\"margin:0;padding:0;background:" + b.bgOuterLight + ";\">"
     + "<div style=\"display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;\">" + escapeHtml(parts.previewText || "") + "</div>"
     + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:" + b.bgOuterLight + ";\">"
-    + "<tr><td align=\"center\" style=\"padding:32px 16px;\">"
+    + "<tr><td align=\"center\" class=\"abx-outer\" style=\"padding:32px 16px;\">"
     + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:620px;\">"
-    + "<tr><td style=\"background:" + b.bgHeader + ";padding:24px 32px;border-radius:12px 12px 0 0;\" align=\"center\">"
-    + "<div style=\"font-family:" + b.fontStack + ";font-weight:800;font-size:16px;letter-spacing:0.06em;color:#ffffff;text-transform:uppercase;\">"
+    // Compact header — height cut mainly via padding (was 24px 32px).
+    + "<tr><td style=\"background:" + b.bgHeader + ";padding:14px 24px;border-radius:12px 12px 0 0;\" align=\"center\">"
+    + "<div style=\"font-family:" + b.fontStack + ";font-weight:800;font-size:14px;letter-spacing:0.06em;color:#ffffff;text-transform:uppercase;\">"
     + "Гамбарян <span style=\"color:" + b.gold + ";\">&amp;</span> Партнёры"
     + "</div>"
-    + "<div style=\"margin-top:10px;font-family:" + b.fontStack + ";font-size:10px;font-weight:600;letter-spacing:0.32em;color:" + b.gold + ";text-transform:uppercase;\">Адвокаты</div>"
+    + "<div style=\"margin-top:4px;font-family:" + b.fontStack + ";font-size:9px;font-weight:600;letter-spacing:0.28em;color:" + b.gold + ";text-transform:uppercase;\">Адвокаты</div>"
     + "</td></tr>"
-    + "<tr><td style=\"background:" + b.bgCardLight + ";padding:32px;border-radius:0 0 12px 12px;\">"
-    + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">"
-    + "<tr><td style=\"font-family:" + b.fontStack + ";font-size:20px;font-weight:700;color:" + b.ink + ";padding-bottom:20px;\">" + parts.titleHtml + "</td></tr>"
-    + parts.rowsHtml
-    + "<tr><td style=\"padding-top:26px;\" align=\"center\">" + parts.ctaHtml + "</td></tr>"
-    + "</table>"
+    + "<tr><td class=\"abx-card\" style=\"background:" + b.bgCardLight + ";padding:28px;border-radius:0 0 12px 12px;\">"
+    + parts.titleHtml
+    + "<div style=\"" + dividerHtml() + "\">" + parts.contactHtml + "</div>"
+    + "<div style=\"" + dividerHtml() + "\">" + parts.actionsHtml + "</div>"
+    + parts.serviceHtml
+    + "<div style=\"" + dividerHtml() + "\">" + parts.ctaHtml + "</div>"
     + "</td></tr>"
     + "</table>"
     + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:620px;\">"
-    + "<tr><td align=\"center\" style=\"padding:18px 32px;\">"
-    + "<span style=\"font-family:" + b.fontStack + ";font-size:12px;color:" + b.ink2 + ";\">" + escapeHtml(parts.footerText || "") + "</span>"
+    + "<tr><td align=\"center\" style=\"padding:16px 32px;\">"
+    + "<span style=\"font-family:" + b.fontStack + ";font-size:12px;color:" + b.muted + ";\">" + escapeHtml(parts.footerText || "") + "</span>"
     + "</td></tr>"
     + "</table>"
     + "</td></tr>"
@@ -210,6 +263,20 @@ function formatSource(fields) {
   var campaign = String((fields && fields.utm_campaign) || "").trim();
   var parts = [source, campaign].filter(Boolean);
   return parts.length ? parts.join(" / ") : "Прямой";
+}
+
+// Test-lead badge (owner request): utm_source containing "test" (e.g. the
+// team's own "adfix_test" traffic) gets a clearly-marked badge next to the
+// title so nobody in the office processes it as a real inquiry.
+function isTestLead(fields) {
+  return String((fields && fields.utm_source) || "").toLowerCase().indexOf("test") !== -1;
+}
+function testBadgeHtml() {
+  var b = EMAIL_BRAND;
+  return "<span style=\"display:inline-block;margin-left:8px;padding:4px 10px;"
+    + "background:" + b.badgeBg + ";border:1px solid " + b.badgeBorder + ";border-radius:999px;"
+    + "font-family:" + b.fontStack + ";font-size:11px;font-weight:700;color:" + b.badgeText + ";"
+    + "white-space:normal;vertical-align:middle;\">Тестовая заявка — не обрабатывать</span>";
 }
 
 /**
@@ -232,34 +299,53 @@ function renderNewLeadEmail(fields) {
   var waNumber = normalizeWhatsAppNumber(phone);
   var waHref = waNumber ? "https://wa.me/" + waNumber : null;
 
-  var phoneValueHtml = escapeHtml(phone);
-  if (telHref) {
-    phoneValueHtml += emailContactButtonsHtml(telHref, waHref);
+  // --- Title + time + optional test badge ---
+  var titleHtml = "<div>"
+    + "<span style=\"font-family:" + EMAIL_BRAND.fontStack + ";font-size:20px;font-weight:700;color:" + EMAIL_BRAND.ink + ";\">Новая заявка</span>"
+    + (isTestLead(fields) ? testBadgeHtml() : "")
+    + "</div>";
+  if (receivedAtLabel) {
+    var dtParts = receivedAtLabel.split(" ");
+    var timeLine = escapeHtml(dtParts[0]) + " · " + escapeHtml(dtParts[1] || "") + " · время Израиля";
+    titleHtml += "<div style=\"margin-top:6px;font-family:" + EMAIL_BRAND.fontStack + ";font-size:13px;color:" + EMAIL_BRAND.muted + ";\">" + timeLine + "</div>";
   }
 
-  var rows = emailLabelledRowHtml("Имя", escapeHtml(name), { noBorderTop: true });
-  rows += emailLabelledRowHtml("Телефон", phoneValueHtml);
+  // --- ONE contact block: labels above values, name/phone/email together ---
+  var contactHtml = stackedFieldHtml("Имя", escapeHtml(name), { first: true, fontSize: 20, fontWeight: 700, cls: "abx-name-value" });
+  contactHtml += stackedFieldHtml("Телефон", escapeHtml(phone), { fontSize: 18, fontWeight: 700, cls: "abx-phone-value" });
   if (email) {
-    rows += emailLabelledRowHtml(
+    contactHtml += stackedFieldHtml(
       "Email",
-      "<a href=\"mailto:" + escapeHtml(email) + "\" style=\"color:" + EMAIL_BRAND.ink + ";font-weight:600;text-decoration:none;\">" + escapeHtml(email) + "</a>",
+      "<a href=\"mailto:" + escapeHtml(email) + "\" style=\"color:" + EMAIL_BRAND.ink + ";text-decoration:underline;\">" + escapeHtml(email) + "</a>",
+      { fontSize: 15, fontWeight: 400 },
     );
   }
-  rows += emailLabelledRowHtml("Источник", escapeHtml(source));
-  if (landingPath) {
-    rows += emailLabelledRowHtml("Страница", escapeHtml(landingPath));
-  }
 
-  var cta = emailButtonHtml("Открыть таблицу", SHEET_URL, { bg: "transparent", color: EMAIL_BRAND.wine, border: EMAIL_BRAND.wine });
-  var titleHtml = "Новая заявка с сайта"
-    + (receivedAtLabel ? "<div style=\"margin-top:4px;font-size:13px;font-weight:400;color:" + EMAIL_BRAND.ink3 + ";\">Получена " + escapeHtml(receivedAtLabel) + " (Израиль)</div>" : "");
-  var footerText = "Автоматическое уведомление о новой заявке · Гамбарян и партнёры";
+  // --- Actions block: below the contact block, full card width ---
+  var actionsHtml = telHref ? actionsBlockHtml(telHref, waHref) : "";
+
+  // --- Muted service block: source + page (page links to the live site) ---
+  var pageLabel = landingPath === "/" ? "Главная" : escapeHtml(landingPath);
+  var pageHref = LANDING_ORIGIN + landingPath;
+  var serviceHtml = "<div style=\"margin-top:16px;font-family:" + EMAIL_BRAND.fontStack + ";font-size:13px;line-height:1.6;color:" + EMAIL_BRAND.muted + ";\">"
+    + "<div>Источник: " + escapeHtml(source) + "</div>"
+    + (landingPath
+      ? "<div style=\"margin-top:2px;\">Страница: <a href=\"" + escapeHtml(pageHref) + "\" style=\"color:" + EMAIL_BRAND.muted + ";text-decoration:underline;\">" + pageLabel + "</a></div>"
+      : "")
+    + "</div>";
+
+  // --- Neutral (not wine) outline link to the sheet ---
+  var ctaHtml = actionButtonHtml("Открыть таблицу заявок", SHEET_URL, { variant: "outline", minHeight: 46 });
+
+  var footerText = "Автоматическое уведомление";
 
   var html = renderEmailShellHtml({
     previewText: "Новая заявка — " + name,
     titleHtml: titleHtml,
-    rowsHtml: rows,
-    ctaHtml: cta,
+    contactHtml: contactHtml,
+    actionsHtml: actionsHtml,
+    serviceHtml: serviceHtml,
+    ctaHtml: ctaHtml,
     footerText: footerText,
   });
 
