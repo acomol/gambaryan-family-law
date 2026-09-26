@@ -395,7 +395,7 @@ Based on complexity, dispatch builder agent(s) in worktree(s):
 ### Step 4: Merge
 
 As builder agents complete their work:
-- Merge their worktree branches into main
+- Integrate builder branches through the repository's feature-branch and PR workflow
 - You have full context on what each agent built, so resolve any conflicts intelligently
 - After each merge, verify the build still passes: `npm run build`
 - If a merge introduces type errors, fix them immediately
