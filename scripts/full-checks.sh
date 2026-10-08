@@ -14,6 +14,7 @@ python -B scripts/build-font-variants.py | tail -1
 python -B scripts/build-hero-variants.py | tail -1
 python -B scripts/build-action-bar.py | tail -1
 python -B scripts/build-review-numbered.py | tail -1
+python -B scripts/build-production.py | cut -c1-72
 python -B scripts/verify-client-copy.py | tail -1
 python -m unittest discover -s scripts/tests 2>&1 | tail -1
 node scripts/verify-lead-hook.mjs | tail -1

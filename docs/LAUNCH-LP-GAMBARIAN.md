@@ -111,8 +111,10 @@ letsencrypt.org, pki.goog и ssl.com — через них Cloudflare выпус
 | `/favicon-96.png` | 96×96 | `<link rel="icon" type="image/png" sizes="96x96" …>` |
 | `/apple-touch-icon.png` | 180×180 | `<link rel="apple-touch-icon" sizes="180x180" …>` |
 | `/favicon-512.png` | 512×512 | без тега: манифеста у страницы нет |
+| `/favicon.png` | кадр 32×32 из `favicon.ico` | без тега: прежний адрес значка остаётся картинкой |
 
-Прежний `/favicon.png` (32×32) убран. В `sizes` у ICO — перечень размеров из самого файла, а не
+Сборка принимает значки только с записанным в `scripts/build-production.py` sha256
+(`ICON_SHA256`) и входит в `scripts/full-checks.sh`. В `sizes` у ICO — перечень размеров из самого файла, а не
 `any`: `any` означает векторный формат, каждый названный размер обязан быть в ресурсе
 ([MDN, `<link>` → `sizes`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/link#sizes),
 прочитано 2026-10-08). `business-logo-1200.png` из того же пакета — для Google Ads, на сайт не кладётся.

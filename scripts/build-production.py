@@ -17,7 +17,9 @@ PRODUCTION-BUILD v1.4.0 | 2026-10-08
      (только lp; превью и site/ не меняются). FAQPage нет: на странице нет блока вопросов.
   7. v1.4.0: значок сайта — знак владельца (пакет gambarian-logo-final-v1, 2026-10-08) вместо
      растра SVG data-URI: favicon.ico (16–256), favicon-96.png, apple-touch-icon.png 180×180;
-     favicon-512.png лежит рядом без тега (манифеста у страницы нет). Прежний /favicon.png убран.
+     favicon-512.png лежит рядом без тега (манифеста у страницы нет). По прежнему адресу
+     /favicon.png — кадр 32×32 из того же favicon.ico, тоже без тега: адрес не должен начать
+     отдавать HTML. Сборка принимает только эти байты (ICON_SHA256).
 gambarian-standalone.html в основную версию не входит: это копия страницы для
 согласования, отдельный адрес ей на lp не нужен. noindex остаётся (docs/LAUNCH-LP-GAMBARIAN.md).
 
@@ -43,7 +45,16 @@ ADDON = Path('site-addons/production')
 SQUARE = 'social-preview-logo-v1.1.0-1254x1254.png'
 ICO = 'favicon.ico'
 ASSETS = {SQUARE: (1254, 1254), 'favicon-96.png': (96, 96), 'favicon-512.png': (512, 512),
-          'apple-touch-icon.png': (180, 180)}
+          'apple-touch-icon.png': (180, 180), 'favicon.png': (32, 32)}
+# Значки принимаются только этими байтами. Замена значка — осознанная правка: новый файл,
+# новый sha256 здесь и новый перечень размеров в теге (он читается из favicon.ico).
+ICON_SHA256 = {
+    ICO: '5a4c12f025c5af6d99d4adad05d353294e7a714862f921b9621077764828a880',
+    'favicon-96.png': '7f837c3f61430c391bf73d15251ea5d03f4f4071549c42be378afafeb4c4d15a',
+    'favicon-512.png': 'ffb91adb4e5dd4bbedd4c25eae1a5609b981ce77662b38a6634fc24141cca439',
+    'apple-touch-icon.png': '051ae02399ba0a2b5a554c4ac66e8dfd8c13b1eb507abf06ddc14f36ee46db8a',
+    'favicon.png': '28318b36f42bc3da221ba6868b0c530ddebe9037e263ae5fc3330bf01dc4bff3',  # кадр 32×32 из ICO
+}
 SQUARE_URL = OG_URL + SQUARE
 WIDE_URL = OG_URL + 'social-preview-logo-v1.0.2-1200x630.png'
 # Офис «Карлибах 10, Тель-Авив» (קרליבך 10, תל אביב–יפו), замер 2026-09-23: Nominatim и Photon —
@@ -189,8 +200,9 @@ if re.findall(r'<link rel="canonical" href="([^"]*)">', html) != [OG_URL] or htm
     errors.append('canonical: ожидался ровно один, на %s' % OG_URL)
 if n_svg_icon != 1 or re.findall(r'<link rel="icon"[^>]*>', html) != ICONS:
     errors.append('favicon: ожидались ровно /favicon.ico и /favicon-96.png вместо SVG data-URI')
-if not {16, 32, 48} <= set(ico_sizes(DST / ICO)):
-    errors.append('%s: нет в сборке или в нём нет размеров 16, 32 и 48' % ICO)
+for name, digest in ICON_SHA256.items():
+    if not (DST / name).is_file() or hashlib.sha256((DST / name).read_bytes()).hexdigest() != digest:
+        errors.append('%s: нет в сборке или байты не те, что у принятого значка' % name)
 if html.count('rel="apple-touch-icon"') != 1 or \
         '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">' not in html:
     errors.append('apple-touch-icon: ожидался ровно один, 180×180')
