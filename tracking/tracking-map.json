@@ -5,8 +5,10 @@
     "code": {
       "repo": "gambaryan-family-law",
       "productionBranch": "codex/final-dev5",
-      "deploySha": "b30026ff27b0d6bc",
-      "note": "deploySha — идентификатор боевого HTML/деплоя, дан задачей как якорь для сверки; не путать с git-коммитом кода (см. verification.sources)."
+      "deploySha": "ce53f4d00de81039",
+      "deployId": "c03e51c6",
+      "deployCommit": "60a1cea",
+      "note": "deploySha — sha256 (16 знаков) боевого HTML, пересчитан curl'ом после деплоя Pages c03e51c6 от 2026-09-24; до него — b30026ff27b0d6bc (23.09). Не путать с git-коммитом кода (deployCommit)."
     },
     "gtm": {
       "publicId": "GTM-MFLHW63Q",
@@ -52,8 +54,7 @@
         { "platform": "GoogleAds", "tagId": "53", "name": "Ads - Заявка (generate_lead)", "conversionId": "18396553571", "conversionLabel": "ccbrCO7u2YEdEOPClMRE", "orderId": "{{DLV - submission_id}}", "status": "основная (primary_for_goal=True)" }
       ],
       "interactions": [
-        "§3.9 «Всё верно, отправить» → /api/lead ответил 202 на новую заявку",
-        "§3.9 «Отправить ещё одну заявку» → 202 (новый submission_id)"
+        "§3.9 «Всё верно, отправить» → /api/lead ответил 202 на новую заявку"
       ],
       "coveredByLiveClick": true,
       "verifiedBy": ["1", "2", "3"]
@@ -67,7 +68,10 @@
       "tags": [
         { "platform": "GA4", "tagId": "39", "name": "GA4 - lead_corrected", "event": "lead_corrected", "params": ["submission_id", "corrects_submission_id", "design_version"] }
       ],
-      "interactions": ["§3.9 «Указать другие контакты» → отправлено (правит контакты той же заявки, НЕ создаёт generate_lead)"],
+      "interactions": [
+        "§3.9 «Указать другие контакты» → отправлено (правит контакты той же заявки, НЕ создаёт generate_lead)",
+        "§3.9 «Изменить контакты» в свёрнутой строке панели успеха → отправлено (тот же reopenForm, site/app.js:1409)"
+      ],
       "coveredByLiveClick": false,
       "verifiedBy": ["1", "2"],
       "notes": "GA4 live-данные за 14 дней (source 2/3 report): 0 событий lead_corrected — низкочастотное по сути (исправление контактов случается редко), не подтверждено и не опровергнуто живым кликом в этом прогоне. [unverified]"
@@ -300,9 +304,9 @@
       "id": "M3",
       "class": "CURRENT",
       "layer": "Google Ads аккаунт (не код, не GTM)",
-      "summary": "GAQL 2026-09-24 (conversion_action, все ENABLED): ПЯТЬ конверсий, у всех primary_for_goal=True И include_in_conversions_metric=True — «Заявка — форма lp.gambarian.com» 7788197742, «Обращение WhatsApp — lp.gambarian.com» 7788197745, «Клик по телефону — lp.gambarian.com» 7788393534, «Calls from ads» 7725063533, «Submit lead form» 7788414889 (см. M4) — вместо одной основной («Заявка»), как в плане §5.",
-      "impact": "Как только реклама включится, Smart Bidding будет оптимизироваться на все пять событий как на равноценные конверсии. Сейчас НЕ активная поломка: кампания gambarian_gads_search_leads_il_family_ru на паузе (PAUSED), ставки MANUAL_CPC — оптимизация по конверсиям ни на что не влияет, пока кампания не включена и не переведена на автобиддинг.",
-      "action": "Решение владельца/PPC-аккаунта до включения рекламы (план §11, чек-лист «готово, когда»): понизить 4 конверсии кроме «Заявки» до secondary в Ads UI. Вне READ-ONLY зоны GTM/GA4/Ads этой сессии — не менялось.",
+      "summary": "GAQL 2026-09-24 (conversion_action, все ENABLED): ПЯТЬ конверсий, у всех primary_for_goal=True И include_in_conversions_metric=True — «Заявка — форма lp.gambarian.com» 7788197742, «Обращение WhatsApp — lp.gambarian.com» 7788197745, «Клик по телефону — lp.gambarian.com» 7788393534, «Calls from ads» 7725063533, «Submit lead form» 7788414889 (см. M4) — вместо двух основных по плану §5: «Заявка» и «Calls from ads» (звонок из объявления ≥ 60 с).",
+      "impact": "Как только реклама включится, Smart Bidding будет оптимизироваться на все пять событий как на равноценные конверсии. Сейчас НЕ активная поломка: кампания VER1_gads_search_leads_il_family_ru_22_09_26 включена владельцем 24.09 13:45 IDT, но ставки MANUAL_CPC — оптимизация по конверсиям ни на что не влияет; лишние основные завышают только столбец «Конверсии».",
+      "action": "Решение владельца/PPC-аккаунта до включения рекламы (план §11, чек-лист «готово, когда»): понизить до secondary 3 конверсии: 7788197745 (WhatsApp), 7788393534 (клик по телефону), 7788414889 (Submit lead form); «Заявка» 7788197742 и «Calls from ads» 7725063533 остаются основными (решения 5–6, архитектор 24.09). Применение — ads_primary.py apply после «да» владельца.",
       "sources": ["1", "2", "4"]
     },
     {
@@ -311,7 +315,7 @@
       "layer": "Google Ads аккаунт (не код, не GTM)",
       "summary": "«Submit lead form» (conversion action id 7788414889, WEBPAGE/SUBMIT_LEAD_FORM, ENABLED, primary_for_goal=True, label Wrn7CKmP54EdEOPClMRE — подтверждён conversion_action.tag_snippets, GAQL 2026-09-24) не входит ни в один из 19 тегов tracking/gtm-baseline.json — с lp.gambarian.com не отправляется никогда.",
       "impact": "Пустая основная конверсия, НЕ дубль «Заявки» (задвоения на lp нет — событие с lp не уходит вовсе). Шлёт ли её www.gambarian.com (отдельный сайт/конфиг, вне зоны этой карты) — не проверено.",
-      "action": "Владельцу/PPC: понизить до secondary или удалить вместе с M3. Проверить www отдельно, если он тоже на этом Ads-аккаунте.",
+      "action": "Понизить до secondary вместе с M3; не удалять — удаление необратимо, а шлёт ли её www, не проверено. Проверить www отдельно, если он тоже на этом Ads-аккаунте.",
       "sources": ["2", "4"]
     },
     {
