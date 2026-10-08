@@ -1,8 +1,8 @@
 """Сборка основной версии (production) для lp.gambarian.com из final-dev5.
 
-PRODUCTION-BUILD v1.3.1 | 2026-09-23
+PRODUCTION-BUILD v1.4.0 | 2026-10-08
 
-Основная версия = утверждённое превью final-dev5 с шестью отличиями:
+Основная версия = утверждённое превью final-dev5 с семью отличиями:
   1. без демо-переключателя «Авто / Демо» рабочего времени — это инструмент показа
      режимов панели владельцу, посетителю его видеть нельзя (action-bar.js работает
      без кнопки: все обращения под `if (demoToggle)`);
@@ -15,6 +15,9 @@ PRODUCTION-BUILD v1.3.1 | 2026-09-23
      квадрат превью 1254×1254 первым og:image (1200×630 — вторым, twitter остаётся 1200×630),
      JSON-LD LegalService + url/alternateName/logo/image/geo. Картинки — site-addons/production/
      (только lp; превью и site/ не меняются). FAQPage нет: на странице нет блока вопросов.
+  7. v1.4.0: значок сайта — знак владельца (пакет gambarian-logo-final-v1, 2026-10-08) вместо
+     растра SVG data-URI: favicon.ico (16–256), favicon-96.png, apple-touch-icon.png 180×180;
+     favicon-512.png лежит рядом без тега (манифеста у страницы нет). Прежний /favicon.png убран.
 gambarian-standalone.html в основную версию не входит: это копия страницы для
 согласования, отдельный адрес ей на lp не нужен. noindex остаётся (docs/LAUNCH-LP-GAMBARIAN.md).
 
@@ -35,10 +38,12 @@ OG_URL = 'https://lp.gambarian.com/'
 SKIP = {'gambarian-standalone.html'}
 # Картинки только для lp. Квадрат отрисован тем же способом, что и 1200×630 (Chromium + Onest,
 # вёрстка удалённого scripts/build-social-preview.py, e3bfaa0^): холст 1200×1200 при DPR 1.045.
-# Иконки — растр SVG data-URI из scripts/action_bar_addon.py.
+# Иконки — файлы владельца (v1.4.0), байт в байт; превью оставляет свой SVG data-URI.
 ADDON = Path('site-addons/production')
 SQUARE = 'social-preview-logo-v1.1.0-1254x1254.png'
-ASSETS = {SQUARE: (1254, 1254), 'favicon.png': (32, 32), 'apple-touch-icon.png': (180, 180)}
+ICO = 'favicon.ico'
+ASSETS = {SQUARE: (1254, 1254), 'favicon-96.png': (96, 96), 'favicon-512.png': (512, 512),
+          'apple-touch-icon.png': (180, 180)}
 SQUARE_URL = OG_URL + SQUARE
 WIDE_URL = OG_URL + 'social-preview-logo-v1.0.2-1200x630.png'
 # Офис «Карлибах 10, Тель-Авив» (קרליבך 10, תל אביב–יפו), замер 2026-09-23: Nominatim и Photon —
@@ -76,8 +81,18 @@ if (location.hostname === 'lp.gambarian.com') {
 
 if not (SRC / 'index.html').is_file():
     raise SystemExit('Нет сборки %s — сначала собрать превью (scripts/full-checks.sh)' % SRC)
-if not all((ADDON / n).is_file() for n in ASSETS):
-    raise SystemExit('Нет картинок lp в %s: %s' % (ADDON, ', '.join(ASSETS)))
+if not all((ADDON / n).is_file() for n in [ICO, *ASSETS]):
+    raise SystemExit('Нет картинок lp в %s: %s' % (ADDON, ', '.join([ICO, *ASSETS])))
+
+
+def ico_sizes(path):
+    """Стороны картинок внутри ICO (байт ширины 0 означает 256)."""
+    data = path.read_bytes() if path.is_file() else b''
+    if data[:4] != b'\x00\x00\x01\x00':
+        return []
+    return sorted(data[6 + 16 * i] or 256 for i in range(struct.unpack('<H', data[4:6])[0]))
+
+
 
 if DST.exists():
     shutil.rmtree(DST)
@@ -98,13 +113,19 @@ html, n_img = re.subn(r'https://[a-z0-9-]+\.gambarian-landing\.pages\.dev/(socia
 
 # SEO/sharing-слой lp (v1.3.0). Структура head — как у эталона Ассуты; концы строк — как в сборке.
 nl = '\r\n' if '\r\n' in html else '\n'
-for name in ASSETS:
+for name in [ICO, *ASSETS]:
     shutil.copyfile(ADDON / name, DST / name)
+# sizes у ICO — перечень из самого файла: «any» в HTML означает векторный формат, а каждый
+# названный размер обязан быть в ресурсе (developer.mozilla.org/.../Elements/link#sizes, 2026-10-08).
+ICONS = [
+    '<link rel="icon" href="/%s" sizes="%s">' % (ICO, ' '.join('%dx%d' % (s, s) for s in ico_sizes(ADDON / ICO))),
+    '<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png">',
+]
 seo = nl.join([
     '<meta name="author" content="Гамбарян &amp; Партнёры">',
     '<link rel="canonical" href="%s">' % OG_URL,
-    '<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">',
-    '<link rel="apple-touch-icon" href="/apple-touch-icon.png">',
+    *ICONS,
+    '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">',
     '<link rel="alternate" hreflang="ru" href="%s">' % OG_URL,
     '<link rel="alternate" hreflang="x-default" href="%s">' % OG_URL,
 ])
@@ -166,11 +187,13 @@ if n_seo != 1:
     errors.append('SEO-блок head: вставлен %d раз, ожидался 1 (после theme-color)' % n_seo)
 if re.findall(r'<link rel="canonical" href="([^"]*)">', html) != [OG_URL] or html.count('rel="canonical"') != 1:
     errors.append('canonical: ожидался ровно один, на %s' % OG_URL)
-if n_svg_icon != 1 or re.findall(r'<link rel="icon"[^>]*>', html) != [
-        '<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">']:
-    errors.append('favicon: ожидалась одна ссылка на /favicon.png вместо SVG data-URI')
-if html.count('rel="apple-touch-icon"') != 1:
-    errors.append('apple-touch-icon: ожидался ровно один')
+if n_svg_icon != 1 or re.findall(r'<link rel="icon"[^>]*>', html) != ICONS:
+    errors.append('favicon: ожидались ровно /favicon.ico и /favicon-96.png вместо SVG data-URI')
+if not {16, 32, 48} <= set(ico_sizes(DST / ICO)):
+    errors.append('%s: нет в сборке или в нём нет размеров 16, 32 и 48' % ICO)
+if html.count('rel="apple-touch-icon"') != 1 or \
+        '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">' not in html:
+    errors.append('apple-touch-icon: ожидался ровно один, 180×180')
 if re.findall(r'<link rel="alternate" hreflang="([^"]+)" href="([^"]+)">', html) != [('ru', OG_URL), ('x-default', OG_URL)]:
     errors.append('hreflang: ожидались ровно ru и x-default на %s' % OG_URL)
 if html.count('<meta name="author" content="Гамбарян &amp; Партнёры">') != 1 or html.count('name="author"') != 1:
@@ -209,6 +232,6 @@ if errors:
 
 io.open(page, 'w', encoding='utf-8', newline='').write(html)
 digest = hashlib.sha256(html.encode('utf-8')).hexdigest()[:16]
-print('PASS PRODUCTION-BUILD v1.3.1: %s -> %s; без демо-переключателя; GTM ровно 1, только lp.gambarian.com; og:url и картинка превью на %s; '
-      'SEO: canonical 1, og:image 2 (квадрат первым), hreflang ru/x-default, favicon PNG, JSON-LD url/alternateName/geo; index.html sha256 %s'
+print('PASS PRODUCTION-BUILD v1.4.0: %s -> %s; без демо-переключателя; GTM ровно 1, только lp.gambarian.com; og:url и картинка превью на %s; '
+      'SEO: canonical 1, og:image 2 (квадрат первым), hreflang ru/x-default, favicon ICO + PNG 96, JSON-LD url/alternateName/geo; index.html sha256 %s'
       % (SRC, DST, OG_URL, digest))
