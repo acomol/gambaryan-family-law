@@ -1,0 +1,2252 @@
+{
+  "$schema_note": [
+    "Полный нормализованный снимок ЖИВОГО GTM-контейнера в формате, максимально близком к сырому ответу GTM API v2",
+    "(containerVersionId/name/fingerprint на верхнем уровне + tag[]/trigger[]/variable[]/builtInVariable[]/customTemplate[]).",
+    "scripts/verify-tracking-map.mjs (--gtm <file>) принимает СВЕЖИЙ снимок ровно в этой же форме (без ручной",
+    "предобработки) и нормализует обе стороны одной и той же функцией перед сравнением.",
+    "В diff НЕ участвуют (волатильные поля, снимаются при нормализации): fingerprint, path, workspaceId,",
+    "tagManagerUrl, parentFolderId, accountId, containerId. Список list-параметров (eventSettingsTable,",
+    "configSettingsTable, map лукап-таблицы, consentType) сравнивается В ПОРЯДКЕ КАК ВЕРНУЛ API — без пересортировки.",
+    "firingTriggerId/blockingTriggerId — это множества (OR/AND по любому срабатыванию), сравниваются без учёта порядка.",
+    "Встроенные триггеры (не входят в trigger[], имеют фиксированные ID): 2147479553 = All Pages,",
+    "2147479573 = вероятно тоже All Pages (не подтверждено отдельным вызовом — встроенные триггеры не",
+    "возвращаются списком кастомных, см. TRACKING-MAP.md).",
+    "--gtm-version-only сравнивает ТОЛЬКО containerVersionId+fingerprint этого файла — без полного tag/trigger/variable diff."
+  ],
+  "containerVersionId": "3",
+  "name": "v3 — GA4 + Ads lp (этап 2)",
+  "fingerprint": "1790126564117",
+  "container": {
+    "accountId": "6378261245",
+    "containerId": "264873266",
+    "name": "lp.gamb",
+    "publicId": "GTM-MFLHW63Q",
+    "usageContext": [
+      "web"
+    ],
+    "fingerprint": "1790078243057"
+  },
+  "summary": {
+    "tagCount": 19,
+    "triggerCount": 15,
+    "variableCount": 19,
+    "builtInVariableCount": 7,
+    "customTemplateCount": 1
+  },
+  "tag": [
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "4",
+      "name": "Microsoft Clarity - Official",
+      "type": "cvt_MQDKZ",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "sessionId",
+          "value": "{{Analytics Session ID}}"
+        },
+        {
+          "type": "template",
+          "key": "projectId",
+          "value": "ym9xekxg89"
+        },
+        {
+          "type": "template",
+          "key": "userId",
+          "value": "{{Analytics Client ID}}"
+        }
+      ],
+      "fingerprint": "1790116691470",
+      "firingTriggerId": [
+        "2147479553"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "needed",
+        "consentType": {
+          "type": "list",
+          "list": [
+            {
+              "type": "template",
+              "value": "analytics_storage"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "37",
+      "name": "GA4 - Google tag",
+      "type": "googtag",
+      "notes": "lp only. allow_google_signals/allow_ad_personalization_signals=false: divorce = Google sensitive category (relationship hardships), no remarketing. design_version shared on every event incl. automatic page_view (page pushes it before GTM). Codex review 2026-09-23 #3/#4.",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "tagId",
+          "value": "G-P4MQ85ME2D"
+        },
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "key": "configSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "traffic_type"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{LT - traffic_type}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "allow_google_signals"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "false"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "allow_ad_personalization_signals"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "false"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790123911280",
+      "firingTriggerId": [
+        "2147479573"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "38",
+      "name": "GA4 - generate_lead",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "form_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - form_id}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "submission_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - submission_id}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "seconds_to_lead"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - seconds_to_lead}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "generate_lead"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116634645",
+      "firingTriggerId": [
+        "24"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "39",
+      "name": "GA4 - lead_corrected",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "submission_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - submission_id}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "corrects_submission_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - corrects_submission_id}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "lead_corrected"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116637884",
+      "firingTriggerId": [
+        "25"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "40",
+      "name": "GA4 - form_error",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "form_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - form_id}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "error_type"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - error_type}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "http_status"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - http_status}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "form_error"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116641693",
+      "firingTriggerId": [
+        "26"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "41",
+      "name": "GA4 - form_start",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "form_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - form_id}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "form_start"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116644671",
+      "firingTriggerId": [
+        "27"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "42",
+      "name": "GA4 - form_confirm",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "form_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - form_id}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "form_confirm"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116647570",
+      "firingTriggerId": [
+        "28"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "43",
+      "name": "GA4 - form_correct",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "form_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - form_id}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "form_correct"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116653543",
+      "firingTriggerId": [
+        "29"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "44",
+      "name": "GA4 - contact_click",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "method"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - method}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "placement"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - placement}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "business_state"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - business_state}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "contact_click"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116657373",
+      "firingTriggerId": [
+        "30"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "45",
+      "name": "GA4 - form_anchor_click",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "placement"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - placement}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "service"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - service}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "attorney"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - attorney}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "form_anchor_click"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116661022",
+      "firingTriggerId": [
+        "31"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "46",
+      "name": "GA4 - nav_click",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "target"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - target}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "placement"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - placement}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "nav_click"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116664546",
+      "firingTriggerId": [
+        "32"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "47",
+      "name": "GA4 - service_select",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "service"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - service}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "via"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - via}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "service_select"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116670916",
+      "firingTriggerId": [
+        "33"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "48",
+      "name": "GA4 - section_view",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "section"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - section}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "section_view"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116673733",
+      "firingTriggerId": [
+        "34"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "49",
+      "name": "GA4 - scroll_depth",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "percent"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - percent}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "scroll_depth"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116676690",
+      "firingTriggerId": [
+        "35"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "50",
+      "name": "GA4 - time_on_page",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "seconds"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - seconds}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "design_version"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DLV - design_version}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "time_on_page"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-P4MQ85ME2D"
+        }
+      ],
+      "fingerprint": "1790116679754",
+      "firingTriggerId": [
+        "36"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "51",
+      "name": "Conversion Linker",
+      "type": "gclidw",
+      "parameter": [
+        {
+          "type": "boolean",
+          "key": "enableCrossDomain",
+          "value": "false"
+        },
+        {
+          "type": "boolean",
+          "key": "enableUrlPassthrough",
+          "value": "false"
+        },
+        {
+          "type": "boolean",
+          "key": "enableCookieOverrides",
+          "value": "false"
+        }
+      ],
+      "fingerprint": "1790116681610",
+      "firingTriggerId": [
+        "2147479553"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "53",
+      "name": "Ads - Заявка (generate_lead)",
+      "type": "awct",
+      "notes": "Google Ads 994-218-4821, conversion action 7788197742. orderId = submission_id — Ads отсекает дубли одной заявки.",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "orderId",
+          "value": "{{DLV - submission_id}}"
+        },
+        {
+          "type": "template",
+          "key": "conversionId",
+          "value": "18396553571"
+        },
+        {
+          "type": "template",
+          "key": "conversionLabel",
+          "value": "ccbrCO7u2YEdEOPClMRE"
+        }
+      ],
+      "fingerprint": "1790117014583",
+      "firingTriggerId": [
+        "24"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "54",
+      "name": "Ads - Обращение WhatsApp (contact_click)",
+      "type": "awct",
+      "notes": "Google Ads 994-218-4821, conversion action 7788197745. Клик в WhatsApp = намерение, не лид (план §5).",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "conversionId",
+          "value": "18396553571"
+        },
+        {
+          "type": "template",
+          "key": "conversionLabel",
+          "value": "HEcnCPHu2YEdEOPClMRE"
+        }
+      ],
+      "fingerprint": "1790117022662",
+      "firingTriggerId": [
+        "52"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "tagId": "56",
+      "name": "Ads - Клик по телефону (contact_click)",
+      "type": "awct",
+      "notes": "Google Ads 994-218-4821, conversion action 7788393534, вспомогательная (primary=false): наблюдение, не ставки. План §5, строка 247. Codex review 2026-09-23 #5.",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "conversionId",
+          "value": "18396553571"
+        },
+        {
+          "type": "template",
+          "key": "conversionLabel",
+          "value": "RTTHCL7o5YEdEOPClMRE"
+        }
+      ],
+      "fingerprint": "1790124453252",
+      "firingTriggerId": [
+        "55"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    }
+  ],
+  "trigger": [
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "24",
+      "name": "CE - generate_lead",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "generate_lead"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116591166"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "25",
+      "name": "CE - lead_corrected",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "lead_corrected"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116596013"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "26",
+      "name": "CE - form_error",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "form_error"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116597828"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "27",
+      "name": "CE - form_start",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "form_start"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116599612"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "28",
+      "name": "CE - form_confirm",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "form_confirm"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116601398"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "29",
+      "name": "CE - form_correct",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "form_correct"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116602728"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "30",
+      "name": "CE - contact_click",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "contact_click"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116604646"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "31",
+      "name": "CE - form_anchor_click",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "form_anchor_click"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116609378"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "32",
+      "name": "CE - nav_click",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "nav_click"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116611474"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "33",
+      "name": "CE - service_select",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "service_select"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116613606"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "34",
+      "name": "CE - section_view",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "section_view"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116615758"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "35",
+      "name": "CE - scroll_depth",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "scroll_depth"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116617726"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "36",
+      "name": "CE - time_on_page",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "time_on_page"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116619703"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "52",
+      "name": "CE - contact_click (whatsapp)",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "contact_click"
+            }
+          ]
+        }
+      ],
+      "filter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{DLV - method}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "whatsapp"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790117012244",
+      "notes": "Только для конверсии Google Ads «Обращение WhatsApp». Условие по параметру — исключение из правила «только event equals» (плейбук §11.1): конверсия нужна только для WhatsApp."
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "triggerId": "55",
+      "name": "CE - contact_click (phone)",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "contact_click"
+            }
+          ]
+        }
+      ],
+      "filter": [
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{DLV - method}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "phone"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790124447140",
+      "notes": "Только для вспомогательной конверсии Google Ads «Клик по телефону» (план §5, строка 247). Условие по параметру — исключение из правила «только event equals», как у триггера 52."
+    }
+  ],
+  "variable": [
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "5",
+      "name": "DLV - design_version",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "design_version"
+        }
+      ],
+      "fingerprint": "1790116544871"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "6",
+      "name": "DLV - form_id",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "form_id"
+        }
+      ],
+      "fingerprint": "1790116546883"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "7",
+      "name": "DLV - submission_id",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "submission_id"
+        }
+      ],
+      "fingerprint": "1790116548457"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "8",
+      "name": "DLV - seconds_to_lead",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "seconds_to_lead"
+        }
+      ],
+      "fingerprint": "1790116553431"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "9",
+      "name": "DLV - corrects_submission_id",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "corrects_submission_id"
+        }
+      ],
+      "fingerprint": "1790116555301"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "10",
+      "name": "DLV - error_type",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "error_type"
+        }
+      ],
+      "fingerprint": "1790116557247"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "11",
+      "name": "DLV - http_status",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "http_status"
+        }
+      ],
+      "fingerprint": "1790116559111"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "12",
+      "name": "DLV - method",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "method"
+        }
+      ],
+      "fingerprint": "1790116561048"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "13",
+      "name": "DLV - placement",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "placement"
+        }
+      ],
+      "fingerprint": "1790116562908"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "14",
+      "name": "DLV - business_state",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "business_state"
+        }
+      ],
+      "fingerprint": "1790116564980"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "15",
+      "name": "DLV - service",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "service"
+        }
+      ],
+      "fingerprint": "1790116569615"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "16",
+      "name": "DLV - attorney",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "attorney"
+        }
+      ],
+      "fingerprint": "1790116571553"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "17",
+      "name": "DLV - target",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "target"
+        }
+      ],
+      "fingerprint": "1790116573431"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "18",
+      "name": "DLV - via",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "via"
+        }
+      ],
+      "fingerprint": "1790116575607"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "19",
+      "name": "DLV - section",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "section"
+        }
+      ],
+      "fingerprint": "1790116577499"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "20",
+      "name": "DLV - percent",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "percent"
+        }
+      ],
+      "fingerprint": "1790116579256"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "21",
+      "name": "DLV - seconds",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "seconds"
+        }
+      ],
+      "fingerprint": "1790116581333"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "22",
+      "name": "Cookie - adfix_internal",
+      "type": "k",
+      "parameter": [
+        {
+          "type": "boolean",
+          "key": "decodeCookie",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "adfix_internal"
+        }
+      ],
+      "fingerprint": "1790116583478"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "variableId": "23",
+      "name": "LT - traffic_type",
+      "type": "smm",
+      "parameter": [
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "input",
+          "value": "{{Cookie - adfix_internal}}"
+        },
+        {
+          "type": "list",
+          "key": "map",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "1"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "internal"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1790116589178"
+    }
+  ],
+  "builtInVariable": [
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "type": "pageUrl",
+      "name": "Page URL"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "type": "pageHostname",
+      "name": "Page Hostname"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "type": "pagePath",
+      "name": "Page Path"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "type": "referrer",
+      "name": "Referrer"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "type": "event",
+      "name": "Event"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "type": "analyticsClientId",
+      "name": "Analytics Client ID"
+    },
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "type": "analyticsSessionId",
+      "name": "Analytics Session ID"
+    }
+  ],
+  "customTemplate": [
+    {
+      "accountId": "6378261245",
+      "containerId": "264873266",
+      "templateId": "3",
+      "name": "Microsoft Clarity - Official",
+      "fingerprint": "1790078313965",
+      "templateData": "___TERMS_OF_SERVICE___\n\nBy creating or modifying this file you agree to Google Tag Manager's Community\nTemplate Gallery Developer Terms of Service available at\nhttps://developers.google.com/tag-manager/gallery-tos (or such other URL as\nGoogle may provide), as modified from time to time.\n\n\n___INFO___\n\n{\n  \"type\": \"TAG\",\n  \"id\": \"cvt_MQDKZ\",\n  \"version\": 1,\n  \"displayName\": \"Microsoft Clarity - Official\",\n  \"categories\": [\n    \"ANALYTICS\",\n    \"HEAT_MAP\",\n    \"SESSION_RECORDING\"\n  ],\n  \"brand\": {\n    \"id\": \"github.com_microsoft\",\n    \"displayName\": \"microsoft\",\n    \"thumbnail\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACABAMAAAAxEHz4AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAElBMVEUAAADyUCJ/ugAApO//uQD///8951e2AAAAAXRSTlMAQObYZgAAAAFiS0dEBfhv6ccAAAAHdElNRQfkCgUWITsZUDiiAAAAS0lEQVRo3u3MQQ3AIAAEsMuCAGZhCkiwgH9NOLj3Hq2A5q1m8nxVBAKBQCAQCAQCgUAgEPSAP9jVSsapBAKBQCAQCAQCgUAgEPTgAruK0CdlWNSzAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDIwLTEwLTA1VDIyOjMzOjU5KzAwOjAwPT1n8QAAACV0RVh0ZGF0ZTptb2RpZnkAMjAyMC0xMC0wNVQyMjozMzo1OSswMDowMExg300AAAAASUVORK5CYII\\u003d\"\n  },\n  \"description\": \"Clarity is a user behavior analytics tool, which helps you understand how users are interacting with your website. Supported features include:\\nSession Recordings\\nHeatmaps\\nML Insights\",\n  \"containerContexts\": [\n    \"WEB\"\n  ]\n}\n\n\n___TEMPLATE_PARAMETERS___\n\n[\n  {\n    \"type\": \"TEXT\",\n    \"name\": \"projectId\",\n    \"displayName\": \"Clarity Project Id\",\n    \"simpleValueType\": true,\n    \"help\": \"Copy your clarity project Id here. You can find it in the project Url from the browser. Example: https://clarity.microsoft.com/projects/view/\\\"projectId\\\"/\",\n    \"valueValidators\": [\n      {\n        \"type\": \"NON_EMPTY\",\n        \"errorMessage\": \"You must provide a clarity project Id\"\n      },\n      {\n        \"type\": \"REGEX\",\n        \"args\": [\n          \"[0-9a-z]+\"\n        ],\n        \"errorMessage\": \"Incorrect project Id. You can find it in the project Url from the browser. Example: https://clarity.microsoft.com/projects/view/\\\"projectId\\\"/\"\n      }\n    ]\n  },\n  {\n    \"type\": \"GROUP\",\n    \"name\": \"advanced\",\n    \"displayName\": \"Custom Options\",\n    \"groupStyle\": \"ZIPPY_CLOSED\",\n    \"subParams\": [\n      {\n        \"type\": \"GROUP\",\n        \"name\": \"custom_id\",\n        \"displayName\": \"Custom Identifiers\",\n        \"groupStyle\": \"NO_ZIPPY\",\n        \"subParams\": [\n          {\n            \"type\": \"TEXT\",\n            \"name\": \"userId\",\n            \"displayName\": \"Custom Id\",\n            \"simpleValueType\": true,\n            \"help\": \"Custom id such as an email, can help you view the user journey across browsers and devices\",\n            \"valueHint\": \"user@domain.com\"\n          },\n          {\n            \"type\": \"TEXT\",\n            \"name\": \"sessionId\",\n            \"displayName\": \"Session Id\",\n            \"simpleValueType\": true,\n            \"help\": \"Custom session id to help you filter for this session later\",\n            \"enablingConditions\": [\n              {\n                \"paramName\": \"userId\",\n                \"paramValue\": \"\",\n                \"type\": \"PRESENT\"\n              }\n            ],\n            \"valueHint\": \"custom-session-id\"\n          },\n          {\n            \"type\": \"TEXT\",\n            \"name\": \"pageId\",\n            \"displayName\": \"Page Id\",\n            \"simpleValueType\": true,\n            \"help\": \"Custom page id to help you filter for this page later\",\n            \"enablingConditions\": [\n              {\n                \"paramName\": \"userId\",\n                \"paramValue\": \"\",\n                \"type\": \"PRESENT\"\n              }\n            ],\n            \"valueHint\": \"custom-page-id\"\n          },\n          {\n            \"type\": \"TEXT\",\n            \"name\": \"friendlyName\",\n            \"displayName\": \"Friendly Name\",\n            \"simpleValueType\": true,\n            \"help\": \"Friendly name for the user\",\n            \"enablingConditions\": [\n              {\n                \"paramName\": \"userId\",\n                \"paramValue\": \"\",\n                \"type\": \"PRESENT\"\n              }\n            ],\n            \"valueHint\": \"Mona\"\n          }\n        ],\n        \"help\": \"Custom Identifiers are informational data values about site visitors\",\n        \"enablingConditions\": []\n      },\n      {\n        \"type\": \"SIMPLE_TABLE\",\n        \"name\": \"custom_tag\",\n        \"displayName\": \"Custom Tag\",\n        \"simpleTableColumns\": [\n          {\n            \"defaultValue\": \"\",\n            \"displayName\": \"Key\",\n            \"name\": \"key\",\n            \"type\": \"TEXT\",\n            \"valueHint\": \"\"\n          },\n          {\n            \"defaultValue\": \"\",\n            \"displayName\": \"Value\",\n            \"name\": \"value\",\n            \"type\": \"TEXT\",\n            \"valueValidators\": [\n              {\n                \"type\": \"STRING_LENGTH\",\n                \"args\": [\n                  1,\n                  255\n                ]\n              }\n            ],\n            \"valueHint\": \"\"\n          }\n        ],\n        \"help\": \"Custom tags are customizable filters that allow you to analyze recordings and heatmaps in different directions\",\n        \"valueValidators\": []\n      }\n    ]\n  }\n]\n\n\n___SANDBOXED_JS_FOR_WEB_TEMPLATE___\n\n// Require the necessary APIs\nconst injectScript = require('injectScript');\nconst queryPermission = require('queryPermission');\nconst createArgumentsQueue = require('createArgumentsQueue');\nconst encodeUri = require('encodeUri');\nconst addEventCallback = require('addEventCallback');\nconst copyFromDataLayer = require('copyFromDataLayer');\n//const log = require('logToConsole');\n\n// Create clarity const\nconst clarity = createArgumentsQueue('clarity', 'clarity.q');\n\nconst customTags = data.custom_tag || [];\n\n// Reconstruct customer clarity script URL\nconst url = \"https://www.clarity.ms/tag/\"+encodeUri(data.projectId)+\"?ref=gtm\";\n\nconst runClarityIdentify = () => {\n  const friendlyName = data.friendlyName || '';\n  const sessionId = data.sessionId || '';\n  const pageId = data.pageId || '';\n  if (data.userId) {\n    clarity(\n      \"identify\",\n      data.userId,\n      sessionId,\n      pageId,\n      friendlyName\n    );\n  }\n};\n\n// Handle Success\nconst onCustomerSuccess = () => {\n  data.gtmOnSuccess();\n};\n\n// Handle Failure\nconst onCustomerFailure = () => {\n  data.gtmOnFailure();\n};\n\n\n// If the URL input by the user matches the permissions set for the template,\n// inject the script with the onSuccess and onFailure methods as callbacks.\nif (queryPermission('inject_script', \"https://www.clarity.ms\")) {\n  for (var i = 0; i < customTags.length; i++) {\n    if (customTags[i].value) {\n      clarity('set', customTags[i].key, customTags[i].value);\n    }\n  }\n\n  if (data.userId) {\n    runClarityIdentify();\n  } else {\n    // Otherwise wait for Window Loaded event\n    addEventCallback(function(containerId, eventData) {\n      const event = copyFromDataLayer('event');\n      if (event === 'gtm.load') {\n        runClarityIdentify();\n      }\n    });\n  }\n \n  injectScript(url, onCustomerSuccess, onCustomerFailure);\n  \n} else {\n  data.gtmOnFailure();\n}\n\n\n___WEB_PERMISSIONS___\n\n[\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"inject_script\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"urls\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 1,\n                \"string\": \"https://www.clarity.ms/*\"\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"access_globals\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"keys\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"key\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"execute\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"clarity\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              },\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"key\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"execute\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"clarity.q\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"read_event_metadata\",\n        \"versionId\": \"1\"\n      },\n      \"param\": []\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"read_data_layer\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"allowedKeys\",\n          \"value\": {\n            \"type\": 1,\n            \"string\": \"specific\"\n          }\n        },\n        {\n          \"key\": \"keyPatterns\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 1,\n                \"string\": \"event\"\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  }\n]\n\n\n___TESTS___\n\nscenarios: []\n\n\n___NOTES___\n\nCreated on 2/2/2021, 12:41:15 PM\n\n\n",
+      "galleryReference": {
+        "host": "github.com",
+        "owner": "microsoft",
+        "repository": "clarity-gtm-template",
+        "version": "a4013e4a6b1ae135d6acd80cdb7dd803d849dc54",
+        "signature": "005e0c847e851bd85c268486f2194c0774337b596daeeaae5c10020c059a9472",
+        "galleryTemplateId": "MQDKZ"
+      }
+    }
+  ],
+  "workspaceStatus": {
+    "note": "На момент снимка (2026-09-24) Default Workspace getStatus вернул {} — расхождений между воркспейсом и живой версией не было (черновиков без публикации нет). Это поле НЕ входит в diff — проверяй свежим вызовом gtm_workspace {action:getStatus} перед сверкой, отдельно от diff по этому файлу."
+  },
+  "_evidence": {
+    "collected_at": "2026-09-24",
+    "collected_by": "claude-sonnet-5 subagent (tracking-map verify-tracking-map blind-spot fix task)",
+    "source": "GTM API v2 via mcp__gtm-stape__gtm_version (action=live, resourceType=tag|trigger|variable|builtInVariable|customTemplate), account 6378261245, container 264873266",
+    "read_only": true,
+    "note": "No create/update/publish calls were made against GTM or GA4 in this session."
+  }
+}

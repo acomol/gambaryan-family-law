@@ -8,6 +8,179 @@
 (function () {
   "use strict";
 
+  /* --- События страницы: только параметры из карты аналитики ------------ */
+
+  // GTM Data Layer Variables читают объединённую модель dataLayer, а не только
+  // последний push: ключ, отсутствующий в текущем push, сохраняет значение из
+  // более раннего события (developers.google.com/tag-platform/tag-manager/datalayer —
+  // «if you push a variable with the same name… the existing value will be
+  // overwritten by the new value», то есть НЕ overwritten, если ключа нет вовсе;
+  // simoahava.com/gtm-tips/remember-to-flush-unused-data-layer-variables — явный
+  // push key:undefined «drops the parameter… entirely»). Поэтому каждое событие
+  // явно обнуляет все опциональные параметры словаря (docs/TRACKING-REQUIREMENTS.md
+  // §4), кроме тех, что передал вызывающий код.
+  var EVENT_PARAM_KEYS = [
+    'method', 'placement', 'business_state', 'service', 'via', 'section',
+    'percent', 'seconds', 'error_type', 'target', 'attorney',
+    'form_id', 'submission_id', 'seconds_to_lead', 'corrects_submission_id', 'http_status'
+  ];
+
+  function track(name, params) {
+    var event = { event: name };
+    EVENT_PARAM_KEYS.forEach(function (key) { event[key] = undefined; });
+    event.design_version = 'final-dev5';
+    Object.keys(params || {}).forEach(function (key) { event[key] = params[key]; });
+    (window.dataLayer = window.dataLayer || []).push(event);
+  }
+
+  function serviceSlug(index) {
+    return tabs[index].textContent.trim().toLowerCase().replace(/\s+/g, '-');
+  }
+
+  var visibleMillis = 0;
+  var lastTick = performance.now();
+  var wasVisible = document.visibilityState === 'visible';
+  var timeThresholds = [30, 60, 120, 180];
+  var timeSent = {};
+
+  function visibleSeconds() {
+    var now = performance.now();
+    if (wasVisible) visibleMillis += now - lastTick;
+    lastTick = now;
+    wasVisible = document.visibilityState === 'visible';
+    return Math.floor(visibleMillis / 1000);
+  }
+
+  function checkTime() {
+    var seconds = visibleSeconds();
+    timeThresholds.forEach(function (threshold) {
+      if (seconds >= threshold && !timeSent[threshold]) {
+        timeSent[threshold] = true;
+        track('time_on_page', { seconds: threshold });
+      }
+    });
+  }
+  document.addEventListener('visibilitychange', checkTime);
+  window.setInterval(checkTime, 1000);
+
+  var scrollSent = {};
+  var scrollPending = false;
+  function checkScroll() {
+    scrollPending = false;
+    var percent = (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight * 100;
+    [25, 50, 75, 90].forEach(function (threshold) {
+      if (percent >= threshold && !scrollSent[threshold]) {
+        scrollSent[threshold] = true;
+        track('scroll_depth', { percent: threshold });
+      }
+    });
+  }
+  window.addEventListener('scroll', function () {
+    if (scrollPending) return;
+    scrollPending = true;
+    window.requestAnimationFrame(checkScroll);
+  }, { passive: true });
+
+  var sectionSelectors = {
+    hero: 'section#top', facts: 'section.facts', services: 'section#services',
+    precedent: 'section#precedent', attorneys: 'section#attorney',
+    contact: 'section#contact', footer: 'footer.site-footer'
+  };
+  var sectionSeen = {};
+  var sectionObservers = [];
+  function observeSections() {
+    sectionObservers.forEach(function (observer) { observer.disconnect(); });
+    sectionObservers = [];
+    Object.keys(sectionSelectors).forEach(function (section) {
+      var block = document.querySelector(sectionSelectors[section]);
+      if (!block || sectionSeen[section]) return;
+      var height = block.getBoundingClientRect().height;
+      // У длинной секции половина высоты экрана: 50% всего блока недостижимы.
+      var threshold = 0.5 * Math.min(height, window.innerHeight) / Math.max(1, height);
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!sectionSeen[section] && entry.isIntersecting && entry.intersectionRatio >= threshold) {
+            sectionSeen[section] = true;
+            track('section_view', { section: section });
+            observer.disconnect();
+          }
+        });
+      }, { threshold: [threshold, 0.5] });
+      observer.observe(block);
+      sectionObservers.push(observer);
+    });
+  }
+  if ('IntersectionObserver' in window) {
+    window.addEventListener('load', observeSections);
+    window.addEventListener('resize', observeSections);
+  }
+
+  document.addEventListener('click', function (event) {
+    var link = event.target.closest('a');
+    if (!link || link.closest('.mobile-bar')) return;
+    var block = link.closest('.lead-form__error, .nav-drawer, .mobile-menu, header.site-header, section, footer.site-footer');
+    if (!block) return;
+    var placement = block.matches('.lead-form__error') ? 'form_error'
+      : block.matches('.nav-drawer, .mobile-menu') ? 'menu'
+      : block.matches('header.site-header') ? 'header'
+      : block.matches('footer.site-footer') ? 'footer'
+      : block.id === 'top' ? 'hero'
+      : block.id === 'attorney' ? 'attorneys'
+      : block.id === 'contact' ? 'contacts'
+      : block.matches('.facts') ? 'facts' : block.id;
+    var href = link.getAttribute('href') || '';
+    var method = href.indexOf('tel:') === 0 ? 'phone'
+      : href.indexOf('wa.me') !== -1 ? 'whatsapp'
+      : link.matches('.map-link') ? 'google_maps' : '';
+    if (method) {
+      var bar = document.querySelector('.mobile-bar');
+      track('contact_click', {
+        method: method, placement: placement,
+        business_state: bar ? bar.getAttribute('data-business-state') : 'closed'
+      });
+    } else if (link.hasAttribute('data-svc-target')) {
+      // Ссылку услуги учитывает setActive, второго события навигации нет.
+      return;
+    } else if (href.charAt(0) === '#' && ['header', 'menu', 'footer'].indexOf(placement) !== -1) {
+      track('nav_click', { target: href.slice(1), placement: placement });
+    } else if (href === '#contact') {
+      var params = { placement: placement };
+      if (placement === 'services') params.service = serviceSlug(active);
+      if (placement === 'attorneys') {
+        var card = link.closest('.attorney-card');
+        params.attorney = card.getAttribute('data-owner-copy-id').split('-')[0];
+      }
+      track('form_anchor_click', params);
+    }
+  });
+
+  /* --- CTA "#contact" ведёт к самой форме, а не к верху секции -----------
+     На мобильном контакты и форма стоят друг под другом, и блок контактов
+     (адрес, WhatsApp, ЗАЯВКА-строка) выше формы по вёрстке — переход по
+     нативному якорю показывал только его, а форма уходила за экран (баг,
+     заметил владелец 2026-09-24). href="#contact" и id="contact" не трогаем
+     (от них зависят build-hero-variants.py, qa-browser-matrix.py и
+     verify-tracking.mjs) — только подменяем итоговую точку прокрутки.
+     Пункты меню (шапка и бургер) сюда не входят намеренно: у них «Контакты» —
+     это переход к секции, а не к брони, и invariants.spec.ts §7 проверяет,
+     что они останавливаются на 20 px под шапкой, а не у формы. */
+  var leadFormAnchor = document.querySelector('.contact__form-col');
+  if (leadFormAnchor) {
+    var contactReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    document.addEventListener('click', function (event) {
+      var link = event.target.closest('a[href="#contact"]');
+      if (!link || link.closest('header.site-header')) return;
+      event.preventDefault();
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, '', '#contact');
+      }
+      leadFormAnchor.scrollIntoView({
+        behavior: contactReduceMotion.matches ? 'instant' : 'smooth',
+        block: 'start'
+      });
+    });
+  }
+
   /* --- Бургер-меню ------------------------------------------------------- */
 
   var burger = document.querySelector(".nav-burger");
@@ -126,7 +299,7 @@
     window.addEventListener("load", loadSecondHeroSlide, { once: true });
   }
 
-  /* --- Карусель направлений --------------------------------------------- */
+  /* --- Направления: упор, свайп, горизонтальная строка тем --------------- */
 
   var tabs = Array.prototype.slice.call(document.querySelectorAll(".svc-tab"));
   var dots = Array.prototype.slice.call(document.querySelectorAll(".svc-dot"));
@@ -134,9 +307,111 @@
 
   if (tabs.length && tabs.length === panels.length && dots.length === panels.length) {
     var active = 0;
+    var last = panels.length - 1;
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var stage = document.querySelector('.svc-stage');
+    // Свайп ловится по всей карточке, включая блок «Ведёт» (указание владельца
+    // 2026-09-17): жест начинается где угодно, двигается только текст.
+    var frame = document.querySelector('.svc-frame') || stage;
+    var tablist = document.querySelector('.svc-tabs');
+    var prev = document.querySelector('.svc-arrow[data-dir="prev"]');
+    var next = document.querySelector('.svc-arrow[data-dir="next"]');
+    var hint = document.querySelector('.svc-next-hint');
+    var hintLabel = hint && hint.querySelector('.svc-next-hint__label');
+    var supportsInert = 'inert' in HTMLElement.prototype;
+    var transitionToken = 0;
+    var finishTransition = null;
+    var swipe = null;
+    var dragFrame = null;
+    var settlingPanel = null;
+    var settleTimer = null;
 
-    function setActive(index, moveFocus) {
-      active = (index + panels.length) % panels.length;
+    function clearDragStyles(panel) {
+      panel.style.removeProperty('transform');
+      panel.style.removeProperty('opacity');
+      panel.style.removeProperty('will-change');
+    }
+
+    function clearSettling() {
+      window.clearTimeout(settleTimer);
+      settleTimer = null;
+      if (settlingPanel) {
+        settlingPanel.classList.remove('is-settling');
+        clearDragStyles(settlingPanel);
+        settlingPanel = null;
+      }
+    }
+
+    function resetSwipe(settle) {
+      if (!swipe) return;
+      var gesture = swipe;
+      swipe = null;
+      window.cancelAnimationFrame(dragFrame);
+      dragFrame = null;
+      gesture.panel.classList.remove('is-dragging');
+      if (settle && gesture.dragging && !reduceMotion.matches) {
+        settlingPanel = gesture.panel;
+        settlingPanel.classList.add('is-settling');
+        settleTimer = window.setTimeout(clearSettling, 180);
+      }
+      clearDragStyles(gesture.panel);
+      if (frame.hasPointerCapture(gesture.id)) frame.releasePointerCapture(gesture.id);
+    }
+
+    function transitionTo(prevIndex, nextIndex, dir) {
+      if (finishTransition) finishTransition();
+      resetSwipe(false);
+      clearSettling();
+      var outgoing = panels[prevIndex];
+      var incoming = panels[nextIndex];
+      var token = ++transitionToken;
+      var finished = false;
+      var timer = null;
+
+      function finish() {
+        if (finished || token !== transitionToken) return;
+        finished = true;
+        window.clearTimeout(timer);
+        incoming.removeEventListener('animationend', onAnimationEnd);
+        [outgoing, incoming].forEach(function (panel) {
+          panel.classList.remove('is-active', 'is-enter-next', 'is-enter-prev',
+            'is-leave-next', 'is-leave-prev', 'is-dragging', 'is-settling');
+          clearDragStyles(panel);
+        });
+        outgoing.hidden = true;
+        incoming.classList.add('is-active');
+        if (stage) stage.dataset.motion = 'idle';
+        finishTransition = null;
+      }
+
+      function onAnimationEnd(event) {
+        if (event.target === incoming) finish();
+      }
+
+      finishTransition = finish;
+      if (outgoing.contains(document.activeElement)) tabs[nextIndex].focus({ preventScroll: true });
+      outgoing.setAttribute('aria-hidden', 'true');
+      incoming.hidden = false;
+      incoming.removeAttribute('aria-hidden');
+      if (supportsInert) {
+        outgoing.inert = true;
+        incoming.inert = false;
+      }
+      outgoing.classList.remove('is-active');
+      outgoing.classList.add('is-leave-' + dir);
+      incoming.classList.add('is-enter-' + dir);
+      if (stage) stage.dataset.motion = 'moving';
+      incoming.addEventListener('animationend', onAnimationEnd);
+      if (reduceMotion.matches || window.getComputedStyle(incoming).animationName === 'none') {
+        finish();
+      } else {
+        timer = window.setTimeout(finish, 320);
+      }
+    }
+
+    function setActive(index, moveFocus, wrap, dirHint, via) {
+      var previous = active;
+      active = wrap ? (index + panels.length) % panels.length : Math.max(0, Math.min(index, last));
 
       tabs.forEach(function (tab, i) {
         var on = i === active;
@@ -149,11 +424,23 @@
         dot.setAttribute("aria-current", i === active ? "true" : "false");
       });
 
-      panels.forEach(function (panel, i) {
-        panel.hidden = i !== active;
-      });
+      if (previous !== active) {
+        transitionTo(previous, active, dirHint || (active > previous ? 'next' : 'prev'));
+        track('service_select', { service: serviceSlug(active), via: via || 'tab' });
+      }
 
-      if (moveFocus) tabs[active].focus();
+      // Кольцо: на краях стрелки не гаснут, листание продолжается.
+      if (prev) prev.disabled = false;
+      if (next) next.disabled = false;
+      if (hintLabel) hintLabel.textContent = tabs[active + 1] ? tabs[active + 1].textContent : '';
+      if (hint) hint.hidden = active === last;
+      if (moveFocus) tabs[active].focus({ preventScroll: true });
+      if (tablist && tablist.scrollWidth > tablist.clientWidth) {
+        tablist.scrollTo({
+          left: tabs[active].offsetLeft - (tablist.clientWidth - tabs[active].offsetWidth) / 2,
+          behavior: reduceMotion.matches ? 'auto' : 'smooth'
+        });
+      }
     }
 
     tabs.forEach(function (tab, i) {
@@ -164,28 +451,34 @@
 
     dots.forEach(function (dot, i) {
       dot.addEventListener("click", function () {
-        setActive(i);
+        setActive(i, false, false, null, 'dot');
       });
     });
 
-    var tablist = document.querySelector(".svc-tabs");
+    // Ссылки подвала открывают свою тему (указание владельца 2026-09-18).
+    Array.prototype.forEach.call(document.querySelectorAll("[data-svc-target]"), function (link) {
+      link.addEventListener("click", function () {
+        setActive(Number(link.getAttribute("data-svc-target")), false, false, null, 'footer');
+      });
+    });
+
     if (tablist) {
       tablist.addEventListener("keydown", function (event) {
         var handled = true;
         switch (event.key) {
           case "ArrowRight":
           case "ArrowDown":
-            setActive(active + 1, true);
+            setActive(active + 1, true, true, 'next');
             break;
           case "ArrowLeft":
           case "ArrowUp":
-            setActive(active - 1, true);
+            setActive(active - 1, true, true, 'prev');
             break;
           case "Home":
-            setActive(0, true);
+            setActive(0, true, false, 'prev');
             break;
           case "End":
-            setActive(panels.length - 1, true);
+            setActive(panels.length - 1, true, false, 'next');
             break;
           default:
             handled = false;
@@ -194,21 +487,364 @@
       });
     }
 
-    var prev = document.querySelector('.svc-arrow[data-dir="prev"]');
-    var next = document.querySelector('.svc-arrow[data-dir="next"]');
-    if (prev) prev.addEventListener("click", function () { setActive(active - 1); });
-    if (next) next.addEventListener("click", function () { setActive(active + 1); });
+    if (prev) prev.addEventListener("click", function () { setActive(active - 1, false, true, 'prev', 'arrow'); });
+    if (next) next.addEventListener("click", function () { setActive(active + 1, false, true, 'next', 'arrow'); });
+    if (hint) hint.addEventListener("click", function () { setActive(active + 1, false, false, 'next', 'arrow'); });
+
+    if (stage) {
+      function recordPoint(event) {
+        swipe.points.push({ x: event.clientX, time: event.timeStamp });
+        swipe.points = swipe.points.filter(function (point) {
+          return event.timeStamp - point.time <= 80;
+        });
+      }
+
+      function drawSwipe() {
+        dragFrame = null;
+        if (!swipe || !swipe.dragging) return;
+        var dx = swipe.dx;
+        swipe.panel.style.transform = 'translateX(' + dx + 'px)';
+        swipe.panel.style.opacity = Math.max(0, 1 - Math.abs(dx) / swipe.width * .5);
+      }
+
+      frame.addEventListener('pointerdown', function (event) {
+        if (event.pointerType === 'mouse' || !event.isPrimary || swipe) return;
+        if (event.target.closest('a, button, input')) return;
+        if (finishTransition) finishTransition();
+        clearSettling();
+        swipe = {
+          id: event.pointerId, x: event.clientX, y: event.clientY,
+          width: stage.getBoundingClientRect().width, panel: panels[active],
+          dx: 0, horizontal: false, dragging: false, cancelled: false,
+          points: [{ x: event.clientX, time: event.timeStamp }]
+        };
+      });
+      frame.addEventListener('pointermove', function (event) {
+        if (!swipe || event.pointerId !== swipe.id || swipe.cancelled) return;
+        var dx = event.clientX - swipe.x;
+        var dy = event.clientY - swipe.y;
+        recordPoint(event);
+        if (!swipe.horizontal) {
+          if (Math.abs(dy) > Math.abs(dx)) {
+            swipe.cancelled = true;
+            return;
+          }
+          if (Math.abs(dx) < 10 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
+          swipe.horizontal = true;
+          if (!reduceMotion.matches) {
+            swipe.dragging = true;
+            swipe.panel.classList.add('is-dragging');
+            try {
+              frame.setPointerCapture(event.pointerId);
+            } catch (error) {
+              // Синтетический PointerEvent не регистрирует активный указатель.
+            }
+          }
+        }
+        swipe.dx = dx;
+        if (swipe.dragging && dragFrame === null) dragFrame = window.requestAnimationFrame(drawSwipe);
+      });
+      frame.addEventListener('pointerup', function (event) {
+        if (!swipe || event.pointerId !== swipe.id) return;
+        var dx = event.clientX - swipe.x;
+        var dy = event.clientY - swipe.y;
+        recordPoint(event);
+        var first = swipe.points[0];
+        var elapsed = event.timeStamp - first.time;
+        var speed = elapsed > 0 ? Math.abs(event.clientX - first.x) / elapsed : 0;
+        var threshold = Math.min(96, Math.max(48, .25 * swipe.width));
+        var change = !swipe.cancelled && (swipe.dragging
+          ? Math.abs(dx) >= threshold || (Math.abs(dx) >= 24 && speed >= .5)
+          : Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy));
+        resetSwipe(!change);
+        if (change) setActive(active + (dx < 0 ? 1 : -1), false, true, dx < 0 ? 'next' : 'prev', 'swipe');
+      });
+      function cancelSwipe(event) {
+        if (swipe && event.pointerId === swipe.id) resetSwipe(true);
+      }
+      frame.addEventListener('pointercancel', cancelSwipe);
+      // lostpointercapture жест НЕ отменяет: у touch неявный захват стоит на элементе под
+      // пальцем, и при setPointerCapture на сцену событие потери всплывает от потомка
+      // посреди свайпа — жест сбрасывался до pointerup, свайп пальцем не работал
+      // (замер на живой странице 2026-09-16). Отпускание и отмена приходят
+      // как pointerup / pointercancel.
+      stage.dataset.motion = 'idle';
+    }
+
+    panels.forEach(function (panel, i) {
+      panel.hidden = i !== active;
+      panel.classList.toggle('is-active', i === active);
+      if (supportsInert) panel.inert = i !== active;
+      if (i === active) {
+        panel.removeAttribute('aria-hidden');
+      } else {
+        panel.setAttribute('aria-hidden', 'true');
+      }
+    });
 
     setActive(0);
+
+    /* --- Прямые ссылки на тему: #svc-* открывает вкладку и вид на блок ---- */
+
+    var ANCHOR_SERVICE_INDEX = {
+      'svc-divorce': 0, 'svc-alimony': 1, 'svc-property': 2, 'svc-children': 3,
+      'svc-paternity': 4, 'svc-mediation': 5, 'svc-prenup': 6, 'svc-protection': 7
+    };
+    var servicesSection = document.getElementById('services');
+
+    function scrollToServices(instant) {
+      if (!servicesSection) return;
+      servicesSection.scrollIntoView({
+        behavior: (instant || reduceMotion.matches) ? 'instant' : 'smooth',
+        block: 'start'
+      });
+    }
+
+    // Якорь применяется и при загрузке, и при смене hash без перезагрузки
+    // (владелец, 2026-09-23). Обычный "#services" сюда не попадает — тема
+    // остаётся первой по умолчанию, как раньше.
+    function applyServiceHash(hash, instant) {
+      var id = (hash || '').replace(/^#/, '');
+      if (!Object.prototype.hasOwnProperty.call(ANCHOR_SERVICE_INDEX, id)) return;
+      setActive(ANCHOR_SERVICE_INDEX[id], true, false, null, 'anchor');
+      scrollToServices(instant);
+    }
+
+    applyServiceHash(window.location.hash, true);
+    window.addEventListener('hashchange', function () {
+      applyServiceHash(window.location.hash);
+    });
   }
 
   /* --- Форма обращения --------------------------------------------------- */
 
   var LEAD_CONTRACT = window.GAMBARIAN_LEAD_CONTRACT;
+  var EXPECTED_LEAD_CONTRACT_VERSION = "2.4.0";
+  if (!LEAD_CONTRACT || LEAD_CONTRACT.version !== EXPECTED_LEAD_CONTRACT_VERSION) {
+    var unavailableForm = document.querySelector(".lead-form");
+    if (unavailableForm) {
+      unavailableForm.noValidate = true;
+      unavailableForm.addEventListener("submit", function (event) { event.preventDefault(); });
+      unavailableForm.querySelector(".lead-form__error-title").textContent = "Не удалось проверить данные";
+      unavailableForm.querySelector(".lead-form__error-text").textContent =
+        "Обновите страницу и заполните форму ещё раз. Если ошибка повторится, свяжитесь с нами напрямую.";
+      unavailableForm.querySelector(".lead-form__error-contact").hidden = false;
+      unavailableForm.querySelector(".lead-form__error").hidden = false;
+    }
+    return;
+  }
   var LEAD_ENDPOINT = LEAD_CONTRACT.endpoint;
+  var LEAD_DEAD_LETTER_ENDPOINT = "/api/lead-dead-letter";
   var LEAD_FORM_ID = LEAD_CONTRACT.formId;
   var LEAD_ATTRIBUTION_STORAGE_KEY = LEAD_CONTRACT.attributionStorageKey;
   var LEAD_ATTRIBUTION_KEYS = LEAD_CONTRACT.attributionFields;
+
+  /* --- Надёжная доставка: write-ahead outbox (localStorage) --------------
+     Порт контракта «никогда не терять лид» (ADFIX-SITE-SYSTEM-PLAYBOOK.md
+     §1.6, L2/L6/L9/L11) под текущую форму Гамбаряна: запись уходит в outbox
+     ДО сети; ретраи при загрузке / online / раз в 60 с / pagehide
+     (sendBeacon); запись убирается по 2xx или по окончательно отклонённым
+     422 (retry того же payload бессмыслен — пользователь уже видит ошибку и
+     исправит поле, получив новый submission_id); просроченные (>7 дней)
+     записи считаются потерей и шлют dead-letter маяк без PII. Сервер
+     (functions/api/lead.js) дедуплицирует повторные POST по submission_id,
+     когда LEADS_KV привязан — до этого ретраи безвредны, но и не идемпотентны
+     на стороне Albato (см. docs/LEAD-PIPELINE.md). */
+  var OUTBOX_KEY = "gambarian_lead_outbox_v1";
+  var SENT_KEY = "gambarian_lead_sent_v1";
+  var OUTBOX_LOCK_NAME = "gambarian_lead_outbox_lock";
+  var SENT_LOCK_NAME = "gambarian_lead_sent_lock";
+  var OUTBOX_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  var OUTBOX_RETRY_MS = 60000;
+  var SENT_IDS_MAX = 200;
+
+  // Cross-tab mutual exclusion (review 2026-09-23, finding 6, P1): two tabs
+  // of the same origin share localStorage but not JS state, so an unguarded
+  // read-modify-write (outbox array, sent-ID set) can interleave and lose an
+  // update — a tab calling enqueueOutbox() can overwrite a write from a
+  // different tab, or both tabs
+  // race fireLeadOnce() and both fire generate_lead for the same lead.
+  // navigator.locks.request() serialises a named critical section across
+  // ALL tabs/pages of this origin (Web Locks API — supported in every
+  // Chromium/Firefox/Safari shipping today, secure-context only, which
+  // 127.0.0.1/HTTPS both satisfy). Residual risk, documented per the review
+  // ask: on a browser without Web Locks at all, this degrades to the old
+  // unguarded behaviour — no cross-tab exclusion, same race as before this
+  // fix — see docs/LEAD-PIPELINE.md "Review 2026-09-23" table.
+  function withLock(name, fn) {
+    if (window.navigator && navigator.locks && typeof navigator.locks.request === "function") {
+      return navigator.locks.request(name, fn);
+    }
+    return new Promise(function (resolve) { resolve(fn()); });
+  }
+
+  function readJSON(key, fallback) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+  function writeJSON(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      // Storage опционален — недоступность не должна ломать отправку.
+    }
+  }
+  function readOutbox() {
+    var value = readJSON(OUTBOX_KEY, []);
+    return Array.isArray(value) ? value : [];
+  }
+  function writeOutbox(entries) {
+    writeJSON(OUTBOX_KEY, entries);
+  }
+  function enqueueOutbox(data) {
+    if (data.lf_hp) return Promise.resolve(); // ловушка — не лид, ретраить нечего
+    return withLock(OUTBOX_LOCK_NAME, function () {
+      var entries = readOutbox().filter(function (entry) {
+        return entry.submission_id !== data.submission_id;
+      });
+      entries.push({ submission_id: data.submission_id, data: data, created_at: Date.now(), attempts: 0 });
+      writeOutbox(entries);
+    });
+  }
+  function dequeueOutbox(submissionId) {
+    return withLock(OUTBOX_LOCK_NAME, function () {
+      writeOutbox(readOutbox().filter(function (entry) { return entry.submission_id !== submissionId; }));
+    });
+  }
+
+  function sentLeadIds() {
+    var value = readJSON(SENT_KEY, []);
+    return Array.isArray(value) ? value : [];
+  }
+  // Дедуп по submission_id, общий для generate_lead И lead_corrected
+  // (review round 2, finding F, P2): каждый submission_id — либо новый лид,
+  // либо коррекция, никогда оба сразу, так что один персистентный Set,
+  // защищённый локом, безопасно накрывает оба типа событий. Раньше
+  // lead_corrected слался безусловно (без какого-либо дедупа) — две
+  // вкладки, ретраящие одну и ту же коррекцию, обе фиксировали конверсию,
+  // даже при наличии блокировки на саму мутацию outbox (блокировка защищает
+  // запись в хранилище, а не количество попыток доставки).
+  function fireEventOnce(submissionId, send) {
+    return withLock(SENT_LOCK_NAME, function () {
+      var sent = sentLeadIds();
+      if (sent.indexOf(submissionId) !== -1) return false;
+      send();
+      sent.push(submissionId);
+      if (sent.length > SENT_IDS_MAX) sent = sent.slice(sent.length - SENT_IDS_MAX);
+      writeJSON(SENT_KEY, sent);
+      return true;
+    });
+  }
+  function fireLeadOnce(submissionId, params) {
+    return fireEventOnce(submissionId, function () { pushFormEvent("generate_lead", params); });
+  }
+  function fireCorrectionOnce(submissionId, correctsSubmissionId) {
+    return fireEventOnce(submissionId, function () {
+      track("lead_corrected", { submission_id: submissionId, corrects_submission_id: correctsSubmissionId });
+    });
+  }
+
+  // Один обработчик принятой заявки для ручной отправки и ретрая из outbox
+  // (review 2026-09-23, finding 8, P2): раньше повтор коррекции из outbox
+  // безусловно слал generate_lead, хотя запись несёт corrects_submission_id
+  // и обязана слать lead_corrected, как и ручная отправка той же коррекции.
+  // Источник истины — сами данные (corrects_submission_id), а не UI-флаг
+  // editingContacts, которого в записи outbox не существует.
+  function handleLeadAccepted(data, submissionId, secondsToLead) {
+    if (data.lf_hp) return; // ловушка отфильтрована раньше — событий не считаем
+    if (data.corrects_submission_id) {
+      fireCorrectionOnce(submissionId, data.corrects_submission_id);
+    } else {
+      fireLeadOnce(submissionId, {
+        submission_id: submissionId,
+        seconds_to_lead: secondsToLead,
+      });
+    }
+  }
+
+  function sendDeadLetterBeacon(reason, attempts) {
+    try {
+      if (!navigator.sendBeacon) return;
+      var body = JSON.stringify({ form_id: LEAD_FORM_ID, reason: reason, attempts: attempts });
+      navigator.sendBeacon(LEAD_DEAD_LETTER_ENDPOINT, new Blob([body], { type: "application/json" }));
+    } catch (error) {
+      // Наблюдательный маяк — не должен ронять остальной flow.
+    }
+  }
+
+  // Защита от гонки: автоматический ретрай не должен дублировать активную
+  // ручную отправку того же submission_id (только эта вкладка, в памяти, не
+  // персистится). Без неё flush, попавший между enqueueOutbox() и ответом
+  // основной отправки, мог бы породить второй одновременный POST.
+  var inFlightSubmissions = {};
+
+  function deliverOutboxEntry(entry, useBeacon) {
+    if (inFlightSubmissions[entry.submission_id]) return;
+    if (useBeacon) {
+      try {
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(LEAD_ENDPOINT, new Blob([JSON.stringify(entry.data)], { type: "application/json" }));
+        }
+      } catch (error) {
+        // best-effort — следующий цикл (load/online/60с) подтвердит результат
+      }
+      return;
+    }
+    submitLead(entry.data).then(
+      function (response) {
+        var submissionId = response.submission_id || entry.submission_id;
+        dequeueOutbox(entry.submission_id);
+        handleLeadAccepted(entry.data, submissionId, Math.max(0, Math.round((Date.now() - entry.created_at) / 1000)));
+      },
+      function (error) {
+        if (error.status === 422) {
+          // Отклонено окончательно — повтор того же payload бессмыслен.
+          dequeueOutbox(entry.submission_id);
+        }
+        // Иначе — транзиентная ошибка: запись остаётся, следующий цикл попробует снова.
+      }
+    );
+  }
+
+  function flushOutbox(useBeacon) {
+    // Мутация самого outbox (чтение + чистка TTL + инкремент attempts +
+    // запись) — одна блокировка на весь проход. Сетевые попытки — уже ВНЕ
+    // лока: сетевой запрос не должен держать блокировку и мешать другой
+    // вкладке.
+    withLock(OUTBOX_LOCK_NAME, function () {
+      var now = Date.now();
+      var entries = readOutbox();
+      var alive = [];
+      var toDeliver = [];
+      var expired = [];
+      var changed = false;
+      entries.forEach(function (entry) {
+        if (now - entry.created_at > OUTBOX_TTL_MS) {
+          expired.push(entry);
+          changed = true;
+          return;
+        }
+        entry.attempts = (entry.attempts || 0) + 1;
+        alive.push(entry);
+        changed = true;
+        toDeliver.push(entry);
+      });
+      if (changed) writeOutbox(alive);
+      return { toDeliver: toDeliver, expired: expired };
+    }).then(function (result) {
+      (result.expired || []).forEach(function (entry) { sendDeadLetterBeacon("ttl", entry.attempts || 0); });
+      (result.toDeliver || []).forEach(function (entry) { deliverOutboxEntry(entry, useBeacon); });
+    });
+  }
+
+  window.setTimeout(function () { flushOutbox(false); }, 1500);
+  window.addEventListener("online", function () { flushOutbox(false); });
+  window.setInterval(function () { flushOutbox(false); }, OUTBOX_RETRY_MS);
+  window.addEventListener("pagehide", function () { flushOutbox(true); });
 
   function readFirstTouchAttribution() {
     try {
@@ -280,11 +916,10 @@
     ].join("-");
   }
 
-  function pushFormEvent(eventName) {
-    (window.dataLayer = window.dataLayer || []).push({
-      event: eventName,
-      form_id: LEAD_FORM_ID,
-    });
+  function pushFormEvent(eventName, params) {
+    var fields = { form_id: LEAD_FORM_ID };
+    Object.keys(params || {}).forEach(function (key) { fields[key] = params[key]; });
+    track(eventName, fields);
   }
 
   function submitLead(data) {
@@ -323,21 +958,125 @@
 
   var form = document.querySelector(".lead-form");
   var success = document.querySelector(".form-success");
-  var again = document.querySelector(".form-success__again");
+  var successBody = document.querySelector(".form-success__body");
+  var successCollapsed = document.querySelector(".form-success__collapsed");
+  var successClose = document.querySelector(".form-success__close");
+  var successContinue = document.querySelector(".form-success__continue");
+  var successCollapsedEdit = document.querySelector(".form-success__collapsed-edit");
+  var editContacts = document.querySelector(".form-success__edit");
   var errorBox = document.querySelector(".lead-form__error");
   var errorTitle = errorBox && errorBox.querySelector(".lead-form__error-title");
   var errorText = errorBox && errorBox.querySelector(".lead-form__error-text");
   var errorContact = errorBox && errorBox.querySelector(".lead-form__error-contact");
   var submitButton = form && form.querySelector('.lead-form__submit');
-  var formInputs = form ? Array.from(form.querySelectorAll("input[name]")) : [];
+  var formFields = form && form.querySelector(".lead-form__fields");
+  var confirmBox = form && form.querySelector(".lead-form__confirm");
+  var confirmButton = form && form.querySelector(".lead-form__confirm-submit");
+  var editButton = form && form.querySelector(".lead-form__edit");
+  var emailSuggestion = form && form.querySelector(".field__email-suggestion");
+  var formInputs = form ? Array.from(form.querySelectorAll("input[name]:not([name=lf_hp])")) : [];
+  var formStarted = false;
   var submitButtonLabel = submitButton ? submitButton.textContent : "";
   var validation = LEAD_CONTRACT.validation;
   var attribution = readFirstTouchAttribution();
   var pendingSubmissionId = "";
   var pendingFingerprint = "";
+  var acceptedSubmissionId = "";
+  var acceptedContacts = null;
+  var editingContacts = false;
   var submitting = false;
   var errorMode = "";
   var invalidBatchScheduled = false;
+  var confirmedFingerprint = "";
+  var emailDomainCorrections = {
+    "gmail.con": "gmail.com",
+    "gmali.com": "gmail.com",
+    "gmail.co": "gmail.com",
+    "gamil.com": "gmail.com",
+    "hotmail.con": "hotmail.com",
+    "outlook.con": "outlook.com",
+    "yahoo.con": "yahoo.com",
+    "walla.con": "walla.co.il",
+  };
+
+  function suggestedEmailDomain() {
+    var parts = form.elements.email.value.trim().toLowerCase().split("@");
+    return parts.length === 2 && Object.prototype.hasOwnProperty.call(emailDomainCorrections, parts[1])
+      ? emailDomainCorrections[parts[1]] : "";
+  }
+
+  function updateEmailSuggestion() {
+    var domain = suggestedEmailDomain();
+    emailSuggestion.hidden = !domain;
+    emailSuggestion.textContent = domain ? "Возможно, вы имели в виду " + domain + "?" : "";
+  }
+
+  function normalizedPhone(phone) {
+    return (phone.charAt(0) === "+" ? "+" : "") + phone.replace(/\D/g, "");
+  }
+
+  // Показ номера человеку (шаг проверки и экран успеха): израильские номера
+  // группируются как +972 54-000-0000 / 054-000-0000, остальные — как ввёл
+  // пользователь. Слитная строка цифр глазами не проверяется, а проверка — цель шага.
+  function displayPhone(phone) {
+    var digits = normalizedPhone(phone);
+    var intl = /^\+972(\d{2})(\d{3})(\d{4})$/.exec(digits);
+    if (intl) return "+972 " + intl[1] + "-" + intl[2] + "-" + intl[3];
+    var local = /^0(\d{2})(\d{3})(\d{4})$/.exec(digits);
+    if (local) return "0" + local[1] + "-" + local[2] + "-" + local[3];
+    return phone.trim().replace(/\s+/g, " ");
+  }
+
+  function showFields(focusFirst) {
+    confirmedFingerprint = "";
+    confirmBox.hidden = true;
+    formFields.hidden = false;
+    submitButton.hidden = false;
+    if (focusFirst) form.elements.name.focus();
+  }
+
+  function showConfirmation(data, fingerprint) {
+    confirmedFingerprint = fingerprint;
+    form.querySelector('[data-confirm="name"]').textContent = data.name;
+    form.querySelector('[data-confirm="phone"]').textContent = displayPhone(data.phone);
+    form.querySelector('[data-confirm="email"]').textContent = data.email;
+    hideFormError();
+    formFields.hidden = true;
+    submitButton.hidden = true;
+    confirmBox.hidden = false;
+    confirmBox.querySelector(".lead-form__confirm-title").focus();
+    pushFormEvent('form_confirm');
+  }
+
+  function showSuccess(data) {
+    hideFormError();
+    form.hidden = true;
+    // Полная карточка, не свёрнутая строка: свежий успех всегда открыт целиком,
+    // даже если предыдущую заявку до этого сворачивали.
+    if (successBody) successBody.hidden = false;
+    if (successCollapsed) successCollapsed.hidden = true;
+    success.querySelector(".form-success__contacts").textContent =
+      "Мы свяжемся с вами по телефону " + displayPhone(data.phone) + ". Ваш e-mail: " + data.email;
+    success.hidden = false;
+    // Фокус на результат: кнопка отправки уже скрыта.
+    var title = success.querySelector(".form-success__title");
+    if (title) {
+      title.setAttribute("tabindex", "-1");
+      title.focus();
+    }
+  }
+
+  // Свернуть карточку успеха в одну строку-подтверждение: повторную пустую
+  // форму так не увидеть (защита от дублей-заявок), при этом «Изменить
+  // контакты» остаётся доступной — тот же reopenForm(), что и в открытой
+  // карточке. Перезагрузки страницы нет, событий в dataLayer нет.
+  function collapseSuccess() {
+    if (successBody) successBody.hidden = true;
+    if (successCollapsed) {
+      successCollapsed.hidden = false;
+      successCollapsed.focus();
+    }
+  }
 
   function fieldMessage(input) {
     var value = input.value.trim();
@@ -360,6 +1099,12 @@
       ) {
         return validation.fields.phone.invalidFormat;
       }
+    }
+
+    if (input.name === "email") {
+      if (!value) return validation.fields.email.required;
+      if (value.length > limits.email) return validation.fields.email.tooLong;
+      if (!LEAD_CONTRACT.isValidEmail(value)) return validation.fields.email.invalidFormat;
     }
 
     return "";
@@ -477,10 +1222,36 @@
     form.setAttribute("aria-busy", active ? "true" : "false");
     submitButton.disabled = active;
     submitButton.textContent = active ? "Отправляем…" : submitButtonLabel;
+    confirmButton.disabled = active;
+    confirmButton.textContent = active ? "Отправляем…" : "Всё верно, отправить";
+    editButton.disabled = active;
   }
 
   if (form && success) {
     success.hidden = true;
+    // Общая валидация работает и при скрытых на шаге проверки обязательных полях.
+    form.noValidate = true;
+    editButton.addEventListener("click", function () {
+      pushFormEvent('form_correct');
+      showFields(true);
+    });
+    form.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !confirmBox.hidden && !submitting) {
+        event.preventDefault();
+        showFields(true);
+      }
+    });
+    form.elements.email.addEventListener("input", updateEmailSuggestion);
+    form.elements.email.addEventListener("change", updateEmailSuggestion);
+    emailSuggestion.addEventListener("click", function () {
+      var domain = suggestedEmailDomain();
+      if (!domain) return;
+      var input = form.elements.email;
+      input.value = input.value.trim().split("@")[0] + "@" + domain;
+      updateEmailSuggestion();
+      setFieldError(input, fieldMessage(input));
+      input.focus();
+    });
 
     form.addEventListener("invalid", function (event) {
       if (!event.target.matches("input[name]")) return;
@@ -490,12 +1261,17 @@
       invalidBatchScheduled = true;
       window.setTimeout(function () {
         invalidBatchScheduled = false;
+        pushFormEvent('form_error', { error_type: 'validation', http_status: 0 });
         showValidationErrors(validateForm());
       }, 0);
     }, true);
 
     formInputs.forEach(function (input) {
       input.addEventListener("input", function () {
+        if (!formStarted) {
+          formStarted = true;
+          pushFormEvent('form_start');
+        }
         if (input.getAttribute("aria-invalid") === "true") {
           setFieldError(input, fieldMessage(input));
           if (errorMode === "validation") {
@@ -522,6 +1298,8 @@
       if (submitting) return;
       var invalidInputs = validateForm();
       if (invalidInputs.length) {
+        showFields(false);
+        pushFormEvent('form_error', { error_type: 'validation', http_status: 0 });
         showValidationErrors(invalidInputs);
         return;
       }
@@ -529,10 +1307,22 @@
       var data = {
         name: form.elements.name.value.trim(),
         phone: form.elements.phone.value.trim(),
+        email: form.elements.email.value.trim(),
       };
+      var contactFingerprint = JSON.stringify(data);
+      if (editingContacts && contactFingerprint === JSON.stringify(acceptedContacts)) {
+        showSuccess(acceptedContacts);
+        return;
+      }
+      if (confirmBox.hidden || confirmedFingerprint !== contactFingerprint) {
+        showConfirmation(data, contactFingerprint);
+        return;
+      }
       Object.assign(data, attribution, {
         landing_path: window.location.pathname,
+        lf_hp: form.elements.lf_hp.value,
       });
+      if (editingContacts) data.corrects_submission_id = acceptedSubmissionId;
 
       var fingerprint = JSON.stringify(data);
       if (!pendingSubmissionId || fingerprint !== pendingFingerprint) {
@@ -543,24 +1333,34 @@
 
       hideFormError();
       setSubmitting(true);
+      inFlightSubmissions[data.submission_id] = true;
 
-      submitLead(data).then(
-        function () {
+      // write-ahead: enqueueOutbox() (взяв лок) обязан ЗАВЕРШИТЬСЯ до сети,
+      // иначе сбой fetch мог бы терять заявку, которую ещё не успели записать.
+      enqueueOutbox(data).then(function () {
+        return submitLead(data);
+      }).then(
+        function (response) {
           setSubmitting(false);
-          form.hidden = true;
-          success.hidden = false;
-          pushFormEvent("generate_lead");
-          // Фокус на заголовок результата — иначе после отправки фокус
-          // остаётся на скрытой кнопке и скринридер не сообщает об успехе.
-          var title = success.querySelector(".form-success__title");
-          if (title) {
-            title.setAttribute("tabindex", "-1");
-            title.focus();
-          }
+          delete inFlightSubmissions[data.submission_id];
+          acceptedSubmissionId = response.submission_id || data.submission_id;
+          acceptedContacts = JSON.parse(contactFingerprint);
+          dequeueOutbox(data.submission_id);
+          handleLeadAccepted(data, acceptedSubmissionId, visibleSeconds());
+          editingContacts = false;
+          showSuccess(acceptedContacts);
         },
         function (error) {
           setSubmitting(false);
-          pushFormEvent("form_error");
+          delete inFlightSubmissions[data.submission_id];
+          if (error.status === 422) dequeueOutbox(data.submission_id); // отклонено окончательно — ретраить нечего
+          showFields(false);
+          pushFormEvent('form_error', {
+            error_type: error.status === 422 ? 'validation'
+              : error.status === 503 ? 'unavailable'
+              : !error.status ? 'network' : 'server',
+            http_status: error.status || 0
+          });
           if (
             error.status === 422 &&
             Object.keys(error.fieldErrors).length &&
@@ -573,7 +1373,12 @@
           var message = deliveryMessage(error);
           showFormError(message[0], message[1], true);
           if (submitButton) submitButton.textContent = "Повторить отправку";
-          if (errorBox) {
+          // Фокус ведём на кнопку повтора, а не в блок сообщения: сообщение и так
+          // объявляется role="alert" независимо от фокуса, а следующее действие
+          // человека — повторить отправку. С клавиатуры это снимает лишний таб.
+          if (submitButton) {
+            submitButton.focus();
+          } else if (errorBox) {
             errorBox.focus();
           }
         }
@@ -581,100 +1386,29 @@
     });
   }
 
-  if (again && form && success) {
-    again.addEventListener("click", function () {
-      form.reset();
-      pendingSubmissionId = "";
-      pendingFingerprint = "";
-      formInputs.forEach(function (input) {
-        setFieldError(input, "");
-      });
-      if (submitButton) submitButton.textContent = submitButtonLabel;
-      hideFormError();
-      success.hidden = true;
-      form.hidden = false;
-      var first = form.querySelector("input");
-      if (first) first.focus();
+  // «Отправить ещё одну заявку» убрали (2026-09-24, владелец: дублирует лиды
+  // и конверсии Ads) — reopenForm() теперь всегда правит контакты последней
+  // принятой заявки, независимого сброса формы больше нет.
+  function reopenForm() {
+    editingContacts = true;
+    pendingSubmissionId = "";
+    pendingFingerprint = "";
+    formInputs.forEach(function (input) {
+      setFieldError(input, "");
     });
+    if (submitButton) submitButton.textContent = submitButtonLabel;
+    hideFormError();
+    success.hidden = true;
+    form.hidden = false;
+    updateEmailSuggestion();
+    showFields(true);
   }
 
-  /* --- Раскрывающиеся карточки фактов (только мобильный) ----------------- */
-  // Прогрессивное раскрытие (progressive disclosure): на <=720px абзац
-  // карточки обрезан двумя строками с многоточием, остальное — по тапу.
-  //
-  // Управляющий элемент — настоящая <button> с aria-expanded и
-  // aria-controls на абзац. Роль кнопки на всей карточке (как было раньше)
-  // ошибочна: скринридер зачитывал бы весь текст карточки как имя кнопки,
-  // а вложенный интерактив внутри такой «кнопки» недоступен. Кнопка
-  // создаётся скриптом — без JS раскрывать нечем, и рисовать её незачем.
-  //
-  // Имя кнопки собирается из подзаголовка самой карточки: новых текстов
-  // на страницу не добавляется.
-
-  var factCards = document.querySelectorAll(".fact-card");
-  var factsMq = window.matchMedia("(max-width: 860px)");
-
-  function buildToggle(card, index) {
-    var text = card.querySelector("p");
-    if (!text) return null;
-
-    if (!text.id) text.id = "fact-text-" + (index + 1);
-
-    var label = card.querySelector(".fact-card__sub");
-    var toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "fact-card__toggle";
-    toggle.setAttribute("aria-controls", text.id);
-    toggle.setAttribute("aria-expanded", "false");
-    toggle.setAttribute(
-      "aria-label",
-      "Показать полностью" + (label ? ": " + label.textContent.trim() : "")
-    );
-    toggle.innerHTML = '<span class="fact-card__chevron" aria-hidden="true"></span>';
-    card.appendChild(toggle);
-    return toggle;
+  if (editContacts && form && success) {
+    editContacts.addEventListener("click", function () { reopenForm(); });
+    if (successCollapsedEdit) successCollapsedEdit.addEventListener("click", function () { reopenForm(); });
+    if (successClose) successClose.addEventListener("click", collapseSuccess);
+    if (successContinue) successContinue.addEventListener("click", collapseSuccess);
   }
 
-  function setExpanded(card, open) {
-    var toggle = card.querySelector(".fact-card__toggle");
-    card.classList.toggle("is-open", open);
-    if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
-  }
-
-  if (factCards.length) {
-    factCards.forEach(function (card, index) {
-      var toggle = buildToggle(card, index);
-      if (!toggle) return;
-
-      // Карточка целиком остаётся тап-целью: на мобильном это удобнее,
-      // чем целиться в шеврон. Клик по самой кнопке не должен сработать
-      // дважды, поэтому всплытие останавливается.
-      toggle.addEventListener("click", function (event) {
-        event.stopPropagation();
-        setExpanded(card, !card.classList.contains("is-open"));
-      });
-
-      card.addEventListener("click", function () {
-        if (!factsMq.matches) return;
-        setExpanded(card, !card.classList.contains("is-open"));
-      });
-    });
-
-    // На десктоп текст виден целиком — раскрывать нечего, кнопка убирается
-    // из потока фокуса, чтобы не быть пустой остановкой при табуляции.
-    function syncMode() {
-      factCards.forEach(function (card) {
-        var toggle = card.querySelector(".fact-card__toggle");
-        if (!toggle) return;
-        if (factsMq.matches) {
-          toggle.removeAttribute("hidden");
-        } else {
-          toggle.setAttribute("hidden", "");
-          setExpanded(card, false);
-        }
-      });
-    }
-    syncMode();
-    factsMq.addEventListener("change", syncMode);
-  }
 })();

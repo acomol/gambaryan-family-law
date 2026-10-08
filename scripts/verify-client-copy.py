@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Проверяет точный клиентский текст в source и 11 Preview-артефактах.
+"""Проверяет точный клиентский текст в source и 12 Preview-артефактах.
 
-CLIENT-COPY-VERIFIER v1.0.0 | 2026-08-11
+CLIENT-COPY-VERIFIER v1.1.0 | 2026-09-07
 """
 
 from __future__ import annotations
@@ -33,9 +33,9 @@ from client_copy_contract import (
 )
 
 
-VERIFIER_VERSION = "1.0.0"
-VERIFIER_DATE = "2026-08-11"
-EXPECTED_PREVIEW_ALIASES = 11
+VERIFIER_VERSION = "1.2.0"
+VERIFIER_DATE = "2026-09-16"
+EXPECTED_PREVIEW_ALIASES = 13
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "scripts" / "client-preview-map.json"
 SKIPPED_TEXT_TAGS = {"script", "style"}
@@ -58,6 +58,7 @@ DYNAMIC_UI_PATHS = (
     "site/lead-contract.js",
     "site-addons/action-bar/action-bar.js",
     "site-addons/final-dev3/hero-business-hours.js",
+    "site-addons/final-dev4/hero-business-hours.js",
 )
 
 
@@ -427,7 +428,7 @@ def verify_html(path: Path) -> list[str]:
                 f"{path}: запрещён старый текст: {forbidden_normalized!r}"
             )
 
-    for field_name in ("email", "topic"):
+    for field_name in ("topic",):
         if re.search(rf'\bname=["\']{field_name}["\']', html, re.IGNORECASE):
             problems.append(f"{path}: запрещено поле формы name={field_name!r}")
 

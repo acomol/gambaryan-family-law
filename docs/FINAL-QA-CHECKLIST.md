@@ -1,8 +1,8 @@
 # Финальный чек-лист проекта
 
-**Версия:** `2.3.1`
+**Версия:** `2.3.10`
 
-**Обновлено:** `2026-08-13`
+**Обновлено:** `2026-09-07`
 
 > **Обновление 2026-08-17:** `codex/client-approved-copy-only` слита в `main`
 > (PR #3) и закрыта; ветка ниже — история конкретной задачи, не текущее
@@ -46,24 +46,194 @@ GitHub Actions run `31692242948` — `success`; `SUPERSEDED FOR HANDOFF` из-з
 
 Последние явные решения владельца задают allowlist, а не обязательный coverage:
 каждый размещённый смысловой текст должен входить в 45-строчный client allowlist
-или в один из двух точных `OWNER-APPROVED` блоков: Юлия и `fact-900-v1`. Вне них
+или в один из 18 точных `OWNER-APPROVED` блоков (реестр CONTENT-OWNER-EDITS). Вне них
 допустимы только существующая identity и `SYSTEM-UI`. Форма содержит только
 `Имя`/`Телефон`, без Email/topic.
 
 | Контракт | Текущая версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.1.0` | LOCAL PASS: 45 client + 2 owner blocks |
-| Client Copy verifier | `1.0.0` | LOCAL PASS: 24 targets / 22 unique |
-| Action Bar | `2.3.4` | LIVE PASS 11/11 |
+| Client Copy contract | `1.4.2` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
+| Client Copy verifier | `1.1.0` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
+| Action Bar | `2.4.0` | LIVE на final-dev3; остальные alias на прежнем релизе |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `FINAL-DEV1-HERO` | `2.0.0` | LIVE PASS |
 | `FINAL-DEV3-DESIGN` | `2.0.2` | LIVE PASS |
 | Lead contract | `2.0.0` | LIVE readback: name/phone only |
-| Review Numbered | `2.0.0` | LIVE PASS: client/owner gate |
+| Review Numbered | `2.2.1` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: Lora H1 effective-width fix |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: Manrope lede effective-width fix |
-| Browser QA runner | `1.4.0` | LOCAL PASS: `177/177`, fact-card clipping guard |
-| Этот чек-лист | `2.3.1` | active |
+| Browser QA runner | `1.4.3` | LOCAL final-dev4: 15/15 PASS; вся матрица 194 cells не запускалась |
+| Этот чек-лист | `2.3.7` | active |
+
+### Единый ряд отступов — часть этапа 7, 2026-09-07
+
+Ветка `codex/final-dev4-s7b-spacing`, база `537d3de`.
+
+- [x] `--section-pad: clamp(48px, 8vw, 80px)`; нижнее поле прецедента
+      использует тот же токен; `--precedent-reserve: 80px` на desktop >1200.
+- [x] Кремовое поле 32/20, Hero/footer, шрифты, фото и внутренние поля сохранены.
+- [x] Скрипт `SECTION-GAPS-MEASURE v1.0.0 | 2026-09-07`, JSON до/после;
+      unit-тесты 20 OK; отрицательный гейт на прежних 96/56 сработал.
+- [x] Локальная геометрия final-dev4 на 9 размерах: без overflow и наезда
+      портрета. Высота страницы −203 px на 1440×900, −48 px на 390×844.
+- [ ] Строго одинаковая видимая пустота: 4 отклонения в прецеденте и под
+      подписью формы сохранены по границам задания; это не padding секции.
+- [ ] Все Preview: сборка шрифтов блокируется curl 7; Action Bar builder —
+      WinError 5. Общие copy/preview гейты FAIL на неполных font variants.
+- [ ] Hero/footer: решение о величинах отступов. Live readback после
+      публикации владельцем; в этом прогоне публикаций нет.
+
+Таблицы, точные результаты гейтов, оговорка о росте на 9 px при ширине
+960/961 и вопрос владельцу: [замеры отступов v1.1.0](SPACING-MEASUREMENTS-2026-09-06.md#результат-правки-2026-09-07-final-dev4-до--после).
+| Browser QA runner | `1.5.0` | LOCAL final-dev4: 15/15 PASS; вся матрица 194 cells не запускалась |
+| Этот чек-лист | `2.3.6` | active |
+
+### Кубики фактов — этап 5, 2026-09-07
+
+Кандидат в `codex/final-dev4-s5-facts`, база `a09f923`. Этапы 1–3 есть в истории;
+этап 4 исключён заданием владельца. Onest уже принят отдельной работой.
+Контракт копирайта 1.4.0: 45 client + 18 owner; numbered-review 2.2.0;
+readback 1.3.0; DARK-FACT-CARDS 2.0.0. На этапе 5 использовался runner 1.4.3; текущий — 1.5.0.
+
+- [x] Три кубика перестроены по строкам 7–10; заголовок секции и аккордеон сняты.
+- [x] Copy parser: source, standalone и final-dev4 без ошибок; тексты трёх owner ID точные.
+- [x] Unit-тесты: 17 OK с TEMP/TMP внутри репозитория; lead-hook PASS.
+- [x] Standalone, Hero и numbered-review собраны; 18 client + 18 owner номеров.
+- [ ] Полный copy/preview PASS: сборка шрифтов остановлена ошибкой curl 7,
+      v2–v4 устарели, v1 собран не полностью.
+- [ ] Action Bar builder и browser matrix: Playwright не стартует, WinError 5.
+- [ ] Замеры и PNG 1440/390 v2.0.0; live readback после деплоя владельцем.
+
+Дословные логи и границы проверки: [отчёт этапа 5](reviews/2026-09-07-final-dev4-stage-5-local.md).
+
+### Заголовки Onest — этап 7a, 2026-09-07
+
+Ветка `codex/final-dev4-s7a-font`, база `68da774`. Решение №29:
+[веса и основание](CONTENT-OWNER-EDITS.md#заголовки-onest--решение-29-2026-09-07-этап-7a).
+Все десять потребителей `--font-serif` используют Onest; H1/H2 700,
+остальные изменяемые заголовки 600, факты сохраняют 500. Курсив снят.
+Из `site/` удалены Playfair, четыре файла шрифта, `@font-face` и preload.
+Standalone пересобран из source. Размеры и тексты сохранены.
+
+- [x] Сборка standalone → font variants → hero variants → action bar → review numbered.
+- [x] Copy gate → unit-тесты → preview gate → lead hook → diff check, в порядке задания.
+- [x] Browser runner `1.4.3`: ожидание Onest для сборок из `site/`,
+  индивидуальные семейства v1–v4 сохранены. Версии остальных контрактов не менялись.
+- [x] Матрица `final-dev4`: 15/15 PASS, main 10/10, breakpoint 5/5;
+  включает 360×600, 360×668, 390×724, 960/961px и 1440×900.
+- [x] Дополнительный DOMRect readback 390×740, горизонтальный overflow 0.
+- [x] `[verified]` CSS + computed styles подтверждают веса/normal;
+  CDP для отрисованного текста на 390×740 и 1440×900: только Onest,
+  системных подстановок 0. Screenshots Hero на этих ширинах просмотрены.
+- [x] H1 уменьшать не понадобилось: минимум `clamp` остаётся 32px.
+- [ ] Live readback: публикацию выполняет владелец; в этой задаче деплой не запускался.
+
+| Viewport | Низ кнопки консультации, px | Запас до низа viewport, px | Overflow, px |
+|---|---:|---:|---:|
+| 360×600 | 523.4375 | 76.5625 | 0 |
+| 360×668 | 591.4375 | 76.5625 | 0 |
+| 390×724 | 644.1875 | 79.8125 | 0 |
+| 390×740 | 660.1875 | 79.8125 | 0 |
+
+Порт 8098 занят другим процессом `http.server`, возвращавшим
+`ERR_EMPTY_RESPONSE`: первые прогоны на нём не являются проверкой вёрстки.
+Успешная матрица выполнена тем же runner на
+`http://127.0.0.1:65352/build/variants/final-dev4/` через локальный
+`http.server.ThreadingHTTPServer`. Сервер после проверки остановлен.
+Все Preview пересобраны по командам задания; source/addons `final-dev3`
+не редактировались. Живые final-dev3 и production не публиковались и не проверялись.
+
+Дословный вывод гейтов:
+
+```text
+PASS CLIENT-COPY-VERIFIER v1.1.0 | 2026-09-07: 26 HTML targets, 24 unique files, client-copy allowlist 45 IDs, owner-approved 16 block; contract v1.3.1 | 2026-09-07; source SHA256 5234CC5D9A3A4DF991827EF02E8DA46AE9C8B46D33C84CC33671E4B0465FA18E
+...............
+----------------------------------------------------------------------
+Ran 15 tests in 1.095s
+
+OK
+PASS: Preview-карта v2.5.0 | 2026-09-07; Action Bar v2.4.0 | 2026-08-17; Client Preview Mobile v1.1.0 | 2026-08-11 присутствуют во всех 12 клиентских Preview-артефактах.
+Lead hook 2.0.0 (2026-08-11): contract/static/runtime PASS
+```
+
+`git diff --check`: exit 0; stdout пуст. Первоначальный stderr содержал
+предупреждения Git об автоматической замене LF на CRLF в четырёх текстовых файлах.
+
+Дословный summary браузерного runner:
+
+```json
+{"limitations": ["visual review is still required for heads/hair, overlaps, and microtext", "lead-form submission and broader click interaction smoke remain separate gates", "the known unused hero-duo-air preload timing warning is excluded"], "mode": "single-preview", "runner_version": "1.4.3", "status": "PASS", "suites": {"breakpoint": {"fail": 0, "pass": 5, "total": 5}, "main": {"fail": 0, "pass": 10, "total": 10}}, "targets": 1, "totals": {"fail": 0, "pass": 15, "total": 15}, "type": "summary"}
+```
+
+<details>
+<summary>Дословный вывод grep -ric playfair site/ (все файлы: 0)</summary>
+
+```text
+site/app.js:0
+site/assets/alexander-avatar-128w.71d1278f.jpg:0
+site/assets/alexander-avatar-128w.de2d4e53.webp:0
+site/assets/alexander-card-v2-1100w.81a0e939.webp:0
+site/assets/alexander-card-v2-1100w.f6a22a7e.jpg:0
+site/assets/alexander-card-v2-480w.b11d2ea8.webp:0
+site/assets/alexander-card-v2-480w.e47b99b3.jpg:0
+site/assets/alexander-card-v2-760w.621afb9f.webp:0
+site/assets/alexander-card-v2-760w.681730d0.jpg:0
+site/assets/hero-duo-2623w.020f19ef.jpg:0
+site/assets/hero-duo-air-1024w.d5751a26.jpg:0
+site/assets/hero-duo-air-1024w.e56eaeeb.webp:0
+site/assets/hero-duo-air-1440w.ba967ca5.webp:0
+site/assets/hero-duo-air-1440w.d112fafc.jpg:0
+site/assets/hero-duo-air-2048w.5683c056.jpg:0
+site/assets/hero-duo-air-2048w.ebf0733b.webp:0
+site/assets/hero-duo-air-2859w.0b0a31ec.jpg:0
+site/assets/hero-duo-air-2859w.c1bbe4e7.webp:0
+site/assets/hero-duo-air-640w.170af78d.webp:0
+site/assets/hero-duo-air-640w.e9d5c777.jpg:0
+site/assets/hero-duo-mob-1170w.2a4874c6.jpg:0
+site/assets/hero-duo-mob-1170w.7d128605.webp:0
+site/assets/hero-duo-mob-480w.4e93e124.jpg:0
+site/assets/hero-duo-mob-480w.8e46849b.webp:0
+site/assets/hero-duo-mob-760w.57eeaa64.jpg:0
+site/assets/hero-duo-mob-760w.ff3e9eeb.webp:0
+site/assets/manifest.json:0
+site/assets/precedent-alexander-1040w.c8124a8d.png:0
+site/assets/precedent-alexander-1040w.e1f80cfe.webp:0
+site/assets/precedent-alexander-1600w.a1395450.webp:0
+site/assets/precedent-alexander-720w.010e2a6d.webp:0
+site/assets/precedent-alexander-720w.ec64f2f8.png:0
+site/assets/yulia-card-1100w.6f3eba82.webp:0
+site/assets/yulia-card-1100w.af90eefa.jpg:0
+site/assets/yulia-card-480w.46c5af85.jpg:0
+site/assets/yulia-card-480w.a736c3ca.webp:0
+site/assets/yulia-card-760w.cb17a9cc.webp:0
+site/assets/yulia-card-760w.df9bd223.jpg:0
+site/fonts/onest-normal-400-800-cyrillic-ext.c29dea91.woff2:0
+site/fonts/onest-normal-400-800-cyrillic.37bc1687.woff2:0
+site/fonts/onest-normal-400-800-latin-ext.391a9b24.woff2:0
+site/fonts/onest-normal-400-800-latin.67849bcc.woff2:0
+site/fonts.css:0
+site/gambarian-standalone.html:0
+site/index.html:0
+site/lead-contract.js:0
+site/social-preview-logo-v1.0.2-1200x630.png:0
+site/styles.css:0
+site/_routes.json:0
+
+```
+
+Exit 1 — совпадений нет.
+
+</details>
+
+### Адрес и подвал final-dev4 — этап 3, 2026-09-07
+
+- [x] Вся строка адреса кликабельна в плашке, контактах и подвале;
+  Google Maps в новом окне, `map_click`, новый aria-label, подчёркнутый адрес.
+- [x] JSON-LD: «Карлибах, 10», лицензия без точки; старые формы запрещены контрактом 1.3.1.
+- [x] Колонка «Связь» удалена, «Офис» сохранён; © начинается с отдельной строки в блоке 8.9.
+- [x] `scripts/verify-address-links.py`: 390×844 и 1440×900 PASS;
+  дополнительный DOM/Range-прогон 360×668 PASS, вся лицензия на одной строке.
+- [ ] Live readback после публикации владельцем; деплой не запускался.
 
 ### Исправление статуса после независимого review
 
@@ -73,7 +243,11 @@ Runner `1.3.1` не проверял effective-width `345×600/668` для V2/V3
 `scrollY > 1` допускал показ Action Bar до первого прохода Hero. Эти результаты
 не закрывают ни автоматическую матрицу `177/177`, ни повторный ручной visual QA.
 
-### CURRENT ERRATUM: карточка `2.10`
+### Исторический erratum: карточка `2.10`
+
+В source этапа 5 прежняя геометрия снята: заголовок в одной колонке, без nowrap.
+Браузерное подтверждение закрытия ожидается: Playwright блокируется WinError 5.
+Ниже сохранена история опубликованного релиза.
 
 После live release `75558d9` точечная проверка выявила внутрикардовый
 desktop-клиппинг слова «прецедента». Page overflow оставался `0`, поэтому
@@ -326,6 +500,19 @@ Claude review; действующий gate выше требует новый `1
 
 ## 4. Hero и адаптивная вёрстка
 
+### Окно услуг, этап 6 (2026-09-07)
+
+- [x] Runner 1.5.0: final-dev4 15/15 PASS, гейты равной высоты панелей,
+  неподвижности media/CTA, стрелок, одной строки тем, упора и свайпа.
+- [x] Все восемь тем: 1440 — 1003.328125px; 390 — 1217.203125px (≤1220).
+- [x] Regression display:none вызывает svc-panels-unequal-height.
+- [x] Numbered Review 2.2.1; тексты и copy contract 1.4.1 без изменений.
+- [ ] 194 cells и live не проверены; отсутствуют font-variants по заданию.
+- B6/B7 и прочие прежние OPEN-пункты не закрываются этим этапом.
+
+[Отчёт и PNG](reviews/2026-09-07-final-dev4-stage-6-local.md).
+
+
 - [x] На мобильном Hero построен полосами без наложения текста на лица.
 - [x] Фото Hero занимает полную доступную ширину без бокового смещения.
 - [x] Обе мобильные CTA имеют одинаковую ширину и помещаются без horizontal
@@ -426,6 +613,20 @@ Claude review; действующий gate выше требует новый `1
   что варианты 2–4 не опубликованы, хотя четыре Preview уже live.
 
 ## 7. Action Bar: historical baseline v2.3.0 / then-current Preview v2.3.1
+
+### final-dev4: этап 4, локальный кандидат 2026-09-07
+
+- FINAL-DEV4-DESIGN 1.1.1; CLIENT-COPY-CONTRACT 1.4.2.
+- Дополнение 2026-09-07: закрытый нижний контакт ведёт на форму,
+  SVG подсказки ошибки восстановлен; BUSINESS-HOURS-GATE 1.0.1 проверяет оба ряда.
+  [Локальные результаты и ограничения](reviews/2026-09-07-final-dev4-contact-dedup-local.md).
+- В closed меню, Hero и ряд телефона у формы заменяются на WhatsApp;
+  ошибка формы показывает вариант closed. Ряд контактов остаётся видимым.
+- Единственный источник состояния — Action Bar; отдельный DOM-гейт
+  `scripts/verify-business-hours.py` проверяет 390/1440 и мок доставки 503.
+- [ ] Browser/live приёмка; актуальные результаты и ограничения —
+  [отчёт этапа 4](reviews/2026-09-07-final-dev4-stage-4-local.md).
+
 
 ### Состав и single source
 
@@ -680,7 +881,7 @@ git diff --check
   проверяет оба Hero business-state `final-dev3`, выдаёт машинный PASS/FAIL по
   каждой ячейке и итоговый счёт; карта из одиннадцати вариантов ожидает
   `110 + 55 + 8 = 173` ячейки.
-- [ ] OPEN `verify-fact-cards.mjs` требует не объявленный `playwright-core` и
+- [x] закрыто 2026-09-07: verify-fact-cards.mjs удалён; действующий гейт аккордеона — scripts/qa-browser-matrix.py
   сейчас не является воспроизводимым gate.
 
 ## 13. Cloudflare deployment

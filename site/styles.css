@@ -9,7 +9,8 @@
    ========================================================================== */
 
 :root {
-  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  /* Исторический serif-токен: с 2026-09-07 семейство без засечек, решение №29. */
+  --font-serif: "Onest", Helvetica, Arial, sans-serif;
   --font-body: "Onest", Helvetica, Arial, sans-serif;
   /* Отдельного узкого семейства больше нет: у Archivo Narrow не было
      кириллицы, поэтому в русском тексте узкое начертание всё равно не
@@ -37,12 +38,24 @@
   --container: 1200px;
   --container-hero: 1360px;
   --pad-x: 24px;
-  --section-pad: clamp(56px, 8vw, 96px);
+  --section-pad: clamp(48px, 8vw, 80px);
+  --hero-gap: 2px;
+  --precedent-reserve: clamp(40px, 6vw, 64px);
+  /* Высота закреплённой шапки. Держится 77 px на всех шириных: 14+14 отступа
+     .site-header__bar плюс логотип. Меняешь набивку шапки - поправь и здесь. */
+  --header-h: 77px;
 }
 
 /* --- База: повторяет унаследованные значения прототипа ------------------- */
 
-html { scroll-behavior: smooth; }
+/* Шапка закреплена, поэтому переход по якорю кладёт первые --header-h пикселей
+   секции под неё. Замер 2026-09-07 на живой странице без этого отступа: надзаголовок
+   секции срезан на 29 px при 1440 и на 41 px при 390 ("Прецедент"), а логотип #top
+   на 390 прятал начало H1. Зазор 20 px - чтобы текст не лип к нижней грани шапки. */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-h) + 20px);
+}
 
 body {
   margin: 0;
@@ -100,6 +113,17 @@ picture { display: block; }
    запрещён — он источник horizontal overflow. */
 .nowrap-token { white-space: nowrap; }
 
+.map-link__address {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(240, 174, 31, 0.55);
+}
+.map-link:hover .map-link__address,
+.map-link:focus-visible .map-link__address {
+  text-decoration-color: var(--gold);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;
@@ -135,7 +159,7 @@ picture { display: block; }
   margin: 0 0 14px;
   font-family: var(--font-serif);
   font-style: normal;
-  font-weight: 500;
+  font-weight: 700;
   font-size: clamp(26px, 3.2vw, 40px);
   line-height: 1.2;
   color: #fff;
@@ -320,6 +344,52 @@ picture { display: block; }
 
 /* --- 2. Hero ------------------------------------------------------------- */
 
+/* final-dev4: внешние отступы по общей шкале, внутренний ритм — одним токеном.
+   Свободную высоту распределяет flex; содержимое может увеличить Hero. */
+.page--final-dev4 .hero--final-dev1 .hero__body {
+  padding-block: var(--section-pad);
+}
+
+@media (min-width: 861px) {
+  .page--final-dev4 .hero--final-dev1 .hero__body {
+    display: flex;
+    flex-direction: column;
+  }
+  .page--final-dev4 .hero--final-dev1 .hero-inner {
+    flex: 1;
+    row-gap: var(--hero-gap);
+    justify-content: space-between;
+  }
+  .page--final-dev4 .hero--final-dev1 :is(.hero-row, .hero__title, .hero__lede, .hero__actions, .hero__contact-block, .hero__note) {
+    margin-block: 0;
+  }
+  /* Не шире самого узкого desktop-лида (30ch при 16px Onest):
+     абзац и контактный блок остаются слева от фигуры на фото. */
+  .page--final-dev4 .hero--final-dev1 :is(.hero__note, .hero__contact-block) {
+    max-width: 319px;
+  }
+}
+
+@media (min-width: 961px) {
+  .page--final-dev4 .hero--final-dev1 .hero__contact-block {
+    padding-top: calc(var(--hero-gap) / 2);
+  }
+}
+
+@media (max-width: 860px) {
+  .page--final-dev4 .hero--final-dev1 .hero__title {
+    padding-block: 0;
+  }
+  .page--final-dev4 .hero--final-dev1 .hero__actions { margin-bottom: 8px; }
+  .page--final-dev4 .hero--final-dev1 .hero__call { padding-block: 7px; }
+  /* final-dev5, 2026-09-17, указание владельца: текст «В ходе консультации…» стоит
+     посередине между низом кнопки «Позвонить» и следующим блоком. Было 14 px сверху
+     и 48–69 px снизу; теперь поля равны: 32 px на телефоне, до 40 px на планшете. */
+  .page--final-dev4 .hero--final-dev1 { --hero-note-gap: clamp(32px, 5vw, 40px); }
+  .page--final-dev4 .hero--final-dev1 .hero__contact-block { margin-bottom: var(--hero-note-gap); }
+  .page--final-dev4 .hero--final-dev1 .hero__body { padding-bottom: var(--hero-note-gap); }
+}
+
 .hero {
   position: relative;
   overflow: hidden;
@@ -422,11 +492,24 @@ picture { display: block; }
 .hero-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
 .hero-row .eyebrow { margin-bottom: 0; }
 
+/* final-dev5, 2026-09-16, указание владельца: вместо надстрочника — адрес офиса.
+   Зона нажатия >= 44 px через ::before, строка при этом не растёт (кнопка записи
+   на мобильном остаётся в первом экране). */
+.hero-address { position: relative; display: inline-flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 500; line-height: 1.3; color: rgba(255, 255, 255, 0.88); }
+.hero-address::before { content: ""; position: absolute; inset: -12px -8px; min-height: 44px; }
+.hero-address__icon { flex: none; color: var(--gold); }
+.hero-address:hover { opacity: 1; color: #fff; }
+
+@media (min-width: 861px) {
+  .hero-row { transform: translateY(-8px); }
+}
+
 .hero__title {
   margin: 0 0 24px;
   font-family: var(--font-serif);
   font-style: normal;
-  font-weight: 500;
+  font-weight: 700;
   font-size: clamp(32px, 4.6vw, 58px);
   line-height: 1.12;
   letter-spacing: -0.01em;
@@ -545,6 +628,7 @@ picture { display: block; }
 /* --- 3. Факты ------------------------------------------------------------ */
 
 .facts { background: var(--bg-cream); color: var(--ink); }
+.facts__container { padding-block: 32px; }
 
 /* min(…,100%) в minmax обязателен: без него минимум колонки (300px/380px/180px)
    становится жёстким полом и на 360–414px карточка выпирает за экран.
@@ -556,6 +640,15 @@ picture { display: block; }
   align-items: stretch;
 }
 
+/* final-dev5, 2026-09-16: указание владельца; DOM-порядок сохранён ради
+   контрактов и мобильной раскладки.
+   Две колонки auto-fit: 2 × 300px + 12px gap + 2 × 24px padding = 660px. */
+@media (min-width: 660px) {
+  .facts-grid > .fact-card:nth-child(1) { order: 3; }
+  .facts-grid > .fact-card:nth-child(2) { order: 2; }
+  .facts-grid > .fact-card:nth-child(3) { order: 1; }
+}
+
 .fact-card {
   position: relative;
   overflow: hidden;
@@ -565,8 +658,9 @@ picture { display: block; }
   padding: 34px 32px 30px;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
 }
-.fact-card[data-copy-id="2.10"] {
+.fact-card--accent {
   border-color: rgba(240, 174, 31, 0.5);
 }
 .fact-card::before {
@@ -576,117 +670,31 @@ picture { display: block; }
   height: 3px;
   background: var(--gold);
 }
-.fact-card__head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-.fact-card__num {
+.fact-card__title {
+  margin: 0;
   font-family: var(--font-serif);
   font-weight: 500;
-  font-size: clamp(44px, 4.6vw, 60px);
-  line-height: 0.95;
+  font-size: clamp(28px, 2.4vw, 36px);
+  line-height: 1.12;
+  letter-spacing: 0;
   color: #fff;
-  letter-spacing: -0.02em;
-}
-.fact-card__unit {
-  font-family: var(--font-narrow);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  color: var(--gold);
-  text-transform: uppercase;
-}
-.fact-card__sub {
-  font-size: 15px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 14px;
+  text-wrap: pretty;
 }
 .fact-card .notch {
-  margin-bottom: 14px;
+  margin: 14px 0 12px;
   background: rgba(240, 174, 31, 0.85);
 }
-.fact-card p {
+.fact-card__sub {
   margin: 0;
-  font-size: 13.5px;
-  line-height: 1.65;
-  color: rgba(255, 255, 255, 0.78);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
   text-wrap: pretty;
 }
 
-@media (min-width: 861px) {
-  .fact-card[data-copy-id="2.6"] {
-    justify-content: center;
-  }
-  .fact-card[data-copy-id="2.6"] .fact-card__num {
-    font-size: clamp(64px, 6vw, 84px);
-  }
-  .fact-card[data-copy-id="2.6"] .fact-card__sub {
-    font-size: 16px;
-  }
-
-  .fact-card[data-copy-id="2.10"] .fact-card__head {
-    display: block;
-  }
-  .fact-card[data-copy-id="2.10"] .fact-card__num,
-  .fact-card[data-copy-id="2.10"] .fact-card__unit {
-    display: block;
-    font-family: var(--font-serif);
-    font-size: clamp(28px, 2.4vw, 36px);
-    font-weight: 500;
-    line-height: 1.12;
-    letter-spacing: 0;
-    /* Обе строки заголовка белые: акцент карточки несут золотая рамка и
-       подпись-капитель, выделять внутри заголовка ещё и слово — решение
-       владельца отклонено 2026-08-13. Базовое .fact-card__unit золотое,
-       поэтому цвет переопределяется здесь явно. */
-    color: #fff;
-    text-transform: none;
-  }
-  .fact-card[data-copy-id="2.10"] .fact-card__sub {
-    margin-top: 10px;
-    color: var(--gold);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .fact-card[data-copy-id="2.14"] .fact-card__head,
-  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-  .fact-card[data-copy-id="2.14"] .fact-card__num,
-  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
-    font-size: clamp(40px, 3.4vw, 52px);
-    white-space: nowrap;
-  }
-}
-
-.facts-bar {
-  margin-top: 20px;
-  background: var(--bg-card);
-  border: 1px solid rgba(20, 25, 31, 0.07);
-  border-radius: 12px;
-  padding: 22px 32px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px 40px;
-}
-.facts-bar__item {
-  display: flex;
-  gap: 11px;
-  align-items: center;
-  font-size: 14px;
-  color: var(--ink);
-}
-.facts-bar__item svg { flex: none; }
-.facts-bar strong { font-weight: 600; }
+/* final-dev5, 2026-09-16, указание владельца: полоска с адресом под кубиками снята
+   на всех ширинах — адрес стоит на первом экране над заголовком. */
 
 /* --- 4. Услуги ----------------------------------------------------------- */
 
@@ -701,9 +709,14 @@ picture { display: block; }
   margin-bottom: 34px;
 }
 
-.services__arrows { display: flex; gap: 12px; }
+/* final-dev5, 2026-09-16: услуги как колода карт (указание владельца) */
+.svc-window { position: relative; padding-inline: 64px; }
 
 .svc-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
   flex: none;
   width: 44px;
   height: 44px;
@@ -717,6 +730,11 @@ picture { display: block; }
   justify-content: center;
 }
 .svc-arrow:hover { border-color: rgba(240, 174, 31, 0.7); }
+.svc-arrow[data-dir="prev"] { left: 0; }
+.svc-arrow[data-dir="next"] { right: 0; }
+.svc-arrow:disabled { opacity: .35; cursor: default; }
+.svc-arrow:disabled:hover { border-color: rgba(255, 255, 255, .18); }
+.svc-arrow:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 .svc-tabs {
   display: flex;
@@ -743,54 +761,102 @@ picture { display: block; }
   border-color: rgba(240, 174, 31, 0.55);
 }
 
-.svc-card {
+.svc-frame {
   position: relative;
+  margin-top: 20px;
   background: var(--bg-card-dark);
   border: 1px solid rgba(240, 174, 31, 0.14);
   border-radius: 16px;
   padding: clamp(26px, 4vw, 46px);
-}
-.svc-card[hidden] { display: none; }
-
-.svc-card__inner {
   display: flex;
   flex-wrap: wrap;
   gap: clamp(24px, 4vw, 56px);
 }
-
-.svc-card__main { flex: 1 1 380px; min-width: 0; }
-
-.svc-card__badge {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
+.svc-frame::before, .svc-frame::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+  height: 10px;
+  border-radius: 12px 12px 0 0;
+  background: #181d25;
+  border-top: 2px solid var(--gold);
+  pointer-events: none;
 }
-.svc-card__icon {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid rgba(240, 174, 31, 0.3);
+.svc-frame::before { top: -10px; left: 14px; right: 14px; opacity: .9; }
+.svc-frame::after { top: -20px; left: 28px; right: 28px; opacity: .6; }
+
+.svc-frame__main {
+  flex: 1 1 380px;
+  min-width: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+}
+.svc-stage {
+  position: relative;
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+}
+.svc-frame { touch-action: pan-y pinch-zoom; }
+.svc-card {
+  position: relative;
+  grid-area: 1 / 1;
+  display: grid;
+  align-content: center;
+  min-width: 0;
+}
+.svc-card[hidden] { display: grid; visibility: hidden; opacity: 0; pointer-events: none; }
+.svc-card.is-active { transform: none; opacity: 1; z-index: 2; }
+.svc-card.is-enter-next, .svc-card.is-leave-next,
+.svc-card.is-enter-prev, .svc-card.is-leave-prev {
+  animation-duration: .28s;
+  animation-timing-function: cubic-bezier(.4, 0, .2, 1);
+  animation-fill-mode: both;
+  z-index: 2;
+  will-change: transform, opacity;
+}
+.svc-card.is-enter-next { animation-name: svc-rise; }
+.svc-card.is-leave-next { animation-name: svc-shift-out; z-index: 3; }
+.svc-card.is-enter-prev { animation-name: svc-shift-out; animation-direction: reverse; z-index: 3; }
+.svc-card.is-leave-prev { animation-name: svc-rise; animation-direction: reverse; }
+.svc-card.is-dragging { animation: none; transition: none; will-change: transform, opacity; }
+.svc-card.is-settling {
+  transform: none;
+  opacity: 1;
+  transition: transform .18s cubic-bezier(.4, 0, .2, 1), opacity .18s cubic-bezier(.4, 0, .2, 1);
 }
 
-.svc-eyebrow {
-  font-family: var(--font-narrow);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.22em;
+/* Смена направления должна читаться: текст уезжает на 56 px и гаснет, новый
+   приходит с 40 px. Двигается только текст — рамка карточки, кнопка и «Ведёт»
+   стоят на месте (указание владельца 2026-09-17). */
+@keyframes svc-rise {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes svc-shift-out {
+  from { transform: none; opacity: 1; }
+  to { transform: translateX(-56px); opacity: 0; }
+}
+
+.svc-card__num {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: .08em;
   color: var(--gold);
-  text-transform: uppercase;
 }
 
 .svc-title {
   margin: 0 0 16px;
+  padding-right: 0;
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: clamp(24px, 2.8vw, 32px);
   line-height: 1.25;
   color: #fff;
@@ -799,7 +865,7 @@ picture { display: block; }
 }
 
 .svc-lead {
-  margin: 0 0 28px;
+  margin: 0;
   font-size: 15px;
   line-height: 1.7;
   color: rgba(255, 255, 255, 0.68);
@@ -808,6 +874,8 @@ picture { display: block; }
 }
 
 .svc-card__cta {
+  margin-top: 28px;
+  align-self: flex-start;
   display: inline-block;
   background: var(--wine);
   color: #fff;
@@ -840,17 +908,25 @@ picture { display: block; }
 .svc-media__person { display: flex; gap: 14px; align-items: center; }
 .svc-media__avatar {
   flex: none;
-  width: 54px;
-  height: 54px;
+  /* final-dev5, 2026-09-16: владелец просил крупнее (было 54px). Исходник 128px,
+     на 2x-экранах это предел резкости около 64px — крупнее нужен новый ассет. */
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   object-fit: cover;
   object-position: center 12%;
   border: 1px solid rgba(240, 174, 31, 0.35);
 }
+@media (min-width: 861px) {
+  /* final-dev5, 2026-09-16, владелец: фото крупнее и размещено в окне колонки «Ведёт».
+     Колонка 300 px шириной: фото 120 px над именем, подпись лицензии в одну строку. */
+  .svc-media__person { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .svc-media__avatar { width: 120px; height: 120px; }
+}
 .svc-media__name {
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: 18px;
   color: #fff;
   line-height: 1.2;
@@ -894,17 +970,44 @@ picture { display: block; }
 }
 .svc-dot[aria-current="true"] .svc-dot__bar { width: 26px; background: var(--gold); }
 
+.svc-next-hint {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  background: none;
+  border: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, .7);
+  cursor: pointer;
+}
+.svc-next-hint__label { color: var(--gold); font-weight: 600; }
+.svc-next-hint__icon { flex: none; }
+.svc-next-hint:hover .svc-next-hint__label { text-decoration: underline; }
+.svc-next-hint:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.svc-next-hint[hidden] { display: none; }
+
 /* --- 5. Прецедент -------------------------------------------------------- */
 
 .precedent { background: var(--bg); }
-.precedent__container { padding-block: 0 clamp(48px, 7vw, 80px); }
+.precedent__container { padding-block: 0 var(--section-pad); }
 
 .precedent-card {
-  margin-top: clamp(120px, 13vw, 192px);
+  /* final-dev5, 2026-09-18, указание владельца: блок выделен, но в стиле сайта и не
+     грубо. Язык сайта — тонкие золотые линии: карточка услуг с рамкой 1 px и радиусом
+     16, штрихи 40×2. Поэтому вместо полосы 18 px, рамки 2 px и свечения — рамка 1 px
+     ярче, чем у карточки услуг, и золотая черта 3 px у левой кромки. Голова в рамке. */
+  --precedent-pad: clamp(28px, 4vw, 40px);
+  --precedent-photo-h: clamp(420px, 36vw, 488px);
+  margin-top: var(--precedent-reserve);
   background: linear-gradient(120deg, #1a1c20 0%, #241a0c 100%);
-  border: 1px solid rgba(240, 174, 31, 0.18);
-  border-radius: 20px;
-  padding: clamp(28px, 4vw, 40px);
+  border: 1px solid rgba(240, 174, 31, 0.36);
+  border-radius: 16px;
+  box-shadow: 0 24px 56px -32px rgba(0, 0, 0, 0.8);
+  padding: var(--precedent-pad);
   position: relative;
   min-height: clamp(280px, 26vw, 360px);
   display: flex;
@@ -916,12 +1019,12 @@ picture { display: block; }
 
 .precedent-edge {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 16px;
-  height: 100%;
-  background: linear-gradient(var(--gold), var(--gold-light), var(--gold));
-  border-radius: 20px 0 0 20px;
+  top: 28px;
+  bottom: 28px;
+  left: -1px;
+  width: 3px;
+  background: linear-gradient(var(--gold-light), var(--gold));
+  border-radius: 0 3px 3px 0;
 }
 
 .precedent-photo {
@@ -929,7 +1032,7 @@ picture { display: block; }
   left: 60%;
   bottom: 0;
   transform: translateX(-50%);
-  height: clamp(360px, 40vw, 520px);
+  height: var(--precedent-photo-h);
   width: auto;
   max-width: none;
   object-fit: contain;
@@ -948,30 +1051,65 @@ picture { display: block; }
   min-width: 240px;
   max-width: 432px;
 }
-.precedent-card__eyebrow {
-  font-family: var(--font-narrow);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
 .precedent-card__title {
+  /* Надпись-категория над заголовком убрана решением владельца 2026-09-08,
+     поэтому верхний отступ у первого элемента карточки обнуляем. */
   margin: 12px 0;
+  /* Строки заголовка выравниваются по длине — как у H1 первого экрана.
+     Без этого на 360 первая строка занимала 97% ширины, вторая обрывалась. */
+  text-wrap: balance;
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: clamp(24px, 3vw, 32px);
   line-height: 1.25;
   color: #fff;
   text-transform: none;
   letter-spacing: 0;
 }
+.precedent-card__title:first-child { margin-top: 0; }
+/* В карточке теперь два абзаца: без этого правила они слиплись бы, у p margin: 0. */
+.precedent-card__text p + p { margin-top: 12px; }
+/* Подзаголовок: главная поддерживающая мысль под заголовком (одна группа, 12 px),
+   поэтому крупнее и ярче примечания. Правило близости: до примечания 28 px. */
+.precedent-card__text p:not(.precedent-card__note) {
+  font-size: 18px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.86);
+  text-wrap: balance;
+}
+
+/* Заключительная строка — приглашение, а не продолжение абзаца: она снимает
+   барьер «обращаться ещё рано». Отделена короткой золотой чертой СВЕРХУ, как
+   линия в логотипе. Вертикальную черту слева пришлось убрать: у карточки своя
+   золотая черта у кромки, и две параллельные вертикали рядом на 390 читались
+   как случайное задвоение (замер 2026-09-08).
+   Селектор с двумя классами — чтобы перебить `p + p` выше. */
+.precedent-card__text p.precedent-card__note {
+  position: relative;
+  margin-top: 28px;
+  padding-top: 16px;
+  color: rgba(255, 255, 255, 0.94);
+  font-weight: 500;
+}
+.precedent-card__text p.precedent-card__note::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 2px;
+  background: var(--gold);
+}
 .precedent-card__text p {
   margin: 0;
   font-size: 16px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.66);
+  /* Текст владельца стал вчетверо длиннее прежнего: на 360 это 11 строк
+     поверх портрета. Замер 2026-09-08 без этих двух правил: последняя строка
+     абзаца — одно слово в 40 px, то есть 16% колонки. */
+  text-wrap: pretty;
+  color: rgba(255, 255, 255, 0.74);
   max-width: 42ch;
 }
 
@@ -984,6 +1122,27 @@ picture { display: block; }
   gap: 12px;
   align-items: stretch;
   min-width: 240px;
+}
+
+/* На узких экранах подпись «Записаться на консультацию» вместе с набивкой
+   28 px с двух сторон даёт минимальную ширину колонки около 266 px при 254
+   доступных, и кнопки вылезали за карточку. Замер 2026-09-08 на ширине 360:
+   вылет 20.6 px. Дефект существовал и до перестройки блока. */
+@media (max-width: 420px) {
+  .precedent-card__actions { min-width: 0; }
+  .precedent-card__actions .btn { padding: 0 14px; }
+  /* 2026-09-16: на 360 колонка текста шириной 236 px переносила каждую строку на
+     три, карточка росла, и кнопка WhatsApp вставала под демо-переключатель
+     (инвариант 10, 360x640). Поля 20 px и подзаголовок 16 px возвращают высоту. */
+  .precedent-card { --precedent-pad: 20px; }
+  .precedent-card__text p:not(.precedent-card__note) { font-size: 16px; }
+}
+
+/* Кнопки под текстом (перенос начинается около 692 px) — во всю ширину колонки
+   текста. Иначе справа оставалось пустое поле втрое шире левого (замер 2026-09-18
+   на 390: кнопки 261 px из 300). */
+@media (max-width: 700px) {
+  .precedent-card__actions { flex: 1 1 100%; max-width: 432px; }
 }
 
 .btn--gold-lg {
@@ -1031,10 +1190,8 @@ picture { display: block; }
 .attorney-photo {
   display: block;
   width: 100%;
-  /* Окно повторяет пропорцию источника (1122x1402 = 4:5): фиксированная
-     альбомная высота предыдущей версии превращала вертикальный портрет в
-     «одну голову» — cover отрезал всё ниже плеч. При совпадении пропорций
-     cover ничего не режет, оба адвоката видны по пояс и одинаково. */
+  /* Окно 4:5 совпадает с пропорцией подготовленных кадров v4;
+     object-fit: cover показывает весь экспортированный кадр. */
   height: auto;
   aspect-ratio: 4 / 5;
   object-fit: cover;
@@ -1053,8 +1210,8 @@ picture { display: block; }
 .attorney-card__name {
   margin: 0 0 8px;
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: 23px;
   line-height: 1.2;
   color: var(--ink);
@@ -1073,6 +1230,14 @@ picture { display: block; }
 }
 
 .attorney-card .notch--wide { margin-bottom: 18px; }
+
+/* final-dev5, 2026-09-18: подзаголовок перед списком направлений в карточке Александра. */
+.attorney-card__lead {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
 
 .checklist {
   display: flex;
@@ -1106,7 +1271,9 @@ picture { display: block; }
 .btn--gold-block:hover { background: var(--gold-light); opacity: 1; }
 
 .attorneys__note {
-  margin: 32px 0 0;
+  margin: 32px auto 0;
+  text-align: center;
+  font-weight: 700;
   font-size: 15px;
   line-height: 1.7;
   color: var(--ink-2);
@@ -1136,6 +1303,7 @@ picture { display: block; }
 }
 
 .contact-list { display: flex; flex-direction: column; gap: 20px; }
+.contact-list__row[hidden] { display: none; }
 .contact-list__row { display: flex; gap: 14px; align-items: center; }
 .contact-list__icon {
   flex: none;
@@ -1165,6 +1333,7 @@ picture { display: block; }
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
 }
 .lead-form[hidden], .form-success[hidden] { display: none; }
+.lead-form [hidden] { display: none; }
 
 .lead-form__title {
   margin: 0 0 6px;
@@ -1209,6 +1378,13 @@ picture { display: block; }
 }
 
 .field { display: block; }
+.lead-form__row--single { grid-template-columns: minmax(0, 1fr); }
+.field__email-suggestion { padding: 8px 0; border: 0; background: none; color: var(--wine); font: inherit; font-size: 13px; text-align: left; text-decoration: underline; cursor: pointer; }
+.lead-form__confirm-title { margin: 0 0 18px; font-size: 19px; color: var(--ink); }
+.lead-form__contacts { margin: 0 0 22px; color: var(--ink); }
+.lead-form__contacts dt { margin-top: 12px; font-size: 13px; color: var(--ink-3); }
+.lead-form__contacts dd { margin: 4px 0 0; font-size: 20px; font-weight: 600; overflow-wrap: anywhere; }
+.form-success__contacts { overflow-wrap: anywhere; }
 .field--last { margin-bottom: 22px; }
 .field__label {
   display: block;
@@ -1261,7 +1437,7 @@ picture { display: block; }
   .lead-form input[aria-invalid="true"] { border: 2px solid Mark; }
 }
 
-.lead-form__submit {
+.lead-form__submit, .lead-form__confirm-submit {
   width: 100%;
   border: none;
   background: var(--wine);
@@ -1274,7 +1450,8 @@ picture { display: block; }
   cursor: pointer;
 }
 .lead-form__submit:hover:not(:disabled) { background: var(--wine-hover); }
-.lead-form__submit:disabled { cursor: wait; opacity: 0.72; }
+.lead-form__confirm-submit:hover:not(:disabled) { background: var(--wine-hover); }
+.lead-form__submit:disabled, .lead-form__confirm-submit:disabled, .lead-form__edit:disabled { cursor: wait; opacity: 0.72; }
 
 .lead-form__legal {
   margin: 14px 0 0;
@@ -1285,12 +1462,31 @@ picture { display: block; }
 }
 
 .form-success {
+  position: relative;
   background: var(--bg-card);
   border-radius: 14px;
   padding: clamp(36px, 5vw, 56px) 32px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
   text-align: center;
 }
+/* Закрыть карточку успеха: сворачивает её в строку-подтверждение (не
+   перезагрузка и не повторная пустая форма — просто скрыть/показать). */
+.form-success__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.form-success__close:hover { background: rgba(0, 0, 0, 0.05); color: var(--ink); }
 .form-success__icon {
   display: inline-flex;
   width: 56px;
@@ -1303,8 +1499,8 @@ picture { display: block; }
 }
 .form-success__title {
   font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
+  font-style: normal;
+  font-weight: 600;
   font-size: 26px;
   color: var(--ink);
   margin-bottom: 10px;
@@ -1315,18 +1511,48 @@ picture { display: block; }
   line-height: 1.65;
   color: var(--ink-2);
 }
-.form-success__again {
+.form-success__continue, .form-success__edit, .lead-form__edit {
   border: 1px solid var(--input-line);
   background: #fff;
   color: var(--ink);
   font-weight: 600;
   font-size: 13.5px;
+  margin-top: 10px;
   font-family: var(--font-body);
   padding: 11px 22px;
   border-radius: 8px;
   cursor: pointer;
 }
-.form-success__again:hover { border-color: var(--gold); }
+.form-success__continue:hover { border-color: var(--gold); }
+
+/* Свёрнутое состояние после закрытия: одна строка вместо карточки, повторно
+   пустая форма не показывается — только правка контактов той же заявки. */
+/* Специфичность выше ".form-success p" (margin-bottom 24px), поэтому
+   селектор — от родителя: единственный <p> в свёрнутом виде своих
+   отступов не унаследует. */
+.form-success .form-success__collapsed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.form-success .form-success__collapsed[hidden] { display: none; }
+.form-success__collapsed svg { flex: none; }
+.form-success__collapsed-edit {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  color: var(--wine);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 /* --- 8. Футер ------------------------------------------------------------ */
 
@@ -1337,7 +1563,9 @@ picture { display: block; }
 .site-footer__inner {
   max-width: var(--container);
   margin: 0 auto;
-  padding: 44px var(--pad-x) 28px;
+  /* Тот же ряд, что у контентных секций: владелец просил одинаковые отступы
+     во всех секциях, включая подвал (правки 2026-09-06, блок 94). */
+  padding: var(--section-pad) var(--pad-x);
 }
 .site-footer__top {
   display: flex;
@@ -1347,10 +1575,14 @@ picture { display: block; }
   justify-content: space-between;
   margin-bottom: 32px;
 }
+/* Колонки «Услуги · Подготовка · Офис» (указание владельца 2026-09-18): общая
+   верхняя линия подписей и первой строки, услуги — сетка 2×4 с одним шагом строк. */
 .site-footer__cols {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 36px;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  column-gap: clamp(40px, 5vw, 72px);
+  row-gap: 28px;
+  align-items: start;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.6);
 }
@@ -1362,9 +1594,37 @@ picture { display: block; }
   letter-spacing: 0.2em;
   color: var(--gold);
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .site-footer__cols a { color: rgba(255, 255, 255, 0.85); }
+.site-footer__cols > div > .map-link {
+  display: inline-block;
+  padding-top: 5px;
+  line-height: 1.45;
+}
+.site-footer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  row-gap: 2px;
+}
+.site-footer__links--services {
+  grid-template-columns: repeat(2, max-content);
+  grid-template-rows: repeat(4, auto);
+  grid-auto-flow: column;
+  column-gap: 40px;
+}
+.site-footer__cols .site-footer__links a {
+  display: inline-block;
+  padding-block: 5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+  transition: color 0.15s ease-out;
+}
+.site-footer__cols .site-footer__links a:hover,
+.site-footer__cols .site-footer__links a:focus-visible { color: var(--gold); }
 .site-footer__divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.07);
@@ -1375,6 +1635,19 @@ picture { display: block; }
   font-size: 12px;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.4);
+}
+/* Телефон: группы друг под другом, услуги в две колонки, строка-ссылка 44 px. */
+@media (max-width: 860px) {
+  .site-footer__cols { grid-template-columns: 1fr; width: 100%; }
+  .site-footer__links { row-gap: 0; }
+  .site-footer__links--services { grid-template-columns: 1fr 1fr; column-gap: 16px; }
+  .site-footer__cols .site-footer__links a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 0;
+    font-size: 15px;
+  }
 }
 
 /* ==========================================================================
@@ -1411,6 +1684,16 @@ picture { display: block; }
   .hero-inner { max-width: 440px; }
   /* Кадр обрезается сильнее — оставляем фигурам опору на нижнюю кромку */
   .hero-photo { object-position: 50% 92%; }
+}
+
+/* Голова в рамке: макушка на 9,4 % высоты кадра, значит высота карточки не меньше
+   0,906 высоты портрета плюс 32 px поля (минус внутренние отступы и рамка,
+   box-sizing здесь content-box). Замер 2026-09-16: поле над макушкой 30 px
+   на 1201, 1280 и 1440. */
+@media (min-width: 1201px) {
+  .precedent-card {
+    min-height: calc(var(--precedent-photo-h) * 0.906 + 32px - 2 * var(--precedent-pad) - 2px);
+  }
 }
 
 /* Портрет в баннере прецедента показывается только там, где для него есть место */
@@ -1454,11 +1737,13 @@ picture { display: block; }
 
   .hero-inner p { margin-left: auto; margin-right: auto; }
 
-  /* Надстрочник на мобильном скрыт (решение владельца, подтверждено
-     2026-08-04 повторно): он съедает ~40px первого экрана и дублирует
-     подпись «Адвокаты» в шапке. На десктопе остаётся — там места
-     достаточно и гео-сигнал «Тель-Авив» работает. */
-  .hero-inner .hero-row { display: none; }
+  /* Адрес над заголовком по указанию владельца 2026-09-16; замер:
+     кнопка записи на 360×640 заканчивается на 559 px (≤ 632). */
+  .hero-inner .hero-row { display: flex; justify-content: center; margin: 0 0 10px; }
+  .hero-address { font-size: 14px; }
+  /* Нижний край зоны нажатия совпадает с верхом H1, не перекрывая его. */
+  .hero-address::before { inset: auto -8px -10px; height: 44px; }
+  .hero-address__icon { width: 15px; height: 15px; }
 
   /* Заголовок в рамке из волосяных линий — приём референса.
      Отступы полос ужаты (2026-08-04): основной CTA должен входить в
@@ -1502,37 +1787,17 @@ picture { display: block; }
     object-position: 50% 22%;
   }
 
-  /* Фото адвокатов ниже на четверть (решение владельца 2026-08-10):
-     4/5 → 16/15 = высота 0.9375 ширины вместо 1.25, ровно −25%.
-     cover при center top срезает низ кадра (корпус), головы не трогает. */
-  .attorney-photo { aspect-ratio: 16 / 15; }
 
-  /* В исходном кадре голова Александра ниже примерно на 5% высоты.
-     Используем мобильный запас cover, чтобы поднять её на уровень Юлии;
-     окно и масштаб обеих карточек остаются одинаковыми. */
-  .attorney-card:first-child .attorney-photo { object-position: center 16%; }
 
   .hero__actions { margin-bottom: 16px; }
-
-  .facts-bar { flex-direction: column; align-items: flex-start; gap: 14px; }
-}
-
-/* Плавное раскрытие карточек. interpolate-size позволяет анимировать
-   переход к height: auto, но поддержан только в Chromium (Chrome/Edge
-   129+). Поэтому — строго прогрессивное улучшение: где не поддержан,
-   карточка раскрывается мгновенно, функционал тот же.
-   Проверено на 2026-08: Firefox и Safari свойство не поддерживают. */
-@supports (interpolate-size: allow-keywords) {
-  @media (max-width: 720px) and (prefers-reduced-motion: no-preference) {
-    :root { interpolate-size: allow-keywords; }
-    .fact-card { transition: height 0.26s ease; }
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   a, button { transition: none; }
-  .fact-card, .fact-card__chevron { transition: none; }
+  .svc-card, .svc-card.is-settling { transition: none; }
+  .svc-card.is-enter-next, .svc-card.is-leave-next,
+  .svc-card.is-enter-prev, .svc-card.is-leave-prev { animation: none; }
 }
 
 @media (max-width: 720px) {
@@ -1540,137 +1805,53 @@ picture { display: block; }
 }
 
 @media (max-width: 860px) {
-  /* Карточки фактов: на мобильном вертикальная анатомия (цифра над
-     текстом) давала секцию в 1466px — два экрана на три цифры.
-     Цифра уходит в левую колонку, текст в правую: та же информация,
-     карточка ниже примерно на треть. Контент не сокращён. */
-  .facts .rule { margin-bottom: 24px; }
-  .facts-grid { gap: 12px; }
-
-  .fact-card {
+  .svc-window { padding-inline: 0; }
+  .svc-frame { flex-direction: column; flex-wrap: nowrap; gap: 24px; padding: 22px 20px 24px; }
+  .svc-frame__main { flex: none; }
+  /* На мобильном листают свайпом, кнопки-стрелки не нужны (указание владельца). */
+  .services__arrows { display: none; }
+  .svc-arrow { position: static; top: auto; right: auto; left: auto; transform: none; }
+  .svc-arrow[data-dir="prev"] { left: auto; }
+  .svc-arrow[data-dir="next"] { right: auto; }
+  .svc-title { padding-right: 0; min-height: 0; min-width: 0; overflow-wrap: normal; }
+  .svc-media {
     display: grid;
     grid-template-columns: auto 1fr;
-    column-gap: 18px;
-    padding: 18px 18px 16px;
+    gap: 8px 16px;
+    flex: none;
+    min-width: 0;
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    padding-top: 20px;
   }
-  .fact-card__head {
-    grid-column: 1;
-    grid-row: 1 / 3;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    margin-bottom: 0;
-    min-width: 64px;
-  }
-  .fact-card__num { font-size: 34px; }
-  .fact-card__sub,
-  .fact-card .notch { grid-column: 2; }
-  .fact-card__sub { margin-bottom: 8px; align-self: center; }
-  .fact-card .notch { margin-bottom: 0; }
-
-  .fact-card[data-copy-id="2.10"] .fact-card__head,
-  .fact-card[data-copy-id="2.14"] .fact-card__head,
-  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__head {
-    grid-column: 1 / -1;
-    grid-row: auto;
-    margin-bottom: 8px;
-  }
-  .fact-card[data-copy-id="2.10"] .fact-card__num,
-  .fact-card[data-copy-id="2.10"] .fact-card__unit {
-    display: block;
-    font-family: var(--font-serif);
-    font-size: 26px;
-    font-weight: 500;
-    line-height: 1.15;
-    letter-spacing: 0;
-    color: #fff;
-    text-transform: none;
-  }
-  .fact-card[data-copy-id="2.10"] .fact-card__sub {
-    color: var(--gold);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-  .fact-card[data-copy-id="2.14"] .fact-card__num,
-  .fact-card[data-owner-copy-id="fact-900-v1"] .fact-card__num {
-    font-size: 34px;
-    white-space: nowrap;
-  }
-  /* Длинным абзацам («900+ публикаций») узкая колонка противопоказана —
-     они уходят вниз на всю ширину карточки */
-  .fact-card p { grid-column: 1 / -1; margin-top: 12px; line-height: 1.55; }
-
-  /* Карточка-аккордеон: абзац обрезан двумя строками с многоточием,
-     остальное — по тапу (см. app.js). Текст в разметке полный, clamp
-     влияет только на видимость: скринридер читает абзац целиком. */
-  .fact-card { cursor: pointer; }
-
-  .fact-card p {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .fact-card.is-open p {
-    display: block;
-    overflow: visible;
-    /* Снимать явно: при display:block свойство не действует, но остаётся
-       в вычисленных стилях и путает и проверки, и отладку. */
-    -webkit-line-clamp: unset;
-  }
-
-  /* Кнопка раскрытия: сама тонкая, но тап-цель добита до 44px невидимым
-     ::before — требование WCAG 2.5.8 к размеру цели. */
-  .fact-card__toggle {
-    grid-column: 1 / -1;
-    justify-self: center;
+  .svc-media__person, .svc-media p { grid-column: 1 / -1; }
+  .svc-media .notch { grid-column: 2; grid-row: 1; align-self: center; margin: 0; }
+  .svc-tabs {
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 28px;
-    margin-top: 4px;
-    margin-bottom: -8px;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--gold);
-    cursor: pointer;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    margin-inline: calc(var(--pad-x) * -1);
+    padding-inline: var(--pad-x);
+    scroll-padding-inline: var(--pad-x);
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
   }
-  .fact-card__toggle::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 44px;
-    height: 44px;
-    transform: translate(-50%, -50%);
-  }
-  .fact-card__toggle[hidden] { display: none; }
+  .svc-tabs::-webkit-scrollbar { display: none; }
+  .svc-tab { flex: none; min-height: 44px; }
+  .facts__container { padding-block: 20px; }
+  .facts-grid { gap: 12px; }
+  .fact-card { padding: 18px 18px 16px; }
+  .fact-card__title { font-size: 26px; line-height: 1.15; }
+}
 
-  .fact-card__chevron {
-    width: 9px;
-    height: 9px;
-    border-right: 2px solid var(--gold);
-    border-bottom: 2px solid var(--gold);
-    transform: translateY(-2px) rotate(45deg);
-    transition: transform 0.22s ease;
-  }
-  .fact-card.is-open .fact-card__chevron {
-    transform: translateY(2px) rotate(-135deg);
-  }
-
-  /* Фокус виден на белой карточке: золото на белом даёт 1.7:1, поэтому
-     к нему добавлено тёмное кольцо. */
-  .fact-card__toggle:focus-visible {
-    outline: 2px solid var(--gold);
-    outline-offset: 0;
-    border-radius: 6px;
-    box-shadow: 0 0 0 4px var(--ink);
-  }
-
-  .facts-bar { margin-top: 14px; padding: 16px 18px; }
+/* Ловушка вне потока: не меняет геометрию формы. */
+.lead-form input.lf_hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
 }

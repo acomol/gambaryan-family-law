@@ -1,0 +1,61 @@
+# gambarian-lead-cron — guaranteed retry + daily reconciliation for the lead pipeline.
+# Deploy:  cd cron-worker && wrangler deploy
+#
+# Adapted from clients/luxemed/New Lending/cron-worker/wrangler.toml
+# (digitalhook-os-, feature/luxemed-new-lending@613cdd30).
+#
+# Resource ids below are PRODUCTION Cloudflare ids for account 4799e9f7…,
+# reported by the coordinator 2026-09-23 (created out-of-band — this repo
+# change did NOT create them and has not called the Cloudflare API to
+# confirm they resolve; verify with `wrangler kv namespace list` /
+# `wrangler d1 list` / `wrangler r2 bucket list` before the first deploy).
+# This worker's own deploy binds PRODUCTION only — Cloudflare Pages itself
+# has a SEPARATE Preview binding set (see docs/LEAD-PIPELINE.md §3) that is
+# configured in the Pages project dashboard, not in this file.
+#
+# 1) The KV/D1/R2 ids below already match the SAME resources the Pages
+#    Production environment must bind LEADS_KV/LEADS_DB/LEADS_ARCHIVE to.
+# 2) Apply the schema to this D1 database BEFORE the first cron run:
+#      wrangler d1 execute gambarian-leads --remote --file=../db/leads-schema.sql
+#    (run from cron-worker/ — the schema file lives one directory up).
+# 3) Set secrets (NOT committed — never put tokens in this file):
+#      wrangler secret put ALBATO_WEBHOOK_URL
+#      wrangler secret put TELEGRAM_TOKEN
+#      wrangler secret put TELEGRAM_CHAT_ID
+#      wrangler secret put SHEET_COUNT_URL      # Apps Script web-app URL (apps-script.gs), if used
+
+name = "gambarian-lead-cron"
+main = "src/index.js"
+compatibility_date = "2026-05-01"
+
+[[kv_namespaces]]
+binding = "LEADS_KV"
+id = "10bb8fd2315248139fe95118affc1515"
+
+[[d1_databases]]
+binding = "LEADS_DB"
+database_name = "gambarian-leads"
+database_id = "da00d8e3-477c-4863-a677-dcad24868893"
+
+[[r2_buckets]]
+binding = "LEADS_ARCHIVE"
+bucket_name = "gambarian-leads-archive"
+
+[triggers]
+# Поле называется `crons`, НЕ `crontab` — с `crontab` wrangler молча деплоит
+# 0 расписаний (см. ADFIX-SITE-SYSTEM-PLAYBOOK.md §1.7). После deploy владелец
+# ОБЯЗАН проверить через Cloudflare API, что schedules == 2 — вывод wrangler
+# сам по себе недостаточное доказательство.
+#
+# Review 2026-09-23, round 5 addition: Cloudflare Workers Free допускает
+# МАКСИМУМ 5 cron-триггеров НА АККАУНТ (не на воркер) — assuta-lead-cron уже
+# занимает 3, так что этому воркеру остаётся ровно 2. Деплой с 3 выражениями
+# упал с ошибкой 10072. Поэтому дневные шаги (verify/purge/недельный
+# heartbeat, раньше — свой "30 2 * * *") и reconcile (раньше — свой
+# "0 18 * * *") склеены в ОДИН часовой триггер "0 * * * *" и различаются
+# внутри scheduled() по факту UTC-часа срабатывания (см. hourlyRun() в
+# src/index.js и docs/LEAD-PIPELINE.md §11). Дамп D1→R2 при этом идёт
+# КАЖДЫЙ час (владелец: не раз в сутки) — ключ дня в R2
+# (backups/d1/<jerusalemDay>/) перезаписывается каждым часовым снимком, так
+# что самый свежий снимок не старше часа, а данные за прошлые дни остаются.
+crons = ["*/5 * * * *", "0 * * * *"]

@@ -1,9 +1,20 @@
-"""Грейдинг hero-кадра: подсветить фигуры, не тронув чёрный фон и золотое пятно."""
+"""Грейдинг hero-кадра: подсветить фигуры, не тронув чёрный фон и золотое пятно.
+
+2026-09-17: вход — несжатый мастер `docs/source-photos/duo-wide.jpg` (439 КБ), как и
+записано в docs/source-photos/README.md. Раньше скрипт читал веб-копию
+`site/assets/hero-duo-2623w.020f19ef.jpg` (102 КБ, таблица квантования ~6x грубее):
+её блоки 8x8/16x16 в тёмном градиенте за заголовком и были видны как «пиксели».
+Запуск: `python -B scripts/build-hero-background.py` (он вызывает и этот скрипт).
+"""
+from pathlib import Path
+
 import numpy as np
 from PIL import Image
 
-SRC = "/home/user/gambaryan-family-law/site/assets/hero-duo-2623w.020f19ef.jpg"
-OUT = "/tmp/claude-0/-home-user/5f455c01-c3d3-5ae5-8a36-2fa7e928eb20/graded.png"
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "docs" / "source-photos" / "duo-wide.jpg"
+OUT = ROOT / "build" / "hero-background" / "graded.png"
+OUT.parent.mkdir(parents=True, exist_ok=True)
 
 
 def smoothstep(x, a, b):

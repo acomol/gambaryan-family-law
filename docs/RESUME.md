@@ -1,10 +1,95 @@
 # Актуальная точка входа в проект
 
-**Версия:** `HANDOFF-RESUME v2.6.2`
+**Версия:** `HANDOFF-RESUME v2.8.0`
 
-**Обновлено:** `2026-09-06`
+**Обновлено:** `2026-09-22`
 
-**Текущий статус:** `final-dev3 LIVE + VERIFIED / остальные 10 Preview на старом релизе / PRODUCTION UNCHANGED`
+**Текущий статус:** `final-dev5 LIVE как основная версия + lp.gambarian.com подключён / план аналитики v2.0.0 ждёт решений владельца / final-dev3 и final-dev4 закрыты, история ниже архивная`
+
+## Живое состояние прямо сейчас (2026-09-22) — читать первым
+
+Всё в разделах «Следующий цикл: final-dev4» и ниже до этой строки — **архив**.
+Циклы final-dev3 и final-dev4 закрыты; final-dev5 разработан, утверждён владельцем
+и опубликован как основная версия проекта. Текущий рабочий документ по каждому шагу
+запуска — `docs/LAUNCH-LP-GAMBARIAN.md`; план аналитики — `docs/TRACKING-REQUIREMENTS.md`;
+точки восстановления — `docs/BACKUP-POINTS.md`; дословные правки владельца этого цикла —
+`docs/CONTENT-OWNER-EDITS.md` (записи 2026-09-16…2026-09-19).
+
+| Что | Состояние |
+|---|---|
+| `codex/final-dev5` | рабочая ветка, коммит `7226d5b`; превью `https://final-dev5.gambarian-landing.pages.dev/`; draft PR — [#14](https://github.com/acomol/gambaryan-family-law/pull/14) (фиксация факта, не к слиянию) |
+| `gambarian-landing.pages.dev` (основная версия) | опубликован `build/production` (final-dev5 без демо-переключателя рабочего времени, `og:url`/картинка превью на lp) — деплой `6d3c48d9` |
+| `lp.gambarian.com` | подключён к проекту, домен `active`, сертификат Google действителен до 2026-12-18; HTML совпадает с основной версией байт в байт |
+| Секрет `ALBATO_WEBHOOK_URL` | **не задан** — `/api/lead` отвечает `503`, заявки не доставляются; реклама на `lp` не запускается, пока секрет не поставлен и не пройдёт тестовая заявка |
+| Google Ads | подтверждён и проверен API: `gambarian#2`, `994-218-4821`, под ADFIX_MCC; проверка рекламодателя пройдена 2026-09-22. Открыто: суффикс URL не сохранён, конверсия «Calls from ads» — единственная, номер в ассете звонка (`058-780-3188`) расходится с номером на сайте (`054-549-0623`) |
+| Аналитика/трекинг | план v2.0.0 (`docs/TRACKING-REQUIREMENTS.md`). С 2026-09-22 есть: GA4-поток `lp` = `G-P4MQ85ME2D` в ресурсе «Gambarian - GA4» `342151343`, контейнер GTM `GTM-MFLHW63Q` (аккаунт GAMB_WEB), доступ ADFIX к обоим. В контейнере пока только Clarity; сниппета GTM на сайте нет — следующий шаг этап 1 плана |
+| `final-dev4` / `final-dev3` | заморожены как эталоны сравнения (деплой-гейты `ALLOW_DEV3`/`ALLOW_DEV4`); не публиковать без явного разрешения |
+
+Что вошло в цикл final-dev5 (главные вехи, коммиты в `codex/final-dev5`):
+пересборка Hero-фона с нуля (`4730b6f`); карточка Александра переписана по тексту
+владельца, без концевой пунктуации (`cfa5a67`, `88d1731`); подвал получил навигацию
+по услугам и блоку «Подготовка» (`df37d3d`); адрес приведён к одному порядку
+город→улица и без слова «онлайн» везде (`a46e50f`, `d1ace3e`); блок «Подготовьтесь…»
+переоформлен в языке сайта — рамка 1px вместо толстой полосы (`b0fdb4a`); запуск
+`lp.gambarian.com` из основной версии (`7ec7b52`); план аналитики v2.0.0 (`71df617`,
+`88d5471`, `7226d5b`).
+
+## Ветки, связанные с проектом (замер 2026-09-22)
+
+`git remote -v` в каждом из перечисленных ниже деревьев указывает на
+`github.com/acomol/gambaryan-family-law` — одна кодовая база, не разные проекты.
+
+| Ветка | Состояние | Что с ней делать |
+|---|---|---|
+| `codex/final-dev5` | HEAD, `origin` в курсе (SHA совпадает) | draft PR [#14](https://github.com/acomol/gambaryan-family-law/pull/14) открыт 22.09 — запись факта, не к слиянию; `main` не трогать, прод публикуется прямой заливкой `build/production` |
+| `main` | `bd49bf9`, последний реальный merge — PR #11 (06.09) | источник истины для прод-деплоя — не он, а `codex/final-dev5`; это задокументировано, не ошибка |
+| `codex/final-dev4*` (шесть веток: `s1-s3-texts`, `s4-hours`, `s5-facts`, `s6-services`, `s7a-font`, `s7b-spacing`, `s7c-photos`) | заморожены, эталон `ALLOW_DEV4` | не трогать без разрешения |
+| `codex/deck-a`, `codex/deck-b`, `codex/deck-c` | прототип карточек услуг (сентябрь), результат `0bf066b` вошёл в `codex/final-dev5` через `08923d6`/`782cad0`/`3ff2be2` — ветки superseded | `codex/deck-a` (`I:\GIT\gambaryan-deck-a`) держит незакоммиченные правки высоты карточки (`site/app.js`, `site/styles.css`), не влившиеся никуда: решение владельца «высота не меняется» их отменило. Оставлены как есть — не мои, чтобы удалять без спроса |
+| `fix/final-dev4-cards-codex-findings` | PR [#12](https://github.com/acomol/gambaryan-family-law/pull/12) — закрыт 22.09 (final-dev4 сменён final-dev5) | ветка сама не удалена, решение за владельцем |
+| `docs/final-dev4-acceptance` | не в PR, чек-листы приёмки final-dev4 | архив цикла final-dev4 |
+| `codex/final-dev4-s1-s3-texts` (отдельная от одноимённой ветки выше — это PR-ветка) | PR [#13](https://github.com/acomol/gambaryan-family-law/pull/13) — закрыт 22.09 | ветка сама не удалена |
+| `origin/codex/client-approved-copy-only`, `origin/codex/final-dev4`, `origin/codex/final-dev4-s1-prep` | remote-ветки уже смерженных PR #3 и #11 | кандидаты на удаление remote-ветки (не удалял — решение владельца) |
+
+**Сделано по итогам проверки 22.09:** закрыл PR [#12](https://github.com/acomol/gambaryan-family-law/pull/12)
+и [#13](https://github.com/acomol/gambaryan-family-law/pull/13) (final-dev4, цикл закрыт
+публикацией final-dev5) с комментарием-объяснением; открыл draft PR
+[#14](https://github.com/acomol/gambaryan-family-law/pull/14) для `codex/final-dev5`, чтобы
+GitHub отражал 40+ коммитов, реально работающих в проде. Ни одна ветка не удалена и не
+смержена — это решения владельца.
+
+### Нерабочее время — этап 4, 2026-09-07
+
+Локальный кандидат: `FINAL-DEV4-DESIGN 1.1.1`, copy contract `1.4.2`.
+Копирайт PASS (26 targets), unit 18/18, lead-hook PASS; Hero/numbered builders PASS.
+Шрифтовая сборка curl 7, общий Preview-гейт FAIL на неполном v1;
+Playwright-гейты blocked (WinError 5). Деплой не выполнялся.
+Дословные логи и статус Git: [отчёт этапа 4](reviews/2026-09-07-final-dev4-stage-4-local.md).
+
+### Кубики фактов — этап 5, 2026-09-07
+
+Кандидат в `codex/final-dev4-s5-facts`, база `a09f923`. Этапы 1–3 есть в истории;
+этап 4 исключён заданием владельца. Onest уже принят отдельной работой.
+Контракт копирайта 1.4.0: 45 client + 18 owner; numbered-review 2.2.0;
+readback 1.3.0; DARK-FACT-CARDS 2.0.0. Runner остаётся текущим 1.4.3.
+
+- [x] Три кубика перестроены по строкам 7–10; заголовок секции и аккордеон сняты.
+- [x] Copy parser: source, standalone и final-dev4 без ошибок; тексты трёх owner ID точные.
+- [x] Unit-тесты: 17 OK с TEMP/TMP внутри репозитория; lead-hook PASS.
+- [x] Standalone, Hero и numbered-review собраны; 18 client + 18 owner номеров.
+- [ ] Полный copy/preview PASS: сборка шрифтов остановлена ошибкой curl 7,
+      v2–v4 устарели, v1 собран не полностью.
+- [ ] Action Bar builder и browser matrix: Playwright не стартует, WinError 5.
+- [ ] Замеры и PNG 1440/390 v2.0.0; live readback после деплоя владельцем.
+
+Дословные логи и границы проверки: [отчёт этапа 5](reviews/2026-09-07-final-dev4-stage-5-local.md).
+
+## Этап 6: локальный кандидат окна услуг
+
+Runner 1.5.0: final-dev4 15/15 PASS; Review Numbered 2.2.1.
+Высота по всем 8 темам: 1440 — 1003.328125px; 390 — 1217.203125px.
+Свайп, упор и неподвижность CTA/«Ведёт» проверены. Полные copy/preview-гейты
+не закрыты: четыре font-variants не собирались по указанию владельца.
+Публикации не было. [Доказательства](reviews/2026-09-07-final-dev4-stage-6-local.md).
 
 ## Что изменилось с прошлой версии этого документа
 
@@ -29,7 +114,7 @@ Client IP Filtering на токене — все разобраны в `ERRORS.m
 
 **Если нужно показать клиенту больше одного варианта** — сначала обновить
 нужные alias тем же workflow (`Actions -> Deploy Previews -> Run workflow`,
-поле `only` под конкретный alias или пусто для всех 11), иначе часть Preview
+поле `only` под конкретный alias или пусто для всех 12), иначе часть Preview
 будет отдавать текст без правок от 2026-08-17.
 
 **Правило деплоя, подтверждённое прогоном 2026-08-17:** `workflow_dispatch` виден в Actions
@@ -81,7 +166,7 @@ Client IP Filtering на токене — все разобраны в `ERRORS.m
 
 **Рабочий путь — GitHub Actions:** `Actions -> Deploy Previews -> Run
 workflow`, ветка `main`, поле `only` — конкретный alias или пусто для всех
-11. Секреты заведены и работают; повторная проверка их наличия не нужна.
+12. Секреты заведены и работают; повторная проверка их наличия не нужна.
 Запускать может только владелец — токен облачной сессии не имеет права
 `actions: write` (`403 Resource not accessible by integration`); агент читает
 статус и логи прогона, но не запускает workflow сам.
@@ -118,17 +203,18 @@ workflow`, ветка `main`, поле `only` — конкретный alias и�
 
 | Контракт | Версия | Статус |
 |---|---:|---|
-| Client Copy contract | `1.1.0` | LOCAL PASS: 45 client + 2 owner blocks |
-| Client Copy verifier | `1.0.0` | LOCAL PASS: 24 targets / 22 unique |
+| Client Copy contract | `1.4.2` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
+| Client Copy verifier | `1.1.0` | `LOCAL COPY PASS / FRESH BUILD INCOMPLETE` |
 | Action Bar | `2.4.0` | LIVE на `final-dev3`; остальные 10 alias всё ещё отдают `2.3.4` |
 | Client Preview Mobile | `1.1.0` | LIVE PASS 11/11 |
 | `final-dev1` Hero | `2.0.0` | LIVE PASS |
 | `final-dev3` Design | `2.0.2` | LIVE PASS |
+| final-dev4 Design | `1.1.1` | STATIC PASS; browser blocked; live не опубликован |
 | Lead schema | `2.0.0` | LIVE readback: name/phone only; GET `405` |
-| Review Numbered | `2.0.0` | LIVE PASS: client/owner gate |
+| Review Numbered | `2.2.1` | LOCAL PASS: client/owner gate |
 | Font Variant V2 Mobile | `1.1.0` | LIVE PASS: effective-width fix Lora H1 |
 | Font Variant V3 Mobile | `1.0.0` | LIVE PASS: effective-width fix Manrope lede |
-| Browser QA runner | `1.4.0` | LOCAL PASS: `177/177`, fact-card clip guard |
+| Browser QA runner | `1.5.0` | LOCAL final-dev4 15/15 PASS; 194 cells NOT RUN |
 
 Версии контрактов датированы `2026-08-11`, `2026-08-13` и `2026-08-17`
 (Action Bar `2.4.0`, маркер `ACTION-BAR-SPEC v2.4.0 | 2026-08-17` в

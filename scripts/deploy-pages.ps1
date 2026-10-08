@@ -1,4 +1,10 @@
-# Публикация папки site/ на Cloudflare Pages — версия для PowerShell (Windows).
+﻿# Публикация папки site/ на Cloudflare Pages — версия для PowerShell (Windows).
+#
+# ВНИМАНИЕ (2026-09-19): с запуска lp.gambarian.com боевая версия — это
+# build/production (scripts/build-production.py), НЕ сырая site/. Публикация
+# этим скриптом молча вернёт в production демо-переключатель рабочего времени
+# и старый og:url/картинку превью. Для боевого деплоя см. docs/LAUNCH-LP-GAMBARIAN.md,
+# шаг 2. Этот скрипт остаётся для случаев без домена lp — не использовать вслепую.
 #
 # Запуск из корня репозитория:
 #   powershell -ExecutionPolicy Bypass -File scripts\deploy-pages.ps1
