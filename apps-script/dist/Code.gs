@@ -2,8 +2,8 @@
 //
 // Built by scripts/bundle-apps-script.mjs from apps-script/src/*.gs
 // (fixed order — see FILE_ORDER in that script).
-// Source commit: 8cb974633f6ff38a267ae024f2a5d6de1879caa3
-// Generated: 2026-09-23
+// Source commit: 23e1c3f35b907cde442b8ac421fcdf4c59afacc6
+// Generated: 2026-10-12
 //
 // To change behavior, edit the corresponding file under apps-script/src/
 // and rerun: node scripts/bundle-apps-script.mjs
@@ -223,6 +223,12 @@ function buildContactCellPlan_(phone) {
   var waStart = phoneLabel.length + 2;
   var waEnd = waStart + waLabel.length;
   return { text: text, links: [{ start: waStart, end: waEnd, url: links.waHref }] };
+}
+/** Общий отбор: номер-заготовка сам по себе не является заявкой. */
+function isLeadRow_(row, headerMap) {
+  return ['Имя', 'Телефон'].some(function (header) {
+    return String(getCell_(row, headerMap, header) || '').trim() !== '';
+  });
 }
 
 // ---- BusinessCalendar.gs ----
@@ -656,7 +662,7 @@ function composeDigest_(stats) {
     consultationsTodayCount: s.consultationsTodayCount || 0,
     overdueCount: s.overdueCount || 0
   };
-  var total = counts.newCount + counts.waitingFirstCallCount + counts.consultationsTodayCount + counts.overdueCount;
+  var total = s.attentionCount || 0;
   var lines = [
     'Новых: ' + counts.newCount,
     'Ждут первого звонка: ' + counts.waitingFirstCallCount,
@@ -1683,7 +1689,7 @@ var SCRIPT_WRITTEN_OFFICE_COLUMNS_ = ['№', 'Получена', 'Имя', 'Те
  */
 var SERVICE_SHEET_HEADERS_ = [
   '№', 'submission_id', 'все submission_id', 'Контакт состоялся', 'Статус изменён',
-  'Договор', 'contact_version', 'Флаги уведомлений', 'Откуда'
+  'Договор', 'contact_version', 'Флаги уведомлений', 'Откуда', 'Предыдущий статус'
 ];
 
 // Реальный лист «Входящие» уже переименован и живёт — это 24 заголовка A..X в
@@ -1733,6 +1739,7 @@ function setupCrm() {
   ensureHeaderRow_(intake, INTAKE_HEADERS_);
   ensureHeaderRow_(requests, REQUESTS_HEADERS_);
   ensureHeaderRow_(service, SERVICE_SHEET_HEADERS_);
+  ensurePreviousStatuses_(requests, service);
   ensureHeaderRow_(journal, JOURNAL_HEADERS_);
   ensureSettingsSheet_(settings);
 
@@ -2310,6 +2317,30 @@ var TODAY_HEADER_ROW_OVERDUE_ = 3;
 var TODAY_HEADER_ROW_NEW_ = TODAY_HEADER_ROW_OVERDUE_ + 2 + TODAY_BLOCK_CAPACITY_ + 1; // 206
 var TODAY_HEADER_ROW_CONSULT_ = TODAY_HEADER_ROW_NEW_ + 2 + TODAY_BLOCK_CAPACITY_ + 1; // 409
 
+/** Тот же отбор по имени/телефону для формул и всех счётчиков. */
+function leadMaskFormula_(requestsSheet) {
+  var map = colByHeader_(requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn()).getValues()[0]);
+  var req = "'" + SHEET_REQUESTS_ + "'!";
+  var name = columnLetter_(map['Имя'] + 1);
+  var phone = columnLetter_(map['Телефон'] + 1);
+  return '((LEN(TRIM(' + req + name + '2:' + name + '))>0)+(LEN(TRIM(' + req + phone + '2:' + phone + '))>0)>0)';
+}
+
+function serviceLeadMaskFormula_(requestsSheet, serviceSheet) {
+  var reqMap = colByHeader_(requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn()).getValues()[0]);
+  var svcMap = colByHeader_(serviceSheet.getRange(1, 1, 1, serviceSheet.getLastColumn()).getValues()[0]);
+  var reqNo = columnLetter_(reqMap['№'] + 1);
+  var svcNo = columnLetter_(svcMap['№'] + 1);
+  return '(\'Служебное\'!' + svcNo + '2:' + svcNo + '<>"")*ARRAYFORMULA(ISNUMBER(MATCH(\'Служебное\'!' + svcNo + '2:' + svcNo +
+    ',IFERROR(FILTER(\'Заявки\'!' + reqNo + '2:' + reqNo + ',' + leadMaskFormula_(requestsSheet) + '),""),0)))';
+}
+
+function countLeadFormula_(mask, conditions) {
+  return 'SUMPRODUCT(--(' + mask + ')' + (conditions || []).map(function (condition) {
+    return ',--(' + condition + ')';
+  }).join('') + ')';
+}
+
 function ensureTodayFormulas_(sheet, requestsSheet) {
   var alreadyBuilt = !!sheet.getRange(1, 1).getValue();
   var requestsSheetId = requestsSheet.getSheetId();
@@ -2328,12 +2359,12 @@ function ensureTodayFormulas_(sheet, requestsSheet) {
   var phoneCol = 'Col' + (reqHeaderMap['Телефон'] + 1);
   var nextStepCol = 'Col' + (reqHeaderMap['Следующий шаг'] + 1);
   var consultCol = 'Col' + (reqHeaderMap['Консультация'] + 1);
-  var noColLetter = columnLetter_(reqHeaderMap['№'] + 1);
+  var firstAttemptCol = 'Col' + (reqHeaderMap['Первая попытка'] + 1);
   var statusColLetter = columnLetter_(reqHeaderMap['Статус'] + 1);
   var nextStepColLetter = columnLetter_(reqHeaderMap['Следующий шаг'] + 1);
   var consultColLetter = columnLetter_(reqHeaderMap['Консультация'] + 1);
   var lastColLetter = columnLetter_(requestsSheet.getLastColumn());
-  var reqRange = "'" + SHEET_REQUESTS_ + "'!A2:" + lastColLetter;
+  var reqRange = 'FILTER(' + "'" + SHEET_REQUESTS_ + "'!A2:" + lastColLetter + ',' + leadMaskFormula_(requestsSheet) + ')';
   var notClosed = statusCol + ' <> \'Клиент — договор\' and ' +
     statusCol + ' <> \'Отказ\' and ' + statusCol + ' <> \'Дубль / спам\'';
 
@@ -2344,13 +2375,29 @@ function ensureTodayFormulas_(sheet, requestsSheet) {
   // пуст» попадали все ~1000 пустых строк листа, результат не помещался в блок и
   // показывал #REF! (перекрывал следующий блок). limit — та же защита для всех блоков.
   var newQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + phoneCol +
-    ' where (' + statusCol + ' = \'\' or ' + statusCol + ' is null) and ' + noCol + ' <> \'\'' +
+    ' where ((' + statusCol + ' = \'\' or ' + statusCol + ' is null) or ' + firstAttemptCol + ' is null) and (' +
+    statusCol + ' is null or (' + notClosed + '))' +
     ' order by ' + receivedCol + ' asc limit ' + TODAY_BLOCK_CAPACITY_ + '",0),"")';
   var consultQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + consultCol +
     ' where ' + consultCol + ' >= date \'"&TEXT(TODAY(),"yyyy-MM-dd")&"\' and ' + consultCol +
     ' < date \'"&TEXT(TODAY()+1,"yyyy-MM-dd")&"\' order by ' + consultCol + ' asc limit ' + TODAY_BLOCK_CAPACITY_ + '",0),"")';
 
-  // Лист уже построен (повторный setupCrm) — обновляем только три формулы блоков.
+  // Верхний баннер обновляется и при повторном setupCrm().
+  var req = "'" + SHEET_REQUESTS_ + "'!";
+  var statusRange = req + statusColLetter + '2:' + statusColLetter;
+  var stepRange = req + nextStepColLetter + '2:' + nextStepColLetter;
+  var consultRange = req + consultColLetter + '2:' + consultColLetter;
+  var firstLetter = columnLetter_(reqHeaderMap['Первая попытка'] + 1);
+  var firstRange = req + firstLetter + '2:' + firstLetter;
+  var mask = leadMaskFormula_(requestsSheet);
+  var open = '(' + statusRange + '<>"Клиент — договор")*(' + statusRange + '<>"Отказ")*(' + statusRange + '<>"Дубль / спам")';
+  var banner = '="Сегодня: "&SUMPRODUCT(' + mask + '*' + open + '*(' + stepRange + '<TODAY())*(' + stepRange + '<>""))&' +
+    '" просрочки · "&SUMPRODUCT(' + mask + '*(' + statusRange + '=""))&' +
+    '" новых · "&SUMPRODUCT(' + mask + '*' + open + '*(' + firstRange + '=""))&' +
+    '" ждут звонка · "&SUMPRODUCT(' + mask + '*(' + consultRange + '>=TODAY())*(' + consultRange + '<TODAY()+1))&" консультация(й)"';
+  if (alreadyBuilt) sheet.getRange(1, 1).setFormula(banner);
+
+  // Лист уже построен — обновляем три формулы блоков.
   if (alreadyBuilt) {
     sheet.getRange(TODAY_HEADER_ROW_OVERDUE_ + 2, 1).setFormula(overdueQuery);
     sheet.getRange(TODAY_HEADER_ROW_NEW_ + 2, 1).setFormula(newQuery);
@@ -2378,22 +2425,8 @@ function ensureTodayFormulas_(sheet, requestsSheet) {
   // пишется ПОСЛЕДНИМ — если построение блока выше упадёт с исключением, A1
   // останется пустым и следующий вызов setupCrm() перестроит «Сегодня» с нуля
   // (см. ранний return выше), а не тихо решит, что лист уже готов.
-  // B4 fix ("new-leads counter counts empty rows of a whole column"):
-  // COUNTIFS(Статус:Статус,"") раньше считал ВСЕ пустые ячейки колонки на всю
-  // высоту листа (типично 1000 строк) — то есть счётчик «новых» включал
-  // сотни пустых строк без единой реальной заявки. Условие "№ не пусто"
-  // ограничивает счёт настоящими строками (№ пишет скрипт для каждой
-  // реальной заявки, design item3/SCRIPT_WRITTEN_OFFICE_COLUMNS_).
-  var overdueCond = '\'' + SHEET_REQUESTS_ + '\'!' + nextStepColLetter + ':' + nextStepColLetter;
-  var consultCond = '\'' + SHEET_REQUESTS_ + '\'!' + consultColLetter + ':' + consultColLetter;
-  var noCond = '\'' + SHEET_REQUESTS_ + '\'!' + noColLetter + ':' + noColLetter;
-  var statusCond = '\'' + SHEET_REQUESTS_ + '\'!' + statusColLetter + ':' + statusColLetter;
-  mergeOnce_(sheet.getRange(1, 1, 1, 4)).setFormula(
-    '="Сегодня: "&COUNTIFS(' + overdueCond + ',"<"&TODAY(),' + overdueCond + ',"<>")&' +
-    '" просрочки · "&COUNTIFS(' + noCond + ',"<>",' + statusCond + ',"")&' +
-    '" новых · "&COUNTIFS(' + consultCond + ',">="&TODAY(),' + consultCond + ',"<"&(TODAY()+1))&' +
-    '" консультация(й)"'
-  );
+  // Номер-заготовка не входит в счётчики: баннер использует общий отбор контактов.
+  mergeOnce_(sheet.getRange(1, 1, 1, 4)).setFormula(banner);
 }
 
 // --- Сводка (владелец) ------------------------------------------------------
@@ -2443,13 +2476,19 @@ function writeSummaryChartData_(sheet, requestsSheet, serviceSheet) {
   var statusColLetter = columnLetter_(reqHeaderMap['Статус'] + 1);
 
   // T1: 14 дат (сегодня и 13 дней до)
+  var mask = leadMaskFormula_(requestsSheet);
+  var serviceMask = serviceLeadMaskFormula_(requestsSheet, serviceSheet);
+  var received = req + receivedColLetter + '2:' + receivedColLetter;
+  var first = req + firstAttemptColLetter + '2:' + firstAttemptColLetter;
+  var consult = req + consultColLetter + '2:' + consultColLetter;
+  var contract = svc + contractColLetter + '2:' + contractColLetter;
   sheet.getRange(SUMMARY_CHART_DATA_ROW_DATES_, t).setFormula(
     '=ARRAYFORMULA(TODAY()-13+SEQUENCE(1,14,0,1))'
   );
   // T2: счёт заявок по каждому из этих 14 дней
   sheet.getRange(SUMMARY_CHART_DATA_ROW_DAILY_, t).setFormula(
     '=ARRAYFORMULA(MAP(' + columnLetter_(t) + SUMMARY_CHART_DATA_ROW_DATES_ + ':' + columnLetter_(t + 13) + SUMMARY_CHART_DATA_ROW_DATES_ +
-    ',LAMBDA(d,COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&d,' + req + receivedColLetter + ':' + receivedColLetter + ',"<"&d+1))))'
+    ',LAMBDA(d,' + countLeadFormula_(mask, [received + '>=d', received + '<d+1']) + ')))'
   );
   // T3: счёт по неделям (8 недель, старая -> новая). B4 fix ("the weekly
   // series slides by days not weeks"): SEQUENCE(1,8,7,-1) раньше давало
@@ -2461,29 +2500,29 @@ function writeSummaryChartData_(sheet, requestsSheet, serviceSheet) {
   // [TODAY()-7*(1-w)-7, TODAY()-7*(1-w)) сдвигается РОВНО на 7 дней между
   // соседними значениями w — 8 непересекающихся календарных недель.
   sheet.getRange(SUMMARY_CHART_DATA_ROW_WEEKLY_, t).setFormula(
-    '=ARRAYFORMULA(MAP(SEQUENCE(1,8,0,-1),LAMBDA(w,COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter +
-    ',">="&(TODAY()-7*(1-w)-7),' + req + receivedColLetter + ':' + receivedColLetter + ',"<"&(TODAY()-7*(1-w))))))'
+    '=ARRAYFORMULA(MAP(SEQUENCE(1,8,0,-1),LAMBDA(w,' + countLeadFormula_(mask,
+      [received + '>=TODAY()-7*(1-w)-7', received + '<TODAY()-7*(1-w)']) + ')))'
   );
   // T5:T8: воронка (Заявки/Первая попытка/Консультация/Договор), 30 дней, вертикально
   sheet.getRange(SUMMARY_CHART_DATA_ROW_FUNNEL_, t, 4, 1).setFormulas([
-    ['=COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&(TODAY()-30))'],
-    ['=COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&(TODAY()-30),' + req + firstAttemptColLetter + ':' + firstAttemptColLetter + ',"<>")'],
-    ['=COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&(TODAY()-30),' + req + consultColLetter + ':' + consultColLetter + ',"<>")'],
-    ['=COUNTIFS(' + svc + contractColLetter + ':' + contractColLetter + ',">="&(TODAY()-30))']
+    ['=' + countLeadFormula_(mask, [received + '>=TODAY()-30'])],
+    ['=' + countLeadFormula_(mask, [received + '>=TODAY()-30', first + '<>""'])],
+    ['=' + countLeadFormula_(mask, [received + '>=TODAY()-30', consult + '<>""'])],
+    ['=' + countLeadFormula_(serviceMask, [contract + '>=TODAY()-30'])]
   ]);
   // T10: источники (Служебное!Откуда), сгруппированные
   sheet.getRange(SUMMARY_CHART_DATA_ROW_SOURCES_, t).setFormula(
-    '=IFERROR(QUERY(' + svc + sourceColLetter + '2:' + sourceColLetter +
+    '=IFERROR(QUERY(FILTER(' + svc + sourceColLetter + '2:' + sourceColLetter + ',' + serviceMask + ')' +
     ',"select Col1, count(Col1) where Col1 is not null group by Col1 order by count(Col1) desc",0),"")'
   );
   // T26: причины отказа (Заявки!Причина закрытия), по убыванию
   sheet.getRange(SUMMARY_CHART_DATA_ROW_REASONS_, t).setFormula(
-    '=IFERROR(QUERY(' + req + reasonColLetter + '2:' + reasonColLetter +
+    '=IFERROR(QUERY(FILTER(' + req + reasonColLetter + '2:' + reasonColLetter + ',' + mask + ')' +
     ',"select Col1, count(Col1) where Col1 is not null group by Col1 order by count(Col1) desc",0),"")'
   );
   // T33: срез статусов сейчас (только открытые — design §2.4 чарт 5 исключает закрытые)
   sheet.getRange(SUMMARY_CHART_DATA_ROW_STATUSMIX_, t).setFormula(
-    '=IFERROR(QUERY(' + req + statusColLetter + '2:' + statusColLetter +
+    '=IFERROR(QUERY(FILTER(' + req + statusColLetter + '2:' + statusColLetter + ',' + mask + ')' +
     ',"select Col1, count(Col1) where Col1 is not null and Col1 <> \'Клиент — договор\' and Col1 <> \'Отказ\' and Col1 <> \'Дубль / спам\' group by Col1",0),"")'
   );
 
@@ -2508,19 +2547,23 @@ function writeSummaryKpis_(sheet, requestsSheet, serviceSheet) {
   var svcHeaderMap = colByHeader_(serviceSheet.getRange(1, 1, 1, serviceSheet.getLastColumn()).getValues()[0]);
   var receivedColLetter = columnLetter_(reqHeaderMap['Получена'] + 1);
   var statusColLetter = columnLetter_(reqHeaderMap['Статус'] + 1);
-  var noColLetter = columnLetter_(reqHeaderMap['№'] + 1);
   var consultColLetter = columnLetter_(reqHeaderMap['Консультация'] + 1);
   var nextStepColLetter = columnLetter_(reqHeaderMap['Следующий шаг'] + 1);
   var contractColLetter = columnLetter_(svcHeaderMap['Договор'] + 1);
   var slaMedianColLetter = columnLetter_(10); // 'J' — design §0: новый столбец «Служебное», ещё не реализован (не эта задача)
+  var mask = leadMaskFormula_(requestsSheet);
+  var serviceMask = serviceLeadMaskFormula_(requestsSheet, serviceSheet);
+  var received = req + receivedColLetter + '2:' + receivedColLetter;
+  var consult = req + consultColLetter + '2:' + consultColLetter;
+  var status = req + statusColLetter + '2:' + statusColLetter;
+  var step = req + nextStepColLetter + '2:' + nextStepColLetter;
+  var contract = svc + contractColLetter + '2:' + contractColLetter;
 
   // KPI 1: заявок за 7 дней (строки 3-6)
   sheet.getRange(3, 1).setValue('Заявок · 7 дней');
-  sheet.getRange(4, 1).setFormula('=COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&(TODAY()-7))'); // A4 cur
-  sheet.getRange(4, 2).setFormula('=COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&(TODAY()-14),' +
-    req + receivedColLetter + ':' + receivedColLetter + ',"<"&(TODAY()-7))'); // B4 prev7
-  sheet.getRange(4, 4).setFormula('=COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&(TODAY()-21),' +
-    req + receivedColLetter + ':' + receivedColLetter + ',"<"&(TODAY()-14))'); // D4 prev14 (hidden helper — §2.5 rule 3)
+  sheet.getRange(4, 1).setFormula('=' + countLeadFormula_(mask, [received + '>=TODAY()-7'])); // A4 cur
+  sheet.getRange(4, 2).setFormula('=' + countLeadFormula_(mask, [received + '>=TODAY()-14', received + '<TODAY()-7'])); // B4 prev7
+  sheet.getRange(4, 4).setFormula('=' + countLeadFormula_(mask, [received + '>=TODAY()-21', received + '<TODAY()-14'])); // D4 prev14
   sheet.getRange(4, 3).setFormula('=IF($A$4>=$B$4,"▲+"&($A$4-$B$4),"▼"&($B$4-$A$4))'); // C4 delta text
   sheet.getRange(5, 1).setFormula('="пред. 7 дней: "&$B$4');
   sheet.getRange(6, 1).setFormula('=SPARKLINE(' + columnLetter_(27) + SUMMARY_CHART_DATA_ROW_DAILY_ + ':' + columnLetter_(33) + SUMMARY_CHART_DATA_ROW_DAILY_ +
@@ -2528,23 +2571,21 @@ function writeSummaryKpis_(sheet, requestsSheet, serviceSheet) {
 
   // KPI 2: заявок за 30 дней (строки 8-11)
   sheet.getRange(8, 1).setValue('Заявок · 30 дней');
-  sheet.getRange(9, 1).setFormula('=COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&(TODAY()-30))');
+  sheet.getRange(9, 1).setFormula('=' + countLeadFormula_(mask, [received + '>=TODAY()-30']));
   sheet.getRange(11, 1).setFormula('=SPARKLINE(' + columnLetter_(20) + SUMMARY_CHART_DATA_ROW_WEEKLY_ + ':' + columnLetter_(27) + SUMMARY_CHART_DATA_ROW_WEEKLY_ +
     ',{"charttype","column";"color1","#8a1f1f";"ymin",0})'); // T3:AA3 — все 8 недель (design §2.3 T3:X3 = 5 колонок, не 8 — исправлено)
 
   // KPI 3: дошли до консультации за 30 дней (строки 13-16)
   sheet.getRange(13, 1).setValue('До консультации · 30д');
-  sheet.getRange(14, 1).setFormula('=COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&(TODAY()-30),' +
-    req + consultColLetter + ':' + consultColLetter + ',"<>")'); // A14 count
-  sheet.getRange(14, 2).setFormula('=COUNTIFS(' + req + receivedColLetter + ':' + receivedColLetter + ',">="&(TODAY()-30))'); // B14 n
+  sheet.getRange(14, 1).setFormula('=' + countLeadFormula_(mask, [received + '>=TODAY()-30', consult + '<>""'])); // A14 count
+  sheet.getRange(14, 2).setFormula('=' + countLeadFormula_(mask, [received + '>=TODAY()-30'])); // B14 n
   sheet.getRange(15, 1).setFormula('="из "&$B$14&" ("&IF($B$14=0,"—",TEXT($A$14/$B$14,"0%"))&")"');
 
   // KPI 4: договоров (строки 18-21)
   sheet.getRange(18, 1).setValue('Договоров');
-  sheet.getRange(19, 1).setFormula('=COUNTIF(' + req + statusColLetter + ':' + statusColLetter + ',"Клиент — договор")'); // A19 всего
-  sheet.getRange(19, 2).setFormula('=COUNTIF(' + req + statusColLetter + ':' + statusColLetter + ',"Клиент — договор")/COUNTA(' +
-    req + noColLetter + '2:' + noColLetter + ')'); // B19 доля от всех
-  sheet.getRange(19, 3).setFormula('=COUNTIFS(' + svc + contractColLetter + ':' + contractColLetter + ',">="&(TODAY()-30))'); // C19 за 30 дней
+  sheet.getRange(19, 1).setFormula('=' + countLeadFormula_(mask, [status + '="Клиент — договор"'])); // A19 всего
+  sheet.getRange(19, 2).setFormula('=IFERROR(A19/' + countLeadFormula_(mask) + ',0)'); // B19 доля от всех
+  sheet.getRange(19, 3).setFormula('=' + countLeadFormula_(serviceMask, [contract + '>=TODAY()-30'])); // C19 за 30 дней
   sheet.getRange(20, 1).setFormula('=$A$19&" всего · "&TEXT($B$19,"0%")');
   sheet.getRange(21, 1).setFormula('="+"&$C$19&" за 30 дн."');
 
@@ -2565,11 +2606,8 @@ function writeSummaryKpis_(sheet, requestsSheet, serviceSheet) {
   // Sheets дало бы ошибку разбора формулы. Каждое вхождение теперь — полный
   // 'Заявки'!B:B, как и остальные условия этой же COUNTIFS.
   sheet.getRange(28, 1).setValue('Просрочено сейчас');
-  var notClosed = req + statusColLetter + ':' + statusColLetter + ',"<>Клиент — договор",' +
-    req + statusColLetter + ':' + statusColLetter + ',"<>Отказ",' +
-    req + statusColLetter + ':' + statusColLetter + ',"<>Дубль / спам"';
-  sheet.getRange(29, 1).setFormula('=COUNTIFS(' + req + nextStepColLetter + ':' + nextStepColLetter + ',"<"&TODAY(),' +
-    req + nextStepColLetter + ':' + nextStepColLetter + ',"<>",' + notClosed + ')');
+  sheet.getRange(29, 1).setFormula('=' + countLeadFormula_(mask, [step + '<TODAY()', step + '<>""',
+    status + '<>"Клиент — договор"', status + '<>"Отказ"', status + '<>"Дубль / спам"']));
   sheet.getRange(30, 1).setFormula('=IF($A$29=0,"Просрочек нет",$A$29&" заявок")');
 }
 
@@ -2696,7 +2734,11 @@ function insertSummaryCharts_(sheet) {
  * требует отдельного подтверждения.
  */
 function ensureSummaryFormulas_(sheet, requestsSheet, serviceSheet) {
-  if (sheet.getRange(1, 1).getValue()) return;
+  if (sheet.getRange(1, 1).getValue()) {
+    writeSummaryChartData_(sheet, requestsSheet, serviceSheet);
+    writeSummaryKpis_(sheet, requestsSheet, serviceSheet);
+    return;
+  }
 
   // B1a fix: T:AH (столбцы 20-34) выходят за пределы 26-колоночного грида
   // нового листа — раздвигаем ДО первого обращения к этим столбцам
@@ -3175,11 +3217,7 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
     // design item4: № берём из ОБЪЕДИНЕНИЯ «Заявки» + «Служебное» — orphan-
     // заявка (есть в «Служебное», ещё нет в «Заявки») не должна отдать свой №
     // genuinely новой заявке этого же тика.
-    var existingNumbers = reqValues.slice(1).map(function (row) { return getCell_(row, reqHeaderMap, '№'); });
-    serviceValues.slice(1).forEach(function (row) {
-      var no = getCell_(row, serviceHeaderMap, '№');
-      if (no && existingNumbers.indexOf(no) === -1) existingNumbers.push(no);
-    });
+    var existingNumbers = readLeadNumbers_(requests, reqHeaderMap, service, serviceHeaderMap);
 
     plan.toCreate.forEach(function (rec) {
       var leadNo = nextLeadNumber_(existingNumbers);
@@ -3353,6 +3391,7 @@ function buildNewServiceRow_(serviceHeaderMap, rec, leadNo) {
   setCell_(row, serviceHeaderMap, 'submission_id', rec.submission_id);
   setCell_(row, serviceHeaderMap, 'все submission_id', rec.submission_id);
   setCell_(row, serviceHeaderMap, 'Откуда', detectSource_(rec));
+  setCell_(row, serviceHeaderMap, 'Предыдущий статус', '(пусто)');
   return row;
 }
 
@@ -3633,6 +3672,7 @@ function processSla_(ss, config, now, values, headerMap) {
 
   for (var i = 1; i < values.length; i++) {
     var row = values[i];
+    if (!isLeadRow_(row, headerMap)) continue;
     var status = getCell_(row, headerMap, 'Статус');
     if (CLOSED_STATUSES_.indexOf(status) !== -1) continue; // закрытые — вне SLA
 
@@ -3691,9 +3731,11 @@ function maybeSendDigest_(ss, config, now, values, headerMap) {
 function computeDigestStats_(values, headerMap, config, now) {
   if (!values || values.length < 2) return {};
   var todayKey = digestDayKey_(now, config.tz);
-  var stats = { newCount: 0, waitingFirstCallCount: 0, consultationsTodayCount: 0, overdueCount: 0 };
+  var stats = { newCount: 0, waitingFirstCallCount: 0, consultationsTodayCount: 0, overdueCount: 0, attentionCount: 0 };
+  var attention = {};
 
   values.slice(1).forEach(function (row) {
+    if (!isLeadRow_(row, headerMap)) return;
     var status = getCell_(row, headerMap, 'Статус');
     if (CLOSED_STATUSES_.indexOf(status) !== -1) return;
     if (!status) stats.newCount++;
@@ -3703,6 +3745,11 @@ function computeDigestStats_(values, headerMap, config, now) {
     if (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) stats.consultationsTodayCount++;
     var nextStep = getCell_(row, headerMap, 'Следующий шаг');
     if (nextStep && new Date(nextStep) < now) stats.overdueCount++;
+    if (!status || !firstAttempt || (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) ||
+        (nextStep && new Date(nextStep) < now)) {
+      var key = getCell_(row, headerMap, '№') || 'row:' + values.indexOf(row);
+      if (!attention[key]) { attention[key] = true; stats.attentionCount++; }
+    }
   });
   return stats;
 }
@@ -3869,6 +3916,49 @@ function writeNotificationRetryAttempts_(attempts) {
  * (Script Properties) на реконсиляцию следующим tick() (см.
  * reconcilePendingEdits_) и журналирует сам факт таймаута.
  */
+function readLeadNumbers_(requests, reqHeaderMap, service, serviceHeaderMap) {
+  var numbers = [];
+  [[requests, reqHeaderMap], [service, serviceHeaderMap]].forEach(function (entry) {
+    var sheet = entry[0];
+    if (sheet.getLastRow() < 2) return;
+    sheet.getRange(2, entry[1]['№'] + 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (row) {
+      numbers.push(row[0]);
+    });
+  });
+  return numbers;
+}
+
+function ensurePreviousStatusColumn_(service) {
+  var headers = service.getRange(1, 1, 1, service.getLastColumn()).getValues()[0];
+  if (headers.indexOf('Предыдущий статус') === -1) {
+    headers.push('Предыдущий статус');
+    ensureMinColumns_(service, headers.length);
+    service.getRange(1, headers.length).setValue('Предыдущий статус');
+  }
+  return colByHeader_(headers);
+}
+
+function ensurePreviousStatuses_(requests, service) {
+  var serviceMap = ensurePreviousStatusColumn_(service);
+  var values = requests.getDataRange().getValues();
+  var headerMap = colByHeader_(values[0]);
+  values.slice(1).forEach(function (row) {
+    if (!isLeadRow_(row, headerMap)) return;
+    var leadNo = getCell_(row, headerMap, '№');
+    if (!leadNo) return;
+    var index = findServiceRowIndexByLeadNo_(service, serviceMap, leadNo);
+    if (index === -1) {
+      var manual = buildNewServiceRow_(serviceMap, { submission_id: '' }, leadNo);
+      setCell_(manual, serviceMap, 'Откуда', 'WhatsApp, вручную');
+      setCell_(manual, serviceMap, 'Предыдущий статус', getCell_(row, headerMap, 'Статус') || '(пусто)');
+      appendServiceRowSafely_(service, serviceMap, manual);
+      index = service.getLastRow();
+    }
+    var cell = service.getRange(index, serviceMap['Предыдущий статус'] + 1);
+    if (!cell.getValue()) cell.setValue(getCell_(row, headerMap, 'Статус') || '(пусто)');
+  });
+}
+
 function handleEdit_(e) {
   var lock = LockService.getScriptLock();
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID_); // нужен и для лога таймаута, и для основного пути
@@ -3894,13 +3984,16 @@ function handleEdit_(e) {
     // Задача 0.4.0: «Контакт состоялся»/«Статус изменён»/«Договор» переехали на
     // «Служебное» — onEdit находит нужную строку там по № (design §1, §3.2).
     var service = ss.getSheetByName(SHEET_SERVICE_);
-    var serviceHeaderMap = colByHeader_(service.getRange(1, 1, 1, service.getLastColumn()).getValues()[0]);
+    var serviceHeaderMap = ensurePreviousStatusColumn_(service);
     var now = new Date();
+    var statusEdited = e.range.getColumn() <= headerMap['Статус'] + 1 &&
+      e.range.getColumn() + e.range.getNumColumns() > headerMap['Статус'] + 1;
 
     // вставка в несколько строк/ячеек — обрабатываем диапазоном (§5.2)
     for (var r = e.range.getRow(); r < e.range.getRow() + e.range.getNumRows(); r++) {
       runStepSafely_('onEdit_row_' + r, function () {
-        handleEditRow_(sheet, headerMap, r, journal, service, serviceHeaderMap, now);
+        handleEditRow_(sheet, headerMap, r, journal, service, serviceHeaderMap, now, statusEdited,
+          e.range.getNumRows() === 1 && e.range.getNumColumns() === 1 ? e.oldValue : undefined);
       });
     }
   } finally {
@@ -3958,16 +4051,45 @@ function reconcilePendingEdits_(requests, reqHeaderMap, journal, service, servic
  * между чтением rowIndex и этим вызовом, а Служебное вообще не связано по
  * физической позиции строки).
  */
-function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHeaderMap, now) {
+function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHeaderMap, now, statusEdited, oldStatus) {
   var row = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (!isLeadRow_(row, headerMap)) {
+    writeContactCell_(sheet, rowIndex, headerMap, '');
+    return;
+  }
   var leadNo = getCell_(row, headerMap, '№');
-  if (!leadNo) return; // не заявка (например, пустая строка)
+  if (!leadNo) {
+    leadNo = nextLeadNumber_(readLeadNumbers_(sheet, headerMap, service, serviceHeaderMap));
+    sheet.getRange(rowIndex, headerMap['№'] + 1).setValue(leadNo);
+  }
 
   var status = getCell_(row, headerMap, 'Статус');
   var telephone = getCell_(row, headerMap, 'Телефон');
   var firstAttempt = getCell_(row, headerMap, 'Первая попытка');
 
   var serviceRowIndex = findServiceRowIndexByLeadNo_(service, serviceHeaderMap, leadNo);
+  if (serviceRowIndex === -1) {
+    serviceHeaderMap = ensurePreviousStatusColumn_(service);
+    var manual = buildNewServiceRow_(serviceHeaderMap, { submission_id: '' }, leadNo);
+    setCell_(manual, serviceHeaderMap, 'Откуда', 'WhatsApp, вручную');
+    setCell_(manual, serviceHeaderMap, 'Предыдущий статус', statusEdited && oldStatus !== undefined ? (oldStatus || '(пусто)') : (status || '(пусто)'));
+    appendServiceRowSafely_(service, serviceHeaderMap, manual);
+    serviceRowIndex = service.getLastRow();
+  }
+  var isManual = service.getRange(serviceRowIndex, serviceHeaderMap['Откуда'] + 1).getValue() === 'WhatsApp, вручную';
+  if (!getCell_(row, headerMap, 'Получена') && isManual) {
+    sheet.getRange(rowIndex, headerMap['Получена'] + 1).setValue(now);
+  }
+  if (!getCell_(row, headerMap, 'Ответственный') && isManual) {
+    setPlainTextValue_(sheet.getRange(rowIndex, headerMap['Ответственный'] + 1), loadConfig_().defaultDutyOfficer || '');
+  }
+  serviceHeaderMap = ensurePreviousStatusColumn_(service);
+  var previousCell = service.getRange(serviceRowIndex, serviceHeaderMap['Предыдущий статус'] + 1);
+  var previous = previousCell.getValue();
+  // Старую одиночную правку можно восстановить из e.oldValue; массовую — только из снимка setupCrm().
+  if (!previous) previous = oldStatus !== undefined ? (oldStatus || '(пусто)') : (status || '(пусто)');
+  var statusChanged = statusEdited !== false && previous !== (status || '(пусто)');
+  if (statusEdited !== false || !previousCell.getValue()) previousCell.setValue(status || '(пусто)');
   if (serviceRowIndex !== -1) {
     var contactMade = service.getRange(serviceRowIndex, serviceHeaderMap['Контакт состоялся'] + 1).getValue();
     // "Контакт состоялся" — время, когда статус впервые стал «В работе» и дальше (§3.1)
@@ -3979,7 +4101,7 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
       var contractCell = service.getRange(serviceRowIndex, serviceHeaderMap['Договор'] + 1);
       if (!contractCell.getValue()) contractCell.setValue(now);
     }
-    service.getRange(serviceRowIndex, serviceHeaderMap['Статус изменён'] + 1).setValue(now);
+    if (statusChanged) service.getRange(serviceRowIndex, serviceHeaderMap['Статус изменён'] + 1).setValue(now);
   }
 
   // "Первая попытка" закрывает SLA — если статус сдвинулся с «Новой», но штамп ещё
@@ -3988,11 +4110,9 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
     sheet.getRange(rowIndex, headerMap['Первая попытка'] + 1).setValue(now);
   }
 
-  appendJournalRow_(journal, now, leadNo, 'status_changed', 'sent', 'internal', 'status=' + (status || '(пусто)'), 'status_change:' + leadNo + ':' + now.getTime());
+  if (statusChanged) appendJournalRow_(journal, now, leadNo, 'status_changed', 'sent', 'internal', 'status=' + (status || '(пусто)'), 'status_change:' + leadNo + ':' + now.getTime());
 
-  if (telephone) {
-    writeContactCell_(sheet, rowIndex, headerMap, telephone); // review находка №12
-  }
+  writeContactCell_(sheet, rowIndex, headerMap, telephone);
 }
 
 // ---------------------------------------------------------------------------
@@ -4031,7 +4151,9 @@ function doGet(e) {
   }
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID_);
   var intakeCount = Math.max(ss.getSheetByName(SHEET_INTAKE_).getLastRow() - 1, 0);
-  var requestsCount = Math.max(ss.getSheetByName(SHEET_REQUESTS_).getLastRow() - 1, 0);
+  var requestsValues = ss.getSheetByName(SHEET_REQUESTS_).getDataRange().getValues();
+  var requestsHeaders = colByHeader_(requestsValues[0] || []);
+  var requestsCount = requestsValues.slice(1).filter(function (row) { return isLeadRow_(row, requestsHeaders); }).length;
   var heartbeatAt = PropertiesService.getScriptProperties().getProperty('heartbeatAt');
   var payload = {
     intake_count: intakeCount,
