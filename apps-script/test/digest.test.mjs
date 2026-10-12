@@ -18,9 +18,9 @@ test('shouldSendDigestToday_ не зависит от содержимого —
 });
 
 test('непустой дайджест считает по категориям корректно', () => {
-  const digest = ctx.composeDigest_({ newCount: 2, waitingFirstCallCount: 1, consultationsTodayCount: 0, overdueCount: 3 });
+  const digest = ctx.composeDigest_({ newCount: 2, waitingFirstCallCount: 1, consultationsTodayCount: 0, overdueCount: 3, attentionCount: 4 });
   assert.equal(digest.isEmpty, false);
-  assert.match(digest.subject, /6 к вниманию/);
+  assert.match(digest.subject, /4 к вниманию/);
   assert.match(digest.body, /Новых: 2/);
   assert.match(digest.body, /Просрочено: 3/);
 });

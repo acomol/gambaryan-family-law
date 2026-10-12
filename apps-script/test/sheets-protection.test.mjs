@@ -55,7 +55,7 @@ test('SERVICE_SHEET_HEADERS_: «Служебное» несёт №-ключ, su
   const { ctx } = buildCtx('alex@adfix.co.il');
   const expected = [
     '№', 'submission_id', 'все submission_id', 'Контакт состоялся', 'Статус изменён',
-    'Договор', 'contact_version', 'Флаги уведомлений', 'Откуда'
+    'Договор', 'contact_version', 'Флаги уведомлений', 'Откуда', 'Предыдущий статус'
   ];
   assert.deepEqual(Array.from(ctx.SERVICE_SHEET_HEADERS_), expected);
   // технические поля самой заявки (UTM/click-id/landing_path…) НЕ копируются

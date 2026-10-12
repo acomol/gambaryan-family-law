@@ -271,11 +271,7 @@ function syncIntakeToRequests_(ss, config, now, requests, reqValues, reqHeaderMa
     // design item4: № берём из ОБЪЕДИНЕНИЯ «Заявки» + «Служебное» — orphan-
     // заявка (есть в «Служебное», ещё нет в «Заявки») не должна отдать свой №
     // genuinely новой заявке этого же тика.
-    var existingNumbers = reqValues.slice(1).map(function (row) { return getCell_(row, reqHeaderMap, '№'); });
-    serviceValues.slice(1).forEach(function (row) {
-      var no = getCell_(row, serviceHeaderMap, '№');
-      if (no && existingNumbers.indexOf(no) === -1) existingNumbers.push(no);
-    });
+    var existingNumbers = readLeadNumbers_(requests, reqHeaderMap, service, serviceHeaderMap);
 
     plan.toCreate.forEach(function (rec) {
       var leadNo = nextLeadNumber_(existingNumbers);
@@ -449,6 +445,7 @@ function buildNewServiceRow_(serviceHeaderMap, rec, leadNo) {
   setCell_(row, serviceHeaderMap, 'submission_id', rec.submission_id);
   setCell_(row, serviceHeaderMap, 'все submission_id', rec.submission_id);
   setCell_(row, serviceHeaderMap, 'Откуда', detectSource_(rec));
+  setCell_(row, serviceHeaderMap, 'Предыдущий статус', '(пусто)');
   return row;
 }
 
@@ -729,6 +726,7 @@ function processSla_(ss, config, now, values, headerMap) {
 
   for (var i = 1; i < values.length; i++) {
     var row = values[i];
+    if (!isLeadRow_(row, headerMap)) continue;
     var status = getCell_(row, headerMap, 'Статус');
     if (CLOSED_STATUSES_.indexOf(status) !== -1) continue; // закрытые — вне SLA
 
@@ -787,9 +785,11 @@ function maybeSendDigest_(ss, config, now, values, headerMap) {
 function computeDigestStats_(values, headerMap, config, now) {
   if (!values || values.length < 2) return {};
   var todayKey = digestDayKey_(now, config.tz);
-  var stats = { newCount: 0, waitingFirstCallCount: 0, consultationsTodayCount: 0, overdueCount: 0 };
+  var stats = { newCount: 0, waitingFirstCallCount: 0, consultationsTodayCount: 0, overdueCount: 0, attentionCount: 0 };
+  var attention = {};
 
   values.slice(1).forEach(function (row) {
+    if (!isLeadRow_(row, headerMap)) return;
     var status = getCell_(row, headerMap, 'Статус');
     if (CLOSED_STATUSES_.indexOf(status) !== -1) return;
     if (!status) stats.newCount++;
@@ -799,6 +799,11 @@ function computeDigestStats_(values, headerMap, config, now) {
     if (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) stats.consultationsTodayCount++;
     var nextStep = getCell_(row, headerMap, 'Следующий шаг');
     if (nextStep && new Date(nextStep) < now) stats.overdueCount++;
+    if (!status || !firstAttempt || (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) ||
+        (nextStep && new Date(nextStep) < now)) {
+      var key = getCell_(row, headerMap, '№') || 'row:' + values.indexOf(row);
+      if (!attention[key]) { attention[key] = true; stats.attentionCount++; }
+    }
   });
   return stats;
 }
@@ -965,6 +970,49 @@ function writeNotificationRetryAttempts_(attempts) {
  * (Script Properties) на реконсиляцию следующим tick() (см.
  * reconcilePendingEdits_) и журналирует сам факт таймаута.
  */
+function readLeadNumbers_(requests, reqHeaderMap, service, serviceHeaderMap) {
+  var numbers = [];
+  [[requests, reqHeaderMap], [service, serviceHeaderMap]].forEach(function (entry) {
+    var sheet = entry[0];
+    if (sheet.getLastRow() < 2) return;
+    sheet.getRange(2, entry[1]['№'] + 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (row) {
+      numbers.push(row[0]);
+    });
+  });
+  return numbers;
+}
+
+function ensurePreviousStatusColumn_(service) {
+  var headers = service.getRange(1, 1, 1, service.getLastColumn()).getValues()[0];
+  if (headers.indexOf('Предыдущий статус') === -1) {
+    headers.push('Предыдущий статус');
+    ensureMinColumns_(service, headers.length);
+    service.getRange(1, headers.length).setValue('Предыдущий статус');
+  }
+  return colByHeader_(headers);
+}
+
+function ensurePreviousStatuses_(requests, service) {
+  var serviceMap = ensurePreviousStatusColumn_(service);
+  var values = requests.getDataRange().getValues();
+  var headerMap = colByHeader_(values[0]);
+  values.slice(1).forEach(function (row) {
+    if (!isLeadRow_(row, headerMap)) return;
+    var leadNo = getCell_(row, headerMap, '№');
+    if (!leadNo) return;
+    var index = findServiceRowIndexByLeadNo_(service, serviceMap, leadNo);
+    if (index === -1) {
+      var manual = buildNewServiceRow_(serviceMap, { submission_id: '' }, leadNo);
+      setCell_(manual, serviceMap, 'Откуда', 'WhatsApp, вручную');
+      setCell_(manual, serviceMap, 'Предыдущий статус', getCell_(row, headerMap, 'Статус') || '(пусто)');
+      appendServiceRowSafely_(service, serviceMap, manual);
+      index = service.getLastRow();
+    }
+    var cell = service.getRange(index, serviceMap['Предыдущий статус'] + 1);
+    if (!cell.getValue()) cell.setValue(getCell_(row, headerMap, 'Статус') || '(пусто)');
+  });
+}
+
 function handleEdit_(e) {
   var lock = LockService.getScriptLock();
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID_); // нужен и для лога таймаута, и для основного пути
@@ -990,13 +1038,16 @@ function handleEdit_(e) {
     // Задача 0.4.0: «Контакт состоялся»/«Статус изменён»/«Договор» переехали на
     // «Служебное» — onEdit находит нужную строку там по № (design §1, §3.2).
     var service = ss.getSheetByName(SHEET_SERVICE_);
-    var serviceHeaderMap = colByHeader_(service.getRange(1, 1, 1, service.getLastColumn()).getValues()[0]);
+    var serviceHeaderMap = ensurePreviousStatusColumn_(service);
     var now = new Date();
+    var statusEdited = e.range.getColumn() <= headerMap['Статус'] + 1 &&
+      e.range.getColumn() + e.range.getNumColumns() > headerMap['Статус'] + 1;
 
     // вставка в несколько строк/ячеек — обрабатываем диапазоном (§5.2)
     for (var r = e.range.getRow(); r < e.range.getRow() + e.range.getNumRows(); r++) {
       runStepSafely_('onEdit_row_' + r, function () {
-        handleEditRow_(sheet, headerMap, r, journal, service, serviceHeaderMap, now);
+        handleEditRow_(sheet, headerMap, r, journal, service, serviceHeaderMap, now, statusEdited,
+          e.range.getNumRows() === 1 && e.range.getNumColumns() === 1 ? e.oldValue : undefined);
       });
     }
   } finally {
@@ -1054,16 +1105,45 @@ function reconcilePendingEdits_(requests, reqHeaderMap, journal, service, servic
  * между чтением rowIndex и этим вызовом, а Служебное вообще не связано по
  * физической позиции строки).
  */
-function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHeaderMap, now) {
+function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHeaderMap, now, statusEdited, oldStatus) {
   var row = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (!isLeadRow_(row, headerMap)) {
+    writeContactCell_(sheet, rowIndex, headerMap, '');
+    return;
+  }
   var leadNo = getCell_(row, headerMap, '№');
-  if (!leadNo) return; // не заявка (например, пустая строка)
+  if (!leadNo) {
+    leadNo = nextLeadNumber_(readLeadNumbers_(sheet, headerMap, service, serviceHeaderMap));
+    sheet.getRange(rowIndex, headerMap['№'] + 1).setValue(leadNo);
+  }
 
   var status = getCell_(row, headerMap, 'Статус');
   var telephone = getCell_(row, headerMap, 'Телефон');
   var firstAttempt = getCell_(row, headerMap, 'Первая попытка');
 
   var serviceRowIndex = findServiceRowIndexByLeadNo_(service, serviceHeaderMap, leadNo);
+  if (serviceRowIndex === -1) {
+    serviceHeaderMap = ensurePreviousStatusColumn_(service);
+    var manual = buildNewServiceRow_(serviceHeaderMap, { submission_id: '' }, leadNo);
+    setCell_(manual, serviceHeaderMap, 'Откуда', 'WhatsApp, вручную');
+    setCell_(manual, serviceHeaderMap, 'Предыдущий статус', statusEdited && oldStatus !== undefined ? (oldStatus || '(пусто)') : (status || '(пусто)'));
+    appendServiceRowSafely_(service, serviceHeaderMap, manual);
+    serviceRowIndex = service.getLastRow();
+  }
+  var isManual = service.getRange(serviceRowIndex, serviceHeaderMap['Откуда'] + 1).getValue() === 'WhatsApp, вручную';
+  if (!getCell_(row, headerMap, 'Получена') && isManual) {
+    sheet.getRange(rowIndex, headerMap['Получена'] + 1).setValue(now);
+  }
+  if (!getCell_(row, headerMap, 'Ответственный') && isManual) {
+    setPlainTextValue_(sheet.getRange(rowIndex, headerMap['Ответственный'] + 1), loadConfig_().defaultDutyOfficer || '');
+  }
+  serviceHeaderMap = ensurePreviousStatusColumn_(service);
+  var previousCell = service.getRange(serviceRowIndex, serviceHeaderMap['Предыдущий статус'] + 1);
+  var previous = previousCell.getValue();
+  // Старую одиночную правку можно восстановить из e.oldValue; массовую — только из снимка setupCrm().
+  if (!previous) previous = oldStatus !== undefined ? (oldStatus || '(пусто)') : (status || '(пусто)');
+  var statusChanged = statusEdited !== false && previous !== (status || '(пусто)');
+  if (statusEdited !== false || !previousCell.getValue()) previousCell.setValue(status || '(пусто)');
   if (serviceRowIndex !== -1) {
     var contactMade = service.getRange(serviceRowIndex, serviceHeaderMap['Контакт состоялся'] + 1).getValue();
     // "Контакт состоялся" — время, когда статус впервые стал «В работе» и дальше (§3.1)
@@ -1075,7 +1155,7 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
       var contractCell = service.getRange(serviceRowIndex, serviceHeaderMap['Договор'] + 1);
       if (!contractCell.getValue()) contractCell.setValue(now);
     }
-    service.getRange(serviceRowIndex, serviceHeaderMap['Статус изменён'] + 1).setValue(now);
+    if (statusChanged) service.getRange(serviceRowIndex, serviceHeaderMap['Статус изменён'] + 1).setValue(now);
   }
 
   // "Первая попытка" закрывает SLA — если статус сдвинулся с «Новой», но штамп ещё
@@ -1084,11 +1164,9 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
     sheet.getRange(rowIndex, headerMap['Первая попытка'] + 1).setValue(now);
   }
 
-  appendJournalRow_(journal, now, leadNo, 'status_changed', 'sent', 'internal', 'status=' + (status || '(пусто)'), 'status_change:' + leadNo + ':' + now.getTime());
+  if (statusChanged) appendJournalRow_(journal, now, leadNo, 'status_changed', 'sent', 'internal', 'status=' + (status || '(пусто)'), 'status_change:' + leadNo + ':' + now.getTime());
 
-  if (telephone) {
-    writeContactCell_(sheet, rowIndex, headerMap, telephone); // review находка №12
-  }
+  writeContactCell_(sheet, rowIndex, headerMap, telephone);
 }
 
 // ---------------------------------------------------------------------------
@@ -1127,7 +1205,9 @@ function doGet(e) {
   }
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID_);
   var intakeCount = Math.max(ss.getSheetByName(SHEET_INTAKE_).getLastRow() - 1, 0);
-  var requestsCount = Math.max(ss.getSheetByName(SHEET_REQUESTS_).getLastRow() - 1, 0);
+  var requestsValues = ss.getSheetByName(SHEET_REQUESTS_).getDataRange().getValues();
+  var requestsHeaders = colByHeader_(requestsValues[0] || []);
+  var requestsCount = requestsValues.slice(1).filter(function (row) { return isLeadRow_(row, requestsHeaders); }).length;
   var heartbeatAt = PropertiesService.getScriptProperties().getProperty('heartbeatAt');
   var payload = {
     intake_count: intakeCount,

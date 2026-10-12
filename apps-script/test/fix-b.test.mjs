@@ -215,7 +215,7 @@ test('B3: офис переставил «Договор»/«Откуда» на
   const sourceColExpected = ctx.columnLetter_(reordered.indexOf('Откуда') + 1);
   const funnelFormulas = summary.getRange(ctx.SUMMARY_CHART_DATA_ROW_FUNNEL_, 20, 4, 1).getFormulas();
   const contractFormula = funnelFormulas[3][0]; // 4-е значение воронки — «Договор»
-  assert.ok(contractFormula.indexOf("'Служебное'!" + contractColExpected + ':' + contractColExpected) !== -1,
+  assert.ok(contractFormula.indexOf("'Служебное'!" + contractColExpected + '2:' + contractColExpected) !== -1,
     'воронка (шаг «Договор») обязана ссылаться на РЕАЛЬНУЮ (переставленную) колонку «Служебное»!' + contractColExpected);
 
   const sourcesFormula = summary.getRange(ctx.SUMMARY_CHART_DATA_ROW_SOURCES_, 20).getFormula();

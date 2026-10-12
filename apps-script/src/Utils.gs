@@ -213,3 +213,9 @@ function buildContactCellPlan_(phone) {
   var waEnd = waStart + waLabel.length;
   return { text: text, links: [{ start: waStart, end: waEnd, url: links.waHref }] };
 }
+/** Общий отбор: номер-заготовка сам по себе не является заявкой. */
+function isLeadRow_(row, headerMap) {
+  return ['Имя', 'Телефон'].some(function (header) {
+    return String(getCell_(row, headerMap, header) || '').trim() !== '';
+  });
+}

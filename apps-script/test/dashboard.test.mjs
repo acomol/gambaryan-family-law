@@ -36,14 +36,12 @@ test('ensureTodayFormulas_: строка-счётчик (A1) считает пр
   ctx.ensureTodayFormulas_(today, requests);
 
   const banner = today.getRange(1, 1).getFormula();
-  assert.ok(banner.indexOf('COUNTIFS') !== -1, 'A1 должна быть формулой со счётчиками');
+  assert.ok(banner.indexOf('SUMPRODUCT') !== -1, 'A1 должна быть формулой со счётчиками');
   assert.ok(banner.indexOf('просрочки') !== -1 && banner.indexOf('новых') !== -1 && banner.indexOf('консультация') !== -1,
     'баннер должен упоминать все три категории');
-  // B4 fix ("new-leads counter counts empty rows of a whole column"): счёт
-  // «новых» обязан включать условие "№ не пусто" (реальная строка), иначе
-  // COUNTIFS(Статус:Статус,"") считает и пустые строки ниже данных.
-  assert.ok(/COUNTIFS\([^)]*№?[^,]*,"<>"/.test(banner) || banner.indexOf(',"<>",') !== -1,
-    'счётчик «новых» ограничен реальными строками (№ <> ""), не всей пустой колонкой');
+  // Пустые строки и заготовки номеров исключаются общим отбором контактов.
+  assert.ok(banner.includes("LEN(TRIM('Заявки'!D2:D))") && banner.includes("LEN(TRIM('Заявки'!E2:E))"),
+    'счётчики отбирают заявки по имени или телефону');
 });
 
 test('ensureTodayFormulas_: 3 блока (Просрочено/Новые/Консультации) — заголовки, статичная заливка (design §3.4), правильные условия QUERY, без коллизий (B2)', () => {
@@ -144,7 +142,7 @@ test('ensureSummaryFormulas_: KPI-1 — 7 дней, дельта к предыд
   ctx.ensureSummaryFormulas_(summary, requests, service);
 
   const cur = summary.getRange(4, 1).getFormula();
-  assert.ok(cur.indexOf('COUNTIFS') !== -1 && cur.indexOf('TODAY()-7') !== -1);
+  assert.ok(cur.indexOf('SUMPRODUCT') !== -1 && cur.indexOf('TODAY()-7') !== -1);
   const prev = summary.getRange(4, 2).getFormula();
   assert.ok(prev.indexOf('TODAY()-14') !== -1 && prev.indexOf('TODAY()-7') !== -1);
   const prev14 = summary.getRange(4, 4).getFormula();
@@ -184,7 +182,7 @@ test('ensureSummaryFormulas_: KPI-5 (медиана до 1-й попытки) ч
     'порог SLA читается динамически из «Настройки», не захардкожен числом');
 });
 
-test('ensureSummaryFormulas_: KPI-6 (просрочено сейчас) — валидный COUNTIFS с полным «Заявки»!B:B, не голым «Заявки»!B (B4 fix)', () => {
+test('ensureSummaryFormulas_: KPI-6 (просрочено сейчас) — полный диапазон статуса и общий отбор заявок (B4 fix)', () => {
   const ctx = newCtx();
   const summary = makeFakeSheet('Сводка');
   const requests = makeRequestsSheetWithHeaders(ctx);
@@ -198,8 +196,8 @@ test('ensureSummaryFormulas_: KPI-6 (просрочено сейчас) — ва
   // голым 'Заявки'!B (без ":B"), что на реальном Sheets — невалидная A1-
   // нотация внутри COUNTIFS (ошибка разбора формулы).
   assert.ok(count.indexOf("'Заявки'!B,") === -1, 'не должно остаться голого \'Заявки\'!B без диапазона (B4 regression)');
-  const statusRangeCount = (count.match(/'Заявки'!B:B/g) || []).length;
-  assert.ok(statusRangeCount >= 3, 'все три условия по статусу (<>Клиент-договор/<>Отказ/<>Дубль-спам) используют полный B:B');
+  const statusRangeCount = (count.match(/'Заявки'!B2:B/g) || []).length;
+  assert.ok(statusRangeCount >= 3, 'все три условия по статусу используют полный B2:B');
   const sub = summary.getRange(30, 1).getFormula();
   assert.ok(sub.indexOf('Просрочек нет') !== -1, '0 -> "Просрочек нет", не голый "0"');
 });

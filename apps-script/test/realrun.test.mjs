@@ -63,7 +63,7 @@ test('установка на боевой таблице: скрипт не у�
 
 test('установка на боевой таблице: «Сегодня» НОВЫЕ не берёт пустые строки (#REF!), блоки ограничены, повторный setupCrm обновляет формулы', () => {
   const src = ctx.ensureTodayFormulas_.toString();
-  assert.match(src, /' <> \\'\\''/, 'условие «№ не пуст» в блоке НОВЫЕ');
+  assert.ok(src.includes('leadMaskFormula_(requestsSheet)'), 'общий отбор по имени/телефону');
   assert.equal((src.match(/limit ' \+ TODAY_BLOCK_CAPACITY_/g) || []).length, 3, 'limit во всех трёх блоках');
   const cells = {};
   const today = {
@@ -82,7 +82,8 @@ test('установка на боевой таблице: «Сегодня» Н
   ctx.ensureTodayFormulas_(today, requests);
   const newCell = cells[(ctx.TODAY_HEADER_ROW_NEW_ + 2) + ':1'];
   assert.ok(newCell, 'повторный вызов переписал формулу блока НОВЫЕ');
-  assert.match(newCell, /Col1 <> ''/);
+  assert.match(newCell, /FILTER\(/);
+  assert.match(newCell, /Col9 is null/);
   assert.match(newCell, /limit 200/);
 });
 

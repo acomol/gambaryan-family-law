@@ -33,7 +33,7 @@ function composeDigest_(stats) {
     consultationsTodayCount: s.consultationsTodayCount || 0,
     overdueCount: s.overdueCount || 0
   };
-  var total = counts.newCount + counts.waitingFirstCallCount + counts.consultationsTodayCount + counts.overdueCount;
+  var total = s.attentionCount || 0;
   var lines = [
     'Новых: ' + counts.newCount,
     'Ждут первого звонка: ' + counts.waitingFirstCallCount,
