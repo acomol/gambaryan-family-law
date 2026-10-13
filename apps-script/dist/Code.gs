@@ -2,8 +2,8 @@
 //
 // Built by scripts/bundle-apps-script.mjs from apps-script/src/*.gs
 // (fixed order — see FILE_ORDER in that script).
-// Source commit: 23e1c3f35b907cde442b8ac421fcdf4c59afacc6
-// Generated: 2026-10-12
+// Source commit: 96afc5e33061ba95c04439922c3d1cfd7e7c06d4
+// Generated: 2026-10-13
 //
 // To change behavior, edit the corresponding file under apps-script/src/
 // and rerun: node scripts/bundle-apps-script.mjs
@@ -1675,8 +1675,8 @@ var REQUESTS_HEADERS_ = OFFICE_HEADERS_;
  * «Заявки»: колонки, которые пишет скрипт (не офис). Владелец 2026-09-23:
  * защита «с предупреждением» — офис ВИДИТ предупреждение при ручной правке, но
  * правка не блокируется (в отличие от «Служебное», которое блокируется жёстко).
- * №,Статус(NOT here — офис сам ставит статус),Получена,Имя,Телефон,Связаться,Email
- * — Статус сознательно не входит (§3.1: "скрипт статус не пишет").
+ * Статус остаётся редактируемым офисом: скрипт задаёт «Новая» при создании
+ * и переводит старые значения при setupCrm().
  */
 var SCRIPT_WRITTEN_OFFICE_COLUMNS_ = ['№', 'Получена', 'Имя', 'Телефон', 'Связаться', 'Email'];
 
@@ -1705,12 +1705,11 @@ var INTAKE_HEADERS_ = [
 ];
 
 var STATUS_OPTIONS_ = [
-  'Не дозвонились', 'В работе', 'Консультация назначена', 'Консультация проведена',
-  'Клиент — договор', 'Отказ', 'Дубль / спам'
+  'Новая', 'Перезвонить', 'Консультация назначена', 'Ждём решения', 'Клиент', 'Закрыто'
 ];
-var CLOSED_STATUSES_ = ['Клиент — договор', 'Отказ', 'Дубль / спам'];
+var CLOSED_STATUSES_ = ['Клиент', 'Закрыто'];
 var CLOSING_REASONS_ = [
-  'Не дозвонились (3+)', 'Выбрал другого юриста', 'Дорого', 'Передумал', 'Не наш профиль', 'Другое'
+  'Отказ клиента', 'Не наш профиль', 'Не вышел на связь', 'Дубль', 'Спам или тест'
 ];
 
 var JOURNAL_HEADERS_ = ['Время', 'Заявка №', 'Событие', 'Детали', 'Канал', 'Статус отправки', 'message_id', 'Ключ'];
@@ -1741,6 +1740,7 @@ function setupCrm() {
   ensureHeaderRow_(service, SERVICE_SHEET_HEADERS_);
   ensurePreviousStatuses_(requests, service);
   ensureHeaderRow_(journal, JOURNAL_HEADERS_);
+  migrateStatuses_(requests, service, journal);
   ensureSettingsSheet_(settings);
 
   formatRequestsSheet_(requests);
@@ -1770,6 +1770,45 @@ function setupCrm() {
 
   Logger.log('setupCrm: готово. Входящие=%s строк, Заявки=%s строк, Служебное=%s строк',
     intake.getLastRow(), requests.getLastRow(), service.getLastRow());
+}
+
+// Одно событие на обновление схемы; записи setValue не вызывают onEdit.
+function migrateStatuses_(requests, service, journal) {
+  var statusMap = { 'Не дозвонились': 'Перезвонить', 'В работе': 'Перезвонить',
+    'Консультация проведена': 'Ждём решения', 'Клиент — договор': 'Клиент',
+    'Отказ': 'Закрыто', 'Дубль / спам': 'Закрыто' };
+  var reasonMap = { 'Не дозвонились (3+)': 'Не вышел на связь',
+    'Выбрал другого юриста': 'Отказ клиента', 'Дорого': 'Отказ клиента',
+    'Передумал': 'Отказ клиента', 'Другое': 'Отказ клиента' };
+  var values = requests.getDataRange().getValues();
+  var map = colByHeader_(values[0]);
+  var leads = {};
+  var changed = 0;
+  values.slice(1).forEach(function (row, i) {
+    var isLead = isLeadRow_(row, map);
+    var oldStatus = getCell_(row, map, 'Статус');
+    var status = statusMap[oldStatus] || (!oldStatus && isLead ? 'Новая' : oldStatus);
+    leads[getCell_(row, map, '№')] = isLead;
+    var oldReason = getCell_(row, map, 'Причина закрытия');
+    var reason = oldReason;
+    if (CLOSING_REASONS_.indexOf(oldReason) === -1) {
+      reason = reasonMap[oldReason] || oldReason;
+      if (!oldReason) reason = oldStatus === 'Отказ' ? 'Отказ клиента' : oldStatus === 'Дубль / спам' ? 'Спам или тест' : '';
+    }
+    if (status !== oldStatus) { requests.getRange(i + 2, map['Статус'] + 1).setValue(status); changed++; }
+    if (reason !== oldReason) { requests.getRange(i + 2, map['Причина закрытия'] + 1).setValue(reason); changed++; }
+  });
+  var serviceValues = service.getDataRange().getValues();
+  var serviceMap = colByHeader_(serviceValues[0]);
+  serviceValues.slice(1).forEach(function (row, i) {
+    var previous = getCell_(row, serviceMap, 'Предыдущий статус');
+    var translated = statusMap[previous] || ((!previous || previous === '(пусто)') && leads[getCell_(row, serviceMap, '№')] ? 'Новая' : previous);
+    if (translated !== previous) { service.getRange(i + 2, serviceMap['Предыдущий статус'] + 1).setValue(translated); changed++; }
+  });
+  var key = 'crm:status_migrated:v3';
+  if (changed && !journal.getDataRange().getValues().some(function (row) { return row[7] === key; })) {
+    appendJournalRow_(journal, new Date(), '', 'status_migrated', 'sent', 'internal', 'Изменено ячеек: ' + changed, key);
+  }
 }
 
 function ensureSheet_(ss, name) {
@@ -1896,7 +1935,7 @@ function applyRequestsValidation_(sheet) {
 
   var reasonRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(CLOSING_REASONS_, true)
-    .setAllowInvalid(true) // §4: обязателен для «Отказ», не для всех — не блокируем ввод жёстко
+    .setAllowInvalid(true) // для «Закрыто» нужна причина, предупреждаем без блокировки
     .build();
   sheet.getRange(reasonColLetter + '2:' + reasonColLetter).setDataValidation(reasonRule);
 }
@@ -1916,43 +1955,34 @@ function applyRequestsConditionalFormatting_(sheet) {
   var nextStepCol = columnLetter_(headerMap['Следующий шаг'] + 1);
 
   var rules = [];
-  var colorByStatus = {
-    'Не дозвонились': '#FFCC80',
-    'В работе': '#81D4FA',
-    'Консультация назначена': '#CE93D8',
-    'Консультация проведена': '#64B5F6',
-    'Клиент — договор': '#A5D6A7',
-    'Отказ': '#E0E0E0'
-  };
-  Object.keys(colorByStatus).forEach(function (status) {
-    rules.push(SpreadsheetApp.newConditionalFormatRule()
-      .whenFormulaSatisfied('=$' + statusCol + '2="' + status + '"')
-      .setBackground(colorByStatus[status])
-      .setRanges([fullRowRange])
-      .build());
-  });
-  // Боевая таблица 2026-09-24: ISBLANK(статус) красил жёлтым ВСЕ пустые строки
-  // листа. «Новая» = есть № и нет статуса.
-  var noColLetter = columnLetter_(headerMap['№'] + 1);
+  var reasonCol = columnLetter_(headerMap['Причина закрытия'] + 1);
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($' + noColLetter + '2<>"",ISBLANK($' + statusCol + '2))')
-    .setBackground('#FFF9C4')
-    .setRanges([fullRowRange])
-    .build());
-  rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$' + statusCol + '2="Дубль / спам"')
-    .setBackground('#E0E0E0')
+    .whenFormulaSatisfied('=AND($' + statusCol + '2="Закрыто",LEN(TRIM($' + reasonCol + '2))=0)')
+    .setBackground('#FFCDD2')
+    .setFontColor('#000000')
     .setStrikethrough(true)
-    .setRanges([fullRowRange])
+    .setRanges([sheet.getRange(reasonCol + '2:' + reasonCol)])
     .build());
   // просроченный "Следующий шаг" у открытой заявки -> красный акцент (замена рамки)
   var closedList = "{" + CLOSED_STATUSES_.map(function (s) { return '"' + s + '"'; }).join(';') + "}";
   rules.push(SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=AND($' + nextStepCol + '2<>"",$' + nextStepCol + '2<TODAY(),COUNTIF(' + closedList + ',$' + statusCol + '2)=0)')
     .setBackground('#FFCDD2')
+    .setFontColor('#000000')
     .setBold(true)
     .setRanges([fullRowRange])
     .build());
+  var cellColors = ['#FFEB3B', '#FF9800', '#AB47BC', '#26C6DA', '#43A047', '#9E9E9E'];
+  var rowColors = ['#FFF9C4', '#FFE0B2', '#E1BEE7', '#B2EBF2', '#C8E6C9', '#EEEEEE'];
+  STATUS_OPTIONS_.forEach(function (status, i) {
+    var formula = '=$' + statusCol + '2="' + status + '"';
+    rules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied(formula).setBackground(cellColors[i]).setFontColor('#000000')
+      .setStrikethrough(status === 'Закрыто').setRanges([sheet.getRange(statusCol + '2:' + statusCol)]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied(formula).setBackground(rowColors[i]).setFontColor('#000000')
+      .setStrikethrough(status === 'Закрыто').setRanges([fullRowRange]).build());
+  });
   sheet.setConditionalFormatRules(rules);
 }
 
@@ -2032,7 +2062,7 @@ function protectIntakeSheet_(sheet, journal) {
     if (protection.canDomainEdit()) protection.setDomainEdit(false);
   } else {
     protection.setWarningOnly(true);
-    if (journal) {
+    if (journal && !journal.getDataRange().getValues().some(function (row) { return row[7] === 'setup_warning:albato_editor_email'; })) {
       appendJournalRow_(journal, new Date(), '', 'setup_warning', 'sent', 'internal',
         'albato_editor_email пуст — «Входящие» защищены в режиме предупреждения (не жёстко), ' +
         'заполните строку в «Настройки» перед подключением Albato', 'setup_warning:albato_editor_email');
@@ -2365,8 +2395,7 @@ function ensureTodayFormulas_(sheet, requestsSheet) {
   var consultColLetter = columnLetter_(reqHeaderMap['Консультация'] + 1);
   var lastColLetter = columnLetter_(requestsSheet.getLastColumn());
   var reqRange = 'FILTER(' + "'" + SHEET_REQUESTS_ + "'!A2:" + lastColLetter + ',' + leadMaskFormula_(requestsSheet) + ')';
-  var notClosed = statusCol + ' <> \'Клиент — договор\' and ' +
-    statusCol + ' <> \'Отказ\' and ' + statusCol + ' <> \'Дубль / спам\'';
+  var notClosed = statusCol + ' <> \'Клиент\' and ' + statusCol + ' <> \'Закрыто\'';
 
   var overdueQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + nextStepCol +
     ' where ' + nextStepCol + ' < date \'"&TEXT(TODAY(),"yyyy-MM-dd")&"\' and ' + nextStepCol + ' is not null and ' +
@@ -2375,7 +2404,7 @@ function ensureTodayFormulas_(sheet, requestsSheet) {
   // пуст» попадали все ~1000 пустых строк листа, результат не помещался в блок и
   // показывал #REF! (перекрывал следующий блок). limit — та же защита для всех блоков.
   var newQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + phoneCol +
-    ' where ((' + statusCol + ' = \'\' or ' + statusCol + ' is null) or ' + firstAttemptCol + ' is null) and (' +
+    ' where ((' + statusCol + ' = \'Новая\' or ' + statusCol + ' = \'\' or ' + statusCol + ' is null) or ' + firstAttemptCol + ' is null) and (' +
     statusCol + ' is null or (' + notClosed + '))' +
     ' order by ' + receivedCol + ' asc limit ' + TODAY_BLOCK_CAPACITY_ + '",0),"")';
   var consultQuery = '=IFERROR(QUERY(' + reqRange + ',"select ' + noCol + ',' + nameCol + ',' + consultCol +
@@ -2390,9 +2419,9 @@ function ensureTodayFormulas_(sheet, requestsSheet) {
   var firstLetter = columnLetter_(reqHeaderMap['Первая попытка'] + 1);
   var firstRange = req + firstLetter + '2:' + firstLetter;
   var mask = leadMaskFormula_(requestsSheet);
-  var open = '(' + statusRange + '<>"Клиент — договор")*(' + statusRange + '<>"Отказ")*(' + statusRange + '<>"Дубль / спам")';
+  var open = '(' + statusRange + '<>"Клиент")*(' + statusRange + '<>"Закрыто")';
   var banner = '="Сегодня: "&SUMPRODUCT(' + mask + '*' + open + '*(' + stepRange + '<TODAY())*(' + stepRange + '<>""))&' +
-    '" просрочки · "&SUMPRODUCT(' + mask + '*(' + statusRange + '=""))&' +
+    '" просрочки · "&SUMPRODUCT(' + mask + '*((' + statusRange + '="Новая")+(' + statusRange + '="")))&' +
     '" новых · "&SUMPRODUCT(' + mask + '*' + open + '*(' + firstRange + '=""))&' +
     '" ждут звонка · "&SUMPRODUCT(' + mask + '*(' + consultRange + '>=TODAY())*(' + consultRange + '<TODAY()+1))&" консультация(й)"';
   if (alreadyBuilt) sheet.getRange(1, 1).setFormula(banner);
@@ -2418,7 +2447,7 @@ function ensureTodayFormulas_(sheet, requestsSheet) {
   // Блок 3: Консультации сегодня
   buildTodayBlock_(sheet, TODAY_HEADER_ROW_CONSULT_, '🟣 КОНСУЛЬТАЦИИ СЕГОДНЯ',
     ['№', 'Имя', 'Время', 'Открыть'], consultQuery, requestsSheetId);
-  sheet.getRange(TODAY_HEADER_ROW_CONSULT_, 1, 1, 4).setBackground('#CE93D8'); // design §3.4 — тот же сиреневый, что «Консультация назначена»
+  sheet.getRange(TODAY_HEADER_ROW_CONSULT_, 1, 1, 4).setBackground('#E1BEE7'); // цвет строки «Консультация назначена»
 
   // design §3.3: A1 — счётчик-баннер, переиспользует те же условия, что и блоки
   // выше. B1d fix (Codex P1-7 "recover a partially built dashboard"): баннер
@@ -2448,7 +2477,7 @@ var SUMMARY_CHART_DATA_ROW_FUNNEL_ = 5;  // T5:T8  — воронка, 4 зна�
 var SUMMARY_SOURCES_CAPACITY_ = 15;
 var SUMMARY_CHART_DATA_ROW_SOURCES_ = 10;   // T10:U24 — QUERY источников (запас)
 var SUMMARY_CHART_DATA_ROW_REASONS_ = 26;   // T26:U(26+CLOSING_REASONS_.length-1) — причины отказа
-var SUMMARY_STATUSMIX_CAPACITY_ = (STATUS_OPTIONS_.length - CLOSED_STATUSES_.length) + 1; // открытые статусы + запас
+var SUMMARY_STATUSMIX_CAPACITY_ = STATUS_OPTIONS_.length - CLOSED_STATUSES_.length; // открытые статусы
 var SUMMARY_CHART_DATA_ROW_STATUSMIX_ = 33; // T33:U(33+capacity-1) — срез статусов сейчас
 
 /**
@@ -2520,11 +2549,17 @@ function writeSummaryChartData_(sheet, requestsSheet, serviceSheet) {
     '=IFERROR(QUERY(FILTER(' + req + reasonColLetter + '2:' + reasonColLetter + ',' + mask + ')' +
     ',"select Col1, count(Col1) where Col1 is not null group by Col1 order by count(Col1) desc",0),"")'
   );
-  // T33: срез статусов сейчас (только открытые — design §2.4 чарт 5 исключает закрытые)
-  sheet.getRange(SUMMARY_CHART_DATA_ROW_STATUSMIX_, t).setFormula(
-    '=IFERROR(QUERY(FILTER(' + req + statusColLetter + '2:' + statusColLetter + ',' + mask + ')' +
-    ',"select Col1, count(Col1) where Col1 is not null and Col1 <> \'Клиент — договор\' and Col1 <> \'Отказ\' and Col1 <> \'Дубль / спам\' group by Col1",0),"")'
-  );
+  // T33:X36: фиксированный порядок и отдельная серия для каждого открытого статуса.
+  // У bar chart colors окрашивает серии, поэтому один столбец счётчиков не подходит.
+  var openStatuses = STATUS_OPTIONS_.filter(function (s) { return CLOSED_STATUSES_.indexOf(s) === -1; });
+  var statusRange = req + statusColLetter + '2:' + statusColLetter;
+  openStatuses.forEach(function (status, i) {
+    sheet.getRange(SUMMARY_CHART_DATA_ROW_STATUSMIX_ + i, t).setValue(status);
+    openStatuses.forEach(function (_, j) {
+      var condition = status === 'Новая' ? '((' + statusRange + '="Новая")+(' + statusRange + '=""))' : statusRange + '="' + status + '"';
+      sheet.getRange(SUMMARY_CHART_DATA_ROW_STATUSMIX_ + i, t + 1 + j).setFormula(i === j ? '=' + countLeadFormula_(mask, [condition]) : '=0');
+    });
+  });
 
   // design §2.6: скрыты, НЕ защищены — владелец может свериться с сырыми числами.
   sheet.hideColumns(t, 15); // T:AH = 15 колонок
@@ -2583,7 +2618,7 @@ function writeSummaryKpis_(sheet, requestsSheet, serviceSheet) {
 
   // KPI 4: договоров (строки 18-21)
   sheet.getRange(18, 1).setValue('Договоров');
-  sheet.getRange(19, 1).setFormula('=' + countLeadFormula_(mask, [status + '="Клиент — договор"'])); // A19 всего
+  sheet.getRange(19, 1).setFormula('=' + countLeadFormula_(mask, [status + '="Клиент"'])); // A19 всего
   sheet.getRange(19, 2).setFormula('=IFERROR(A19/' + countLeadFormula_(mask) + ',0)'); // B19 доля от всех
   sheet.getRange(19, 3).setFormula('=' + countLeadFormula_(serviceMask, [contract + '>=TODAY()-30'])); // C19 за 30 дней
   sheet.getRange(20, 1).setFormula('=$A$19&" всего · "&TEXT($B$19,"0%")');
@@ -2607,7 +2642,7 @@ function writeSummaryKpis_(sheet, requestsSheet, serviceSheet) {
   // 'Заявки'!B:B, как и остальные условия этой же COUNTIFS.
   sheet.getRange(28, 1).setValue('Просрочено сейчас');
   sheet.getRange(29, 1).setFormula('=' + countLeadFormula_(mask, [step + '<TODAY()', step + '<>""',
-    status + '<>"Клиент — договор"', status + '<>"Отказ"', status + '<>"Дубль / спам"']));
+    status + '<>"Клиент"', status + '<>"Закрыто"']));
   sheet.getRange(30, 1).setFormula('=IF($A$29=0,"Просрочек нет",$A$29&" заявок")');
 }
 
@@ -2705,9 +2740,11 @@ function insertSummaryCharts_(sheet) {
   // поэтому явный .setChartType(Charts.ChartType.BAR) здесь больше не нужен.
   var chart5 = sheet.newChart()
     .asBarChart()
-    .addRange(sheet.getRange(SUMMARY_CHART_DATA_ROW_STATUSMIX_, 20, SUMMARY_STATUSMIX_CAPACITY_, 2))
+    .addRange(sheet.getRange(SUMMARY_CHART_DATA_ROW_STATUSMIX_, 20, SUMMARY_STATUSMIX_CAPACITY_, 1 + SUMMARY_STATUSMIX_CAPACITY_))
     .setOption('title', 'Срез статусов сейчас')
-    .setOption('colors', ['#FFF9C4', '#FFCC80', '#81D4FA', '#CE93D8', '#64B5F6'])
+    .setOption('colors', ['#FFEB3B', '#FF9800', '#AB47BC', '#26C6DA'])
+    .setOption('legend', { position: 'none' })
+    .setNumHeaders(0)
     .setStacked()
     .setPosition(83, 1, 0, 0)
     .build();
@@ -2737,6 +2774,7 @@ function ensureSummaryFormulas_(sheet, requestsSheet, serviceSheet) {
   if (sheet.getRange(1, 1).getValue()) {
     writeSummaryChartData_(sheet, requestsSheet, serviceSheet);
     writeSummaryKpis_(sheet, requestsSheet, serviceSheet);
+    insertSummaryCharts_(sheet);
     return;
   }
 
@@ -3368,7 +3406,7 @@ function rowToRecord_(row, headerMap) {
 function buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now) {
   var row = new Array(REQUESTS_HEADERS_.length).fill('');
   setCell_(row, reqHeaderMap, '№', leadNo);
-  // 'Статус' сознательно не пишем (§3.1: "скрипт статус не пишет", пусто = «Новая»)
+  setCell_(row, reqHeaderMap, 'Статус', 'Новая');
   setCell_(row, reqHeaderMap, 'Получена', now);
   setCell_(row, reqHeaderMap, 'Имя', rec.name || '');
   setCell_(row, reqHeaderMap, 'Телефон', rec.phone || '');
@@ -3391,7 +3429,7 @@ function buildNewServiceRow_(serviceHeaderMap, rec, leadNo) {
   setCell_(row, serviceHeaderMap, 'submission_id', rec.submission_id);
   setCell_(row, serviceHeaderMap, 'все submission_id', rec.submission_id);
   setCell_(row, serviceHeaderMap, 'Откуда', detectSource_(rec));
-  setCell_(row, serviceHeaderMap, 'Предыдущий статус', '(пусто)');
+  setCell_(row, serviceHeaderMap, 'Предыдущий статус', 'Новая');
   return row;
 }
 
@@ -3736,16 +3774,16 @@ function computeDigestStats_(values, headerMap, config, now) {
 
   values.slice(1).forEach(function (row) {
     if (!isLeadRow_(row, headerMap)) return;
-    var status = getCell_(row, headerMap, 'Статус');
+    var status = getCell_(row, headerMap, 'Статус') || 'Новая';
     if (CLOSED_STATUSES_.indexOf(status) !== -1) return;
-    if (!status) stats.newCount++;
+    if (status === 'Новая') stats.newCount++;
     var firstAttempt = getCell_(row, headerMap, 'Первая попытка');
     if (!firstAttempt) stats.waitingFirstCallCount++;
     var consultation = getCell_(row, headerMap, 'Консультация');
     if (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) stats.consultationsTodayCount++;
     var nextStep = getCell_(row, headerMap, 'Следующий шаг');
     if (nextStep && new Date(nextStep) < now) stats.overdueCount++;
-    if (!status || !firstAttempt || (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) ||
+    if (status === 'Новая' || !firstAttempt || (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) ||
         (nextStep && new Date(nextStep) < now)) {
       var key = getCell_(row, headerMap, '№') || 'row:' + values.indexOf(row);
       if (!attention[key]) { attention[key] = true; stats.attentionCount++; }
@@ -4064,6 +4102,10 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
   }
 
   var status = getCell_(row, headerMap, 'Статус');
+  if (!status) {
+    status = 'Новая';
+    sheet.getRange(rowIndex, headerMap['Статус'] + 1).setValue(status);
+  }
   var telephone = getCell_(row, headerMap, 'Телефон');
   var firstAttempt = getCell_(row, headerMap, 'Первая попытка');
 
@@ -4072,7 +4114,7 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
     serviceHeaderMap = ensurePreviousStatusColumn_(service);
     var manual = buildNewServiceRow_(serviceHeaderMap, { submission_id: '' }, leadNo);
     setCell_(manual, serviceHeaderMap, 'Откуда', 'WhatsApp, вручную');
-    setCell_(manual, serviceHeaderMap, 'Предыдущий статус', statusEdited && oldStatus !== undefined ? (oldStatus || '(пусто)') : (status || '(пусто)'));
+    setCell_(manual, serviceHeaderMap, 'Предыдущий статус', statusEdited && oldStatus !== undefined ? (oldStatus || 'Новая') : status);
     appendServiceRowSafely_(service, serviceHeaderMap, manual);
     serviceRowIndex = service.getLastRow();
   }
@@ -4087,17 +4129,16 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
   var previousCell = service.getRange(serviceRowIndex, serviceHeaderMap['Предыдущий статус'] + 1);
   var previous = previousCell.getValue();
   // Старую одиночную правку можно восстановить из e.oldValue; массовую — только из снимка setupCrm().
-  if (!previous) previous = oldStatus !== undefined ? (oldStatus || '(пусто)') : (status || '(пусто)');
-  var statusChanged = statusEdited !== false && previous !== (status || '(пусто)');
-  if (statusEdited !== false || !previousCell.getValue()) previousCell.setValue(status || '(пусто)');
+  if (!previous || previous === '(пусто)') previous = oldStatus !== undefined ? (oldStatus || 'Новая') : 'Новая';
+  var statusChanged = statusEdited !== false && previous !== status;
+  if (statusEdited !== false || !previousCell.getValue()) previousCell.setValue(status);
   if (serviceRowIndex !== -1) {
     var contactMade = service.getRange(serviceRowIndex, serviceHeaderMap['Контакт состоялся'] + 1).getValue();
-    // "Контакт состоялся" — время, когда статус впервые стал «В работе» и дальше (§3.1)
-    var contactStatuses = ['В работе', 'Консультация назначена', 'Консультация проведена', 'Клиент — договор'];
+    var contactStatuses = ['Консультация назначена', 'Ждём решения', 'Клиент'];
     if (contactStatuses.indexOf(status) !== -1 && !contactMade) {
       service.getRange(serviceRowIndex, serviceHeaderMap['Контакт состоялся'] + 1).setValue(now);
     }
-    if (status === 'Клиент — договор') {
+    if (status === 'Клиент') {
       var contractCell = service.getRange(serviceRowIndex, serviceHeaderMap['Договор'] + 1);
       if (!contractCell.getValue()) contractCell.setValue(now);
     }
@@ -4106,7 +4147,7 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
 
   // "Первая попытка" закрывает SLA — если статус сдвинулся с «Новой», но штамп ещё
   // не проставлен (office не использовал чекбокс отдельно), проставляем по факту первой правки.
-  if (status && !firstAttempt) {
+  if (statusChanged && previous === 'Новая' && status !== 'Новая' && !firstAttempt) {
     sheet.getRange(rowIndex, headerMap['Первая попытка'] + 1).setValue(now);
   }
 
