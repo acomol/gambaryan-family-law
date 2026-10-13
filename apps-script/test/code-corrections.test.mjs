@@ -136,8 +136,8 @@ test('handleEditRow_: штамп «Контакт состоялся» на «С
   const tmp = requests._data[1];
   requests._data[1] = requests._data[2];
   requests._data[2] = tmp;
-  // Ставим статус «В работе» строке, где ТЕПЕРЬ лежит G-0002 (физическая строка 2)
-  requests._data[1][reqHeaderMap['Статус']] = 'В работе';
+  // Ставим контактный статус строке, где ТЕПЕРЬ лежит G-0002 (физическая строка 2)
+  requests._data[1][reqHeaderMap['Статус']] = 'Консультация назначена';
   requests._data[1][reqHeaderMap['Имя']] = 'Test'; // Заявка, а не заготовка номера.
 
   const now = new Date('2026-01-10T10:00:00Z');

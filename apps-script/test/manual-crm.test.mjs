@@ -33,7 +33,7 @@ test('S5: статус — 1 событие, повтор 0, массовая п
 });
 test('Массовая смена статуса включает старую ручную G-0008 без submission_id', () => {
   const f = fixture(); f.edit(10, 'Имя', [['Мария']]);
-  f.edit(8, 'Статус', [['Отказ'], ['Отказ'], ['Отказ']]);
+  f.edit(8, 'Статус', [['Закрыто'], ['Закрыто'], ['Закрыто']]);
   assert.equal(f.statusEvents(), 3);
 });
 test('S6: шесть протянутых номеров не становятся заявками', () => {
@@ -85,14 +85,14 @@ test('Выделение номера перечитывает листы пос
   assert.equal(reverse.read(15)['№'], 'G-0014');
   assert.equal(reverse.read(16)['№'], 'G-0015');
 });
-test('Снимок статуса мигрируется без событий; повтор setup не затирает прежний статус', () => {
+test('Снимок статуса мигрируется без событий смены; повтор setup не затирает прежний статус', () => {
   const f = fixture();
   assert.equal(f.statusEvents(), 0);
   const map = f.ctx.colByHeader_(f.service._data[0]);
-  assert.equal(f.service._data[3][map['Предыдущий статус']], 'Дубль / спам');
-  f.requests.getRange(4, 2).setValue('В работе');
+  assert.equal(f.service._data[3][map['Предыдущий статус']], 'Закрыто');
+  f.requests.getRange(4, 2).setValue('Перезвонить');
   f.ctx.ensurePreviousStatuses_(f.requests, f.service);
-  assert.equal(f.service._data[3][map['Предыдущий статус']], 'Дубль / спам');
+  assert.equal(f.service._data[3][map['Предыдущий статус']], 'Закрыто');
   f.ctx.handleEditRow_(f.requests, f.map, 4, f.journal, f.service, map, now, true);
   const stamp = f.service._data[3][map['Статус изменён']];
   f.ctx.handleEditRow_(f.requests, f.map, 4, f.journal, f.service, map, new Date(now.getTime() + 60000), true);
@@ -121,7 +121,7 @@ test('Повтор setup обновляет баннер; все счётчик�
   f.ctx.ensureSummaryFormulas_(summary, f.requests, f.service);
   summary.getRange(4, 1).setFormula('=99');
   f.ctx.ensureSummaryFormulas_(summary, f.requests, f.service);
-  for (const [r, c] of [[4,1], [4,2], [4,4], [9,1], [14,1], [14,2], [19,1], [19,2], [19,3], [29,1], [2,20], [3,20], [5,20], [6,20], [7,20], [8,20], [10,20], [26,20], [33,20]]) {
+  for (const [r, c] of [[4,1], [4,2], [4,4], [9,1], [14,1], [14,2], [19,1], [19,2], [19,3], [29,1], [2,20], [3,20], [5,20], [6,20], [7,20], [8,20], [10,20], [26,20], [33,21]]) {
     const formula = summary.getRange(r, c).getFormula();
     assert.ok(formula.includes("LEN(TRIM('Заявки'!D2:D))") && formula.includes("LEN(TRIM('Заявки'!E2:E))"), 'unfiltered counter ' + r + ':' + c);
   }

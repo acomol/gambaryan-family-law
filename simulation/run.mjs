@@ -1,12 +1,13 @@
-// Offline simulation V01. Input: owner-confirmed snapshot, 2026-10-12.
+// Offline simulation V02. Input: owner-confirmed snapshot, 2026-10-12; status migration 2026-10-14.
 import fs from 'node:fs';
+import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { loadGasContext } from '../apps-script/test/helpers/load-gas.mjs';
 import * as fake from '../apps-script/test/helpers/gas-fakes.mjs';
 import { fileURLToPath } from 'node:url';
 
 export const now = new Date('2026-10-12T07:00:00Z');
-export function fixture() {
+export function fixture(setup = true) {
   const app = fake.makeFakeSpreadsheetApp({});
   const props = fake.makeFakePropertiesService({});
   const mail = fake.makeFakeMailApp();
@@ -45,6 +46,7 @@ export function fixture() {
   app.openById = () => ss;
   const config = ctx.loadConfig_();
   if (ctx.ensurePreviousStatuses_) ctx.ensurePreviousStatuses_(requests, service);
+  if (setup) ctx.setupCrm();
   const map = ctx.colByHeader_(requests._data[0]);
   const stats = () => JSON.parse(JSON.stringify(ctx.computeDigestStats_(requests.getDataRange().getValues(), map, config, now)));
   function edit(r, col, values) {
@@ -152,8 +154,8 @@ export function runScenarios() {
   f = fixture(); f.edit(10, 'Имя', [['Мария']]); output.S2 = { row: f.read(10), service: f.service._data.filter(r => r[0] === 'G-0009'), events: f.statusEvents() };
   f = fixture(); f.edit(15, 'Телефон', [['0501111111']]); output.S3 = { row: f.read(15), serviceRows: f.service.getLastRow() - 1 };
   f = fixture(); f.edit(15, 'Имя', [['A', '0501111111'], ['B', '0502222222'], ['C', '0503333333']]); output.S4 = { rows: [15, 16, 17].map(f.read), serviceRows: f.service.getLastRow() - 1 };
-  f = fixture(); f.edit(4, 'Статус', [['В работе']]); const first = f.statusEvents(); f.edit(4, 'Статус', [['В работе']]); const repeat = f.statusEvents() - first;
-  f.edit(4, 'Статус', [['Отказ'], ['Отказ'], ['Отказ']]); output.S5 = { first, repeat, bulk: f.statusEvents() - first - repeat };
+  f = fixture(); f.edit(4, 'Статус', [['Перезвонить']]); const first = f.statusEvents(); f.edit(4, 'Статус', [['Перезвонить']]); const repeat = f.statusEvents() - first;
+  f.edit(4, 'Статус', [['Консультация назначена'], ['Консультация назначена'], ['Консультация назначена']]); output.S5 = { first, repeat, bulk: f.statusEvents() - first - repeat };
   f = fixture(); f.edit(15, '№', Array.from({ length: 6 }, (_, i) => [f.ctx.formatLeadNumber_(14 + i)])); output.S6 = { stats: f.stats(), serviceRows: f.service.getLastRow() - 1, events: f.statusEvents() };
   f = fixture(); f.edit(15, 'Имя', [['Manual']]); f.sync({ submission_id: 'new-site', name: 'Site', phone: '0504444444' }); output.S7 = { manual: f.read(15)['№'], site: f.requests._data.find(r => r[f.map['Имя']] === 'Site')[0] };
   f = fixture(); f.edit(15, 'Телефон', [['0546817336']]); output.S8 = { row: f.read(15), samePhoneRows: f.requests._data.filter(r => r[f.map['Телефон']] === '0546817336').length };
@@ -162,6 +164,94 @@ export function runScenarios() {
   f = fixture(); f.sync({ submission_id: 'empty-site' }); output.S11 = { appended: f.requests.getLastRow() - 14, stats: f.stats() };
   f = fixture(); output.S12 = todayRead(f);
   return output;
+}
+
+const palette = [
+  ['Новая', '#FFEB3B', '#FFF9C4'], ['Перезвонить', '#FF9800', '#FFE0B2'],
+  ['Консультация назначена', '#AB47BC', '#E1BEE7'], ['Ждём решения', '#26C6DA', '#B2EBF2'],
+  ['Клиент', '#43A047', '#C8E6C9'], ['Закрыто', '#9E9E9E', '#EEEEEE']
+];
+const plain = value => JSON.parse(JSON.stringify(value));
+const migrationEvents = f => f.journal._data.filter(r => r[2] === 'status_migrated');
+const serviceRead = (f, id) => {
+  const map = f.ctx.colByHeader_(f.service._data[0]);
+  const row = f.service._data.find(r => r[map['№']] === id) || [];
+  return Object.fromEntries(Object.keys(map).map(h => [h, row[map[h]] || '']));
+};
+const rulesRead = f => f.requests.getConditionalFormatRules().map(r => ({
+  formula: r.formula, background: r.background, bold: !!r.bold,
+  strikethrough: !!r.strikethrough, fontColor: r.fontColor,
+  ranges: r.ranges.map(range => ({ column: range.getColumn(), columns: range.getNumColumns() }))
+}));
+
+export function runMigrationScenarios() {
+  const output = {};
+  let f = fixture(false); f.ctx.setupCrm();
+  const state = () => plain({ requests: f.requests._data, service: f.service._data, journal: f.journal._data });
+  const first = state(); f.ctx.setupCrm();
+  output.M1 = { rows: f.requests._data.slice(1).map((r, i) => ({ row: i + 2, id: r[0], status: r[1], reason: r[12] })),
+    previous: f.service._data.slice(1).map(r => ({ id: r[0], status: r.at(-1) })),
+    unchanged: JSON.stringify(first) === JSON.stringify(state()), events: migrationEvents(f).length,
+    keys: migrationEvents(f).map(r => r[7]), statusEvents: f.statusEvents() };
+  f = fixture(); f.sync({ submission_id: 'm2-site', name: 'Site', phone: '0504444444' });
+  output.M2 = { status: f.read(15)['Статус'], received: f.read(15)['Получена'] };
+  f = fixture(); f.edit(15, 'Имя', [['Manual']]);
+  output.M3 = { status: f.read(15)['Статус'], events: f.statusEvents() };
+  f = fixture(); f.edit(15, 'Имя', [['Manual']]);
+  const steps = [];
+  for (const status of ['Новая', 'Перезвонить', 'Консультация назначена', 'Ждём решения', 'Клиент']) {
+    f.edit(15, 'Статус', [[status]]);
+    const svc = serviceRead(f, 'G-0014');
+    steps.push({ status, first: !!f.read(15)['Первая попытка'], contact: !!svc['Контакт состоялся'], contract: !!svc['Договор'], events: f.statusEvents() });
+  }
+  output.M4 = { steps };
+  f = fixture(); f.ctx.setupCrm();
+  output.M5 = { stats: f.stats(), subject: f.ctx.composeDigest_(f.stats()).subject, today: todayRead(f).bannerValue, ids: todayRead(f).blocks.new.ids };
+  f = fixture(); f.ctx.setupCrm();
+  const rules = rulesRead(f);
+  const reasonRule = rules.find(r => r.ranges.some(range => range.column === f.map['Причина закрытия'] + 1 && range.columns === 1));
+  output.M6 = { rule: reasonRule || null, withoutReason: reasonRule ? evaluateRowRule(reasonRule.formula, ['Закрыто', '']) : false,
+    withReason: reasonRule ? evaluateRowRule(reasonRule.formula, ['Закрыто', 'Дубль']) : false };
+  output.M7 = { palette: palette.map(([status]) => {
+    const matches = rules.filter(r => r.formula === '=$B2="' + status + '"');
+    return { status, cell: matches.find(r => r.ranges.some(range => range.column === 2 && range.columns === 1))?.background || null,
+      row: matches.find(r => r.ranges.some(range => range.columns === 14))?.background || null,
+      strike: matches.some(r => r.strikethrough) };
+  }), rules };
+  f = fixture();
+  f.requests._data = [f.requests._data[0], ...['Перезвонить', 'Клиент', 'Закрыто'].map((status, i) =>
+    Array.from(f.ctx.REQUESTS_HEADERS_, h => ({ '№': 'G-00' + (91 + i), 'Имя': 'SLA', 'Статус': status,
+      'Получена': new Date('2026-10-11T06:00:00Z') })[h] || ''))];
+  f.ctx.processSla_(f.ss, f.config, now, f.requests.getDataRange().getValues(), f.map);
+  output.M8 = { alerted: [...new Set(f.journal._data.slice(1).filter(r => r[2].startsWith('sla_')).map(r => r[1]))],
+    contact: !!serviceRead(f, 'G-0008')['Контакт состоялся'] };
+  const checks = {
+    M1: () => { assert.deepEqual(output.M1.rows.map(r => [r.status, r.reason]), [
+      ['Закрыто', 'Спам или тест'], ['', ''], ['Закрыто', 'Спам или тест'], ['Закрыто', 'Спам или тест'],
+      ['Закрыто', 'Спам или тест'], ['', ''], ['Ждём решения', ''], ['Перезвонить', ''], ...Array.from({ length: 5 }, () => ['', ''])]);
+      assert.equal(output.M1.unchanged, true); assert.equal(output.M1.events, 1); assert.equal(output.M1.statusEvents, 0);
+      assert.ok(output.M1.keys[0]); assert.equal(output.M1.previous.find(r => r.id === 'G-0001').status, 'Закрыто'); },
+    M2: () => { assert.equal(output.M2.status, 'Новая'); assert.equal(new Date(output.M2.received).toISOString(), now.toISOString()); },
+    M3: () => { assert.equal(output.M3.status, 'Новая'); assert.equal(output.M3.events, 0); },
+    M4: () => assert.deepEqual(output.M4.steps.map(s => [s.first, s.contact, s.contract, s.events]), [
+      [false, false, false, 0], [true, false, false, 1], [true, true, false, 2], [true, true, false, 3], [true, true, true, 4]]),
+    M5: () => { assert.deepEqual(output.M5.stats, { newCount: 0, waitingFirstCallCount: 1, consultationsTodayCount: 0, overdueCount: 0, attentionCount: 1 });
+      assert.equal(output.M5.today, 'Сегодня: 0 просрочки · 0 новых · 1 ждут звонка · 0 консультация(й)'); assert.deepEqual(output.M5.ids, ['G-0008']); },
+    M6: () => { assert.equal(output.M6.rule.background, '#FFCDD2'); assert.equal(output.M6.withoutReason, true); assert.equal(output.M6.withReason, false); },
+    M7: () => { assert.deepEqual(output.M7.palette.map(r => [r.status, r.cell, r.row]), palette); assert.equal(output.M7.palette.at(-1).strike, true); },
+    M8: () => { assert.deepEqual(output.M8.alerted, ['G-0091']); assert.equal(output.M8.contact, false); }
+  };
+  for (const [id, check] of Object.entries(checks)) {
+    try { check(); output[id].pass = true; } catch (error) { output[id].pass = false; output[id].error = error.message; }
+  }
+  return plain(output);
+}
+
+// Независимый вычислитель только формулы предупреждения о причине; не эмуляция Sheets.
+function evaluateRowRule(formula, [status, reason]) {
+  const expression = formula.replace(/^=/, '').replace(/\$B2/g, JSON.stringify(status)).replace(/\$M2/g, JSON.stringify(reason))
+    .replace(/(?<![<>=!])=(?!=)/g, '===');
+  return Function('AND', 'LEN', 'TRIM', 'return ' + expression)((...args) => args.every(Boolean), v => v.length, v => v.trim());
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -173,11 +263,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
     process.env.GAS_SRC_DIR = 'simulation/baseline-src';
   }
-  const results = runScenarios();
+  const results = { ...runScenarios(), ...runMigrationScenarios() };
   fs.writeFileSync('simulation/' + label + '.json', JSON.stringify(results, null, 2) + '\n');
-  for (const [id, result] of Object.entries(results)) console.log(id + ': ' + JSON.stringify(result));
+  for (const [id, result] of Object.entries(results)) console.log(id + ': ' + (id.startsWith('M') ? (result.pass ? 'PASS' : 'FAIL') + ' ' : '') + JSON.stringify(result));
   if (label === 'before') {
     for (const file of fs.readdirSync('simulation/baseline-src')) fs.unlinkSync('simulation/baseline-src/' + file);
     fs.rmdirSync('simulation/baseline-src');
   }
+  if (label !== 'before' && Object.entries(results).some(([id, r]) => id.startsWith('M') && !r.pass)) process.exitCode = 1;
 }

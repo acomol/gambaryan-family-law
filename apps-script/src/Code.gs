@@ -422,7 +422,7 @@ function rowToRecord_(row, headerMap) {
 function buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now) {
   var row = new Array(REQUESTS_HEADERS_.length).fill('');
   setCell_(row, reqHeaderMap, '№', leadNo);
-  // 'Статус' сознательно не пишем (§3.1: "скрипт статус не пишет", пусто = «Новая»)
+  setCell_(row, reqHeaderMap, 'Статус', 'Новая');
   setCell_(row, reqHeaderMap, 'Получена', now);
   setCell_(row, reqHeaderMap, 'Имя', rec.name || '');
   setCell_(row, reqHeaderMap, 'Телефон', rec.phone || '');
@@ -445,7 +445,7 @@ function buildNewServiceRow_(serviceHeaderMap, rec, leadNo) {
   setCell_(row, serviceHeaderMap, 'submission_id', rec.submission_id);
   setCell_(row, serviceHeaderMap, 'все submission_id', rec.submission_id);
   setCell_(row, serviceHeaderMap, 'Откуда', detectSource_(rec));
-  setCell_(row, serviceHeaderMap, 'Предыдущий статус', '(пусто)');
+  setCell_(row, serviceHeaderMap, 'Предыдущий статус', 'Новая');
   return row;
 }
 
@@ -790,16 +790,16 @@ function computeDigestStats_(values, headerMap, config, now) {
 
   values.slice(1).forEach(function (row) {
     if (!isLeadRow_(row, headerMap)) return;
-    var status = getCell_(row, headerMap, 'Статус');
+    var status = getCell_(row, headerMap, 'Статус') || 'Новая';
     if (CLOSED_STATUSES_.indexOf(status) !== -1) return;
-    if (!status) stats.newCount++;
+    if (status === 'Новая') stats.newCount++;
     var firstAttempt = getCell_(row, headerMap, 'Первая попытка');
     if (!firstAttempt) stats.waitingFirstCallCount++;
     var consultation = getCell_(row, headerMap, 'Консультация');
     if (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) stats.consultationsTodayCount++;
     var nextStep = getCell_(row, headerMap, 'Следующий шаг');
     if (nextStep && new Date(nextStep) < now) stats.overdueCount++;
-    if (!status || !firstAttempt || (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) ||
+    if (status === 'Новая' || !firstAttempt || (consultation && dateKeyInTz_(new Date(consultation), config.tz) === todayKey) ||
         (nextStep && new Date(nextStep) < now)) {
       var key = getCell_(row, headerMap, '№') || 'row:' + values.indexOf(row);
       if (!attention[key]) { attention[key] = true; stats.attentionCount++; }
@@ -1118,6 +1118,10 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
   }
 
   var status = getCell_(row, headerMap, 'Статус');
+  if (!status) {
+    status = 'Новая';
+    sheet.getRange(rowIndex, headerMap['Статус'] + 1).setValue(status);
+  }
   var telephone = getCell_(row, headerMap, 'Телефон');
   var firstAttempt = getCell_(row, headerMap, 'Первая попытка');
 
@@ -1126,7 +1130,7 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
     serviceHeaderMap = ensurePreviousStatusColumn_(service);
     var manual = buildNewServiceRow_(serviceHeaderMap, { submission_id: '' }, leadNo);
     setCell_(manual, serviceHeaderMap, 'Откуда', 'WhatsApp, вручную');
-    setCell_(manual, serviceHeaderMap, 'Предыдущий статус', statusEdited && oldStatus !== undefined ? (oldStatus || '(пусто)') : (status || '(пусто)'));
+    setCell_(manual, serviceHeaderMap, 'Предыдущий статус', statusEdited && oldStatus !== undefined ? (oldStatus || 'Новая') : status);
     appendServiceRowSafely_(service, serviceHeaderMap, manual);
     serviceRowIndex = service.getLastRow();
   }
@@ -1141,17 +1145,16 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
   var previousCell = service.getRange(serviceRowIndex, serviceHeaderMap['Предыдущий статус'] + 1);
   var previous = previousCell.getValue();
   // Старую одиночную правку можно восстановить из e.oldValue; массовую — только из снимка setupCrm().
-  if (!previous) previous = oldStatus !== undefined ? (oldStatus || '(пусто)') : (status || '(пусто)');
-  var statusChanged = statusEdited !== false && previous !== (status || '(пусто)');
-  if (statusEdited !== false || !previousCell.getValue()) previousCell.setValue(status || '(пусто)');
+  if (!previous || previous === '(пусто)') previous = oldStatus !== undefined ? (oldStatus || 'Новая') : 'Новая';
+  var statusChanged = statusEdited !== false && previous !== status;
+  if (statusEdited !== false || !previousCell.getValue()) previousCell.setValue(status);
   if (serviceRowIndex !== -1) {
     var contactMade = service.getRange(serviceRowIndex, serviceHeaderMap['Контакт состоялся'] + 1).getValue();
-    // "Контакт состоялся" — время, когда статус впервые стал «В работе» и дальше (§3.1)
-    var contactStatuses = ['В работе', 'Консультация назначена', 'Консультация проведена', 'Клиент — договор'];
+    var contactStatuses = ['Консультация назначена', 'Ждём решения', 'Клиент'];
     if (contactStatuses.indexOf(status) !== -1 && !contactMade) {
       service.getRange(serviceRowIndex, serviceHeaderMap['Контакт состоялся'] + 1).setValue(now);
     }
-    if (status === 'Клиент — договор') {
+    if (status === 'Клиент') {
       var contractCell = service.getRange(serviceRowIndex, serviceHeaderMap['Договор'] + 1);
       if (!contractCell.getValue()) contractCell.setValue(now);
     }
@@ -1160,7 +1163,7 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
 
   // "Первая попытка" закрывает SLA — если статус сдвинулся с «Новой», но штамп ещё
   // не проставлен (office не использовал чекбокс отдельно), проставляем по факту первой правки.
-  if (status && !firstAttempt) {
+  if (statusChanged && previous === 'Новая' && status !== 'Новая' && !firstAttempt) {
     sheet.getRange(rowIndex, headerMap['Первая попытка'] + 1).setValue(now);
   }
 

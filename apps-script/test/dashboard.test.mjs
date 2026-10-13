@@ -59,7 +59,7 @@ test('ensureTodayFormulas_: 3 блока (Просрочено/Новые/Кон
   assert.match(today._data[NEW - 1][0], /НОВЫЕ/);
   assert.equal(today.getRange(NEW, 1).getBackground(), '#FFF9C4', 'design §3.4: тот же жёлтый, что «Новая»');
   assert.match(today._data[CONSULT - 1][0], /КОНСУЛЬТАЦИИ/);
-  assert.equal(today.getRange(CONSULT, 1).getBackground(), '#CE93D8', 'design §3.4: тот же сиреневый, что «Консультация назначена»');
+  assert.equal(today.getRange(CONSULT, 1).getBackground(), '#E1BEE7', 'цвет строки «Консультация назначена»');
 
   // B2 fix: блоки должны быть разнесены минимум на ёмкость блока — заголовок
   // следующего блока не может физически попасть в спилл-зону предыдущего.
@@ -69,7 +69,7 @@ test('ensureTodayFormulas_: 3 блока (Просрочено/Новые/Кон
   const overdueQuery = today.getRange(OVERDUE + 2, 1).getFormula();
   assert.ok(overdueQuery.indexOf('QUERY') !== -1);
   assert.ok(overdueQuery.indexOf('Col11') !== -1, 'условие по «Следующий шаг» (Col11 в A2:N)');
-  assert.ok(overdueQuery.indexOf('Клиент — договор') !== -1 && overdueQuery.indexOf('Дубль / спам') !== -1,
+  assert.ok(overdueQuery.indexOf('Клиент') !== -1 && overdueQuery.indexOf('Закрыто') !== -1,
     'закрытые заявки исключены из «просрочено» (не только «Следующий шаг» в прошлом)');
 
   const newQuery = today.getRange(NEW + 2, 1).getFormula();
@@ -163,7 +163,7 @@ test('ensureSummaryFormulas_: KPI-3/KPI-4 всегда печатают знам
   assert.ok(kpi3sub.indexOf('IF($B$14=0') !== -1, 'n=0 -> "—", не деление на ноль');
 
   const kpi4total = summary.getRange(19, 1).getFormula();
-  assert.ok(kpi4total.indexOf('Клиент — договор') !== -1);
+  assert.ok(kpi4total.indexOf('Клиент') !== -1);
   const kpi4sub = summary.getRange(20, 1).getFormula();
   assert.ok(kpi4sub.indexOf('$A$19') !== -1 && kpi4sub.indexOf('$B$19') !== -1);
 });
@@ -197,7 +197,7 @@ test('ensureSummaryFormulas_: KPI-6 (просрочено сейчас) — по
   // нотация внутри COUNTIFS (ошибка разбора формулы).
   assert.ok(count.indexOf("'Заявки'!B,") === -1, 'не должно остаться голого \'Заявки\'!B без диапазона (B4 regression)');
   const statusRangeCount = (count.match(/'Заявки'!B2:B/g) || []).length;
-  assert.ok(statusRangeCount >= 3, 'все три условия по статусу используют полный B2:B');
+  assert.equal(statusRangeCount, 2, 'оба закрытых статуса используют полный B2:B');
   const sub = summary.getRange(30, 1).getFormula();
   assert.ok(sub.indexOf('Просрочек нет') !== -1, '0 -> "Просрочек нет", не голый "0"');
 });
@@ -254,8 +254,8 @@ test('ensureSummaryFormulas_: источники/причины/статус-м�
   assert.ok(sourcesFormula.indexOf('QUERY') !== -1);
   const reasonsFormula = summary.getRange(reasonsRow, 20).getFormula();
   assert.ok(reasonsFormula.indexOf('QUERY') !== -1);
-  const statusmixFormula = summary.getRange(statusmixRow, 20).getFormula();
-  assert.ok(statusmixFormula.indexOf('QUERY') !== -1);
+  assert.equal(summary.getRange(statusmixRow, 20).getValue(), 'Новая');
+  assert.match(summary.getRange(statusmixRow, 21).getFormula(), /SUMPRODUCT/);
 });
 
 test('ensureSummaryFormulas_: 5 графиков созданы с правильным типом, чарт 5 — через asBarChart()/setStacked() (B1c fix), диапазоны источников/причин размером с капасити блока (B5 fix)', () => {

@@ -399,7 +399,7 @@ test('item7: таймаут блокировки onEdit — правка вст�
 
   const reqHeaders = Array.from(ctx.REQUESTS_HEADERS_);
   const svcHeaders = Array.from(ctx.SERVICE_SHEET_HEADERS_);
-  const requests = makeFakeSheet('Заявки', { data: [reqHeaders, buildRow(reqHeaders, { '№': 'G-0001', 'Статус': 'В работе', 'Имя': 'Test' })] });
+  const requests = makeFakeSheet('Заявки', { data: [reqHeaders, buildRow(reqHeaders, { '№': 'G-0001', 'Статус': 'Консультация назначена', 'Имя': 'Test' })] });
   const service = makeFakeSheet('Служебное', { data: [svcHeaders, buildRow(svcHeaders, { '№': 'G-0001', 'submission_id': 'S1', 'все submission_id': 'S1' })] });
   const journal = makeFakeSheet('Журнал');
   const ss = makeFakeSpreadsheet({ 'Заявки': requests, 'Служебное': service, 'Журнал': journal });

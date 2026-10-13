@@ -4,7 +4,7 @@
 // предупреждение» нельзя менять редакторов.
 import { test, assert } from './helpers/harness.mjs';
 import { loadGasContext } from './helpers/load-gas.mjs';
-import { makeFakeSheet } from './helpers/gas-fakes.mjs';
+import { makeFakeSheet, makeFakeSpreadsheetApp } from './helpers/gas-fakes.mjs';
 
 const ctx = loadGasContext(['Utils.gs', 'Config.gs', 'Sheets.gs', 'Code.gs'], {
   Session: { getScriptTimeZone: () => 'Asia/Jerusalem', getEffectiveUser: () => ({ getEmail: () => 'alex@adfix.co.il' }) }
@@ -94,10 +94,14 @@ test('боевая таблица: после удаления строк «Вх
   assert.doesNotMatch(src, /readIntakeWatermark_|writeIntakeWatermark_/, 'watermark по номеру строки убран');
 });
 
-test('боевая таблица: жёлтая «новая» только у строки с № и без статуса (не все пустые строки)', () => {
+test('Новая: жёлтая заливка только по явному статусу, пустые строки не подсвечены', () => {
   const src = ctx.applyRequestsConditionalFormatting_.toString();
   assert.doesNotMatch(src, /'=ISBLANK\(\$' \+ statusCol/, 'старое правило ISBLANK(статус) убрано');
-  assert.match(src, /'=AND\(\$' \+ noColLetter \+ '2<>"",ISBLANK\(\$' \+ statusCol/);
+  const requests = makeFakeSheet('Заявки', { data: [Array.from(ctx.REQUESTS_HEADERS_)] });
+  loadGasContext(undefined, { SpreadsheetApp: makeFakeSpreadsheetApp({}) }).applyRequestsConditionalFormatting_(requests);
+  const yellow = requests.getConditionalFormatRules().filter(r => ['#FFF9C4', '#FFEB3B'].includes(r.background));
+  assert.equal(yellow.length, 2);
+  assert.ok(yellow.every(r => r.formula === '=$B2="Новая"'));
 });
 
 test('живой прогон: setupCrm пишет значения «Настроек» текстом (апостроф), заголовок и пустые — без изменений', () => {

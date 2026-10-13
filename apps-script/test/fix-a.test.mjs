@@ -109,7 +109,7 @@ test('resolvePendingCorrections_: конкурентная правка офис
   const { requests, service, reqHeaderMap, serviceHeaderMap } = buildRequestsAndService(ctx, [
     { no: 'G-0001', submissionId: 'A', name: 'Old', phone: '111' }
   ]);
-  requests._data[1][reqHeaderMap['Статус']] = 'Не дозвонились';
+  requests._data[1][reqHeaderMap['Статус']] = 'Перезвонить';
   requests._data[1][reqHeaderMap['Комментарий']] = 'исходный комментарий офиса';
 
   const intakeHeaders = ['submission_id', 'corrects_submission_id', 'submitted_at', 'name', 'phone', 'email'];
