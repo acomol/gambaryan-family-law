@@ -325,6 +325,13 @@ function applyRequestsConditionalFormatting_(sheet) {
     .setStrikethrough(true)
     .setRanges([sheet.getRange(reasonCol + '2:' + reasonCol)])
     .build());
+  // «Перезвонить» без даты не попадёт в «Сегодня» -> красная ячейка «Следующий шаг»
+  rules.push(SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=AND($' + statusCol + '2="Перезвонить",LEN(TRIM($' + nextStepCol + '2))=0)')
+    .setBackground('#FFCDD2')
+    .setFontColor('#000000')
+    .setRanges([sheet.getRange(nextStepCol + '2:' + nextStepCol)])
+    .build());
   // просроченный "Следующий шаг" у открытой заявки -> красный акцент (замена рамки)
   var closedList = "{" + CLOSED_STATUSES_.map(function (s) { return '"' + s + '"'; }).join(';') + "}";
   rules.push(SpreadsheetApp.newConditionalFormatRule()

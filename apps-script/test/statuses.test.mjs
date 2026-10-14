@@ -138,12 +138,15 @@ test('SLA Перезвонить: без первой попытки трево�
 test('Форматирование: просрочка приоритетнее палитры; причина отдельная; диаграмма имеет стабильные серии', () => {
   const f = fixture();
   const rules = f.requests.getConditionalFormatRules();
-  assert.equal(rules.length, 14);
+  assert.equal(rules.length, 15);
   assert.match(rules[0].formula, /Закрыто.*LEN\(TRIM/);
   assert.equal(rules[0].ranges[0].getColumn(), 13);
-  assert.match(rules[1].formula, /TODAY\(\).*Клиент.*Закрыто/);
+  assert.equal(rules[1].formula, '=AND($B2="Перезвонить",LEN(TRIM($K2))=0)');
+  assert.equal(rules[1].ranges[0].getColumn(), 11);
   assert.equal(rules[1].background, '#FFCDD2');
-  assert.equal(rules[1].bold, true);
+  assert.match(rules[2].formula, /TODAY\(\).*Клиент.*Закрыто/);
+  assert.equal(rules[2].background, '#FFCDD2');
+  assert.equal(rules[2].bold, true);
   assert.ok(rules.every(r => r.fontColor === '#000000'));
   const summary = makeFakeSheet('Сводка');
   f.ctx.ensureSummaryFormulas_(summary, f.requests, f.service);
