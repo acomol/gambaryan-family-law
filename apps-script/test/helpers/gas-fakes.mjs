@@ -94,6 +94,13 @@ function makeFakeRange(sheet, row, col, numRows, numCols, isOpenColumn) {
           var v = values[r][c];
           var cellRow = row + r;
           var cellCol = col + c;
+          // Как в Google: строгий список (allowInvalid=false) не даёт записать
+          // значение вне списка — setValue бросает исключение.
+          var rule = sheet.getRange(cellRow, cellCol).getDataValidation();
+          if (rule && rule.list && rule.allowInvalid === false && v !== '' && v != null &&
+              rule.list.indexOf(v) === -1) {
+            throw new Error('В ячейке ' + cellRow + ':' + cellCol + ' нарушены правила проверки данных: ' + v);
+          }
           var isTextForced = typeof v === 'string' && v.charAt(0) === "'";
           var isFormulaLike = typeof v === 'string' && !isTextForced && /^[=+\-@\t\r]/.test(v);
           sheet._formulas = sheet._formulas || {};

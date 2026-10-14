@@ -100,11 +100,13 @@ function setupCrm() {
   ensureHeaderRow_(service, SERVICE_SHEET_HEADERS_);
   ensurePreviousStatuses_(requests, service);
   ensureHeaderRow_(journal, JOURNAL_HEADERS_);
+  // Новый список статусов до миграции: старый строгий список не даёт записать
+  // новые значения (живая таблица 14.10, «нарушены правила проверки данных»).
+  applyRequestsValidation_(requests);
   migrateStatuses_(requests, service, journal);
   ensureSettingsSheet_(settings);
 
   formatRequestsSheet_(requests);
-  applyRequestsValidation_(requests);
   applyRequestsConditionalFormatting_(requests);
   verifyIntakeHeaders_(intake, journal);
   formatIntakeSheet_(intake);

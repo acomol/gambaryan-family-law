@@ -44,6 +44,19 @@ test('Миграция: все старые статусы/причины, но�
   assert.equal(f.statusEvents(), 0);
 });
 
+test('Миграция проходит поверх старого строгого списка статусов (живая таблица 14.10)', () => {
+  const f = fixture(false);
+  const strict = list => ({ list, showDropdown: true, allowInvalid: false });
+  f.requests.getRange('B2:B').setDataValidation(strict(['Не дозвонились', 'В работе', 'Консультация назначена',
+    'Консультация проведена', 'Клиент — договор', 'Отказ', 'Дубль / спам']));
+  f.requests.getRange('M2:M').setDataValidation(strict(['Не дозвонились (3+)', 'Выбрал другого юриста',
+    'Дорого', 'Передумал', 'Не наш профиль', 'Другое']));
+  f.requests._data[1][1] = 'Дубль / спам';
+  f.ctx.setupCrm();
+  assert.equal(f.read(2)['Статус'], 'Закрыто');
+  assert.equal(f.read(2)['Причина закрытия'], 'Спам или тест');
+});
+
 test('Миграция предыдущего статуса сохраняет реальную несохранённую смену', () => {
   const f = fixture(false);
   const map = f.ctx.colByHeader_(f.service._data[0]);
