@@ -2,7 +2,7 @@
 //
 // Built by scripts/bundle-apps-script.mjs from apps-script/src/*.gs
 // (fixed order — see FILE_ORDER in that script).
-// Source commit: 45e46c9faa95e9056b71c5f5cf2f731f445b37c9
+// Source commit: 675c049cdc4e1512a40336d4b9a4730b3ce11817
 // Generated: 2026-10-14
 //
 // To change behavior, edit the corresponding file under apps-script/src/
@@ -1964,6 +1964,13 @@ function applyRequestsConditionalFormatting_(sheet) {
     .setFontColor('#000000')
     .setStrikethrough(true)
     .setRanges([sheet.getRange(reasonCol + '2:' + reasonCol)])
+    .build());
+  // «Перезвонить» без даты не попадёт в «Сегодня» -> красная ячейка «Следующий шаг»
+  rules.push(SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=AND($' + statusCol + '2="Перезвонить",LEN(TRIM($' + nextStepCol + '2))=0)')
+    .setBackground('#FFCDD2')
+    .setFontColor('#000000')
+    .setRanges([sheet.getRange(nextStepCol + '2:' + nextStepCol)])
     .build());
   // просроченный "Следующий шаг" у открытой заявки -> красный акцент (замена рамки)
   var closedList = "{" + CLOSED_STATUSES_.map(function (s) { return '"' + s + '"'; }).join(';') + "}";
