@@ -2,8 +2,8 @@
 //
 // Built by scripts/bundle-apps-script.mjs from apps-script/src/*.gs
 // (fixed order — see FILE_ORDER in that script).
-// Source commit: 96afc5e33061ba95c04439922c3d1cfd7e7c06d4
-// Generated: 2026-10-13
+// Source commit: 45e46c9faa95e9056b71c5f5cf2f731f445b37c9
+// Generated: 2026-10-14
 //
 // To change behavior, edit the corresponding file under apps-script/src/
 // and rerun: node scripts/bundle-apps-script.mjs
@@ -1740,11 +1740,13 @@ function setupCrm() {
   ensureHeaderRow_(service, SERVICE_SHEET_HEADERS_);
   ensurePreviousStatuses_(requests, service);
   ensureHeaderRow_(journal, JOURNAL_HEADERS_);
+  // Новый список статусов до миграции: старый строгий список не даёт записать
+  // новые значения (живая таблица 14.10, «нарушены правила проверки данных»).
+  applyRequestsValidation_(requests);
   migrateStatuses_(requests, service, journal);
   ensureSettingsSheet_(settings);
 
   formatRequestsSheet_(requests);
-  applyRequestsValidation_(requests);
   applyRequestsConditionalFormatting_(requests);
   verifyIntakeHeaders_(intake, journal);
   formatIntakeSheet_(intake);
