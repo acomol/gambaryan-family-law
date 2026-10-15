@@ -107,6 +107,72 @@ test('Ручное создание повторяется без новых с�
   assert.equal(f.read(10)['Ответственный'], 'assigned@example.test');
   assert.equal(f.read(10)['Получена'].toISOString(), now.toISOString());
 });
+
+test('Сайт: Получена берётся из submitted_at, с сохранением миллисекунд и даты по Израилю', () => {
+  const f = fixture();
+  const submitted = '2026-10-01T22:25:35.392Z';
+  f.sync({ submission_id: 'delayed', name: 'Site', submitted_at: submitted });
+  const received = f.read(15)['Получена'];
+  assert.equal(received.toISOString(), submitted);
+  assert.equal(f.ctx.Utilities.formatDate(received, f.config.tz, 'dd.MM.yyyy HH:mm'), '02.10.2026 01:25');
+});
+
+test('Сайт: пустой или неразбираемый submitted_at использует время тика', () => {
+  for (const submitted of ['', undefined, null, 'not-a-date']) {
+    const f = fixture();
+    f.sync({ submission_id: 'fallback', name: 'Site', submitted_at: submitted });
+    assert.equal(f.read(15)['Получена'].toISOString(), now.toISOString());
+  }
+});
+
+test('Ручная заявка: строковая дата без времени становится Date в полночь Израиля', () => {
+  for (const [input, expected] of [
+    ['14/10/2026', '2026-10-13T21:00:00.000Z'],
+    ['14.10.2026', '2026-10-13T21:00:00.000Z'],
+    ['2026-10-14', '2026-10-13T21:00:00.000Z'],
+    ['14/01/2026', '2026-01-13T22:00:00.000Z']
+  ]) {
+    const f = fixture();
+    f.requests.getRange(10, f.map['Получена'] + 1).setNumberFormat('dd/MM/yyyy').setValue(input);
+    f.edit(10, 'Имя', [['Manual']]);
+    assert.equal(f.read(10)['Получена'].toISOString(), expected, input);
+    assert.equal(f.requests._numberFormats['10:3'], 'dd/MM/yyyy');
+    f.edit(10, 'Имя', [['Manual edited']]);
+    assert.equal(f.read(10)['Получена'].toISOString(), expected, 'Повторная правка: ' + input);
+  }
+});
+
+test('Ручная заявка: строковая дата со временем читается по Израилю', () => {
+  for (const [input, expected] of [
+    ['14/10/2026 13:45', '2026-10-14T10:45:00.000Z'],
+    ['14.01.2026 09:05:30', '2026-01-14T07:05:30.000Z'],
+    ['2026-10-14T13:45:30', '2026-10-14T10:45:30.000Z']
+  ]) {
+    const f = fixture();
+    f.requests.getRange(10, f.map['Получена'] + 1).setValue(input);
+    f.edit(10, 'Имя', [['Manual']]);
+    assert.equal(f.read(10)['Получена'].toISOString(), expected, input);
+  }
+});
+
+test('Ручная заявка: существующий Date сохраняется, пустая дата получает now', () => {
+  for (const input of [new Date('2026-10-01T22:25:35.392Z'), '']) {
+    const f = fixture();
+    f.requests.getRange(10, f.map['Получена'] + 1).setValue(input);
+    f.edit(10, 'Имя', [['Manual']]);
+    assert.equal(f.read(10)['Получена'].toISOString(), input ? input.toISOString() : now.toISOString());
+    if (input) assert.strictEqual(f.read(10)['Получена'], input);
+  }
+});
+
+test('Ручная заявка: невозможные даты и неизвестный текст не нормализуются в другую дату', () => {
+  for (const input of ['31/02/2026', '2026-13-14', '14.10.2026 25:00', 'unknown']) {
+    const f = fixture();
+    f.requests.getRange(10, f.map['Получена'] + 1).setValue(input);
+    f.edit(10, 'Имя', [['Manual']]);
+    assert.equal(f.read(10)['Получена'], input);
+  }
+});
 test('Пробельные контакты и очищенная заявка исключены также из SLA и health', () => {
   const f = fixture();
   f.requests.getRange(15, 1, 1, 5).setValues([['G-0099', '', new Date('2026-10-11T07:00:00Z'), '  ', '  ']]);

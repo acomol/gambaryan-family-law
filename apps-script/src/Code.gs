@@ -423,7 +423,8 @@ function buildNewRequestRow_(reqHeaderMap, rec, leadNo, config, now) {
   var row = new Array(REQUESTS_HEADERS_.length).fill('');
   setCell_(row, reqHeaderMap, '№', leadNo);
   setCell_(row, reqHeaderMap, 'Статус', 'Новая');
-  setCell_(row, reqHeaderMap, 'Получена', now);
+  var receivedAt = rec.submitted_at ? new Date(rec.submitted_at) : now;
+  setCell_(row, reqHeaderMap, 'Получена', isNaN(receivedAt.getTime()) ? now : receivedAt);
   setCell_(row, reqHeaderMap, 'Имя', rec.name || '');
   setCell_(row, reqHeaderMap, 'Телефон', rec.phone || '');
   // 'Связаться' — не строка, а RichTextValue (review находка №12); пишется
@@ -1097,6 +1098,20 @@ function reconcilePendingEdits_(requests, reqHeaderMap, journal, service, servic
   writePendingEdits_([]);
 }
 
+/** Ручная дата dd/MM/yyyy, dd.MM.yyyy или yyyy-MM-dd, необязательно с HH:mm[:ss]. */
+function parseManualReceivedAt_(value, tz) {
+  var text = value.trim().replace(/^(\d{2})([/.])(\d{2})\2(\d{4})/, '$4-$3-$1');
+  var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(text);
+  if (!m) return null;
+  var y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  var h = Number(m[4] || 0), mi = Number(m[5] || 0), s = Number(m[6] || 0);
+  // Date.UTC нормализует 31 февраля/25:00; такие значения не исправляем молча.
+  var check = new Date(Date.UTC(y, mo - 1, d, h, mi, s));
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() + 1 !== mo || check.getUTCDate() !== d ||
+      check.getUTCHours() !== h || check.getUTCMinutes() !== mi || check.getUTCSeconds() !== s) return null;
+  return zonedTimeToUtc_(y, mo, d, h, mi, s, tz);
+}
+
 /**
  * Задача 0.4.0: правки самой строки «Заявки» (Первая попытка, «Связаться») —
  * на месте; штампы, которые раньше жили на «Заявки» («Контакт состоялся»,
@@ -1135,8 +1150,14 @@ function handleEditRow_(sheet, headerMap, rowIndex, journal, service, serviceHea
     serviceRowIndex = service.getLastRow();
   }
   var isManual = service.getRange(serviceRowIndex, serviceHeaderMap['Откуда'] + 1).getValue() === 'WhatsApp, вручную';
-  if (!getCell_(row, headerMap, 'Получена') && isManual) {
-    sheet.getRange(rowIndex, headerMap['Получена'] + 1).setValue(now);
+  var receivedAt = getCell_(row, headerMap, 'Получена');
+  if (isManual) {
+    if (!receivedAt) {
+      sheet.getRange(rowIndex, headerMap['Получена'] + 1).setValue(now);
+    } else if (typeof receivedAt === 'string') {
+      var parsedReceivedAt = parseManualReceivedAt_(receivedAt, loadConfig_().tz);
+      if (parsedReceivedAt) sheet.getRange(rowIndex, headerMap['Получена'] + 1).setValue(parsedReceivedAt);
+    }
   }
   if (!getCell_(row, headerMap, 'Ответственный') && isManual) {
     setPlainTextValue_(sheet.getRange(rowIndex, headerMap['Ответственный'] + 1), loadConfig_().defaultDutyOfficer || '');
